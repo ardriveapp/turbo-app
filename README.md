@@ -1,3 +1,0 @@
-# ArDrive Turbo App
-
-o/
