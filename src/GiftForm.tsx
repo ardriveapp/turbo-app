@@ -163,7 +163,9 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       </div>
 
       <div className="form-section">
-        <label className="form-label">Gift message (optional)</label>
+        <label className="form-label">
+          Gift message (optional up to 250 characters)
+        </label>
         <textarea
           className="form-input"
           id="giftMessage"
