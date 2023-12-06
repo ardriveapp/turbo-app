@@ -107,7 +107,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
   return (
     <form className="gift-form">
-      <h1>Gift credits to a friend.</h1>
+      <h1>Gift Credits to a friend.</h1>
 
       <div className="form-section">
         <label className="form-label">USD amount*</label>
@@ -136,7 +136,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
               <span className="conversion-amount">
                 {(Number(credits) / 1_000_000_000_000).toFixed(4)}
               </span>
-              credits ≈{" "}
+              Credits ≈{" "}
               <span className="conversion-amount">
                 {(Number(credits) / Number(wincForOneGiB)).toFixed(2)}
               </span>
@@ -168,8 +168,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         </label>
         <textarea
           className="form-input"
-          id="giftMessage"
-          rows={3}
+          id="gift-message"
           placeholder={
             "Enter a message to the recipient of the Turbo Credits here"
           }

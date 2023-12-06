@@ -92,8 +92,9 @@
   margin: 0.25rem;
 }
 
-textarea {
+#gift-message {
   min-height: 10rem;
+  resize: none;
 }
 
 .terms-and-conditions {
