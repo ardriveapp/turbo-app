@@ -44,6 +44,10 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
   const [credits, setCredits] = useState<string | undefined>(undefined);
 
+  const usdWhenCreditsWereLastUpdatedRef = useRef<number | undefined>(
+    undefined,
+  );
+
   const [wincForOneGiB, setWincForOneGiB] = useState<string | undefined>(
     undefined,
   );
@@ -78,7 +82,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         console.error(err);
         errorCallback(`Error getting credits for USD amount: ${err.message}`);
       });
-    TurboFactory;
+    usdWhenCreditsWereLastUpdatedRef.current = debouncedUsdAmount;
   }, [debouncedUsdAmount, errorCallback]);
 
   const canSubmitForm =
@@ -124,7 +128,11 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         <div>
           {wincForOneGiB && (
             <div id="conversions">
-              $<span className="conversion-amount">{usdAmount}</span> ≈{" "}
+              $
+              <span className="conversion-amount">
+                {usdWhenCreditsWereLastUpdatedRef.current}
+              </span>{" "}
+              ≈{" "}
               <span className="conversion-amount">
                 {(Number(credits) / 1_000_000_000_000).toFixed(4)}
               </span>
