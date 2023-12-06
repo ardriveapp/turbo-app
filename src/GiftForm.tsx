@@ -1,5 +1,5 @@
 import { TurboFactory, USD, TopUpRawResponse } from "@ardrive/turbo-sdk";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   defaultUSDAmount,
   paymentServiceUrl,
@@ -32,6 +32,8 @@ async function getTopUpQuote(
 export function GiftForm({ errorCallback }: GiftFormProps) {
   const [recipientEmail, setRecipientEmail] = useState<string>("");
   const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
+
+  const recipientEmailRef = useRef<HTMLInputElement>(null);
 
   const [usdAmount, setUsdAmount] = useState<number>(defaultUSDAmount);
   const debouncedUsdAmount = useDebounce(usdAmount, 500);
@@ -79,7 +81,11 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
     TurboFactory;
   }, [debouncedUsdAmount, errorCallback]);
 
-  const canSubmitForm = !!credits && !!recipientEmail && !!termsAccepted;
+  const canSubmitForm =
+    !!credits &&
+    !!recipientEmail &&
+    !!termsAccepted &&
+    recipientEmailRef.current?.checkValidity();
 
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
@@ -137,9 +143,10 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         <input
           type="email"
           className="form-input"
-          id="recipientEmail"
+          id="recipient-email"
           placeholder="Enter the recipient's email address here"
           value={recipientEmail}
+          ref={recipientEmailRef}
           required={true}
           onChange={(e) => {
             setRecipientEmail(e.target.value);

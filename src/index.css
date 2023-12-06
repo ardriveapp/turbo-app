@@ -28,42 +28,6 @@ input[type="number"] {
   appearance: textfield;
 }
 
-a {
-  color: var(--ardrive-red);
-  text-decoration: inherit;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-input[type="checkbox"] {
-  width: 1.5rem;
-  height: 1.5rem;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  outline: none;
-  border-radius: 0.25rem;
-  border: 0.1rem solid var(--gray);
-}
-input[type="checkbox"]:checked {
-  background-color: var(--ardrive-red);
-  border: none;
-}
-
-input[type="checkbox"]:hover {
-  cursor: pointer;
-}
-
-/* Custom check mark for checked state */
-input[type="checkbox"]:checked::before {
-  content: "\2713"; /* Unicode check mark character */
-  font-size: 1.5rem;
-  color: var(--white);
-  position: absolute;
-  transform: translate(10%, -10%);
-}
-
 @media (prefers-color-scheme: light) {
   :root {
     color: var(--black);
