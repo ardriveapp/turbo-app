@@ -1,0 +1,51 @@
+:root {
+  font-family: Wavehaus-Semi, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--text-white);
+  background-color: var(--black);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ardrive-red: #d31721;
+  --text-white: #a6a6a6;
+  --white: #fafafa;
+  --black: #0d0d0d;
+  --dark-gray: #171717;
+  --gray: #7d7d7d;
+  --off-gray: #787878;
+}
+
+/* 
+define colors
+
+styles in css
+github copilot can you tell me how to make a palette in css
+*/
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+a {
+  font-weight: 500;
+  color: var(--ardrive-red);
+  text-decoration: inherit;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: var(--black);
+    background-color: var(--white);
+  }
+}
