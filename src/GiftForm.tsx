@@ -6,6 +6,7 @@ import {
   termsOfServiceUrl,
 } from "./constants";
 import useDebounce from "./hooks/useDebounce";
+import "./GiftForm.css";
 
 interface GiftFormProps {
   errorCallback: (message: string) => void;
@@ -103,10 +104,9 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
         <div id="usd-form-input">
           <span id="dollar-sign">$</span>
-
           <input
             type="number"
-            id="usd-amount"
+            id="usd-input"
             value={usdAmount}
             onChange={handleUSDChange}
             required={true}
@@ -116,20 +116,17 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
       {credits && (
         <div>
-          <div id="credits-message">
-            {" "}
-            <span id="credit-amount">
-              {Number(credits) / 1_000_000_000_000}{" "}
-            </span>
-            credits estimated
-          </div>
           {wincForOneGiB && (
             <div id="conversions">
-              <span id="usd-conversion">
-                $ {usdAmount} ={" "}
-                {(Number(credits) / 1_000_000_000_000).toFixed(4)} credits ={" "}
-                {(Number(credits) / Number(wincForOneGiB)).toFixed(2)} GiB
+              $<span className="conversion-amount">{usdAmount}</span> ≈{" "}
+              <span className="conversion-amount">
+                {(Number(credits) / 1_000_000_000_000).toFixed(4)}
               </span>
+              credits ≈{" "}
+              <span className="conversion-amount">
+                {(Number(credits) / Number(wincForOneGiB)).toFixed(2)}
+              </span>
+              GiB
             </div>
           )}
         </div>
