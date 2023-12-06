@@ -97,7 +97,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
   return (
     <form className="gift-form">
-      <h2>Gift credits to a friend.</h2>
+      <h1>Gift credits to a friend.</h1>
 
       <div className="form-section">
         <label className="form-label">USD amount*</label>
@@ -184,7 +184,8 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         onClick={(e) => handleSubmit(e)}
         disabled={!canSubmitForm}
       >
-        Proceed to Checkout
+        Proceed <br />
+        to Checkout
       </button>
     </form>
   );
