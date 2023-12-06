@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "ArDrive Turbo App",
+  "homepage": "https://ardriveapp.github.io/turbo-app",
   "license": "AGPL-3.0-or-later",
   "author": {
     "name": "Permanent Data Solutions Inc",
@@ -14,7 +15,8 @@
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"TODO: add tests\" && exit 0"
   },
   "dependencies": {
     "@ardrive/turbo-sdk": "^1.1.0",
