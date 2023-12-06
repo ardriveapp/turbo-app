@@ -191,8 +191,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         onClick={(e) => handleSubmit(e)}
         disabled={!canSubmitForm}
       >
-        Proceed <br />
-        to Checkout
+        Proceed to Checkout
       </button>
     </form>
   );
