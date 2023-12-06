@@ -1,26 +1,30 @@
 @font-face {
-  font-family: "Wavehaus-Book";
-  src: local("Wavehaus-Book"),
-    url(fonts/Wavehaus/Wavehaus-66Book.woff) format("woff");
+  font-family: Wavehaus-Book;
+  src:
+    local(Wavehaus-Book),
+    url(fonts/Wavehaus/Wavehaus-66Book.woff) format(woff);
 }
 
 @font-face {
-  font-family: "Wavehaus-Semi";
-  src: local("Wavehaus-Semi"),
-    url(fonts/Wavehaus/Wavehaus-95SemiBold.woff) format("woff");
+  font-family: Wavehaus-Semi;
+  src:
+    local(Wavehaus-Semi),
+    url(fonts/Wavehaus/Wavehaus-95SemiBold.woff) format(woff);
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Wavehaus-Extra";
-  src: local("Wavehaus-Extra"),
-    url(fonts/Wavehaus/Wavehaus-158ExtraBold.woff) format("woff");
+  font-family: Wavehaus-Extra;
+  src:
+    local(Wavehaus-Extra),
+    url(fonts/Wavehaus/Wavehaus-158ExtraBold.woff) format(woff);
 }
 
 @font-face {
-  font-family: "Wavehaus-Bold";
-  src: local("Wavehaus-Bold"),
-    url(fonts/Wavehaus/Wavehaus-128Bold.woff) format("woff");
+  font-family: Wavehaus-Bold;
+  src:
+    local(Wavehaus-Bold),
+    url(fonts/Wavehaus/Wavehaus-128Bold.woff) format(woff);
 }
 
 #root {
@@ -28,7 +32,7 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
-  font-family: "Wavehaus-Book";
+  font-family: Wavehaus-Book;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,25 +109,32 @@
   margin: 0.5rem 0.5rem;
   font-size: 1.25rem;
   font-weight: bold;
-  font-family: "Wavehaus-Bold";
+  font-family: Wavehaus-Bold;
   text-align: left;
   font-size: 1rem;
 }
 
+#conversions {
+  margin: 0rem 1rem 2rem;
+  max-width: 40rem;
+  font-family: Wavehaus-Semi;
+  font-size: 1.25rem;
+}
+
 h2 {
-  font-family: "Wavehaus-Extra";
+  font-family: Wavehaus-Extra;
   font-size: 1.75rem;
   margin: 3.5rem;
 }
 
 #credits-message {
-  font-family: "Wavehaus-Book";
+  font-family: Wavehaus-Book;
   font-size: 1.25rem;
   padding: 2rem 0 1rem 0;
 }
 
 #credit-amount {
-  font-family: "Wavehaus-Semi";
+  font-family: Wavehaus-Semi;
   font-size: 1.75rem;
 }
 
@@ -139,7 +150,7 @@ textarea {
   background-color: var(--ardrive-red);
   color: var(--white);
   font-size: 1.25rem;
-  font-family: "Wavehaus-Bold";
+  font-family: Wavehaus-Bold;
   cursor: pointer;
 }
 
@@ -157,7 +168,7 @@ textarea {
 
   margin: 1rem 0;
   font-size: 1rem;
-  font-family: "Wavehaus-Book";
+  font-family: Wavehaus-Book;
 }
 
 .terms-and-conditions a {
@@ -179,6 +190,6 @@ textarea {
   padding: 1rem 2rem;
   border-radius: 0.5rem;
   font-size: 1rem;
-  font-family: "Wavehaus-Extra";
+  font-family: Wavehaus-Extra;
   color: var(--ardrive-red);
 }

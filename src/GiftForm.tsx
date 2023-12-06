@@ -13,14 +13,14 @@ interface GiftFormProps {
 
 async function getTopUpQuote(
   usdAmount: number,
-  recipientEmail: string
+  recipientEmail: string,
 ): Promise<TopUpRawResponse> {
   // TODO: support emails on turbo sdk
   // turbo.createCheckoutSession({amount: USD(usdAmount / 100), email: recipientEmail,owner}})
   const response = await fetch(
     `${paymentServiceUrl}/v1/top-up/checkout-session/${recipientEmail}/usd/${
       usdAmount * 100
-    }?destinationAddressType=email`
+    }?destinationAddressType=email`,
   );
   const data = await response.json();
   console.log("data", data);
@@ -41,19 +41,33 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
 
   const [credits, setCredits] = useState<string | undefined>(undefined);
 
+  const [wincForOneGiB, setWincForOneGiB] = useState<string | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    const turbo = TurboFactory.unauthenticated({
+      paymentServiceConfig: { url: paymentServiceUrl },
+    });
+    turbo.getFiatRates().then(({ winc }) => {
+      setWincForOneGiB(winc);
+    });
+  }, []);
+
   // Get credits for USD amount when USD amount changes
   useEffect(() => {
-    const getCreditsForUSD = async (usdAmount: number): Promise<string> => {
+    const getCreditsAndGiBForUSD = async (
+      usdAmount: number,
+    ): Promise<string> => {
       const turbo = TurboFactory.unauthenticated({
         paymentServiceConfig: { url: paymentServiceUrl },
       });
-      const resp = await turbo.getWincForFiat({
+      const { winc } = await turbo.getWincForFiat({
         amount: USD(usdAmount),
         promoCodes: [],
       }); // todo: add promo codes support
-      return resp.winc;
+      return winc;
     };
-    getCreditsForUSD(debouncedUsdAmount)
+    getCreditsAndGiBForUSD(debouncedUsdAmount)
       .then((credits) => {
         setCredits(credits);
       })
@@ -61,6 +75,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         console.error(err);
         errorCallback(`Error getting credits for USD amount: ${err.message}`);
       });
+    TurboFactory;
   }, [debouncedUsdAmount, errorCallback]);
 
   const canSubmitForm = !!credits && !!recipientEmail && !!termsAccepted;
@@ -97,8 +112,10 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
             required={true}
           />
         </div>
+      </div>
 
-        {credits && (
+      {credits && (
+        <div>
           <div id="credits-message">
             {" "}
             <span id="credit-amount">
@@ -106,8 +123,17 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
             </span>
             credits estimated
           </div>
-        )}
-      </div>
+          {wincForOneGiB && (
+            <div id="conversions">
+              <span id="usd-conversion">
+                $ {usdAmount} ={" "}
+                {(Number(credits) / 1_000_000_000_000).toFixed(4)} credits ={" "}
+                {(Number(credits) / Number(wincForOneGiB)).toFixed(2)} GiB
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="form-section">
         <label className="form-label">Recipient email address*</label>
