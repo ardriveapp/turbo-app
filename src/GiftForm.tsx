@@ -39,6 +39,15 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
   const debouncedUsdAmount = useDebounce(usdAmount, 500);
 
   const handleUSDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const amount = Number(e.target.value);
+    if (amount > 10000) {
+      setUsdAmount(10000);
+      return;
+    }
+    if (amount < 0) {
+      setUsdAmount(0);
+      return;
+    }
     setUsdAmount(Number(Number(e.target.value).toFixed(2)));
   };
 
@@ -113,13 +122,15 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         <label className="form-label">USD amount*</label>
 
         <div id="usd-form-input">
-          <span id="dollar-sign">$</span>
+          <span id="dollar-sign">{"$".toLocaleUpperCase()}</span>
           <input
             type="number"
             id="usd-input"
             value={usdAmount}
             onChange={handleUSDChange}
             required={true}
+            min={0}
+            max={10000}
           />
         </div>
       </div>
@@ -128,7 +139,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         <div>
           {wincForOneGiB && (
             <div id="conversions">
-              $
+              {"$".toLocaleUpperCase()}
               <span className="conversion-amount">
                 {usdWhenCreditsWereLastUpdatedRef.current}
               </span>{" "}
