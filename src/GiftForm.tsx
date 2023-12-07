@@ -6,7 +6,7 @@ import {
 } from "./constants";
 import useDebounce from "./hooks/useDebounce";
 import "./GiftForm.css";
-import { getTopUpQuote } from "./utils/getTopUpQuote";
+import { forwardToCheckoutSession } from "./utils/forwardToCheckoutSession";
 import { useWincForOneGiB } from "./hooks/useWincForOneGiB";
 import { useCreditsForFiat } from "./hooks/useCreditsForFiat";
 
@@ -58,9 +58,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       return;
     }
 
-    getTopUpQuote(usdAmount, recipientEmail).then((topUpQuote) => {
-      window.location.href = topUpQuote.paymentSession.url;
-    });
+    forwardToCheckoutSession(usdAmount, recipientEmail);
   };
 
   return (
