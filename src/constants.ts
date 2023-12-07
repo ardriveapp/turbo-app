@@ -8,3 +8,4 @@ export const turboConfig = {
   paymentServiceConfig: { url: paymentServiceUrl },
 };
 export const wincPerCredit = 1_000_000_000_000;
+export const defaultDebounceMs = 500;

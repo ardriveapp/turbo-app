@@ -23,7 +23,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
   const [isTermsAccepted, setTermsAccepted] = useState<boolean>(false);
 
   const handleUSDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const amount = Number(e.target.value);
+    const amount = +e.target.value;
     if (amount > maxUSDAmount) {
       setUsdAmount(maxUSDAmount);
       return;
@@ -32,11 +32,11 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       setUsdAmount(minUSDAmount);
       return;
     }
-    setUsdAmount(Number(Number(e.target.value).toFixed(2)));
+    setUsdAmount(+amount.toFixed(2));
   };
 
   const wincForOneGiB = useWincForOneGiB();
-  const debouncedUsdAmount = useDebounce(usdAmount, 500);
+  const debouncedUsdAmount = useDebounce(usdAmount);
   const [credits, usdWhenCreditsWereLastUpdatedRef] = useCreditsForFiat(
     debouncedUsdAmount,
     errorCallback,
@@ -177,7 +177,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
         />
         <span>
           I Agree to the
-          <a href={termsOfServiceUrl}>Terms of Service and Privacy Policy</a>.
+          <a href={termsOfServiceUrl}> Terms of Service and Privacy Policy</a>.
         </span>
       </div>
 
