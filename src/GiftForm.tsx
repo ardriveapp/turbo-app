@@ -44,8 +44,8 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       setUsdAmount(10000);
       return;
     }
-    if (amount < 0) {
-      setUsdAmount(0);
+    if (amount < 5) {
+      setUsdAmount(5);
       return;
     }
     setUsdAmount(Number(Number(e.target.value).toFixed(2)));
@@ -119,7 +119,37 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       <h1>Gift Credits to a friend.</h1>
 
       <div className="form-section">
-        <label className="form-label">USD amount*</label>
+        <label className="form-label">Suggested USD amount</label>
+        <div className="suggested-amount-buttons">
+          <button
+            type="button"
+            className="suggested-amount-button"
+            onClick={() => {
+              setUsdAmount(25);
+            }}
+          >
+            $25
+          </button>
+          <button
+            type="button"
+            className="suggested-amount-button"
+            onClick={() => {
+              setUsdAmount(50);
+            }}
+          >
+            $50
+          </button>
+          <button
+            type="button"
+            className="suggested-amount-button"
+            onClick={() => {
+              setUsdAmount(100);
+            }}
+          >
+            $100
+          </button>
+        </div>
+        <label className="form-label">Custom USD amount*</label>
 
         <div id="usd-form-input">
           <span id="dollar-sign">{"$".toLocaleUpperCase()}</span>
@@ -129,7 +159,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
             value={usdAmount.toString()}
             onChange={handleUSDChange}
             required={true}
-            min={0}
+            min={5}
             max={10000}
           />
         </div>

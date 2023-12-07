@@ -5,7 +5,7 @@
   justify-content: center;
   margin: 0rem 2rem;
   width: 100%;
-  max-width: 40rem;
+  max-width: 28rem;
 }
 
 .gift-form h1 {
@@ -43,9 +43,44 @@
   background-color: var(--dark-gray);
 }
 
-/* and not focused or user is in the text box */
 #recipient-email:not(:focus):not(:placeholder-shown):invalid {
   border-color: var(--ardrive-red);
+}
+
+.suggested-amount-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  margin: 0rem 0;
+}
+
+.suggested-amount-button {
+  margin: 0rem 1rem 0rem 0rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--off-gray);
+  border-radius: 0.5rem;
+  font-size: 1.2rem;
+  font-family: Wavehaus-Semi;
+  background-color: var(--dark-gray);
+  color: var(--white);
+  cursor: pointer;
+}
+
+.suggested-amount-button:hover {
+  background-color: var(--gray);
+  color: var(--black);
+}
+
+@media (prefers-color-scheme: light) {
+  .suggested-amount-button {
+    background-color: var(--white);
+    color: var(--black);
+  }
+
+  .suggested-amount-button:hover {
+    background-color: var(--gray);
+    color: var(--black);
+  }
 }
 
 #usd-form-input {
