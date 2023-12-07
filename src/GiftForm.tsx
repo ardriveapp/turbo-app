@@ -161,7 +161,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
           }
           maxLength={250}
           required={false}
-        ></textarea>
+        />
       </div>
 
       <div className="terms-and-conditions">
