@@ -1,15 +1,13 @@
-import "./App.css";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { GiftForm } from "./GiftForm";
 import { RouterPage } from "./components/RouterPage";
 import { useErrorMessage } from "./hooks/useErrorMessage";
 
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-
-function App() {
+export function Router() {
   const [errorMessage, setErrorMessage] = useErrorMessage();
 
-  const router = (
-    <Router basename={`${import.meta.env.BASE_URL}`}>
+  return (
+    <BrowserRouter basename={`${import.meta.env.BASE_URL}`}>
       <Routes>
         <Route
           path="/gift"
@@ -18,6 +16,12 @@ function App() {
               page={<GiftForm errorCallback={setErrorMessage} />}
               errorMessage={errorMessage}
             />
+          }
+        />
+        <Route
+          path="/redeem"
+          element={
+            <RouterPage page={<p>TODO</p>} errorMessage={errorMessage} />
           }
         />
         <Route
@@ -31,10 +35,6 @@ function App() {
           }
         />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
-
-  return router;
 }
-
-export default App;
