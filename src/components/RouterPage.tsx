@@ -1,4 +1,5 @@
 import { LogoHeader } from "./LogoHeader";
+import "./RouterPage.css";
 
 interface RouterPageProps {
   page: JSX.Element;
@@ -10,6 +11,7 @@ export function RouterPage({ page, errorMessage }: RouterPageProps) {
     <>
       <LogoHeader errorMessage={errorMessage} />
       {page}
+      <span id="version-footer">v{import.meta.env.PACKAGE_VERSION}</span>
     </>
   );
 }
