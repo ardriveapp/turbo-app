@@ -126,7 +126,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
           <input
             type="number"
             id="usd-input"
-            value={usdAmount}
+            value={usdAmount.toString()}
             onChange={handleUSDChange}
             required={true}
             min={0}
