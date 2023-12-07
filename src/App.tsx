@@ -1,12 +1,10 @@
-import { useState } from "react";
 import "./App.css";
 import { ArDriveLogo } from "./ArDriveLogo";
 import { GiftForm } from "./GiftForm";
+import { useErrorMessage } from "./hooks/useErrorMessage";
 
 function App() {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(
-    undefined
-  );
+  const [errorMessage, setErrorMessage] = useErrorMessage();
 
   // TODO: Router for different pages. We only need a gift form for now
 
