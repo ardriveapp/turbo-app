@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - prod
+      - PE-5161_gift_app_init
 
 jobs:
   deploy:
