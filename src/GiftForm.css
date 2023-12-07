@@ -43,6 +43,10 @@
   background-color: var(--dark-gray);
 }
 
+/*
+  If the input is not focused, and the placeholder is not shown, and the input is invalid, 
+  then change the border color to red to indicate invalid email address.
+*/
 #recipient-email:not(:focus):not(:placeholder-shown):invalid {
   border-color: var(--ardrive-red);
 }

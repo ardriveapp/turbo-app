@@ -1,104 +1,55 @@
-import { TurboFactory, USD, TopUpRawResponse } from "@ardrive/turbo-sdk";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   defaultUSDAmount,
-  paymentServiceUrl,
   termsOfServiceUrl,
+  wincPerCredit,
 } from "./constants";
 import useDebounce from "./hooks/useDebounce";
 import "./GiftForm.css";
+import { getTopUpQuote } from "./utils/getTopUpQuote";
+import { useWincForOneGiB } from "./hooks/useWincForOneGiB";
+import { useCreditsForFiat } from "./hooks/useCreditsForFiat";
 
 interface GiftFormProps {
   errorCallback: (message: string) => void;
 }
 
-async function getTopUpQuote(
-  usdAmount: number,
-  recipientEmail: string,
-): Promise<TopUpRawResponse> {
-  // TODO: support emails on turbo sdk
-  // turbo.createCheckoutSession({amount: USD(usdAmount / 100), email: recipientEmail,owner}})
-  const response = await fetch(
-    `${paymentServiceUrl}/v1/top-up/checkout-session/${recipientEmail}/usd/${
-      usdAmount * 100
-    }?destinationAddressType=email`,
-  );
-  const data = await response.json();
-  console.log("data", data);
-
-  return data;
-}
+const maxUSDAmount = 10000;
+const minUSDAmount = 5;
 
 export function GiftForm({ errorCallback }: GiftFormProps) {
-  const [recipientEmail, setRecipientEmail] = useState<string>("");
-  const [termsAccepted, setTermsAccepted] = useState<boolean>(false);
-
-  const recipientEmailRef = useRef<HTMLInputElement>(null);
-
   const [usdAmount, setUsdAmount] = useState<number>(defaultUSDAmount);
-  const debouncedUsdAmount = useDebounce(usdAmount, 500);
+  const [recipientEmail, setRecipientEmail] = useState<string>("");
+  const [isTermsAccepted, setTermsAccepted] = useState<boolean>(false);
 
   const handleUSDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const amount = Number(e.target.value);
-    if (amount > 10000) {
-      setUsdAmount(10000);
+    if (amount > maxUSDAmount) {
+      setUsdAmount(maxUSDAmount);
       return;
     }
-    if (amount < 5) {
-      setUsdAmount(5);
+    if (amount < minUSDAmount) {
+      setUsdAmount(minUSDAmount);
       return;
     }
     setUsdAmount(Number(Number(e.target.value).toFixed(2)));
   };
 
-  const [credits, setCredits] = useState<string | undefined>(undefined);
-
-  const usdWhenCreditsWereLastUpdatedRef = useRef<number | undefined>(
-    undefined,
+  const wincForOneGiB = useWincForOneGiB();
+  const debouncedUsdAmount = useDebounce(usdAmount, 500);
+  const [credits, usdWhenCreditsWereLastUpdatedRef] = useCreditsForFiat(
+    debouncedUsdAmount,
+    errorCallback,
   );
 
-  const [wincForOneGiB, setWincForOneGiB] = useState<string | undefined>(
-    undefined,
-  );
-  useEffect(() => {
-    const turbo = TurboFactory.unauthenticated({
-      paymentServiceConfig: { url: paymentServiceUrl },
-    });
-    turbo.getFiatRates().then(({ winc }) => {
-      setWincForOneGiB(winc);
-    });
-  }, []);
-
-  // Get credits for USD amount when USD amount changes
-  useEffect(() => {
-    const getCreditsAndGiBForUSD = async (
-      usdAmount: number,
-    ): Promise<string> => {
-      const turbo = TurboFactory.unauthenticated({
-        paymentServiceConfig: { url: paymentServiceUrl },
-      });
-      const { winc } = await turbo.getWincForFiat({
-        amount: USD(usdAmount),
-        promoCodes: [],
-      }); // todo: add promo codes support
-      return winc;
-    };
-    getCreditsAndGiBForUSD(debouncedUsdAmount)
-      .then((credits) => {
-        setCredits(credits);
-      })
-      .catch((err) => {
-        console.error(err);
-        errorCallback(`Error getting credits for USD amount: ${err.message}`);
-      });
-    usdWhenCreditsWereLastUpdatedRef.current = debouncedUsdAmount;
-  }, [debouncedUsdAmount, errorCallback]);
+  const recipientEmailRef = useRef<HTMLInputElement>(null);
+  const isEmailHtmlElementValid = recipientEmailRef.current?.checkValidity();
 
   const canSubmitForm =
     !!credits &&
     !!recipientEmail &&
-    !!termsAccepted &&
-    recipientEmailRef.current?.checkValidity();
+    !!isTermsAccepted &&
+    isEmailHtmlElementValid;
 
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
     e.preventDefault();
@@ -108,9 +59,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
     }
 
     getTopUpQuote(usdAmount, recipientEmail).then((topUpQuote) => {
-      const url = topUpQuote.paymentSession.url;
-
-      window.location.href = url;
+      window.location.href = topUpQuote.paymentSession.url;
     });
   };
 
@@ -171,15 +120,14 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
             <div id="conversions">
               {"$".toLocaleUpperCase()}
               <span className="conversion-amount">
-                {usdWhenCreditsWereLastUpdatedRef.current}
+                {usdWhenCreditsWereLastUpdatedRef}
               </span>{" "}
-              ≈{" "}
-              <span className="conversion-amount">
-                {(Number(credits) / 1_000_000_000_000).toFixed(4)}
-              </span>
+              ≈ <span className="conversion-amount">{credits.toFixed(4)}</span>
               Credits ≈{" "}
               <span className="conversion-amount">
-                {(Number(credits) / Number(wincForOneGiB)).toFixed(2)}
+                {(
+                  Number(credits * wincPerCredit) / Number(wincForOneGiB)
+                ).toFixed(2)}
               </span>
               GiB
             </div>

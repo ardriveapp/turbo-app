@@ -4,3 +4,7 @@ export const paymentServiceUrl =
     : "http://localhost:3000";
 export const termsOfServiceUrl = "https://ardrive.io/tos-and-privacy/";
 export const defaultUSDAmount = 10.0;
+export const turboConfig = {
+  paymentServiceConfig: { url: paymentServiceUrl },
+};
+export const wincPerCredit = 1_000_000_000_000;

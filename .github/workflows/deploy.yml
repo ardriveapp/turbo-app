@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - PE-5161_gift_app_init
+      - prod
 
 jobs:
   deploy:
