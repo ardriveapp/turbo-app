@@ -1,24 +1,40 @@
 import "./App.css";
-import { ArDriveLogo } from "./ArDriveLogo";
 import { GiftForm } from "./GiftForm";
+import { RouterPage } from "./components/RouterPage";
 import { useErrorMessage } from "./hooks/useErrorMessage";
+
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 
 function App() {
   const [errorMessage, setErrorMessage] = useErrorMessage();
 
-  // TODO: Router for different pages. We only need a gift form for now
-
-  return (
-    <>
-      <ArDriveLogo />
-      {errorMessage && (
-        <div className="alert alert-danger" role="alert">
-          {errorMessage}
-        </div>
-      )}
-      <GiftForm errorCallback={setErrorMessage} />
-    </>
+  const router = (
+    <Router basename="/turbo-app">
+      <Routes>
+        <Route
+          path="/gift"
+          element={
+            <RouterPage
+              page={<GiftForm errorCallback={setErrorMessage} />}
+              errorMessage={errorMessage}
+            />
+          }
+        />
+        <Route
+          path="/"
+          element={
+            /* Put gift element at baseUrl for now */
+            <RouterPage
+              page={<GiftForm errorCallback={setErrorMessage} />}
+              errorMessage={errorMessage}
+            />
+          }
+        />
+      </Routes>
+    </Router>
   );
+
+  return router;
 }
 
 export default App;
