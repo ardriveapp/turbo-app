@@ -6,9 +6,9 @@ import {
 } from "./constants";
 import useDebounce from "./hooks/useDebounce";
 import "./GiftForm.css";
-import { forwardToCheckoutSession } from "./utils/forwardToCheckoutSession";
 import { useWincForOneGiB } from "./hooks/useWincForOneGiB";
 import { useCreditsForFiat } from "./hooks/useCreditsForFiat";
+import { getCheckoutSessionUrl } from "./utils/getCheckoutSessionUrl";
 
 interface GiftFormProps {
   errorCallback: (message: string) => void;
@@ -58,7 +58,21 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       return;
     }
 
-    forwardToCheckoutSession(usdAmount, recipientEmail);
+    const giftMessage = (
+      document.getElementById("gift-message") as HTMLInputElement
+    ).value;
+
+    getCheckoutSessionUrl({
+      usdAmount,
+      recipientEmail,
+      giftMessage,
+    })
+      .then((url) => {
+        window.location.href = url;
+      })
+      .catch((e) => {
+        errorCallback(`Error getting checkout session URL: ${e}`);
+      });
   };
 
   return (
@@ -66,7 +80,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
       <h1>Gift Credits to a friend.</h1>
 
       <div className="form-section">
-        <label className="form-label">Suggested USD amount</label>
+        <label className="form-label">Suggested USD amounts</label>
         <div className="suggested-amount-buttons">
           <button
             type="button"

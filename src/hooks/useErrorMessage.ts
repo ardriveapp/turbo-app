@@ -10,6 +10,10 @@ export function useErrorMessage(): [
     undefined,
   );
   useEffect(() => {
+    if (!errorMessage) return;
+
+    console.error(errorMessage);
+
     const timeout = setTimeout(() => {
       setErrorMessage(undefined);
     }, errorMessageTimeout);

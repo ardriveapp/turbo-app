@@ -1,3 +1,4 @@
+import { termsOfServiceUrl } from "../constants";
 import { LogoHeader } from "./LogoHeader";
 import "./RouterPage.css";
 
@@ -11,7 +12,10 @@ export function RouterPage({ page, errorMessage }: RouterPageProps) {
     <>
       <LogoHeader errorMessage={errorMessage} />
       {page}
-      <span id="version-footer">v{import.meta.env.PACKAGE_VERSION}</span>
+      <span id="version-footer">
+        <a href={termsOfServiceUrl}>Terms</a> | v
+        {import.meta.env.PACKAGE_VERSION}
+      </span>
     </>
   );
 }
