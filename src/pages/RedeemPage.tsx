@@ -1,13 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ErrMsgCallbackAsProps } from "../types";
 import { redeemGift } from "../utils/redeemGift";
 import { ardriveAppUrl } from "../constants";
 import { Page } from "./Page";
+import { useLocation } from "react-router-dom";
 
 function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
   const [destinationAddress, setDestinationAddress] = useState("");
-  const [recipientEmail, setRecipientEmail] = useState<string>("");
-  const [redemptionCode, setRedemptionCode] = useState<string>("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [redemptionCode, setRedemptionCode] = useState("");
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+
+    const redemptionCodeParam = urlParams.get("id");
+    const recipientEmailParam = urlParams.get("email");
+    const destinationAddressParam = urlParams.get("destinationAddress");
+
+    if (redemptionCodeParam) {
+      setRedemptionCode(redemptionCodeParam);
+    }
+    if (recipientEmailParam) {
+      setRecipientEmail(recipientEmailParam);
+    }
+    if (destinationAddressParam) {
+      setDestinationAddress(destinationAddressParam);
+    }
+  }, [location.search]);
 
   const canSubmitForm =
     !!destinationAddress && !!recipientEmail && !!redemptionCode;
@@ -21,6 +42,7 @@ function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
 
     redeemGift({ redemptionCode, destinationAddress, recipientEmail })
       .then(() => {
+        // TODO: Success Modal or Page
         console.log("Gift redeemed!");
         alert("Gift redeemed, redirecting to ArDrive App!");
 
