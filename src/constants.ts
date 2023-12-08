@@ -9,3 +9,4 @@ export const turboConfig = {
 };
 export const wincPerCredit = 1_000_000_000_000;
 export const defaultDebounceMs = 500;
+export const ardriveAppUrl = "https://app.ardrive.io";

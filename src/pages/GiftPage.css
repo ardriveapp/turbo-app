@@ -1,47 +1,3 @@
-.gift-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin: 0rem 2rem;
-  width: 100%;
-  max-width: 28rem;
-}
-
-.gift-form h1 {
-  font-family: Wavehaus-Extra;
-  font-size: 2.15rem;
-  margin: 3rem 2rem;
-}
-
-.form-section {
-  display: flex;
-  flex-direction: column;
-  align-items: left;
-  margin: 0.5rem 1rem;
-  width: 100%;
-}
-
-.form-label {
-  margin: 0.5rem 0.5rem 0.25rem 0.1rem;
-  font-size: 1.25rem;
-  font-weight: bold;
-  font-family: Wavehaus-Bold;
-  text-align: left;
-  font-size: 1rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--off-gray);
-  border-radius: 0.5rem;
-  font-size: 1.2rem;
-  font-family: Wavehaus-Semi;
-  box-sizing: border-box;
-  background-color: var(--dark-gray);
-}
-
 /*
   If the input is not focused, and the placeholder is not shown, and the input is invalid, 
   then change the border color to red to indicate invalid email address.
@@ -198,27 +154,6 @@ input[type="checkbox"]:checked::before {
 
 #terms-and-conditions-checkbox {
   margin: 0 0.75rem;
-}
-
-#gift-form-submit-button {
-  margin: 2rem;
-  padding: 1rem 1.25rem;
-  border: none;
-  border-radius: 3rem;
-  background-color: var(--ardrive-red);
-  color: var(--white);
-  font-size: 1.25rem;
-  font-family: Wavehaus-Bold;
-  cursor: pointer;
-}
-
-#gift-form-submit-button:hover {
-  background-color: var(--ardrive-red);
-}
-
-#gift-form-submit-button:disabled {
-  background-color: var(--off-gray);
-  cursor: not-allowed;
 }
 
 @media (prefers-color-scheme: light) {

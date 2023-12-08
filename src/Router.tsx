@@ -1,13 +1,13 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { GiftPage } from "./pages/GiftPage";
-import { Page } from "./pages/Page";
+import { RedeemPage } from "./pages/RedeemPage";
 
 export function Router() {
   return (
     <BrowserRouter basename={`${import.meta.env.BASE_URL}`}>
       <Routes>
         <Route path="/gift" element={<GiftPage />} />
-        <Route path="/redeem" element={<Page page={() => <p>TODO</p>} />} />
+        <Route path="/redeem" element={<RedeemPage />} />
         <Route
           path="/"
           element={
