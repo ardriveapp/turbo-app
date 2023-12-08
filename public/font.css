@@ -1,0 +1,20 @@
+@font-face {
+    font-family: 'Wavehaus-Book';
+    src: local('Wavehaus-Book'), url(fonts/Wavehaus/Wavehaus-66Book.woff) format('woff');
+}
+
+@font-face {
+    font-family: 'Wavehaus-Semi';
+    src: local('Wavehaus-Semi'), url(fonts/Wavehaus/Wavehaus-95SemiBold.woff) format('woff');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Wavehaus-Extra';
+    src: local('Wavehaus-Extra'), url(fonts/Wavehaus/Wavehaus-158ExtraBold.woff) format('woff');
+}
+
+@font-face {
+    font-family: 'Wavehaus-Bold';
+    src: local('Wavehaus-Bold'), url(fonts/Wavehaus/Wavehaus-128Bold.woff) format('woff');
+}
