@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "ArDrive Turbo App",
-  "homepage": "https://ardriveapp.github.io/turbo-app",
+  "homepage": "./",
   "license": "AGPL-3.0-or-later",
   "author": {
     "name": "Permanent Data Solutions Inc",
