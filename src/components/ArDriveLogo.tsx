@@ -1,25 +1,7 @@
-import { JSX, useEffect, useState } from "react";
+import { useIsDarkMode } from "../hooks/useIsDarkMode";
 
-export function ArDriveLogo(): JSX.Element {
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    // Check the current theme using matchMedia
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
-  useEffect(() => {
-    // Update the theme on changes
-    const mediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
-    };
-
-    mediaQueryList.addEventListener("change", handleChange);
-
-    // Cleanup event listener on component unmount
-    return () => {
-      mediaQueryList.removeEventListener("change", handleChange);
-    };
-  }, []);
+export function ArDriveLogo() {
+  const isDarkMode = useIsDarkMode();
 
   return (
     <a href="https://ardrive.io">
@@ -28,7 +10,7 @@ export function ArDriveLogo(): JSX.Element {
   );
 }
 
-function ArDriveLogoLight(): JSX.Element {
+function ArDriveLogoLight() {
   return (
     <svg
       className="ardrive-logo"
@@ -95,7 +77,7 @@ function ArDriveLogoLight(): JSX.Element {
   );
 }
 
-function ArDriveLogoDark(): JSX.Element {
+function ArDriveLogoDark() {
   return (
     <svg
       className="ardrive-logo"

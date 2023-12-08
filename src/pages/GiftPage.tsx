@@ -3,21 +3,19 @@ import {
   defaultUSDAmount,
   termsOfServiceUrl,
   wincPerCredit,
-} from "./constants";
-import useDebounce from "./hooks/useDebounce";
-import "./GiftForm.css";
-import { useWincForOneGiB } from "./hooks/useWincForOneGiB";
-import { useCreditsForFiat } from "./hooks/useCreditsForFiat";
-import { getCheckoutSessionUrl } from "./utils/getCheckoutSessionUrl";
-
-interface GiftFormProps {
-  errorCallback: (message: string) => void;
-}
+} from "../constants";
+import useDebounce from "../hooks/useDebounce";
+import "./GiftPage.css";
+import { useWincForOneGiB } from "../hooks/useWincForOneGiB";
+import { useCreditsForFiat } from "../hooks/useCreditsForFiat";
+import { getCheckoutSessionUrl } from "../utils/getCheckoutSessionUrl";
+import { Page } from "./Page";
+import { ErrMsgCallbackAsProps } from "../types";
 
 const maxUSDAmount = 10000;
 const minUSDAmount = 5;
 
-export function GiftForm({ errorCallback }: GiftFormProps) {
+function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
   const [usdAmount, setUsdAmount] = useState<number>(defaultUSDAmount);
   const [recipientEmail, setRecipientEmail] = useState<string>("");
   const [isTermsAccepted, setTermsAccepted] = useState<boolean>(false);
@@ -206,3 +204,7 @@ export function GiftForm({ errorCallback }: GiftFormProps) {
     </form>
   );
 }
+
+export const GiftPage = () => (
+  <Page page={(e) => <GiftForm errorCallback={e} />} />
+);

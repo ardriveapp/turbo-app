@@ -1,4 +1,4 @@
-import { ArDriveLogo } from "../ArDriveLogo";
+import { ArDriveLogo } from "./ArDriveLogo";
 
 interface LogoHeaderProps {
   errorMessage?: string;
