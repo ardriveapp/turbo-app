@@ -5,7 +5,7 @@ import nodePolyfills from "vite-plugin-node-stdlib-browser";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "/turbo-app/",
+  base: "./",
   plugins: [react(), nodePolyfills()],
   define: {
     "import.meta.env.PACKAGE_VERSION": JSON.stringify(packageJson.version),

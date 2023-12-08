@@ -16,7 +16,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "preview": "vite preview",
-    "test": "echo \"TODO: add tests\" && exit 0"
+    "test": "echo \"TODO: add tests\" && exit 0",
+    "electron": "electron src/electron.js"
   },
   "dependencies": {
     "@ardrive/turbo-sdk": "^1.1.0",
@@ -30,6 +31,7 @@
     "@typescript-eslint/eslint-plugin": "^6.10.0",
     "@typescript-eslint/parser": "^6.10.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "electron": "^28.0.0",
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
