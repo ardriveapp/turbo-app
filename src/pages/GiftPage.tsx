@@ -74,7 +74,7 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
   };
 
   return (
-    <form className="gift-form">
+    <form className="form">
       <h1>Gift Credits to a friend.</h1>
 
       <div className="form-section">
@@ -195,7 +195,7 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
 
       <button
         type="submit"
-        id="gift-form-submit-button"
+        className="proceed-button"
         onClick={(e) => handleSubmit(e)}
         disabled={!canSubmitForm}
       >
