@@ -133,6 +133,8 @@ input[type="checkbox"] {
   outline: none;
   border-radius: 0.25rem;
   border: 0.1rem solid var(--gray);
+  /* don't resize this when mobile squishes screen */
+  flex-shrink: 0;
 }
 input[type="checkbox"]:checked {
   background-color: var(--ardrive-red);
@@ -149,7 +151,7 @@ input[type="checkbox"]:checked::before {
   font-size: 1.35rem;
   color: var(--white);
   position: absolute;
-  transform: translate(20%, -5%);
+  transform: translate(23%, -3%);
 }
 
 #terms-and-conditions-checkbox {
