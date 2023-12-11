@@ -53,6 +53,10 @@
   font-family: Wavehaus-Semi;
   box-sizing: border-box;
   background-color: var(--dark-gray);
+
+  @media (prefers-color-scheme: light) {
+    background-color: var(--white);
+  }
 }
 
 .proceed-button {
