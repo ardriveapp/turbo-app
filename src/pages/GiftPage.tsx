@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   defaultUSDAmount,
   termsOfServiceUrl,
@@ -12,13 +12,36 @@ import { getCheckoutSessionUrl } from "../utils/getCheckoutSessionUrl";
 import { Page } from "./Page";
 import { ErrMsgCallbackAsProps } from "../types";
 import Faq from "../components/Faq";
+import { useLocation } from "react-router";
 
 const maxUSDAmount = 10000;
 const minUSDAmount = 5;
 
 function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
+  const location = useLocation();
+
   const [usdAmount, setUsdAmount] = useState<number>(defaultUSDAmount);
   const [recipientEmail, setRecipientEmail] = useState<string>("");
+  const [giftMessage, setGiftMessage] = useState<string>("");
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+
+    const amountParam = urlParams.get("amount");
+    const recipientEmailParam = urlParams.get("email");
+    const giftMessageParam = urlParams.get("giftMessage");
+
+    if (amountParam) {
+      setUsdAmount(+amountParam / 100);
+    }
+    if (recipientEmailParam) {
+      setRecipientEmail(recipientEmailParam);
+    }
+    if (giftMessageParam) {
+      setGiftMessage(giftMessageParam);
+    }
+  }, [location.search]);
+
   const [isTermsAccepted, setTermsAccepted] = useState<boolean>(false);
 
   const handleUSDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,6 +228,10 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
             placeholder={
               "Enter a message to the recipient of the Turbo Credits here"
             }
+            value={giftMessage}
+            onChange={(e) => {
+              setGiftMessage(e.target.value);
+            }}
             maxLength={250}
             required={false}
           />
