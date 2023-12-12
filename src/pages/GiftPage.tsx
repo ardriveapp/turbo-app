@@ -11,6 +11,7 @@ import { useCreditsForFiat } from "../hooks/useCreditsForFiat";
 import { getCheckoutSessionUrl } from "../utils/getCheckoutSessionUrl";
 import { Page } from "./Page";
 import { ErrMsgCallbackAsProps } from "../types";
+import Faq from "../components/Faq";
 
 const maxUSDAmount = 10000;
 const minUSDAmount = 5;
@@ -74,134 +75,140 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
   };
 
   return (
-    <form className="form">
-      <h1>Gift Credits to a friend.</h1>
+    <>
+      <form className="form">
+        <h1>Gift Credits to a friend.</h1>
 
-      <div className="form-section">
-        <label className="form-label">Suggested USD amounts</label>
-        <div className="suggested-amount-buttons">
-          <button
-            type="button"
-            className="suggested-amount-button"
-            onClick={() => {
-              setUsdAmount(25);
-            }}
-          >
-            $25
-          </button>
-          <button
-            type="button"
-            className="suggested-amount-button"
-            onClick={() => {
-              setUsdAmount(50);
-            }}
-          >
-            $50
-          </button>
-          <button
-            type="button"
-            className="suggested-amount-button"
-            onClick={() => {
-              setUsdAmount(100);
-            }}
-          >
-            $100
-          </button>
+        <div className="form-section">
+          <label className="form-label">Suggested USD amounts</label>
+          <div className="suggested-amount-buttons">
+            <button
+              type="button"
+              className="suggested-amount-button"
+              onClick={() => {
+                setUsdAmount(25);
+              }}
+            >
+              $25
+            </button>
+            <button
+              type="button"
+              className="suggested-amount-button"
+              onClick={() => {
+                setUsdAmount(50);
+              }}
+            >
+              $50
+            </button>
+            <button
+              type="button"
+              className="suggested-amount-button"
+              onClick={() => {
+                setUsdAmount(100);
+              }}
+            >
+              $100
+            </button>
+          </div>
+          <label className="form-label">Custom USD amount*</label>
+
+          <div id="usd-form-input">
+            <span id="dollar-sign">{"$".toLocaleUpperCase()}</span>
+            <input
+              type="number"
+              id="usd-input"
+              value={usdAmount.toString()}
+              onChange={handleUSDChange}
+              required={true}
+              min={5}
+              max={10000}
+            />
+          </div>
         </div>
-        <label className="form-label">Custom USD amount*</label>
 
-        <div id="usd-form-input">
-          <span id="dollar-sign">{"$".toLocaleUpperCase()}</span>
+        {credits && (
+          <div>
+            {wincForOneGiB && (
+              <div id="conversions">
+                {"$".toLocaleUpperCase()}
+                <span className="conversion-amount">
+                  {usdWhenCreditsWereLastUpdatedRef}
+                </span>{" "}
+                ≈{" "}
+                <span className="conversion-amount">{credits.toFixed(4)}</span>
+                Credits ≈{" "}
+                <span className="conversion-amount">
+                  {(
+                    Number(credits * wincPerCredit) / Number(wincForOneGiB)
+                  ).toFixed(2)}
+                </span>
+                GiB
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="form-section">
+          <label className="form-label">Recipient email address*</label>
           <input
-            type="number"
-            id="usd-input"
-            value={usdAmount.toString()}
-            onChange={handleUSDChange}
+            type="email"
+            className="form-input"
+            id="recipient-email"
+            placeholder="Enter the recipient's email address here"
+            value={recipientEmail}
+            ref={recipientEmailRef}
             required={true}
-            min={5}
-            max={10000}
+            onChange={(e) => {
+              setRecipientEmail(e.target.value);
+            }}
           />
         </div>
-      </div>
 
-      {credits && (
-        <div>
-          {wincForOneGiB && (
-            <div id="conversions">
-              {"$".toLocaleUpperCase()}
-              <span className="conversion-amount">
-                {usdWhenCreditsWereLastUpdatedRef}
-              </span>{" "}
-              ≈ <span className="conversion-amount">{credits.toFixed(4)}</span>
-              Credits ≈{" "}
-              <span className="conversion-amount">
-                {(
-                  Number(credits * wincPerCredit) / Number(wincForOneGiB)
-                ).toFixed(2)}
-              </span>
-              GiB
-            </div>
-          )}
+        <div className="form-section">
+          <label className="form-label">
+            Gift message (optional up to 250 characters)
+          </label>
+          <textarea
+            className="form-input"
+            id="gift-message"
+            placeholder={
+              "Enter a message to the recipient of the Turbo Credits here"
+            }
+            maxLength={250}
+            required={false}
+          />
         </div>
-      )}
 
-      <div className="form-section">
-        <label className="form-label">Recipient email address*</label>
-        <input
-          type="email"
-          className="form-input"
-          id="recipient-email"
-          placeholder="Enter the recipient's email address here"
-          value={recipientEmail}
-          ref={recipientEmailRef}
-          required={true}
-          onChange={(e) => {
-            setRecipientEmail(e.target.value);
-          }}
-        />
-      </div>
+        <div className="terms-and-conditions">
+          <input
+            type="checkbox"
+            id="terms-and-conditions-checkbox"
+            name="terms-and-conditions-checkbox"
+            value="terms-and-conditions-checkbox"
+            required={true}
+            onChange={(e) => {
+              setTermsAccepted(e.target.checked);
+            }}
+          />
+          <span>
+            I Agree to the
+            <a href={termsOfServiceUrl}> Terms of Service and Privacy Policy</a>
+            .
+          </span>
+        </div>
 
-      <div className="form-section">
-        <label className="form-label">
-          Gift message (optional up to 250 characters)
-        </label>
-        <textarea
-          className="form-input"
-          id="gift-message"
-          placeholder={
-            "Enter a message to the recipient of the Turbo Credits here"
-          }
-          maxLength={250}
-          required={false}
-        />
-      </div>
+        <button
+          type="submit"
+          className="proceed-button"
+          onClick={(e) => handleSubmit(e)}
+          disabled={!canSubmitForm}
+        >
+          Proceed to Checkout
+        </button>
+      </form>
 
-      <div className="terms-and-conditions">
-        <input
-          type="checkbox"
-          id="terms-and-conditions-checkbox"
-          name="terms-and-conditions-checkbox"
-          value="terms-and-conditions-checkbox"
-          required={true}
-          onChange={(e) => {
-            setTermsAccepted(e.target.checked);
-          }}
-        />
-        <span>
-          I Agree to the
-          <a href={termsOfServiceUrl}> Terms of Service and Privacy Policy</a>.
-        </span>
-      </div>
-
-      <button
-        type="submit"
-        className="proceed-button"
-        onClick={(e) => handleSubmit(e)}
-        disabled={!canSubmitForm}
-      >
-        Proceed to Checkout
-      </button>
-    </form>
+      <Faq />
+    </>
   );
 }
 
