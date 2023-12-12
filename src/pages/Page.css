@@ -4,17 +4,21 @@
   letter-spacing: 0.82px;
   padding-top: 4rem;
 
-  @media (min-width: 800px) {
-    font-size: 16px;
-  }
-
-  @media (min-width: 1200px) {
-    font-size: 18px;
-  }
-
   justify-self: flex-end;
   align-self: flex-end;
   text-align: right;
+}
+
+@media (min-width: 800px) {
+  #version-footer {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1200px) {
+  #version-footer {
+    font-size: 18px;
+  }
 }
 
 .form {
@@ -53,8 +57,10 @@
   font-family: Wavehaus-Semi;
   box-sizing: border-box;
   background-color: var(--dark-gray);
+}
 
-  @media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: light) {
+  .form-input {
     background-color: var(--white);
   }
 }

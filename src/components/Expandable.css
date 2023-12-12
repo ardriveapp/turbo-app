@@ -3,18 +3,25 @@
   font-family: "Wavehaus-Book";
 }
 
-.expandable h3 {
-  @media (min-width: 640px) {
+@media (min-width: 640px) {
+  .expandable {
     font-size: 18px;
   }
+}
 
-  @media (min-width: 800px) {
+@media (min-width: 800px) {
+  .expandable {
     font-size: 20px;
   }
+}
 
-  @media (min-width: 1200px) {
+@media (min-width: 1200px) {
+  .expandable {
     font-size: 24px;
   }
+}
+.expandable h3 {
+  font-size: inherit;
 }
 
 .expandable:not(:last-of-type) {
@@ -29,6 +36,8 @@
   cursor: pointer;
   display: flex;
   width: 100%;
+  font-size: inherit;
+
   color: var(--text-white);
 
   padding: 0;
@@ -38,8 +47,10 @@
   text-align: left;
   letter-spacing: 1.09px;
   font-family: Wavehaus-Book;
+}
 
-  @media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: light) {
+  .expandable button {
     color: var(--black);
   }
 }

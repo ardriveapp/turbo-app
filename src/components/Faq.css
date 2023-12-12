@@ -3,16 +3,22 @@
   width: 100%;
   padding-top: 4rem;
   max-width: 40rem;
+}
 
-  @media (min-width: 640px) {
+@media (min-width: 640px) {
+  .faq {
     font-size: 18px;
   }
+}
 
-  @media (min-width: 800px) {
+@media (min-width: 800px) {
+  .faq {
     font-size: 20px;
   }
+}
 
-  @media (min-width: 1200px) {
+@media (min-width: 1200px) {
+  .faq {
     font-size: 24px;
   }
 }
