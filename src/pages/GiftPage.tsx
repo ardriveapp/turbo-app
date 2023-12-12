@@ -58,12 +58,6 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
     }
 
     if (usdAmount < minUSDAmount) {
-      errorCallback(
-        `Minimum USD amount is ${minUSDAmount.toLocaleString("en-US", {
-          style: "currency",
-          currency: "USD",
-        })}`,
-      );
       return;
     }
 
@@ -94,7 +88,10 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
     <>
       <form className="form">
         <h1>Gift Credits to a friend.</h1>
-
+        <p>
+          Credits can be used to upload photos, music, docs, or any other file
+          that needs permanent safe-keeping
+        </p>
         <div className="form-section">
           <label className="form-label">Suggested USD amounts</label>
           <div className="suggested-amount-buttons">
@@ -142,30 +139,43 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
           </div>
         </div>
 
-        {displayConversion && (
-          <div>
-            {wincForOneGiB && (
-              <div id="conversions">
-                {"$".toLocaleUpperCase()}
-                <span className="conversion-amount">
-                  {usdWhenCreditsWereLastUpdatedRef}
-                </span>{" "}
-                ≈{" "}
-                <span className="conversion-amount">{credits.toFixed(4)}</span>
-                Credits ≈{" "}
-                <span className="conversion-amount">
-                  {(
-                    Number(credits * wincPerCredit) / Number(wincForOneGiB)
-                  ).toFixed(2)}
-                </span>
-                GiB
-              </div>
-            )}
+        {usdAmount < minUSDAmount ? (
+          <div className="alert">
+            Minimum USD amount is{" "}
+            {minUSDAmount.toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+            })}
           </div>
+        ) : (
+          displayConversion && (
+            <div>
+              {wincForOneGiB && (
+                <div id="conversions">
+                  {"$".toLocaleUpperCase()}
+                  <span className="conversion-amount">
+                    {usdWhenCreditsWereLastUpdatedRef}
+                  </span>{" "}
+                  ≈{" "}
+                  <span className="conversion-amount">
+                    {credits.toFixed(4)}
+                  </span>
+                  Credits ≈{" "}
+                  <span className="conversion-amount">
+                    {(
+                      Number(credits * wincPerCredit) / Number(wincForOneGiB)
+                    ).toFixed(2)}
+                  </span>
+                  GiB
+                </div>
+              )}
+            </div>
+          )
         )}
 
         <div className="form-section">
           <label className="form-label">Recipient email address*</label>
+
           <input
             type="email"
             className="form-input"
@@ -178,6 +188,11 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
               setRecipientEmail(e.target.value);
             }}
           />
+
+          <p>
+            Your recipient will receive an email with instructions on how to
+            redeem and use their gift of permanent storage
+          </p>
         </div>
 
         <div className="form-section">
