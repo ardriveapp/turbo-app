@@ -27,8 +27,8 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
       setUsdAmount(maxUSDAmount);
       return;
     }
-    if (amount < minUSDAmount) {
-      setUsdAmount(minUSDAmount);
+    if (amount < 0) {
+      setUsdAmount(0);
       return;
     }
     setUsdAmount(+amount.toFixed(2));
@@ -57,6 +57,16 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
       return;
     }
 
+    if (usdAmount < minUSDAmount) {
+      errorCallback(
+        `Minimum USD amount is ${minUSDAmount.toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+        })}`,
+      );
+      return;
+    }
+
     const giftMessage = (
       document.getElementById("gift-message") as HTMLInputElement
     ).value;
@@ -73,6 +83,12 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
         errorCallback(`Error getting checkout session URL: ${e}`);
       });
   };
+
+  const displayConversion =
+    !!credits &&
+    !!wincForOneGiB &&
+    usdWhenCreditsWereLastUpdatedRef &&
+    usdWhenCreditsWereLastUpdatedRef >= minUSDAmount;
 
   return (
     <>
@@ -120,13 +136,13 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
               value={usdAmount.toString()}
               onChange={handleUSDChange}
               required={true}
-              min={5}
-              max={10000}
+              min={minUSDAmount}
+              max={maxUSDAmount}
             />
           </div>
         </div>
 
-        {credits && (
+        {displayConversion && (
           <div>
             {wincForOneGiB && (
               <div id="conversions">
