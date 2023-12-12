@@ -29,6 +29,7 @@
   cursor: pointer;
   display: flex;
   width: 100%;
+  color: var(--text-white);
 
   padding: 0;
   justify-content: space-between;
@@ -37,6 +38,10 @@
   text-align: left;
   letter-spacing: 1.09px;
   font-family: Wavehaus-Book;
+
+  @media (prefers-color-scheme: light) {
+    color: var(--black);
+  }
 }
 
 .expandable div {
