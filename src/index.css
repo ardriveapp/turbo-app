@@ -29,19 +29,19 @@
 
 @media (min-width: 640px) {
   :root {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 }
 
 @media (min-width: 800px) {
   :root {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 }
 
 @media (min-width: 1200px) {
   :root {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
   }
 }
 
