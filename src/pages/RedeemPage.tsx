@@ -79,7 +79,7 @@ function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
         </div>
 
         <div className="form-section">
-          <label className="form-label">Redemption Code*</label>
+          <label className="form-label">Redemption ID*</label>
           <input
             type="text"
             className="form-input"

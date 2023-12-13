@@ -14,6 +14,8 @@ import { ErrMsgCallbackAsProps } from "../types";
 import Faq from "../components/Faq";
 import { useLocation } from "react-router";
 
+import { GiftPageContent } from "./GiftPage.content";
+
 const maxUSDAmount = 10000;
 const minUSDAmount = 5;
 
@@ -110,11 +112,8 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
   return (
     <>
       <form className="form">
-        <h1>Gift Credits to a friend.</h1>
-        <p>
-          Credits can be used to upload photos, music, docs, or any other file
-          that needs permanent safe-keeping
-        </p>
+        <h1>{GiftPageContent.header}</h1>
+        <p>{GiftPageContent.headerParagraph}</p>
         <div className="form-section">
           <label className="form-label">Suggested USD amounts</label>
           <div className="suggested-amount-buttons">
@@ -212,10 +211,8 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
             }}
           />
 
-          <p>
-            Your recipient will receive an email with instructions on how to
-            redeem and use their gift of permanent storage
-          </p>
+          <p>{GiftPageContent.recipientParagraph}</p>
+          <p>{GiftPageContent.recipientParagraph2}</p>
         </div>
 
         <div className="form-section">

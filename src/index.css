@@ -1,5 +1,5 @@
 :root {
-  font-family: Wavehaus-Semi, sans-serif;
+  font-family: Wavehaus-Book, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -19,6 +19,30 @@
   --dark-gray: #171717;
   --gray: #7d7d7d;
   --off-gray: #787878;
+
+  --mobile: 640px;
+  --tablet: 800px;
+  --desktop: 1200px;
+
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    font-size: 0.9rem;
+  }
+}
+
+@media (min-width: 800px) {
+  :root {
+    font-size: 1.2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    font-size: 1.4rem;
+  }
 }
 
 /* Firefox */
@@ -33,18 +57,6 @@ input[type="number"] {
     color: var(--black);
     background-color: var(--white);
   }
-}
-
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-  font-family: Wavehaus-Book;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
 
 .ardrive-logo:hover {
