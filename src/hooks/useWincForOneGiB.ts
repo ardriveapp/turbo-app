@@ -1,4 +1,4 @@
-import { TurboFactory } from "@ardrive/turbo-sdk";
+import { TurboFactory } from "@ardrive/turbo-sdk/web";
 import { useState, useEffect } from "react";
 import { turboConfig } from "../constants";
 
