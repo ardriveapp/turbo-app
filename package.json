@@ -19,7 +19,7 @@
     "test": "echo \"TODO: add tests\" && exit 0"
   },
   "dependencies": {
-    "@ardrive/turbo-sdk": "^1.1.1-alpha.1",
+    "@ardrive/turbo-sdk": "1.1.1-alpha.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1"

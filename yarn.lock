@@ -15,10 +15,10 @@
     "@jridgewell/gen-mapping" "^0.3.0"
     "@jridgewell/trace-mapping" "^0.3.9"
 
-"@ardrive/turbo-sdk@^1.1.1-alpha.1":
-  version "1.1.1-alpha.1"
-  resolved "https://registry.yarnpkg.com/@ardrive/turbo-sdk/-/turbo-sdk-1.1.1-alpha.1.tgz#7f942e931987dc36363334a1ed6fb3768e2b90bd"
-  integrity sha512-nsKPrclgbRS0N5KYqEAprs+Vrr9klqoGAC930kgiHk+v4axHbbpY/FJkBg6nlXvKfi0cxHPTKgsS83Sr7f+tDw==
+"@ardrive/turbo-sdk@1.1.1-alpha.2":
+  version "1.1.1-alpha.2"
+  resolved "https://registry.yarnpkg.com/@ardrive/turbo-sdk/-/turbo-sdk-1.1.1-alpha.2.tgz#8408776cabd3f40a295f1421656b47e13fcf4a9d"
+  integrity sha512-DyxMnVqvoyJpWJ5wKmq+rvIjAlwU8aIJ+8+mV6vTnRBMW1LWL3VD8n41mYbLlTOClNHyFJxmkRBSe3fCNyrP+g==
   dependencies:
     arbundles "^0.9.9"
     arweave "^1.14.4"
