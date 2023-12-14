@@ -1,0 +1,83 @@
+:root {
+  font-family: Wavehaus-Book, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--text-white);
+  background-color: var(--black);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ardrive-red: #d31721;
+  --text-white: #a6a6a6;
+  --white: #fafafa;
+  --black: #0d0d0d;
+  --dark-gray: #171717;
+  --gray: #7d7d7d;
+  --off-gray: #787878;
+
+  --mobile: 640px;
+  --tablet: 800px;
+  --desktop: 1200px;
+
+  font-size: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    font-size: 0.85rem;
+  }
+}
+
+@media (min-width: 800px) {
+  :root {
+    font-size: 1.1rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    font-size: 1.25rem;
+  }
+}
+
+/* Firefox */
+input[type="number"] {
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: var(--black);
+    background-color: var(--white);
+  }
+}
+
+.ardrive-logo:hover {
+  filter: drop-shadow(0 0 2em var(--ardrive-red));
+}
+
+.alert {
+  margin: 1rem 0;
+  padding: 1rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-family: Wavehaus-Extra;
+  color: var(--ardrive-red);
+}
+
+h1 {
+  font-family: Wavehaus-Extra;
+  font-size: 2.15rem;
+  margin: 3rem 2rem 0rem 2rem;
+}
+
+p {
+  text-align: left;
+}

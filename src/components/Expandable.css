@@ -1,0 +1,80 @@
+.expandable {
+  padding: 1.5rem 0;
+  font-family: "Wavehaus-Book";
+}
+
+@media (min-width: 640px) {
+  .expandable {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 800px) {
+  .expandable {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .expandable {
+    font-size: 24px;
+  }
+}
+.expandable h3 {
+  font-size: inherit;
+}
+
+.expandable:not(:last-of-type) {
+  border-bottom: 0.25px;
+  border-color: var(--off-gray);
+  border-bottom-style: solid;
+}
+
+.expandable button {
+  background-color: inherit;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  font-size: inherit;
+
+  color: var(--text-white);
+
+  padding: 0;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+  text-align: left;
+  letter-spacing: 1.09px;
+  font-family: Wavehaus-Book;
+}
+
+@media (prefers-color-scheme: light) {
+  .expandable button {
+    color: var(--black);
+  }
+}
+
+.expandable div {
+  padding-left: 1rem;
+  height: 1rem;
+  width: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.expandable p {
+  padding-top: 1rem;
+}
+
+.expandable strong {
+  font-family: "Wavehaus-Bold";
+}
+
+.expandable.expanded button {
+  font-family: Wavehaus-Semi;
+}
+
+.expandable.expanded div {
+  transform: rotate(180deg);
+}

@@ -1,0 +1,160 @@
+/*
+  If the input is not focused, and the placeholder is not shown, and the input is invalid, 
+  then change the border color to red to indicate invalid email address.
+*/
+#recipient-email:not(:focus):not(:placeholder-shown):invalid {
+  border-color: var(--ardrive-red);
+}
+
+.suggested-amount-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  margin: 0rem 0;
+  width: 100%;
+}
+
+.suggested-amount-button {
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--off-gray);
+  border-radius: 0.5rem;
+  font-size: 1.2rem;
+  font-family: Wavehaus-Semi;
+  background-color: var(--dark-gray);
+  color: var(--white);
+  cursor: pointer;
+  flex-grow: 1;
+}
+.suggested-amount-button:first-child {
+  margin-left: 0rem;
+}
+
+.suggested-amount-button:hover {
+  background-color: var(--gray);
+  color: var(--black);
+}
+
+@media (prefers-color-scheme: light) {
+  .suggested-amount-button {
+    background-color: var(--white);
+    color: var(--black);
+  }
+
+  .suggested-amount-button:hover {
+    background-color: var(--gray);
+    color: var(--black);
+  }
+}
+
+#usd-form-input {
+  display: flex;
+  width: 100%;
+  background-color: var(--dark-gray);
+  width: 100%;
+  border: 1px solid var(--off-gray);
+  border-radius: 0.5rem;
+}
+
+#dollar-sign {
+  font-family: Wavehaus-Semi;
+  font-size: 1.2rem;
+  padding: 0.5rem 1rem;
+  border: none;
+}
+
+#usd-input {
+  font-family: Wavehaus-Semi;
+  font-size: 1.2rem;
+  width: 100%;
+  margin: 0.5rem 0.5rem;
+  border: none;
+  background-color: var(--dark-gray);
+}
+
+.form-input:focus,
+#usd-input:focus,
+#usd-form-input:focus-within {
+  outline: none;
+  border-color: var(--white);
+  border-width: 0.1rem;
+}
+
+#conversions {
+  margin: 2rem 0 2rem 0;
+  font-family: Wavehaus-Semi;
+  font-size: 1.5rem;
+}
+
+.conversion-amount {
+  font-family: Wavehaus-Semi;
+  font-size: 1.75rem;
+  margin: 0.25rem;
+}
+
+#gift-message {
+  min-height: 10rem;
+  resize: none;
+}
+
+.terms-and-conditions {
+  display: flex;
+
+  margin: 1rem 0;
+  font-size: 1rem;
+  font-family: Wavehaus-Semi;
+}
+
+.terms-and-conditions a {
+  color: var(--ardrive-red);
+  font-family: Wavehaus-Bold;
+}
+
+.terms-and-conditions a:hover {
+  color: var(--ardrive-red);
+
+  text-decoration: underline;
+}
+
+a {
+  color: var(--ardrive-red);
+  text-decoration: inherit;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+input[type="checkbox"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  border: 0.1rem solid var(--gray);
+  /* don't resize this when mobile squishes screen */
+  flex-shrink: 0;
+}
+input[type="checkbox"]:checked {
+  background-color: var(--ardrive-red);
+}
+
+input[type="checkbox"]:hover {
+  cursor: pointer;
+}
+
+#terms-and-conditions-checkbox {
+  margin: 0 0.75rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .form-input,
+  #usd-input,
+  #usd-form-input {
+    background-color: var(--white);
+  }
+
+  .form-input:focus,
+  #usd-input:focus,
+  #usd-form-input:focus-within {
+    border-color: var(--black);
+  }
+}
