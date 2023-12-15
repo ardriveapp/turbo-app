@@ -15,7 +15,7 @@ export async function getCheckoutSessionUrl({
     `${paymentServiceUrl}/v1/top-up/checkout-session/${recipientEmail}/usd/${
       usdAmount * 100
     }?destinationAddressType=email${
-      giftMessage ? `&giftMessage=${giftMessage}` : ""
+      giftMessage ? `&giftMessage=${encodeURIComponent(giftMessage)}` : ""
     }`,
   );
   const data = await response.json();
