@@ -90,6 +90,6 @@ body {
 }
 
 .proceed-button:disabled {
-  background-color: var(--gray);
+  background-color: var(--light-gray);
   cursor: not-allowed;
 }
