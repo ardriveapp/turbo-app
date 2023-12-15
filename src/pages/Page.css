@@ -10,7 +10,6 @@
 
 #version-footer {
   font-family: "Wavehaus-Bold";
-  font-size: 14px;
   letter-spacing: 0.82px;
   padding-top: 4rem;
 
@@ -19,26 +18,12 @@
   text-align: right;
 }
 
-@media (min-width: 800px) {
-  #version-footer {
-    font-size: 16px;
-  }
-}
-
-@media (min-width: 1200px) {
-  #version-footer {
-    font-size: 18px;
-  }
-}
-
 .form {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 0rem 2rem;
   width: 100%;
-  max-width: 32rem;
 }
 
 .form-section {
@@ -50,11 +35,9 @@
 
 .form-label {
   margin: 0.5rem 0.5rem 0.25rem 0.1rem;
-  font-size: 1.25rem;
   font-weight: bold;
   font-family: Wavehaus-Bold;
   text-align: left;
-  font-size: 1rem;
 }
 
 .form-input {
@@ -62,7 +45,6 @@
   padding: 0.5rem 1rem;
   border: 1px solid var(--off-gray);
   border-radius: 0.5rem;
-  font-size: 1.2rem;
   font-family: Wavehaus-Semi;
   box-sizing: border-box;
   background-color: var(--dark-gray);
@@ -75,13 +57,12 @@
 }
 
 .proceed-button {
-  margin: 2rem;
+  margin: 1.25rem;
   padding: 1rem 1.25rem;
   border: none;
   border-radius: 0.5rem;
   background-color: var(--ardrive-red);
   color: var(--white);
-  font-size: 1.25rem;
   font-family: Wavehaus-Bold;
   cursor: pointer;
 }

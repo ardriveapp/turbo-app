@@ -111,9 +111,9 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
 
   return (
     <>
+      <h1>{GiftPageContent.header}</h1>
+      <p>{GiftPageContent.headerParagraph}</p>
       <form className="form">
-        <h1>{GiftPageContent.header}</h1>
-        <p>{GiftPageContent.headerParagraph}</p>
         <div className="form-section">
           <label className="form-label">Suggested USD amounts</label>
           <div className="suggested-amount-buttons">
