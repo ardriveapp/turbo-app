@@ -248,7 +248,6 @@ function GiftForm({ errorCallback }: ErrMsgCallbackAsProps) {
           <span>
             I Agree to the
             <a href={termsOfServiceUrl}> Terms of Service and Privacy Policy</a>
-            .
           </span>
         </div>
 

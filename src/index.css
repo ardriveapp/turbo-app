@@ -17,19 +17,14 @@
   --white: #fafafa;
   --black: #0d0d0d;
   --dark-gray: #171717;
-  --gray: #7d7d7d;
-  --off-gray: #787878;
+  --gray: #e6e6e6;
+  --off-gray: #262626;
 
   --mobile: 640px;
   --tablet: 800px;
   --desktop: 1200px;
 
   font-size: 0.8rem;
-}
-
-body {
-  max-width: 42rem;
-  margin: 2rem auto;
 }
 
 @media (min-width: 640px) {
@@ -58,7 +53,7 @@ input[type="number"] {
 @media (prefers-color-scheme: light) {
   :root {
     color: var(--black);
-    background-color: var(--white);
+    background-color: var(--gray);
   }
 }
 

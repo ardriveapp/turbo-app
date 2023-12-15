@@ -60,12 +60,11 @@ function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
   return (
     <>
       <h1>Redeem Your Gift of Storage Credits</h1>
-
+      <p>
+        If you do not have an Arweave wallet, you can create one in{" "}
+        <a href={ardriveAppUrl}>ArDrive App</a>.
+      </p>
       <form className="form">
-        <p>
-          If you do not have an Arweave wallet, you can create one in{" "}
-          <a href={ardriveAppUrl}>ArDrive App</a>.
-        </p>
         <div className="form-section">
           <label className="form-label">Wallet Address</label>
           <input

@@ -16,11 +16,11 @@
 
 .suggested-amount-button {
   margin-left: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 1rem 1rem;
   border: 1px solid var(--off-gray);
   border-radius: 0.5rem;
   font-family: Wavehaus-Semi;
-  background-color: var(--dark-gray);
+  background-color: var(--black);
   color: var(--white);
   cursor: pointer;
   flex-grow: 1;
@@ -36,37 +36,42 @@
 
 @media (prefers-color-scheme: light) {
   .suggested-amount-button {
-    background-color: var(--white);
+    background-color: var(--gray);
     color: var(--black);
   }
 
   .suggested-amount-button:hover {
+    background-color: var(--white);
+  }
+
+  #usd-input {
     background-color: var(--gray);
-    color: var(--black);
+  }
+
+  #usd-form-input {
+    background-color: var(--gray);
   }
 }
 
 #usd-form-input {
   display: flex;
   width: 100%;
-  background-color: var(--dark-gray);
-  width: 100%;
+  background-color: var(--black);
   border: 1px solid var(--off-gray);
   border-radius: 0.5rem;
 }
 
 #dollar-sign {
-  font-family: Wavehaus-Semi;
-  padding: 0.5rem 1rem;
-  border: none;
+  font-family: Wavehaus-Bold;
+  padding: 1.2rem;
 }
 
 #usd-input {
   font-family: Wavehaus-Semi;
   width: 100%;
-  margin: 0.5rem 0.5rem;
+  margin: 1.2rem 1rem;
   border: none;
-  background-color: var(--dark-gray);
+  background-color: var(--black);
 }
 
 .form-input:focus,
@@ -160,7 +165,7 @@ input[type="checkbox"]:hover {
   .form-input,
   #usd-input,
   #usd-form-input {
-    background-color: var(--white);
+    background-color: var(--gray);
   }
 
   .form-input:focus,
