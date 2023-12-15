@@ -24,24 +24,27 @@
   --tablet: 800px;
   --desktop: 1200px;
 
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+}
+
+body {
+  max-width: 42rem;
+  margin: 2rem auto;
 }
 
 @media (min-width: 640px) {
   :root {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 }
-
 @media (min-width: 800px) {
   :root {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 }
-
 @media (min-width: 1200px) {
   :root {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
   }
 }
 
@@ -67,17 +70,22 @@ input[type="number"] {
   margin: 1rem 0;
   padding: 1rem 2rem;
   border-radius: 0.5rem;
-  font-size: 1rem;
   font-family: Wavehaus-Extra;
   color: var(--ardrive-red);
 }
 
 h1 {
   font-family: Wavehaus-Extra;
-  font-size: 2.15rem;
-  margin: 3rem 2rem 0rem 2rem;
 }
 
 p {
   text-align: left;
+  margin: 0.3rem 0rem;
+}
+
+button,
+input,
+select,
+textarea {
+  font-size: inherit;
 }

@@ -19,7 +19,6 @@
   padding: 0.5rem 1rem;
   border: 1px solid var(--off-gray);
   border-radius: 0.5rem;
-  font-size: 1.2rem;
   font-family: Wavehaus-Semi;
   background-color: var(--dark-gray);
   color: var(--white);
@@ -58,14 +57,12 @@
 
 #dollar-sign {
   font-family: Wavehaus-Semi;
-  font-size: 1.2rem;
   padding: 0.5rem 1rem;
   border: none;
 }
 
 #usd-input {
   font-family: Wavehaus-Semi;
-  font-size: 1.2rem;
   width: 100%;
   margin: 0.5rem 0.5rem;
   border: none;
@@ -83,12 +80,27 @@
 #conversions {
   margin: 2rem 0 2rem 0;
   font-family: Wavehaus-Semi;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  #conversions {
+    font-size: 1.4rem;
+  }
+}
+@media (min-width: 800px) {
+  #conversions {
+    font-size: 1.6rem;
+  }
+}
+@media (min-width: 1200px) {
+  #conversions {
+    font-size: 1.75rem;
+  }
 }
 
 .conversion-amount {
   font-family: Wavehaus-Semi;
-  font-size: 1.75rem;
   margin: 0.25rem;
 }
 
@@ -101,7 +113,6 @@
   display: flex;
 
   margin: 1rem 0;
-  font-size: 1rem;
   font-family: Wavehaus-Semi;
 }
 
@@ -157,4 +168,8 @@ input[type="checkbox"]:hover {
   #usd-form-input:focus-within {
     border-color: var(--black);
   }
+}
+
+#recipient-email {
+  margin-bottom: 0.5rem;
 }

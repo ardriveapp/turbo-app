@@ -62,48 +62,10 @@ function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
       <h1>Redeem Your Gift of Storage Credits</h1>
 
       <form className="form">
-        <div className="form-section redeem-info">
-          <p>
-            If you're new to ArDrive, here are a few resources to get you
-            started:
-          </p>
-          <ul>
-            <li>
-              <a href="https://www.youtube.com/watch?v=d-a94nO92Ow">
-                What is ArDrive?
-              </a>
-            </li>
-            <li>
-              <a href="https://www.youtube.com/watch?v=51Gpg3-GFZw">
-                HOW TO: Upload with ArDrive Turbo
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div className="form-section redeem-info">
-          <h2>Get Started:</h2>
-          <ul>
-            <li>
-              <span>
-                Step 1:{" "}
-                <a href="https://www.youtube.com/watch?v=51Gpg3-GFZw">
-                  Get a Wallet
-                </a>
-              </span>
-            </li>
-            <li>
-              <span>Step 2: Enter the wallet address here</span>
-            </li>
-            <li>
-              <span>Step 3: Enter your gift code and email address</span>
-            </li>
-          </ul>
-
-          <p>
-            Need help? Head to{" "}
-            <a href="https://help.ardrive.io/hc/en-us">Help Center</a>
-          </p>
-        </div>
+        <p>
+          If you do not have an Arweave wallet, you can create one in{" "}
+          <a href={ardriveAppUrl}>ArDrive App</a>.
+        </p>
         <div className="form-section">
           <label className="form-label">Wallet Address</label>
           <input
@@ -155,12 +117,32 @@ function RedeemForm({ errorCallback }: ErrMsgCallbackAsProps) {
         </button>
       </form>
 
-      <div>
-        <br></br>
-        <span>
-          If you do not have an Arweave wallet, you can create one in{" "}
-          <a href={ardriveAppUrl}>ArDrive App</a>.
-        </span>
+      <div className="redeem-info">
+        <p>
+          If you're new to ArDrive, here are a few resources to get you started:
+        </p>
+        <ul>
+          <li>
+            <a href="https://www.youtube.com/watch?v=d-a94nO92Ow">
+              What is ArDrive?
+            </a>
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=51Gpg3-GFZw">
+              Get a Wallet
+            </a>
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=51Gpg3-GFZw">
+              HOW TO: Upload with ArDrive Turbo
+            </a>
+          </li>
+        </ul>
+
+        <p>
+          Need help? Head to the{" "}
+          <a href="https://help.ardrive.io/hc/en-us">Help Center</a>
+        </p>
       </div>
     </>
   );
