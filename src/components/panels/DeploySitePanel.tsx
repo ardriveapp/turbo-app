@@ -476,11 +476,11 @@ export default function DeploySitePanel() {
                           </button>
                           <button
                             onClick={() => result.id && checkUploadStatus(result.id)}
-                            disabled={statusChecking[result.id || '']}
+                            disabled={result.id ? statusChecking[result.id] : false}
                             className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
                             title="Check Status"
                           >
-                            <RefreshCw className={`w-4 h-4 ${statusChecking[result.id] ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-4 h-4 ${result.id && statusChecking[result.id] ? 'animate-spin' : ''}`} />
                           </button>
                           <a
                             href={getArweaveUrl(result.id)}
