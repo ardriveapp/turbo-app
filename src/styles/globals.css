@@ -1,0 +1,24 @@
+@import '@fontsource/rubik/400.css';
+@import '@fontsource/rubik/500.css';
+@import '@fontsource/rubik/600.css';
+@import '@fontsource/rubik/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  
+  body {
+    @apply bg-canvas text-fg-muted antialiased;
+    font-family: 'Rubik', sans-serif;
+  }
+  
+  /* Ensure dark mode colors are applied */
+  .dark {
+    @apply bg-canvas text-fg-muted;
+  }
+}

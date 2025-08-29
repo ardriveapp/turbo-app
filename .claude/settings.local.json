@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run type-check:*)",
+      "Read(/mnt/c/source/turbo-gateway/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-app/src/components/**)",
+      "Bash(cd:*)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/crypto/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/crypto/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/animations/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/animations/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
