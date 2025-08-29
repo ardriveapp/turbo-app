@@ -3,8 +3,8 @@ import { Listbox, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { 
-  ArrowRight, Zap, Shield, Globe, Code2, Github, Book, FileCode, Database, 
-  CreditCard, Gift, Ticket, Users, Upload, Globe2, Terminal, Search, BarChart3, Check, Copy, ChevronDown, Info
+  ArrowRight, Zap, Shield, Globe, Github, Book, FileCode, Database, 
+  CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info
 } from 'lucide-react';
 
 interface LandingPageProps {

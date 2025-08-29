@@ -30,12 +30,12 @@ const WalletSelectionModal = ({
           console.log('Setting Ethereum address:', rawAddress);
           setAddress(rawAddress, 'ethereum');
           onClose();
-        } catch (error) {
+        } catch (_error) {
           // Failed to process Ethereum connection
           setConnectingWallet(undefined);
         }
       },
-      onError: (error) => {
+      onError: (_error) => {
         // Failed to connect wallet
         setConnectingWallet(undefined);
       },
@@ -105,7 +105,7 @@ const WalletSelectionModal = ({
         setSolanaModalVisible(true);
       }
       
-    } catch (error) {
+    } catch (_error) {
       // Failed to connect Phantom wallet
       setIntentionalSolanaConnect(false); // Reset flag on error
     } finally {
@@ -135,7 +135,7 @@ const WalletSelectionModal = ({
       console.log('Setting Arweave address:', addr);
       setAddress(addr, 'arweave');
       onClose();
-    } catch (error) {
+    } catch (_error) {
       // Failed to connect Wander wallet
     } finally {
       setConnectingWallet(undefined);
@@ -160,13 +160,13 @@ const WalletSelectionModal = ({
         // Failed to connect MetaMask
         
         // If we get "already connected" error, try disconnecting first then reconnecting
-        if (error.message?.includes('already connected')) {
+        if (error instanceof Error && error.message?.includes('already connected')) {
           try {
             // Attempting to disconnect and reconnect
             await disconnect();
             await new Promise(resolve => setTimeout(resolve, 200));
             await connect({ connector: metamask });
-          } catch (retryError) {
+          } catch (_retryError) {
             // Retry failed
           }
         }

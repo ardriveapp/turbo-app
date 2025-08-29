@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount } from '../../constants';
-import { Gift, Mail, MessageSquare, Send, CheckCircle, Users, Heart } from 'lucide-react';
+import { Gift, Mail, MessageSquare, Send, CheckCircle, Heart } from 'lucide-react';
 
 export default function GiftPanel() {
   const [usdAmount, setUsdAmount] = useState(defaultUSDAmount);

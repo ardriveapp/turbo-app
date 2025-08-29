@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { defaultPaymentServiceUrl } from '../../constants';
-import { Gift, Ticket, Mail, Wallet, CheckCircle, Code, Shield, Clock } from 'lucide-react';
+import { Gift, Ticket, Mail, Wallet, CheckCircle, Shield } from 'lucide-react';
 
 export default function RedeemPanel() {
   const { address } = useStore();

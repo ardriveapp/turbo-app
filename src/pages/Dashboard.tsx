@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Listbox, Transition } from '@headlessui/react';
-import { CreditCard, Upload, Share2, Gift, Globe, Code, ChevronDown } from 'lucide-react';
-import { Fragment } from 'react';
+import { CreditCard, Upload, Share2, Gift, Globe, Code } from 'lucide-react';
 import TopUpPanel from '../components/panels/TopUpPanel';
 import GiftPanel from '../components/panels/GiftPanel';
 import ShareCreditsPanel from '../components/panels/ShareCreditsPanel';
@@ -25,11 +23,10 @@ interface DashboardProps {
   setSelectedFeature?: (feature: any) => void;
 }
 
-export default function Dashboard({ selectedFeature, setSelectedFeature }: DashboardProps = {}) {
+export default function Dashboard({ selectedFeature }: DashboardProps = {}) {
   // Use provided state or local state
-  const [localSelectedFeature, setLocalSelectedFeature] = useState(features[0]);
+  const [localSelectedFeature] = useState(features[0]);
   const currentFeature = selectedFeature || localSelectedFeature;
-  const setFeature = setSelectedFeature || setLocalSelectedFeature;
   const SelectedComponent = currentFeature.component;
 
   return (

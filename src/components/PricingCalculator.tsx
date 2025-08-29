@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Calculator, HardDrive, DollarSign, Info, Check } from 'lucide-react';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../hooks/useCreditsForFiat';

@@ -116,7 +116,7 @@ export function useFileUpload() {
         },
         events: {
           // Overall progress (includes both signing and upload)
-          onProgress: ({ totalBytes, processedBytes, step }) => {
+          onProgress: ({ totalBytes, processedBytes }) => {
             const percentage = Math.round((processedBytes / totalBytes) * 100);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
             // Upload progress tracked

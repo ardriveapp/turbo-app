@@ -12,14 +12,14 @@ import BalanceCheckerPage from './pages/BalanceCheckerPage';
 import RedeemPage from './pages/RedeemPage';
 import { DeveloperPage } from './pages/DeveloperPage';
 import GatewayInfoPage from './pages/GatewayInfoPage';
-import DeploySitePage from './pages/DeploySitePage';
+// import DeploySitePage from './pages/DeploySitePage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
 
 type PageType = 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info';
 
 export function App() {
-  const { address, setAddress } = useStore();
+  const { address } = useStore();
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   // No more selectedFeature state needed
   const loggedIn = address !== null;
@@ -77,7 +77,7 @@ export function App() {
     }
     
     if (currentPage === 'deploy') {
-      return <DeploySitePage />;
+      return <div className="text-center py-12"><p>Deploy Site feature temporarily disabled</p></div>;
     }
     
     if (currentPage === 'share') {
@@ -115,8 +115,6 @@ export function App() {
     return <LandingPage setCurrentPage={handleSetPage} loggedIn={loggedIn} />;
   };
 
-  // Helper to determine if we're on a special page
-  const isSpecialPage = currentPage === 'calculator' || currentPage === 'balance-checker';
   
   // Helper for Header to set page  
   const handleSetPage = (page: PageType) => {

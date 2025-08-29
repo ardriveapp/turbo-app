@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   TurboFactory, 
   TurboAuthenticatedClient,
@@ -10,7 +10,7 @@ import {
 } from '@dha-team/arbundles';
 import { useStore } from '../../store/useStore';
 import { wincPerCredit, turboConfig } from '../../constants';
-import { ExternalLink, Book, Code, Lightbulb, Info, Share2, Users, Clock, Shield, ArrowRight } from 'lucide-react';
+import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 
 interface Approval {

@@ -2,12 +2,8 @@ import { useGatewayInfo } from '../../hooks/useGatewayInfo';
 import { 
   Server, 
   Globe, 
-  Shield, 
-  Zap, 
   TrendingUp, 
-  Clock, 
   Database,
-  Info,
   Coins,
   Upload,
   CheckCircle,

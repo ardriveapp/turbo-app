@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Copy, ExternalLink, Receipt, FileText, User, Clock, Coins, RefreshCw, Package, Activity, CheckCircle, Archive, XCircle, HelpCircle } from 'lucide-react';
+import { X, ExternalLink, Receipt, FileText, Clock, RefreshCw, Activity, CheckCircle, Archive, XCircle, HelpCircle } from 'lucide-react';
 import BaseModal from './BaseModal';
 import CopyButton from '../CopyButton';
 import { useUploadStatus, UploadStatus } from '../../hooks/useUploadStatus';
@@ -119,7 +119,10 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                 {/* Data Item ID */}
                 <div className="space-y-3">
                   <div>
-                    <div className="text-xs text-link mb-2">📄 Data Item ID:</div>
+                    <div className="flex items-center gap-1 text-xs text-link mb-2">
+                      <FileText className="w-3 h-3" />
+                      Data Item ID:
+                    </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <span className="font-mono text-xs sm:text-sm text-link break-all flex-1">{uploadId}</span>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -141,7 +144,10 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   {/* Bundle ID */}
                   {currentStatus?.bundleId && (
                     <div>
-                      <div className="text-xs text-link mb-2">📦 Bundle ID:</div>
+                      <div className="flex items-center gap-1 text-xs text-link mb-2">
+                        <Archive className="w-3 h-3" />
+                        Bundle ID:
+                      </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <span className="font-mono text-xs text-link break-all flex-1">{currentStatus.bundleId}</span>
                         <CopyButton textToCopy={currentStatus.bundleId} />

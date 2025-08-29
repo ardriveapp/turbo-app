@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Wallet, LogOut, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 

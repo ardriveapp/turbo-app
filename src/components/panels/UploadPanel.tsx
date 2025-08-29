@@ -3,14 +3,14 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, Copy, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, Archive, Clock, HelpCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, Archive, Clock, HelpCircle } from 'lucide-react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 import { getArweaveUrl } from '../../utils';
 
 export default function UploadPanel() {
-  const { address, walletType, creditBalance, uploadHistory, addUploadResults, clearUploadHistory } = useStore();
+  const { address, creditBalance, uploadHistory, addUploadResults, clearUploadHistory } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -26,8 +26,7 @@ export default function UploadPanel() {
     formatFileSize,
     formatWinc,
     getStatusColor,
-    getStatusIcon,
-    getStatusDescription
+    getStatusIcon
   } = useUploadStatus();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -480,13 +479,12 @@ export default function UploadPanel() {
                             </span>
                           </div>
                         )}
-                        {status.bundleId && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-link">Parent ID:</span>
-                            <span className="text-fg-muted font-mono text-xs">
-                              {status.bundleId.substring(0, 8)}...
+                        {result.timestamp && (
+                          <div>
+                            <span className="text-link">Upload Time:</span>
+                            <span className="ml-1 text-fg-muted font-medium">
+                              {new Date(result.timestamp).toLocaleString()}
                             </span>
-                            <CopyButton textToCopy={status.bundleId} />
                           </div>
                         )}
                       </div>

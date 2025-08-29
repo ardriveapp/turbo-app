@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Code, Book, Github, FileCode, Zap, TerminalIcon, Copy, Check } from 'lucide-react';
-import CopyButton from '../CopyButton';
+import { ExternalLink, Code, Copy, Check } from 'lucide-react';
 
 export default function DeveloperPanel() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);

@@ -1,23 +1,13 @@
-import { useState, useEffect } from 'react';
-import { CheckCircle, Copy, ExternalLink, AlertTriangle, RefreshCw } from 'lucide-react';
-import { tokenLabels, SupportedTokenType, errorSubmittingTransactionToTurbo, defaultPaymentServiceUrl } from '../../../constants';
+import { useState } from 'react';
+import { CheckCircle, Copy, AlertTriangle, RefreshCw } from 'lucide-react';
+import { tokenLabels, errorSubmittingTransactionToTurbo, defaultPaymentServiceUrl } from '../../../constants';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../../constants';
 import useAddressState, { TransferTransactionResult } from '../../../hooks/useAddressState';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import CopyButton from '../../CopyButton';
 
-interface CryptoQuote {
-  tokenAmount: number;
-  usdAmount: number;
-  credits: number;
-  gigabytes: number;
-  expiresAt: Date;
-}
 
-interface TurboWallet {
-  [key: string]: string;
-}
 
 interface CryptoManualPaymentPanelProps {
   cryptoTopupValue: number; // Amount in tokens, not quote object
@@ -94,11 +84,6 @@ export default function CryptoManualPaymentPanel({
     return `${address.slice(0, shownCount)}...${address.slice(-shownCount)}`;
   };
 
-  const StepDot = ({ active }: { active?: boolean }) => {
-    return (
-      <div className={`z-10 size-4 rounded-full ${active ? 'bg-turbo-red' : 'bg-fg-disabled'}`}></div>
-    );
-  };
 
   return (
     <div className="space-y-6">

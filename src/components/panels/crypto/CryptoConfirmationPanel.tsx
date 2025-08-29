@@ -1,10 +1,9 @@
-import { TokenType, TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
-import { useCallback, useEffect, useState } from 'react';
+import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
+import { useEffect, useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { turboConfig, tokenLabels, SupportedTokenType } from '../../../constants';
 import { useCryptoForFiat } from '../../../hooks/useCryptoForFiat';
-import CopyButton from '../../CopyButton';
 
 interface CryptoConfirmationPanelProps {
   usdAmount: number;
@@ -25,11 +24,7 @@ export default function CryptoConfirmationPanel({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   
-  const [quote, quoteLoading, refreshQuote] = useCryptoForFiat(
-    usdAmount, 
-    tokenType, 
-    setPaymentError
-  );
+  const { data: quote, isLoading: quoteLoading, refetch: refreshQuote } = useCryptoForFiat();
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

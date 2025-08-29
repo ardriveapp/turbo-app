@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 import { turboConfig, wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Search, Wallet, Copy, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp } from 'lucide-react';
+import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useArNSName } from '../../hooks/useArNSName';
@@ -449,7 +449,7 @@ export default function BalanceCheckerPanel() {
                     </div>
                     <p className="text-xs text-link mb-2">These users have shared their credits with this wallet:</p>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {balanceResult.sharedCredits.received.approvals.map((approval, idx) => (
+                      {balanceResult.sharedCredits.received.approvals.map((approval) => (
                         <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
                           <div className="flex items-center gap-3">
                             <div className="font-mono text-xs text-link">
@@ -477,7 +477,7 @@ export default function BalanceCheckerPanel() {
                     </div>
                     <p className="text-xs text-link mb-2">This wallet has shared credits with these recipients:</p>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {balanceResult.sharedCredits.given.approvals.map((approval, idx) => (
+                      {balanceResult.sharedCredits.given.approvals.map((approval) => (
                         <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
                           <div className="flex items-center gap-3">
                             <div className="font-mono text-xs text-link">

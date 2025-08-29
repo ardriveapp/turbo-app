@@ -27,6 +27,9 @@ export const maxUSDAmount = 2000;
 export const maxARAmount = 200;
 export const minUSDAmount = 5;
 
+// Turbo wallet addresses URL
+export const TURBO_WALLETS_URL = defaultPaymentServiceUrl + '/wallets';
+
 // Crypto token configuration - matching reference app
 export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'matic', 'pol'] as const;
 export type SupportedTokenType = typeof supportedCryptoTokens[number];

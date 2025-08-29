@@ -93,9 +93,9 @@ export function HomePage() {
           </div>
         </Link>
 
-        <div 
-          onClick={() => setCurrentPage?.('domains')} 
-          className="card hover:border-primary/50 transition-colors group cursor-pointer"
+        <Link 
+          to="/domains"
+          className="card hover:border-primary/50 transition-colors group"
         >
           <Globe className="w-8 h-8 text-primary mb-4" />
           <h3 className="text-lg font-semibold mb-2">Search Domains</h3>
@@ -105,7 +105,7 @@ export function HomePage() {
           <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
             Search domains <ArrowRight className="w-4 h-4" />
           </div>
-        </div>
+        </Link>
 
         <Link to="/gift" className="card hover:border-primary/50 transition-colors group">
           <Gift className="w-8 h-8 text-primary mb-4" />

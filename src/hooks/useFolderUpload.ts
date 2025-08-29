@@ -114,7 +114,7 @@ export function useFolderUpload() {
     }
   }, [address, walletType]);
 
-  const deployFolder = useCallback(async (files: File[]) => {
+  const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
     if (!address) {
       throw new Error('Wallet not connected');
     }
@@ -256,7 +256,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [address, createTurboClient, walletType]);
+  }, [address, createTurboClient]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, HardDrive, DollarSign, Info, Check, ArrowRight, Zap, Upload, Globe, CreditCard } from 'lucide-react';
+import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useStore } from '../../store/useStore';

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
 import { Coins } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useQuery } from '@tanstack/react-query';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 
 export function CreditBalance() {
-  const { address, walletType } = useStore();
+  const { address } = useStore();
   
   const { data: balance, isLoading } = useQuery({
     queryKey: ['balance', address],

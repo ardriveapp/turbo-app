@@ -1,6 +1,6 @@
 import { Popover, PopoverButton, PopoverPanel, Listbox, Transition } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, ChevronDown, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap } from 'lucide-react';
-import { Fragment, useState, useEffect } from 'react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap } from 'lucide-react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
@@ -35,7 +35,7 @@ interface HeaderProps {
 }
 
 const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
-  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, creditBalance } = useStore();
+  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance } = useStore();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
   
@@ -47,7 +47,7 @@ const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
   const [showWalletModal, setShowWalletModal] = useState(false);
   
   // Fetch actual credit balance from Turbo API
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!address) {
       setCredits('0');
       return;
@@ -114,7 +114,7 @@ const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
       setLoadingBalance(false);
       setIsRefreshing(false);
     }
-  };
+  }, [address, walletType, setCreditBalance]);
 
   useEffect(() => {
     fetchBalance();
@@ -321,7 +321,7 @@ const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
                   } else if (walletType === 'solana') {
                     // Solana wallet cleared from app state
                   }
-                } catch (error) {
+                } catch (_error) {
                   // Error disconnecting from wallet extension
                 }
                 
