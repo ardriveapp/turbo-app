@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Essential Commands
 ```bash
-# Install dependencies (using npm or yarn)
+# Install dependencies
 npm install
 
 # Start development server
@@ -14,7 +14,12 @@ npm run dev
 # Opens at http://localhost:3000
 
 # Build for production
+npm run build:prod
+# Full production build with pre-build type checking and increased memory
+
+# Build for development
 npm run build
+# Standard build
 
 # Preview production build
 npm run preview
@@ -24,13 +29,19 @@ npm run lint
 
 # Type checking  
 npm run type-check
+
+# Clean build artifacts
+npm run clean
+
+# Complete clean and reinstall
+npm run clean:all
 ```
 
-### Testing
-No test suite is currently implemented. The application needs testing infrastructure to be added.
+### Memory Management
+All scripts use `cross-env NODE_OPTIONS=--max-old-space-size` with varying memory allocations (2GB-8GB) due to the complex multi-chain wallet integration and large dependency tree.
 
 ### Package Manager
-This project uses yarn as the package manager (configured via packageManager field in package.json). All commands can be run with npm or yarn.
+This project uses **yarn** as the package manager (configured via packageManager field in package.json). All commands can be run with npm or yarn.
 
 ### Command Validation
 Commands that can be run without user approval:
@@ -39,109 +50,114 @@ Commands that can be run without user approval:
 
 ## Architecture Overview
 
-### Application Flow
-The app uses a page-based navigation system with wallet authentication:
-1. **Entry Point** (`App.tsx`): Direct page routing based on currentPage state (no Dashboard dependency)
-2. **Page Structure**: Each service has dedicated page (TopUpPage, UploadPage, etc.) wrapping panel components
-3. **State Management** (`useStore.ts`): Zustand store persists wallet address/type, credits, and ArNS names to localStorage
-4. **Provider Stack** (`WalletProviders.tsx`): Wraps app with blockchain, payment, and data fetching providers
-5. **Navigation**: Unified waffle menu in header consolidating all services and tools
+### Application Structure
+This is a unified Turbo Gateway application consolidating three separate applications:
+- **turbo-landing-page**: Informational content and resources
+- **turbo-topup**: Payment flows and wallet integration  
+- **turbo-app**: File uploads, gifts, credit sharing, and ArNS functionality
 
-### Key Architectural Patterns
+### Core Architecture Patterns
+
+#### Page-Based Navigation System
+- **Entry Point** (`App.tsx`): Direct page routing based on currentPage state
+- **Page Structure**: Each service has dedicated page wrapping panel components
+- **Simple Routing**: Custom routing system (not React Router) with URL parameter support
+- **Navigation**: Unified waffle menu (Grid3x3 icon) in header consolidating all services
+
+```typescript
+type PageType = 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info';
+```
 
 #### Multi-Chain Wallet Integration
-- **Arweave (Wander)**: Direct window.arweaveWallet integration (required for uploads)
-  - Uses ArconnectSigner from @ardrive/turbo-sdk/web
-  - Required for file uploads and ArNS transactions
-- **Ethereum**: Wagmi v2 with MetaMask and WalletConnect connectors  
-  - Uses InjectedEthereumSigner from @dha-team/arbundles
-  - Supports mainnet chain via http transport
-- **Solana**: @solana/wallet-adapter with Phantom and Solflare
-  - Uses InjectedSolanaSigner from @dha-team/arbundles
-  - Configurable RPC endpoint (default: mainnet-beta)
-- **ArNS Names**: Primary name resolution via AR.IO SDK with 1-hour cache
+The app supports three wallet ecosystems with different capabilities:
 
-#### Page-Based Navigation Architecture
-All services are accessed via dedicated pages with unified navigation:
-- **Waffle Menu**: Single dropdown in header consolidating all services
-- **Account Services**: Buy Credits, Upload Files, Share Credits, Send Gift, Manage Domains (login required)
-- **Public Tools**: Developer Resources, Pricing Calculator, Balance Checker, Redeem Gift
-- **Page Structure**: Each service has dedicated page (e.g., TopUpPage) wrapping panel component
-- **Mobile Optimized**: Dropdown positioned to prevent viewport bleeding on mobile
+**Arweave (Wander)**
+- Uses `ArconnectSigner` from `@ardrive/turbo-sdk/web`
+- Required for file uploads and ArNS transactions
+- Direct `window.arweaveWallet` integration
 
-#### Payment Integration
-- Stripe hosted checkout with success/cancel URLs
-- Direct API calls to payment service endpoints  
-- Real-time USD to credits conversion with debouncing
-- Payment success callbacks trigger balance refresh
+**Ethereum**
+- Uses Wagmi v2 with MetaMask and WalletConnect connectors
+- Supports mainnet via HTTP transport
+- Uses `ethers.BrowserProvider` for signing
+
+**Solana**
+- Uses `@solana/wallet-adapter` with Phantom and Solflare
+- Custom `SolanaWalletAdapter` implementation
+- Uses `window.solana` for direct provider access
+
+#### State Management Architecture
+Uses Zustand with selective persistence:
+```typescript
+// Persistent state (survives page refresh)
+address, walletType, arnsNamesCache, uploadHistory
+
+// Ephemeral state (cleared on refresh)
+creditBalance, paymentState, UI state
+```
 
 #### Turbo SDK Integration
+Environment-based configuration with proper type safety:
 ```typescript
-import { TurboFactory } from '@ardrive/turbo-sdk/web';
-
-// Configuration in constants.ts
 const turboConfig: TurboUnauthenticatedConfiguration = {
   paymentServiceConfig: { url: defaultPaymentServiceUrl },
   uploadServiceConfig: { url: uploadServiceUrl },
-  processId: arioProcessId,
+  processId: arioProcessId, // Different for prod/dev
 };
-
-// Usage patterns
-const turbo = TurboFactory.unauthenticated(turboConfig);
-const turbo = TurboFactory.authenticated({ signer, ...turboConfig });
 ```
 
 ### Service Architecture
 
-#### Environment-Based Configuration
-```typescript
-const isProd = import.meta.env.VITE_NODE_ENV === 'production';
-const serviceUrl = isProd 
-  ? 'https://payment.ardrive.io' 
-  : 'https://payment.ardrive.dev';
-```
+#### Payment Integration
+- **Stripe Elements**: Hosted checkout with success/cancel callbacks
+- **Crypto Payments**: UI ready, backend integration pending
+- **Real-time Conversion**: USD to credits with debouncing (500ms)
+- **Balance Refresh**: Custom events trigger balance updates
 
-#### API Endpoints Pattern
-All API calls follow this structure:
-- Base URL from environment
-- Version prefix `/v1/`
-- Resource-based routing
-- Query parameters for filters
+#### File Upload System
+- **Multi-wallet Support**: Only Arweave wallets can upload files
+- **Progress Tracking**: Real-time progress bars with error handling
+- **Cost Calculator**: Real-time pricing display with GiB estimates
+- **Receipt System**: Transaction IDs with Arweave explorer links
+- **Batch Upload**: Drag & drop with visual feedback
+
+#### ArNS Integration
+- **Primary Name Resolution**: AR.IO SDK with 1-hour cache
+- **Name Display**: Throughout UI with loading states
+- **Search Functionality**: Name availability checking
+- **Domain Management**: Purchase UI ready (not connected)
+
+### Navigation Structure
+
+#### Waffle Menu Services
+**Account Services** (login required):
+- Buy Credits (`topup`)
+- Upload Files (`upload`) 
+- Deploy Site (`deploy`) - temporarily disabled
+- Share Credits (`share`)
+- Send Gift (`gift`)
+
+**Public Tools**:
+- Search Domains (`domains`)
+- Developer Resources (`developer`)
+- Pricing Calculator (`calculator`)
+- Services Calculator (`services-calculator`) - combined storage + ArNS pricing
+- Balance Checker (`balance-checker`)
+- Redeem Gift (`redeem`)
+- Service Info (`gateway-info`)
+
+#### URL Parameter Support
+- `?payment=success` - Payment success callback
+- `?payment=cancelled` - Payment cancellation
+- `?page=redeem` - Direct page navigation
+- `?page=balance-checker` - Direct page navigation
 
 ### Component Patterns
 
-#### Modal System
-Base modal component with consistent styling and behavior:
-- `BaseModal.tsx` provides foundation
-- Specialized modals extend base functionality
-- Portal rendering to body
-
-#### Copy Button Pattern
-Reusable component for one-click copying:
-```typescript
-<CopyButton textToCopy={value} />
-```
-
-#### Custom Hooks
-- `useWincForOneGiB`: Storage pricing calculations
-- `useCreditsForFiat`: USD to credits conversion
-- `useDebounce`: Input debouncing (500ms default)
-- `useFileUpload`: Turbo SDK upload logic with proper signers
-- `useArNSName`: ArNS primary name fetching with cache
-
-### Styling System
-- Tailwind CSS with custom color tokens and consistent red/white/charcoal theme
-- Dark theme: `bg-canvas` (#171717), `bg-surface` (#1F1F1F)  
-- Custom color palette: fg-muted (#ededed), link (#A3A3AD), high (#CACAD6)
-- **Primary Brand Color**: turbo-red (#FE0230) used consistently for all accents, buttons, and highlights
-- **Secondary Colors**: green (#18A957) for success states only, blue removed from service UIs
-- Rubik font family throughout (@fontsource/rubik)
-- Responsive breakpoints: mobile-first approach
-
-#### Enhanced Service Panel Design Pattern
-All service panels follow this consistent template:
+#### Service Panel Design Pattern
+All service panels follow consistent styling:
 ```jsx
-// Inline Header Pattern
+// Inline Header with Icon
 <div className="flex items-start gap-3 mb-6">
   <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
     <IconComponent className="w-5 h-5 text-turbo-red" />
@@ -156,242 +172,157 @@ All service panels follow this consistent template:
 <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
   {/* Main service content */}
 </div>
-
-// Info Cards (if applicable)
-<div className="grid md:grid-cols-3 gap-4">
-  <div className="bg-surface rounded-lg p-4 border border-default">
-    <div className="flex items-start gap-3">
-      <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-        <Icon className="w-5 h-5 text-turbo-red" />
-      </div>
-      <div>
-        <h4 className="font-bold text-fg-muted mb-1 text-sm">[Feature Title]</h4>
-        <p className="text-xs text-link">[Feature Description]</p>
-      </div>
-    </div>
-  </div>
-</div>
 ```
 
-### State Persistence
-Zustand with selective persistence:
-```typescript
-persist(
-  (set) => ({ /* state */ }),
-  {
-    name: 'turbo-gateway-store',
-    partialize: (state) => ({ 
-      address: state.address, 
-      walletType: state.walletType,
-      arnsNamesCache: state.arnsNamesCache
-    }),
-  }
-)
-```
+#### Modal System
+- **BaseModal**: Foundation component with portal rendering
+- **Specialized Modals**: WalletSelectionModal, BlockingMessageModal, ReceiptModal
+- **Consistent Styling**: Dark theme with proper z-index layering
 
-## Important Configuration Files
+#### Custom Hooks
+- `useWincForOneGiB`: Storage pricing calculations
+- `useCreditsForFiat`: USD to credits conversion with debouncing
+- `useFileUpload`: Multi-chain upload logic with proper signers
+- `useArNSName`: Primary name fetching with cache management
+- `useArNSPricing`: ArNS domain pricing calculations and affordable options
+- `useDebounce`: Input debouncing (500ms default)
 
-### TypeScript Configuration
-- Strict mode enabled
-- Path alias: `@/*` → `./src/*`
-- Target: ES2022
-- JSX: react-jsx
+### Styling System
 
-### Vite Configuration
-- Port 3000 for dev server with host: true for network access
-- Node polyfills for crypto operations (Buffer, global, process)
-- WalletConnect resolution fixes and optimizeDeps configuration
-- Source maps enabled in production
-- Path alias: `@` resolves to `./src`
-- External modules: fs, path, os, crypto for Node.js compatibility
-- React plugin with optimized dev experience
+#### Tailwind Configuration
+**Dark Theme** (default):
+- `bg-canvas`: #171717 (main background)
+- `bg-surface`: #1F1F1F (elevated surfaces)
+- `text-fg-muted`: #ededed (primary text)
+- `text-link`: #A3A3AD (secondary text)
 
-### Environment Variables
-Required for production:
-```bash
-VITE_NODE_ENV=production
-VITE_WALLETCONNECT_PROJECT_ID=your_project_id
-VITE_SOLANA_RPC=https://api.mainnet-beta.solana.com
-```
+**Brand Colors**:
+- `turbo-red`: #FE0230 (primary brand color for all accents)
+- `turbo-green`: #18A957 (success states only)
+- `turbo-blue`: #3142C4 (informational, limited use)
 
-Service endpoints (optional - have defaults):
-```bash
-VITE_PAYMENT_SERVICE_URL=https://payment.ardrive.io
-VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
-```
+**Typography**:
+- **Font**: Rubik (@fontsource/rubik) throughout
+- **Responsive**: Mobile-first breakpoints
+- **Copy Pattern**: `<CopyButton textToCopy={value} />` for all copyable content
 
-## Current Features & Status
-
-### ✅ Completed Features
-- **Buy Credits (TopUpPage)**: Stripe checkout with enhanced UI, credit calculations, info cards
-- **Upload Files (UploadPage)**: Progress tracking, transaction IDs, technical feature cards
-- **Share Credits (ShareCreditsPage)**: Credit delegation with enhanced forms and validation
-- **Send Gift (GiftPage)**: Email-based credit gifting with professional form styling
-- **Redeem Gift (RedeemPage)**: Enhanced gift code redemption with icons and validation
-- **Manage Domains (DomainsPage)**: ArNS name search with enhanced styling (purchase not connected)
-- **Developer Resources**: Tabbed interface (Quick Start, API Endpoints, Guides) with copy buttons
-- **Balance Checker**: Multi-chain wallet balance lookup with technical info cards
-- **Pricing Calculator**: Enhanced storage cost calculator with CTAs
-- **Service Information**: Real-time gateway metrics, service information and technical configuration
-- **ArNS Names**: Primary name display throughout UI with caching
-
-### Current Navigation Structure
-- **Waffle Menu**: Single unified dropdown replacing previous separate dropdowns
-  - **Account Services** (login required): Buy Credits, Upload Files, Share Credits, Send Gift, Manage Domains
-  - **Public Tools**: Developer Resources, Pricing Calculator, Balance Checker, Redeem Gift
-- **Profile Dropdown**: Balance display with refresh, ArNS name, wallet address, disconnect
-- **Page Structure**: All services are standalone pages (TopUpPage, UploadPage, ShareCreditsPage, etc.)
-- **URL Parameters**: Support for deep linking to specific pages (`?page=redeem`)
-- **Mobile Responsive**: Dropdown positioning optimized to prevent viewport overflow
-
-### Input Validation Patterns
-Credit amount inputs use controlled text inputs with:
-- Text state + numeric state separation
-- onBlur validation and cleanup
-- Min/max enforcement
-- Clear error messaging
-- Proper decimal handling
-
-Example:
+#### Input Validation Pattern
+Credit amount inputs use controlled pattern:
 ```typescript
 const [creditAmountInput, setCreditAmountInput] = useState('1');
 const [creditAmount, setCreditAmount] = useState(10);
 
-onChange={(e) => {
-  const inputValue = e.target.value;
-  setCreditAmountInput(inputValue);
-  const amount = Number(inputValue);
-  if (!isNaN(amount) && amount >= 0) {
-    setCreditAmount(amount);
-  }
-}}
-
+// Text state for display, numeric state for logic
+onChange={(e) => setCreditAmountInput(e.target.value)}
 onBlur={() => {
-  // Validate and clean up
-  if (creditAmount < min) {
-    setCreditAmount(min);
-    setCreditAmountInput(String(min));
-  }
+  // Validation and cleanup on blur
+  const amount = Number(creditAmountInput);
+  if (amount >= minAmount) setCreditAmount(amount);
 }}
 ```
 
-## Known Issues & TODOs
+## Environment Configuration
 
-### Functionality
-- Crypto payments UI ready but not connected to backend
-- Share Credits requires Wander wallet (no Ethereum/Solana signer support)
-- ArNS domain purchase not yet connected
-- Upload limited to Arweave wallets only
-- Wallet-specific signer limitations in useFileUpload.ts
+### Required Variables
+```bash
+# Node environment
+VITE_NODE_ENV=production
 
-### Critical Dependencies
-Key packages that drive core functionality:
-- `@ardrive/turbo-sdk`: Core Turbo services integration
-- `@ar.io/sdk`: ArNS name resolution and domain management  
+# Wallet integrations  
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id
+VITE_SOLANA_RPC=https://api.mainnet-beta.solana.com
+
+# Service endpoints (have defaults)
+VITE_PAYMENT_SERVICE_URL=https://payment.ardrive.io
+VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
+```
+
+### Vite Configuration
+- **Port 3000**: Dev server with `host: true` for network access
+- **Node Polyfills**: Buffer, global, process for crypto operations
+- **Path Aliases**: `@` resolves to `./src`
+- **WalletConnect Fixes**: Specific resolution workarounds
+- **External Modules**: fs, path, os, crypto excluded from bundle
+
+## Key Dependencies
+
+### Core Integration
+- `@ardrive/turbo-sdk`: Turbo services integration
+- `@ar.io/sdk`: ArNS name resolution and domain management
 - `wagmi`: Ethereum wallet integration and Web3 functionality
 - `@solana/wallet-adapter-*`: Solana wallet ecosystem
 - `zustand`: Global state management with persistence
+
+### UI & Data
 - `@tanstack/react-query`: Server state management and caching
 - `@stripe/react-stripe-js`: Payment processing
 - `@headlessui/react`: Unstyled UI components (dropdowns, modals)
+- `lucide-react`: Icon system
+- `tailwindcss`: Styling framework
 
-### TypeScript
-- Several `any` types need proper interfaces, especially in payment-related state
-- API response types need to be defined
+## Current Status
 
-### Error Handling
-- Console.error calls need user-facing error messages
-- Network errors need better recovery flows
-- Form validation messages need consistency
+### ✅ Completed Features
+- Multi-chain wallet authentication (Arweave, Ethereum, Solana)
+- Buy Credits with Stripe checkout
+- File upload with progress tracking (Arweave wallets only)
+- Credit sharing between wallets (Wander wallet required for signing)
+- Gift credit system (send/redeem)
+- ArNS name display with caching
+- Balance checking for any wallet
+- Developer resources with API documentation
+- Pricing calculator with storage estimates
+- Services calculator with combined storage + ArNS pricing
+- Gateway information display
 
-### Performance
-- Large file uploads (>10GB) need chunking implementation
-- Images could benefit from lazy loading
+### ⚠️ Known Limitations
+- **Crypto Payments**: UI ready, backend integration pending
+- **Share Credits**: Requires Wander wallet for transaction signing
+- **ArNS Purchase**: Search UI ready, purchase not connected
+- **Upload Restrictions**: Limited to Arweave wallets only
+- **Deploy Site**: Feature temporarily disabled
 
-### Testing
-- No test infrastructure exists
-- Critical flows need unit tests
-- Component testing setup needed
-
-## Common Tasks
-
-### Adding a New Service Page
-1. Create page in `src/pages/` (e.g., `NewServicePage.tsx`) using standard template:
-   ```jsx
-   import NewServicePanel from '../components/panels/NewServicePanel';
-   
-   export default function NewServicePage() {
-     return (
-       <div>
-         <div className="rounded-lg border border-default bg-canvas">
-           <div className="p-8">
-             <NewServicePanel />
-           </div>
-         </div>
-       </div>
-     );
-   }
-   ```
-2. Create panel component in `src/components/panels/` following design pattern
-3. Add route to `App.tsx` in renderPage() function
-4. Add service to Header.tsx accountServices or utilityServices array
-5. Update TypeScript types in App.tsx and Header.tsx
-
-### Adding Wallet Support
-1. Update `WalletProviders.tsx` with new provider
-2. Add connection logic in `WalletSelectionModal.tsx`
-3. Update store with new wallet type
-4. Handle signer creation in `useFileUpload.ts` if needed
-
-### Modifying Payment Flow
-1. Payment service calls in `paymentService.ts`
-2. Stripe checkout in `TopUpPanel.tsx`
-3. Success callbacks handled in `App.tsx`
-4. Balance refresh via custom event
-
-### Updating Navigation
-1. Service arrays in `Header.tsx` (accountServices for logged-in, utilityServices for public)
-2. Page routing in `App.tsx` renderPage() function  
-3. Profile dropdown in `Header.tsx`
-4. TypeScript types for PageType and HeaderProps
-5. URL parameter handling in `App.tsx` useEffect hook
+### 🔄 Wallet Capability Matrix
+| Feature | Arweave | Ethereum | Solana |
+|---------|---------|----------|--------|
+| Buy Credits | ✅ | ✅ | ✅ |
+| Upload Files | ✅ | ❌ | ❌ |
+| Share Credits | ✅ | ❌ | ❌ |
+| ArNS Names | ✅ | ✅ | ❌ |
 
 ## Development Best Practices
 
 ### File Upload Development
-When working with file uploads, remember:
-- Only Arweave wallets can upload files (window.arweaveWallet required)
-- Ethereum/Solana wallets can only fund credits, not upload
-- Upload progress tracking is handled in useFileUpload hook
+- Only Arweave wallets (`window.arweaveWallet`) can upload files
+- Use `useFileUpload` hook for proper multi-chain signer creation
+- Progress tracking includes both signing and upload phases
 - Error handling includes per-file error states
-- Transaction IDs link to Arweave explorer
 
-### State Management Guidelines
-- Use Zustand store for wallet connection and persistent data
-- Payment state is ephemeral and cleared after transactions
-- ArNS names are cached for 1 hour to reduce API calls
-- Balance refresh via custom events (refresh-balance)
-
-### Wallet Integration Notes
-- Each wallet type requires different signer configuration
-- Test all wallet types when making changes to upload/payment flows  
-- WalletConnect requires VITE_WALLETCONNECT_PROJECT_ID
-- Solana RPC endpoint configurable via VITE_SOLANA_RPC
-
-### Component Consistency
-- All service panels follow the inline header pattern with gradient containers
-- Consistent red/white/charcoal color theme throughout
-- Enhanced form styling with focus states using `focus:border-turbo-red`
-- Copy buttons for all address/ID displays  
-- Modal system based on BaseModal component
-- Info cards pattern for technical features and explanations
+### State Management
+- Persistent state: wallet info, ArNS cache, upload history
+- Ephemeral state: balances, payment flows, UI state
+- Custom events for cross-component communication (`refresh-balance`)
+- 1-hour cache for ArNS name resolution
 
 ### API Endpoint Display
-When showing API endpoints in JSX, escape curly braces for path parameters:
+When showing API endpoints in JSX, escape curly braces:
 ```jsx
 // Correct - displays {txId} in browser
 <code>/endpoint/{"{txId}"}</code>
 
-// Incorrect - causes JavaScript errors  
+// Incorrect - causes JavaScript errors
 <code>/endpoint/{txId}</code>
 ```
+
+### Component Creation
+- Follow service panel design pattern for consistency
+- Use Turbo red (#FE0230) for all primary accents
+- Implement proper loading states and error handling
+- Include copy buttons for all addresses/IDs
+- Test with all supported wallet types
+
+### TypeScript Patterns
+- Use strict types for wallet types: `'arweave' | 'ethereum' | 'solana' | null`
+- Proper interfaces for API responses (many use `any` currently)
+- PageType union for routing
+- Consistent error handling with user-friendly messages

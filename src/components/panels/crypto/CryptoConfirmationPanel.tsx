@@ -1,9 +1,8 @@
-import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
-import { useEffect, useState } from 'react';
+import { TurboFactory, ArconnectSigner, USD, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { useEffect, useState, useCallback } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import { turboConfig, tokenLabels, SupportedTokenType } from '../../../constants';
-import { useCryptoForFiat } from '../../../hooks/useCryptoForFiat';
+import { turboConfig, tokenLabels, tokenNetworkLabels, SupportedTokenType } from '../../../constants';
 
 interface CryptoConfirmationPanelProps {
   usdAmount: number;
@@ -24,13 +23,73 @@ export default function CryptoConfirmationPanel({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   
-  const { data: quote, isLoading: quoteLoading, refetch: refreshQuote } = useCryptoForFiat();
+  // Quote state
+  const [quote, setQuote] = useState<{
+    tokenAmount: number;
+    credits: number;
+    gigabytes: number;
+  } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Fetch quote from Turbo SDK
+  const fetchQuote = useCallback(async () => {
+    if (!usdAmount || usdAmount <= 0) {
+      setQuote(null);
+      return;
+    }
+
+    setQuoteLoading(true);
+    setPaymentError(undefined);
+
+    try {
+      const turbo = TurboFactory.unauthenticated({
+        ...turboConfig,
+        token: tokenType as any,
+      });
+
+      // Get winc for USD amount (this is our target)
+      const wincForFiat = await turbo.getWincForFiat({
+        amount: USD(usdAmount),
+      });
+
+      const targetWinc = Number(wincForFiat.winc);
+      const credits = targetWinc / 1_000_000_000_000;
+      const gigabytes = credits * 0.000268;
+
+      // Simple estimation for display - Turbo SDK will handle exact amounts
+      let tokenAmount = 0;
+      switch (tokenType) {
+        case 'arweave': tokenAmount = usdAmount * 0.05; break;
+        case 'ario': tokenAmount = usdAmount * 50; break;
+        case 'ethereum': tokenAmount = usdAmount * 0.0003; break;
+        case 'base-eth': tokenAmount = usdAmount * 0.0003; break;
+        case 'solana': tokenAmount = usdAmount * 0.004; break;
+      }
+
+      setQuote({ tokenAmount, credits, gigabytes });
+    } catch (error) {
+      console.error('Error fetching quote:', error);
+      setPaymentError('Failed to get pricing quote. Please try again.');
+      setQuote(null);
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, [usdAmount, tokenType]);
+
+  const refreshQuote = () => {
+    fetchQuote();
+  };
+
+  // Fetch quote on mount and when parameters change
+  useEffect(() => {
+    fetchQuote();
+  }, [fetchQuote]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -132,6 +191,9 @@ export default function CryptoConfirmationPanel({
               <div className="text-4xl font-bold text-turbo-red mb-2">
                 {quote.tokenAmount.toFixed(6)} {tokenLabels[tokenType]}
               </div>
+              <div className="text-sm text-link mb-2">
+                on {tokenNetworkLabels[tokenType]}
+              </div>
               <div className="text-lg text-fg-muted">
                 = ${usdAmount} = {quote.credits.toFixed(4)} Credits
               </div>
@@ -171,8 +233,8 @@ export default function CryptoConfirmationPanel({
             <h4 className="font-medium text-fg-muted mb-1">Payment Method</h4>
             <p className="text-sm text-link">
               {canPayDirectly 
-                ? `Direct payment using your ${tokenLabels[tokenType]} balance`
-                : `Manual transfer of ${tokenLabels[tokenType]} tokens required`
+                ? `Direct payment using your ${tokenLabels[tokenType]} balance on ${tokenNetworkLabels[tokenType]}`
+                : `Manual transfer of ${tokenLabels[tokenType]} on ${tokenNetworkLabels[tokenType]} required`
               }
             </p>
             {!canPayDirectly && (

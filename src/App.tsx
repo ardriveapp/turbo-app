@@ -8,11 +8,12 @@ import ShareCreditsPage from './pages/ShareCreditsPage';
 import GiftPage from './pages/GiftPage';
 import DomainsPage from './pages/DomainsPage';
 import CalculatorPage from './pages/CalculatorPage';
+import ServicesCalculatorPage from './pages/ServicesCalculatorPage';
 import BalanceCheckerPage from './pages/BalanceCheckerPage';
 import RedeemPage from './pages/RedeemPage';
 import { DeveloperPage } from './pages/DeveloperPage';
 import GatewayInfoPage from './pages/GatewayInfoPage';
-// import DeploySitePage from './pages/DeploySitePage';
+import DeploySitePage from './pages/DeploySitePage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
 
@@ -68,6 +69,8 @@ export function App() {
 
   // Simple routing - you could also use React Router for this
   const renderPage = () => {
+    console.log('🔍 App.tsx renderPage - currentPage is:', currentPage);
+    
     if (currentPage === 'topup') {
       return <TopUpPage />;
     }
@@ -77,7 +80,8 @@ export function App() {
     }
     
     if (currentPage === 'deploy') {
-      return <div className="text-center py-12"><p>Deploy Site feature temporarily disabled</p></div>;
+      console.log('✅ App.tsx - Rendering DeploySitePage!');
+      return <DeploySitePage />;
     }
     
     if (currentPage === 'share') {
@@ -118,6 +122,7 @@ export function App() {
   
   // Helper for Header to set page  
   const handleSetPage = (page: PageType) => {
+    console.log('🎯 App.tsx - handleSetPage called with:', page);
     setCurrentPage(page);
   };
 

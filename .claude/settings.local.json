@@ -11,7 +11,9 @@
       "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
       "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
       "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/animations/**)",
-      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/animations/**)"
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/animations/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/fiat/**)"
     ],
     "deny": [],
     "ask": []

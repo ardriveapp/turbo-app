@@ -28,7 +28,7 @@ export const maxARAmount = 200;
 export const minUSDAmount = 5;
 
 // Turbo wallet addresses URL
-export const TURBO_WALLETS_URL = defaultPaymentServiceUrl + '/wallets';
+export const TURBO_WALLETS_URL = defaultPaymentServiceUrl + '/v1/wallets';
 
 // Crypto token configuration - matching reference app
 export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'matic', 'pol'] as const;
@@ -38,12 +38,36 @@ export type SupportedTokenType = typeof supportedCryptoTokens[number];
 export const tokenLabels: Record<SupportedTokenType, string> = {
   arweave: 'AR',
   ario: 'ARIO', 
-  ethereum: 'ETH',
-  'base-eth': 'ETH', // Base network ETH
+  ethereum: 'ETH (L1)',
+  'base-eth': 'ETH (Base)', // Base network ETH
   solana: 'SOL',
   kyve: 'KYVE',
   matic: 'MATIC',
   pol: 'POL',
+} as const;
+
+// Detailed network labels for UI contexts
+export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
+  arweave: 'Arweave Network',
+  ario: 'Arweave Network', 
+  ethereum: 'Ethereum Mainnet (L1)',
+  'base-eth': 'Base Network (L2)',
+  solana: 'Solana Network',
+  kyve: 'KYVE Network',
+  matic: 'Polygon Network',
+  pol: 'Polygon Network',
+} as const;
+
+// Network descriptions for user clarity
+export const tokenNetworkDescriptions: Record<SupportedTokenType, string> = {
+  arweave: 'Native Arweave tokens on the Arweave blockchain',
+  ario: 'AR.IO tokens on the Arweave blockchain',
+  ethereum: 'ETH on Ethereum Layer 1 mainnet (higher fees)',
+  'base-eth': 'ETH on Base Layer 2 network (lower fees)',
+  solana: 'Native SOL tokens on the Solana blockchain',
+  kyve: 'KYVE tokens on the KYVE network',
+  matic: 'MATIC tokens on the Polygon network',
+  pol: 'POL tokens on the Polygon network',
 } as const;
 
 // Preset amounts for each token type

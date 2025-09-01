@@ -89,7 +89,7 @@ export function useUploadStatus() {
   const getStatusColor = useCallback((status: string, info?: string) => {
     if (status === 'FINALIZED' || info === 'permanent') return 'text-turbo-green';
     if (status === 'CONFIRMED' && info === 'pending') return 'text-yellow-500'; // Most common - use yellow
-    if (status === 'CONFIRMED') return 'text-turbo-blue'; // Other confirmed states
+    if (status === 'CONFIRMED') return 'text-blue-400'; // Other confirmed states - lighter blue for better readability
     if (status === 'FAILED') return 'text-red-500';
     if (status === 'NOT_FOUND') return 'text-link';
     return 'text-yellow-500';

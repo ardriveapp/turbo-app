@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
-import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, SupportedTokenType, defaultPaymentServiceUrl } from '../../constants';
+import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType, defaultPaymentServiceUrl } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../constants';
@@ -31,6 +31,38 @@ export default function TopUpPanel() {
   // State for crypto amounts
   const [cryptoAmount, setCryptoAmount] = useState<number>(0);
   const [cryptoLoading, setCryptoLoading] = useState(false);
+  
+  // Helper function to get token amount for USD amount
+  const getTokenAmountForUSD = async (usdAmount: number, tokenType: SupportedTokenType): Promise<number> => {
+    try {
+      const turbo = TurboFactory.unauthenticated({
+        ...turboConfig,
+        token: tokenType as any,
+      });
+      
+      const wincForFiat = await turbo.getWincForFiat({
+        amount: USD(usdAmount),
+      });
+      
+      const targetWinc = Number(wincForFiat.winc);
+      const PAYMENT_SERVICE_FQDN = defaultPaymentServiceUrl.replace('https://', '');
+      
+      // Quick estimation using 1 token unit as baseline
+      const url = `https://${PAYMENT_SERVICE_FQDN}/v1/price/${tokenType}/1`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const result = await response.json();
+        const wincPerToken = Number(result.winc);
+        if (wincPerToken > 0) {
+          return targetWinc / wincPerToken;
+        }
+      }
+      
+      return 0;
+    } catch (error) {
+      return 0;
+    }
+  };
 
   const presetAmounts = [10, 25, 50, 100, 250, 500];
 
@@ -188,11 +220,13 @@ export default function TopUpPanel() {
   const getWalletRequirementMessage = (tokenType: SupportedTokenType): string => {
     switch (tokenType) {
       case 'arweave':
+        return 'Connect an Arweave wallet (like Wander) to pay with AR tokens on Arweave';
       case 'ario':
-        return 'Connect an Arweave wallet (like ArConnect) to pay with AR or ARIO tokens';
+        return 'Connect an Arweave wallet (like Wander) to pay with ARIO tokens';
       case 'ethereum':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Ethereum L1 (higher fees)';
       case 'base-eth':
-        return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH or ETH on Base';
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Base L2 (lower fees)';
       case 'solana':
         return 'Connect a Solana wallet (like Phantom) to pay with SOL tokens';
       default:
@@ -200,56 +234,9 @@ export default function TopUpPanel() {
     }
   };
 
-  // Calculate crypto amount for USD equivalent
-  const calculateCryptoAmount = useCallback(async () => {
-    if (paymentMethod !== 'crypto' || !usdAmount || usdAmount <= 0) {
-      setCryptoAmount(0);
-      return;
-    }
-
-    setCryptoLoading(true);
-    try {
-      const turbo = TurboFactory.unauthenticated({
-        ...turboConfig,
-        token: selectedTokenType as any,
-      });
-      
-      // Get winc for USD amount
-      const wincForFiat = await turbo.getWincForFiat({
-        amount: USD(usdAmount),
-      });
-
-      // Use the payment service API to get token amount for this winc value
-      const PAYMENT_SERVICE_FQDN = defaultPaymentServiceUrl.replace('https://', '');
-      
-      // Simplified conversion - in production this should use proper Turbo SDK methods
-      let estimatedTokenAmount = 0;
-      switch (selectedTokenType) {
-        case 'arweave':
-          estimatedTokenAmount = usdAmount * 0.05;
-          break;
-        case 'ario':
-          estimatedTokenAmount = usdAmount * 100;
-          break;
-        case 'ethereum':
-          estimatedTokenAmount = usdAmount * 0.0003;
-          break;
-        case 'base-eth':
-          estimatedTokenAmount = usdAmount * 0.0003;
-          break;
-        case 'solana':
-          estimatedTokenAmount = usdAmount * 0.005;
-          break;
-      }
-      
-      setCryptoAmount(estimatedTokenAmount);
-    } catch (error) {
-      console.error('Error calculating crypto amount:', error);
-      setCryptoAmount(0);
-    } finally {
-      setCryptoLoading(false);
-    }
-  }, [paymentMethod, usdAmount, selectedTokenType]);
+  // The reference app doesn't do USD->Crypto conversion
+  // Instead, crypto mode lets users enter token amounts directly
+  // We should simplify this to match the reference pattern
 
   // Auto-select token based on wallet type
   useEffect(() => {
@@ -259,10 +246,6 @@ export default function TopUpPanel() {
     }
   }, [walletType, getAvailableTokens]);
 
-  // Update crypto amount when USD amount or token changes
-  useEffect(() => {
-    calculateCryptoAmount();
-  }, [calculateCryptoAmount]);
 
   // Render crypto flow screens
   if (paymentMethod === 'crypto' && cryptoFlowStep !== 'selection') {
@@ -280,6 +263,7 @@ export default function TopUpPanel() {
         return (
           <CryptoManualPaymentPanel
             cryptoTopupValue={cryptoPaymentResult?.quote?.tokenAmount || 0}
+            tokenType={selectedTokenType}
             onBack={handleCryptoBackToSelection}
             onComplete={handleManualPaymentComplete}
           />
@@ -353,8 +337,8 @@ export default function TopUpPanel() {
                       Connect a wallet that supports the cryptocurrency you want to use:
                     </p>
                     <div className="space-y-2 text-sm text-blue-300">
-                      <div>• <strong>AR or ARIO tokens:</strong> Connect ArConnect wallet</div>
-                      <div>• <strong>ETH or ETH on Base:</strong> Connect MetaMask or Ethereum wallet</div>
+                      <div>• <strong>AR or ARIO tokens:</strong> Connect Wander wallet</div>
+                      <div>• <strong>ETH (L1) or ETH (Base):</strong> Connect MetaMask or Ethereum wallet</div>
                       <div>• <strong>SOL tokens:</strong> Connect Phantom or Solana wallet</div>
                     </div>
                   </div>
@@ -374,7 +358,7 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {getAvailableTokens().map((tokenType) => (
                   <button 
                     key={tokenType}
@@ -382,15 +366,32 @@ export default function TopUpPanel() {
                       setSelectedTokenType(tokenType);
                       setErrorMessage('');
                     }}
-                    className={`p-4 rounded-lg border transition-all font-medium ${
+                    className={`p-4 rounded-lg border transition-all text-left ${
                       selectedTokenType === tokenType
                         ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
                         : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                     }`}
                   >
-                    <div className="text-lg">{tokenLabels[tokenType as keyof typeof tokenLabels]}</div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-bold text-lg">
+                        {tokenLabels[tokenType as keyof typeof tokenLabels]}
+                      </div>
+                      {tokenType === 'base-eth' && (
+                        <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-xs font-medium">
+                          Lower Fees
+                        </div>
+                      )}
+                      {tokenType === 'ethereum' && (
+                        <div className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-md text-xs font-medium">
+                          Higher Fees
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium opacity-90 mb-1">
+                      {tokenNetworkLabels[tokenType]}
+                    </div>
                     <div className="text-xs opacity-75">
-                      {tokenType === 'base-eth' ? 'Base Network' : tokenType.toUpperCase()}
+                      {tokenNetworkDescriptions[tokenType]}
                     </div>
                   </button>
                 ))}
@@ -405,42 +406,23 @@ export default function TopUpPanel() {
           
           {/* Preset Amounts */}
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {presetAmounts.map((amount) => {
-              // Calculate crypto equivalent for this preset amount
-              let cryptoEquivalent = 0;
-              if (paymentMethod === 'crypto') {
-                switch (selectedTokenType) {
-                  case 'arweave': cryptoEquivalent = amount * 0.05; break;
-                  case 'ario': cryptoEquivalent = amount * 100; break;
-                  case 'ethereum': cryptoEquivalent = amount * 0.0003; break;
-                  case 'base-eth': cryptoEquivalent = amount * 0.0003; break;
-                  case 'solana': cryptoEquivalent = amount * 0.005; break;
-                }
-              }
-              
-              return (
-                <button
-                  key={amount}
-                  onClick={() => {
-                    setUsdAmount(amount);
-                    setUsdAmountInput(String(amount));
-                    setErrorMessage('');
-                  }}
-                  className={`py-3 px-3 rounded-lg border transition-all font-medium text-center ${
-                    usdAmount === amount
-                      ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
-                      : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                  }`}
-                >
-                  <div>${amount}</div>
-                  {paymentMethod === 'crypto' && walletType && (
-                    <div className="text-xs opacity-75 mt-1">
-                      {cryptoEquivalent.toFixed(cryptoEquivalent < 1 ? 6 : 2)} {tokenLabels[selectedTokenType as keyof typeof tokenLabels]}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+            {presetAmounts.map((amount) => (
+              <button
+                key={amount}
+                onClick={() => {
+                  setUsdAmount(amount);
+                  setUsdAmountInput(String(amount));
+                  setErrorMessage('');
+                }}
+                className={`py-3 px-3 rounded-lg border transition-all font-medium ${
+                  usdAmount === amount
+                    ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                    : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                }`}
+              >
+                ${amount}
+              </button>
+            ))}
           </div>
           
           {/* Custom Amount Input */}
@@ -473,27 +455,10 @@ export default function TopUpPanel() {
               Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
             </div>
             
-            {/* Show crypto equivalent for custom amount */}
-            {paymentMethod === 'crypto' && walletType && usdAmount > 0 && (
-              <div className="mt-3 p-3 bg-canvas rounded border border-default">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-link">Crypto Amount:</span>
-                  <div className="text-right">
-                    {cryptoLoading ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="w-3 h-3 animate-spin text-turbo-red" />
-                        <span className="text-xs text-link">Calculating...</span>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="font-medium text-fg-muted">
-                          {cryptoAmount.toFixed(cryptoAmount < 1 ? 6 : 4)} {tokenLabels[selectedTokenType as keyof typeof tokenLabels]}
-                        </div>
-                        <div className="text-xs text-link">≈ ${usdAmount}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {/* Note for crypto payments */}
+            {paymentMethod === 'crypto' && walletType && (
+              <div className="mt-3 text-xs text-link text-center">
+                Exact {tokenLabels[selectedTokenType as keyof typeof tokenLabels]} amount will be calculated at checkout
               </div>
             )}
           </div>

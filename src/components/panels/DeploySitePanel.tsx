@@ -1,0 +1,815 @@
+import { useState, useCallback } from 'react';
+import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
+import { useFolderUpload } from '../../hooks/useFolderUpload';
+import { wincPerCredit } from '../../constants';
+import { useStore } from '../../store/useStore';
+import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, FolderOpen, ExternalLink, Home, AlertTriangle } from 'lucide-react';
+import CopyButton from '../CopyButton';
+import { getArweaveUrl } from '../../utils';
+import { useUploadStatus } from '../../hooks/useUploadStatus';
+import ReceiptModal from '../modals/ReceiptModal';
+
+export default function DeploySitePanel() {
+  console.log('⚡ DeploySitePanel is rendering!');
+  const { address, creditBalance } = useStore();
+  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
+  const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
+  const [showStatusGuide, setShowStatusGuide] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
+  const [showFolderContents, setShowFolderContents] = useState(false);
+  const [indexFile, setIndexFile] = useState<string>('');
+  const [fallbackFile, setFallbackFile] = useState<string>('');
+  const wincForOneGiB = useWincForOneGiB();
+  const { deployFolder, deploying, deployResults, reset: resetDeploy } = useFolderUpload();
+  const { 
+    checkUploadStatus, 
+    checkMultipleStatuses, 
+    statusChecking, 
+    uploadStatuses, 
+    getStatusColor,
+    getStatusIcon
+  } = useUploadStatus();
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const items = Array.from(e.dataTransfer.items);
+    const folderItem = items.find(item => item.webkitGetAsEntry?.()?.isDirectory);
+    
+    if (folderItem) {
+      // Handle folder drop - we'll implement this in the hook
+      console.log('Folder dropped:', folderItem);
+    }
+  }, []);
+
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFolder(e.target.files);
+      setDeployMessage(null);
+      
+      // Auto-detect index and fallback files
+      const files = Array.from(e.target.files);
+      autoDetectManifestFiles(files);
+    }
+  };
+
+  // Smart detection for index and fallback files
+  const autoDetectManifestFiles = (files: File[]) => {
+    const htmlFiles = files.filter(file => {
+      const name = file.name.toLowerCase();
+      return name.endsWith('.html') || name.endsWith('.htm');
+    });
+
+    // Auto-detect index file
+    let detectedIndex = '';
+    const indexCandidates = ['index.html', 'index.htm', 'home.html', 'main.html'];
+    for (const candidate of indexCandidates) {
+      const found = htmlFiles.find(file => 
+        file.webkitRelativePath.toLowerCase().endsWith(candidate) ||
+        file.name.toLowerCase() === candidate
+      );
+      if (found) {
+        detectedIndex = found.webkitRelativePath || found.name;
+        break;
+      }
+    }
+
+    // Auto-detect fallback file  
+    let detectedFallback = '';
+    const fallbackCandidates = ['404.html', 'fallback.html', 'error.html', 'not-found.html'];
+    for (const candidate of fallbackCandidates) {
+      const found = htmlFiles.find(file => 
+        file.webkitRelativePath.toLowerCase().endsWith(candidate) ||
+        file.name.toLowerCase() === candidate
+      );
+      if (found) {
+        detectedFallback = found.webkitRelativePath || found.name;
+        break;
+      }
+    }
+
+    setIndexFile(detectedIndex);
+    setFallbackFile(detectedFallback);
+    
+    console.log('Auto-detected manifest files:', { 
+      index: detectedIndex, 
+      fallback: detectedFallback,
+      availableHtmlFiles: htmlFiles.map(f => f.webkitRelativePath || f.name)
+    });
+  };
+
+  const calculateTotalSize = (): number => {
+    if (!selectedFolder) return 0;
+    return Array.from(selectedFolder).reduce((total, file) => total + file.size, 0);
+  };
+
+  const calculateTotalCost = (): number => {
+    if (!wincForOneGiB || !selectedFolder) return 0;
+    
+    // Calculate cost per file, accounting for 100KiB free tier
+    let totalWinc = 0;
+    Array.from(selectedFolder).forEach(file => {
+      if (file.size < 100 * 1024) {
+        // File is under 100KiB - FREE
+        return;
+      } else {
+        // File is over 100KiB - calculate cost
+        const gibSize = file.size / (1024 ** 3);
+        const fileWinc = gibSize * Number(wincForOneGiB);
+        totalWinc += fileWinc;
+      }
+    });
+    
+    return totalWinc / wincPerCredit;
+  };
+
+  // Get file type icon based on extension
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'html':
+      case 'htm':
+        return FileText;
+      case 'css':
+      case 'scss':
+      case 'sass':
+        return Code;
+      case 'js':
+      case 'jsx':
+      case 'ts':
+      case 'tsx':
+        return Code;
+      case 'json':
+        return FileText;
+      case 'md':
+      case 'txt':
+        return FileText;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'gif':
+      case 'svg':
+      case 'webp':
+        return Image;
+      default:
+        return File;
+    }
+  };
+
+  // Organize files into folder structure
+  const organizeFolderStructure = () => {
+    if (!selectedFolder) return {};
+    
+    const structure: Record<string, Array<{ file: File; path: string }>> = {};
+    
+    Array.from(selectedFolder).forEach(file => {
+      const fullPath = file.webkitRelativePath || file.name;
+      const pathParts = fullPath.split('/');
+      const folderPath = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : 'root';
+      
+      if (!structure[folderPath]) {
+        structure[folderPath] = [];
+      }
+      
+      structure[folderPath].push({
+        file,
+        path: fullPath
+      });
+    });
+    
+    return structure;
+  };
+
+  const handleDeploy = async () => {
+    if (!selectedFolder || selectedFolder.length === 0) {
+      setDeployMessage({ type: 'error', text: 'Please select a folder to deploy' });
+      return;
+    }
+
+    if (!address) {
+      setDeployMessage({ type: 'error', text: 'Please connect your wallet first' });
+      return;
+    }
+
+    try {
+      setDeployMessage(null);
+      const result = await deployFolder(Array.from(selectedFolder), {
+        indexFile: indexFile || undefined,
+        fallbackFile: fallbackFile || undefined
+      });
+      
+      if (result.manifestId) {
+        // Clear the folder selection since deployment is complete
+        setSelectedFolder(null);
+        setShowFolderContents(false);
+        setIndexFile('');
+        setFallbackFile('');
+        // Success message is redundant - results show everything
+      }
+    } catch (error) {
+      console.error('Deploy failed:', error);
+      setDeployMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Deploy failed' 
+      });
+    }
+  };
+
+  if (!address) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-xl font-bold mb-4">Connect Wallet Required</h3>
+        <p className="text-link">Connect your Arweave wallet to deploy sites</p>
+      </div>
+    );
+  }
+
+  const totalSize = calculateTotalSize();
+  const totalCost = calculateTotalCost();
+  const folderName = selectedFolder?.[0]?.webkitRelativePath?.split('/')[0] || '';
+
+  return (
+    <div>
+      {/* Inline Header with Description */}
+      <div className="flex items-start gap-3 mb-6">
+        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Globe className="w-5 h-5 text-turbo-red" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-fg-muted mb-1">Deploy Site</h3>
+          <p className="text-sm text-link">
+            Deploy static sites and web apps to the permanent web with automatic manifest generation
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content Container with Gradient */}
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+
+        {/* Current Balance */}
+        <div className="bg-surface rounded-lg p-4 mb-6">
+          <div className="flex justify-between items-center">
+            <span className="text-link">Available Credits:</span>
+            <div className="text-right">
+              <span className="font-bold text-fg-muted">{creditBalance.toFixed(4)} Credits</span>
+              {wincForOneGiB && (
+                <div className="text-xs text-link">
+                  ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Folder Drop Zone */}
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            isDragging
+              ? 'border-turbo-red bg-turbo-red/5'
+              : 'border-link/30 hover:border-turbo-red/50'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <Globe className="w-12 h-12 text-turbo-red mx-auto mb-2" />
+          <p className="text-lg font-medium mb-2">
+            Drop site folder here or click to browse
+          </p>
+          <p className="text-sm text-link mb-4">
+            Select your site folder (HTML, CSS, JS, assets) for permanent deployment
+          </p>
+          <input
+            type="file"
+            {...({ webkitdirectory: 'true', directory: 'true' } as any)}
+            multiple
+            onChange={handleFolderSelect}
+            className="hidden"
+            id="folder-upload"
+          />
+          <label
+            htmlFor="folder-upload"
+            className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+          >
+            Select Site Folder
+          </label>
+        </div>
+
+        {/* Folder Preview with Expandable Tree */}
+        {selectedFolder && selectedFolder.length > 0 && (
+          <div className="mt-6">
+            <div className="bg-surface rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-link uppercase tracking-wider">Selected Folder</span>
+                <button 
+                  onClick={() => {
+                    setSelectedFolder(null);
+                    setDeployMessage(null);
+                    setShowFolderContents(false);
+                    setIndexFile('');
+                    setFallbackFile('');
+                  }}
+                  className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Clear
+                </button>
+              </div>
+
+              {/* Expandable File Tree - Single folder display */}
+                <button
+                  onClick={() => setShowFolderContents(!showFolderContents)}
+                  className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Folder className="w-4 h-4 text-turbo-red" />
+                    <span className="text-sm font-medium text-fg-muted">{folderName}</span>
+                    <span className="text-xs text-link">({selectedFolder?.length} files)</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-link transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showFolderContents && (
+                  <div className="mt-3 p-3 bg-canvas rounded border border-default/30 max-h-60 overflow-y-auto">
+                    <div className="space-y-1 text-xs font-mono">
+                      {(() => {
+                        const structure = organizeFolderStructure();
+                        const sortedFolders = Object.keys(structure).sort();
+                        
+                        return sortedFolders.map(folderPath => (
+                          <div key={folderPath}>
+                            {/* Folder Header */}
+                            {folderPath !== 'root' && (
+                              <div className="flex items-center gap-2 text-turbo-red font-medium mb-1">
+                                <Folder className="w-3 h-3" />
+                                <span>{folderPath}/</span>
+                              </div>
+                            )}
+                            
+                            {/* Files in Folder */}
+                            <div className={folderPath !== 'root' ? 'ml-4 space-y-0.5' : 'space-y-0.5'}>
+                              {structure[folderPath]
+                                .sort((a, b) => a.file.name.localeCompare(b.file.name))
+                                .map(({ file, path }, index) => {
+                                  const FileIcon = getFileIcon(file.name);
+                                  const fileName = path.split('/').pop() || file.name;
+                                  const fileSize = file.size < 1024 
+                                    ? `${file.size}B` 
+                                    : file.size < 1024 * 1024 
+                                    ? `${(file.size / 1024).toFixed(1)}KB`
+                                    : `${(file.size / 1024 / 1024).toFixed(1)}MB`;
+                                  
+                                  const fullPath = file.webkitRelativePath || file.name;
+                                  const isHtml = fileName.toLowerCase().endsWith('.html') || fileName.toLowerCase().endsWith('.htm');
+                                  const isIndex = indexFile === fullPath;
+                                  const isFallback = fallbackFile === fullPath;
+                                  
+                                  return (
+                                    <div key={index} className="flex items-center justify-between text-link hover:text-fg-muted transition-colors py-1 px-1 rounded">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileIcon className="w-3 h-3 text-link flex-shrink-0" />
+                                        <span className="truncate">{fileName}</span>
+                                        
+                                        {/* Badges for selected files */}
+                                        {isIndex && (
+                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
+                                            <Home className="w-3 h-3" />
+                                            INDEX
+                                          </div>
+                                        )}
+                                        {isFallback && (
+                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 text-yellow-600 rounded text-xs font-medium">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            FALLBACK
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="text-link/70 text-xs">
+                                          {fileSize}
+                                          {file.size < 100 * 1024 && <span className="ml-1 text-turbo-green">• FREE</span>}
+                                        </span>
+                                        
+                                        {/* Action buttons for HTML files */}
+                                        {isHtml && (
+                                          <div className="flex items-center gap-1">
+                                            {!isIndex && (
+                                              <button
+                                                onClick={() => setIndexFile(fullPath)}
+                                                className="px-2 py-0.5 text-xs bg-turbo-green/10 text-turbo-green rounded hover:bg-turbo-green/20 transition-colors"
+                                                title="Set as Index"
+                                              >
+                                                Set Index
+                                              </button>
+                                            )}
+                                            {!isFallback && (
+                                              <button
+                                                onClick={() => setFallbackFile(fullPath)}
+                                                className="px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-600 rounded hover:bg-yellow-500/20 transition-colors"
+                                                title="Set as Fallback"
+                                              >
+                                                Set Fallback
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                        
+                                        {/* Clear buttons for selected files */}
+                                        {isIndex && (
+                                          <button
+                                            onClick={() => setIndexFile('')}
+                                            className="px-2 py-0.5 text-xs text-link hover:text-red-400 rounded transition-colors"
+                                            title="Clear Index"
+                                          >
+                                            Clear
+                                          </button>
+                                        )}
+                                        {isFallback && (
+                                          <button
+                                            onClick={() => setFallbackFile('')}
+                                            className="px-2 py-0.5 text-xs text-link hover:text-red-400 rounded transition-colors"
+                                            title="Clear Fallback"
+                                          >
+                                            Clear
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+      </div>
+        
+      {/* Summary Panel - Matching Upload Files */}
+      {selectedFolder && selectedFolder.length > 0 && (
+        <div className="mt-4 p-4 bg-surface rounded-lg">
+            <div className="flex justify-between mb-2">
+              <span className="text-link">Total Size:</span>
+              <span className="font-medium">{(totalSize / 1024 / 1024).toFixed(2)} MB</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-link">Estimated Cost:</span>
+              <span className="font-medium">
+                {totalCost === 0 ? (
+                  <span className="text-turbo-green">FREE</span>
+                ) : (
+                  <span>{totalCost.toFixed(6)} Credits</span>
+                )}
+              </span>
+            </div>
+
+            {/* Deploy Button */}
+            <button
+              onClick={handleDeploy}
+              disabled={deploying || totalCost > creditBalance}
+              className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {deploying ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Deploying Site...
+                </>
+              ) : (
+                <>
+                  <Globe className="w-5 h-5" />
+                  Deploy to Permanent Web
+                </>
+              )}
+            </button>
+
+            {/* Insufficient Credits Warning */}
+            {totalCost > creditBalance && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      {/* Deploy Message */}
+      {deployMessage && (
+        <div className={`mt-4 p-3 rounded-lg ${
+          deployMessage.type === 'error' 
+            ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+            : deployMessage.type === 'success'
+            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
+            : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+        }`}>
+          {deployMessage.text}
+        </div>
+      )}
+
+      {/* Deploy Results - Unified with Upload Results */}
+      {deployResults.length > 0 && (
+        <div className="bg-surface rounded-lg p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h4 className="font-bold text-fg-muted flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-turbo-green" />
+              Site Deployment Results
+            </h4>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  // Check status for all deployed items (manifest + files)
+                  const allIds = deployResults.flatMap(result => {
+                    if (result.type === 'manifest') return result.id ? [result.id] : [];
+                    if (result.type === 'files') return result.files?.map(f => f.id) || [];
+                    return [];
+                  });
+                  checkMultipleStatuses(allIds);
+                }}
+                disabled={Object.values(statusChecking).some(checking => checking)}
+                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
+                <span className="hidden xs:inline">Check Status</span>
+                <span className="xs:hidden">Status</span>
+              </button>
+              <button
+                onClick={resetDeploy}
+                className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
+              >
+                <XCircle className="w-3 h-3" />
+                <span className="hidden xs:inline">Clear Results</span>
+                <span className="xs:hidden">Clear</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {deployResults.map((result, index) => (
+              <div key={index}>
+                {/* Manifest Result - Special but Unified Styling */}
+                {result.type === 'manifest' && result.id && (
+                  <div className="bg-canvas rounded-lg p-3 sm:p-4 border-2 border-turbo-green/50 bg-gradient-to-br from-turbo-green/5 to-transparent overflow-hidden">
+                    <div className="space-y-3">
+                      {/* Manifest Badge */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-2 py-1 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
+                          <Globe2 className="w-3 h-3" />
+                          SITE MANIFEST
+                        </div>
+                      </div>
+                      
+                      {/* Transaction ID */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="font-mono text-sm text-fg-muted">
+                            {result.id.substring(0, 6)}...
+                          </div>
+                          <CopyButton textToCopy={result.id} />
+                          {uploadStatuses[result.id] && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs">
+                                {getStatusIcon(uploadStatuses[result.id].status, uploadStatuses[result.id].info)} 
+                              </span>
+                              <span className={`text-xs font-medium ${getStatusColor(uploadStatuses[result.id].status, uploadStatuses[result.id].info)}`}>
+                                {uploadStatuses[result.id].status}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Manifest Actions */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setShowReceiptModal(result.id || null)}
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                            title="View Receipt"
+                          >
+                            <Receipt className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => result.id && checkUploadStatus(result.id)}
+                            disabled={result.id ? !!statusChecking[result.id] : false}
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                            title="Check Status"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${result.id && statusChecking[result.id] ? 'animate-spin' : ''}`} />
+                          </button>
+                          <a
+                            href={getArweaveUrl(result.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 px-3 py-1.5 bg-turbo-green text-white rounded hover:bg-turbo-green/90 transition-colors text-xs font-medium"
+                            title="Visit Deployed Site"
+                          >
+                            <Globe className="w-3 h-3" />
+                            <span>Visit Site</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Individual Files - Same as Upload Results */}
+                {result.type === 'files' && result.files && result.files.length > 0 && (
+                  <details className="bg-canvas rounded-lg border border-default/30">
+                    <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
+                      <Folder className="w-4 h-4" />
+                      Site Files ({result.files.length})
+                      <ChevronDown className="w-3 h-3 text-link ml-auto" />
+                    </summary>
+                    <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
+                      {result.files.map((file, fileIndex) => {
+                        const status = uploadStatuses[file.id];
+                        const isChecking = statusChecking[file.id];
+                        
+                        return (
+                          <div key={fileIndex} className="bg-surface rounded-lg p-3 border border-default/30">
+                            <div className="space-y-2">
+                              {/* File Info */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-mono text-sm text-fg-muted">
+                                      {file.id.substring(0, 6)}...
+                                    </div>
+                                    <CopyButton textToCopy={file.id} />
+                                  </div>
+                                  <span className="text-xs text-link truncate" title={file.path}>
+                                    {file.path}
+                                  </span>
+                                  {status && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs">
+                                        {getStatusIcon(status.status, status.info)} 
+                                      </span>
+                                      <span className={`text-xs font-medium ${getStatusColor(status.status, status.info)}`}>
+                                        {status.status}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* File Actions */}
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setShowReceiptModal(file.id)}
+                                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                    title="View Receipt"
+                                  >
+                                    <Receipt className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => checkUploadStatus(file.id)}
+                                    disabled={isChecking}
+                                    className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                                    title="Check Status"
+                                  >
+                                    <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                  </button>
+                                  <a
+                                    href={getArweaveUrl(file.id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                    title="View File"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Collapsible Status Guide */}
+          <div className="mt-4">
+            <button
+              onClick={() => setShowStatusGuide(!showStatusGuide)}
+              className="w-full flex items-center justify-between p-3 bg-canvas rounded-lg border border-default/30 hover:border-default/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-turbo-red" />
+                <span className="text-sm font-medium text-fg-muted">Deployment Guide</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-link transition-transform ${showStatusGuide ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showStatusGuide && (
+              <div className="mt-2 p-4 bg-surface/50 rounded-lg border border-default/30">
+                <div className="text-xs text-link space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span>🌐</span>
+                    <div>
+                      <strong className="text-fg-muted">Manifest</strong> - The main site link that serves your deployed application
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span>📁</span>
+                    <div>
+                      <strong className="text-fg-muted">Individual Files</strong> - Each file gets its own permanent transaction ID
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span>🔗</span>
+                    <div>
+                      <strong className="text-fg-muted">Relative Paths</strong> - Folder structure is preserved for proper site navigation
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span>⚡</span>
+                    <div>
+                      <strong className="text-fg-muted">Instant Access</strong> - Site is immediately accessible via manifest link
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Technical Features */}
+      <div className="grid md:grid-cols-3 gap-4 mt-6">
+        <div className="bg-surface rounded-lg p-4 border border-default">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Globe className="w-5 h-5 text-turbo-red" />
+            </div>
+            <div>
+              <h4 className="font-bold text-fg-muted mb-1 text-sm">Permanent Deployment</h4>
+              <p className="text-xs text-link">
+                Sites are permanently stored on Arweave - no expiration dates or hosting fees.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-surface rounded-lg p-4 border border-default">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Shield className="w-5 h-5 text-turbo-red" />
+            </div>
+            <div>
+              <h4 className="font-bold text-fg-muted mb-1 text-sm">Immutable Content</h4>
+              <p className="text-xs text-link">
+                Deployed sites cannot be censored, taken down, or modified - guaranteed permanence.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-surface rounded-lg p-4 border border-default">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Folder className="w-5 h-5 text-turbo-red" />
+            </div>
+            <div>
+              <h4 className="font-bold text-fg-muted mb-1 text-sm">Folder Structure Preserved</h4>
+              <p className="text-xs text-link">
+                Relative paths and folder hierarchy maintained for proper site navigation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Receipt Modal */}
+      {showReceiptModal && (
+        <ReceiptModal
+          onClose={() => setShowReceiptModal(null)}
+          receipt={deployResults.find(r => 
+            (r.type === 'manifest' && r.id === showReceiptModal) || 
+            (r.type === 'files' && r.files?.find(f => f.id === showReceiptModal))
+          )}
+          uploadId={showReceiptModal}
+          initialStatus={uploadStatuses[showReceiptModal]}
+        />
+      )}
+    </div>
+  );
+}

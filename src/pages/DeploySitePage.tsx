@@ -1,9 +1,14 @@
-// import DeploySitePanel from '../components/panels/DeploySitePanel';
+import DeploySitePanel from '../components/panels/DeploySitePanel';
 
 export default function DeploySitePage() {
+  console.log('🚀 DeploySitePage is rendering!');
   return (
-    <div className="text-center py-12">
-      <p>Deploy Site feature temporarily disabled while fixing JSX syntax issues</p>
+    <div>
+      <div className="rounded-lg border border-default bg-canvas">
+        <div className="p-8">
+          <DeploySitePanel />
+        </div>
+      </div>
     </div>
   );
 }

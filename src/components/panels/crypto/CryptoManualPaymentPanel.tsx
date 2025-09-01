@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, Copy, AlertTriangle, RefreshCw } from 'lucide-react';
-import { tokenLabels, errorSubmittingTransactionToTurbo, defaultPaymentServiceUrl } from '../../../constants';
+import { tokenLabels, tokenNetworkLabels, errorSubmittingTransactionToTurbo, defaultPaymentServiceUrl, SupportedTokenType } from '../../../constants';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../../constants';
 import useAddressState, { TransferTransactionResult } from '../../../hooks/useAddressState';
@@ -11,12 +11,14 @@ import CopyButton from '../../CopyButton';
 
 interface CryptoManualPaymentPanelProps {
   cryptoTopupValue: number; // Amount in tokens, not quote object
+  tokenType: SupportedTokenType; // The selected token type (ethereum, base-eth, etc.)
   onBack: () => void;
   onComplete: () => void;
 }
 
 export default function CryptoManualPaymentPanel({
   cryptoTopupValue,
+  tokenType,
   onBack,
   onComplete
 }: CryptoManualPaymentPanelProps) {
@@ -28,7 +30,7 @@ export default function CryptoManualPaymentPanel({
   const [paymentError, setPaymentError] = useState<string>();
   const [signingMessage, setSigningMessage] = useState<string>();
 
-  const turboWallet = address && turboWallets ? turboWallets[address.token] : undefined;
+  const turboWallet = address && turboWallets ? turboWallets[tokenType] : undefined;
   
   // Get unauthenticated Turbo client for submitting fund transactions
   const turboUnauthenticatedClient = TurboFactory.unauthenticated(turboConfig);
@@ -94,7 +96,7 @@ export default function CryptoManualPaymentPanel({
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Submit Transactions</h3>
-          <p className="text-sm text-link">Complete your {address ? tokenLabels[address.token] : 'crypto'} payment to Turbo</p>
+          <p className="text-sm text-link">Complete your {tokenLabels[tokenType]} payment on {tokenNetworkLabels[tokenType]} to Turbo</p>
         </div>
       </div>
 
@@ -102,7 +104,7 @@ export default function CryptoManualPaymentPanel({
       <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6">
         <div className="text-center">
           <div className="text-2xl font-bold text-turbo-red mb-1">
-            {cryptoTopupValue} {address ? tokenLabels[address.token] : 'TOKEN'}
+            {Number(cryptoTopupValue).toFixed(6)} {tokenLabels[tokenType]}
           </div>
           <div className="text-sm text-link">Payment amount required</div>
         </div>
@@ -121,10 +123,10 @@ export default function CryptoManualPaymentPanel({
             </div>
             <div>
               <h4 className="font-medium text-fg-muted">
-                Send {address ? tokenLabels[address.token] : 'TOKEN'} to Turbo
+                Send {tokenLabels[tokenType]} to Turbo
               </h4>
               <p className="text-sm text-link">
-                Transfer {cryptoTopupValue} {address ? tokenLabels[address.token] : 'TOKEN'} from your wallet
+                Transfer {Number(cryptoTopupValue).toFixed(6)} {tokenLabels[tokenType]} from your wallet
               </p>
             </div>
           </div>
@@ -133,7 +135,7 @@ export default function CryptoManualPaymentPanel({
             <div className="space-y-4">
               <div className="bg-canvas rounded-lg p-4 border border-default">
                 <p className="text-sm text-link mb-2">
-                  This step sends {address ? tokenLabels[address.token] : 'TOKEN'} to Turbo. 
+                  This step sends {tokenLabels[tokenType]} to Turbo. 
                   You can verify the recipient is Turbo's wallet address{' '}
                   <a
                     href={`${defaultPaymentServiceUrl}/info`}
@@ -198,21 +200,6 @@ export default function CryptoManualPaymentPanel({
       </div>
       <div className="flex w-full">
         <div className="ml-[.475rem] border-l border-fg-disabled/50"></div>
-        {!transferTransactionResult && (
-          <div className="ml-6 mt-2 p-4 text-sm">
-            This step sends {address ? tokenLabels[address?.token] : 'TOKEN'}{' '}
-            to Turbo. You can verify the recipient is Turbo's wallet address{' '}
-            <a
-              href={`${defaultPaymentServiceUrl}/info`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-fg-muted underline"
-            >
-              here
-            </a>
-            .
-          </div>
-        )}
 
         {transferTransactionResult && (
           <div className="ml-6 mt-4 rounded bg-surface p-4 text-sm text-fg-disabled">
