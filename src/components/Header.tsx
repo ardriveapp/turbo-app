@@ -148,16 +148,45 @@ const Header = () => {
           </PopoverButton>
           
           <PopoverPanel className="absolute right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
-            {/* Account Services (only if logged in) */}
-            {address && (
+            {({ close }) => (
               <>
-                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Account Services</div>
-                {accountServices.map((service) => {
+                {/* Account Services (only if logged in) */}
+                {address && (
+                  <>
+                    <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Account Services</div>
+                    {accountServices.map((service) => {
+                      const isActive = location.pathname === `/${service.page}`;
+                      return (
+                        <Link
+                          key={service.page}
+                          to={`/${service.page}`}
+                          onClick={() => close()}
+                          className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
+                            isActive 
+                              ? 'bg-canvas text-fg-muted font-medium' 
+                              : 'text-link hover:bg-canvas hover:text-fg-muted'
+                          }`}
+                        >
+                          <service.icon className={`w-4 h-4 ${
+                            isActive ? 'text-turbo-red' : 'text-link'
+                          }`} />
+                          {service.name}
+                        </Link>
+                      );
+                    })}
+                    <div className="border-t border-default my-1" />
+                  </>
+                )}
+                
+                {/* Public Services */}
+                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Public Tools</div>
+                {utilityServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
                   return (
                     <Link
                       key={service.page}
                       to={`/${service.page}`}
+                      onClick={() => close()}
                       className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
                         isActive 
                           ? 'bg-canvas text-fg-muted font-medium' 
@@ -171,31 +200,8 @@ const Header = () => {
                     </Link>
                   );
                 })}
-                <div className="border-t border-default my-1" />
               </>
             )}
-            
-            {/* Public Services */}
-            <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Public Tools</div>
-            {utilityServices.map((service) => {
-              const isActive = location.pathname === `/${service.page}`;
-              return (
-                <Link
-                  key={service.page}
-                  to={`/${service.page}`}
-                  className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
-                    isActive 
-                      ? 'bg-canvas text-fg-muted font-medium' 
-                      : 'text-link hover:bg-canvas hover:text-fg-muted'
-                  }`}
-                >
-                  <service.icon className={`w-4 h-4 ${
-                    isActive ? 'text-turbo-red' : 'text-link'
-                  }`} />
-                  {service.name}
-                </Link>
-              );
-            })}
           </PopoverPanel>
         </Popover>
       </div>
