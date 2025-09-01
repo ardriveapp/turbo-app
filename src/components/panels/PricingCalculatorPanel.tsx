@@ -1,15 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useStore } from '../../store/useStore';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
-interface PricingCalculatorPanelProps {
-  navigateToService?: (service?: 'topup' | 'upload' | 'domains') => void;
-}
-
-export default function PricingCalculatorPanel({ navigateToService }: PricingCalculatorPanelProps = {}) {
+export default function PricingCalculatorPanel() {
   const { address, creditBalance } = useStore();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
@@ -326,20 +323,20 @@ export default function PricingCalculatorPanel({ navigateToService }: PricingCal
               <h4 className="text-lg font-bold text-fg-muted mb-3">You have {creditBalance.toFixed(2)} credits ready to use!</h4>
               <p className="text-link mb-4">Start uploading files or register an ArNS domain name to use your credits.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => navigateToService?.('upload')}
+                <Link
+                  to="/upload"
                   className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
                 >
                   <Upload className="w-4 h-4" />
                   Upload Files
-                </button>
-                <button
-                  onClick={() => navigateToService?.('domains')}
+                </Link>
+                <Link
+                  to="/domains"
                   className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
                 >
                   <Globe className="w-4 h-4" />
                   Search for a Domain
-                </button>
+                </Link>
               </div>
             </>
           ) : (
@@ -347,13 +344,13 @@ export default function PricingCalculatorPanel({ navigateToService }: PricingCal
             <>
               <h4 className="text-lg font-bold text-fg-muted mb-3">You need credits to store data permanently</h4>
               <p className="text-link mb-4">Top up your account with credits to start uploading files or registering ArNS names.</p>
-              <button
-                onClick={() => navigateToService?.('topup')}
+              <Link
+                to="/topup"
                 className="inline-flex items-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
               >
                 <CreditCard className="w-4 h-4" />
                 Top Up Credits
-              </button>
+              </Link>
             </>
           )}
         </div>

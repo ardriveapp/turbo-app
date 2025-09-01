@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
@@ -6,11 +7,7 @@ import { useArNSPricing } from '../../hooks/useArNSPricing';
 import { useStore } from '../../store/useStore';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
-interface ServicesCalculatorPanelProps {
-  navigateToService?: (service?: 'topup' | 'upload' | 'domains') => void;
-}
-
-export default function ServicesCalculatorPanel({ navigateToService }: ServicesCalculatorPanelProps = {}) {
+export default function ServicesCalculatorPanel() {
   const { address, creditBalance } = useStore();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('dollars'); // Default to dollars for services
@@ -405,20 +402,20 @@ export default function ServicesCalculatorPanel({ navigateToService }: ServicesC
               <h4 className="text-lg font-bold text-fg-muted mb-3">You have {creditBalance.toFixed(2)} credits ready to use!</h4>
               <p className="text-link mb-4">Start using your credits for permanent storage or register ArNS domain names.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button
-                  onClick={() => navigateToService?.('upload')}
+                <Link
+                  to="/upload"
                   className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
                 >
                   <Upload className="w-4 h-4" />
                   Upload Files
-                </button>
-                <button
-                  onClick={() => navigateToService?.('domains')}
+                </Link>
+                <Link
+                  to="/domains"
                   className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
                 >
                   <Globe className="w-4 h-4" />
                   Search Domains
-                </button>
+                </Link>
               </div>
             </>
           ) : (
@@ -426,13 +423,13 @@ export default function ServicesCalculatorPanel({ navigateToService }: ServicesC
             <>
               <h4 className="text-lg font-bold text-fg-muted mb-3">You need credits to use Turbo services</h4>
               <p className="text-link mb-4">Top up your account with credits to access permanent storage and ArNS domains.</p>
-              <button
-                onClick={() => navigateToService?.('topup')}
+              <Link
+                to="/topup"
                 className="inline-flex items-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
               >
                 <CreditCard className="w-4 h-4" />
                 Top Up Credits
-              </button>
+              </Link>
             </>
           )}
         </div>

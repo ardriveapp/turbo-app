@@ -1,6 +1,7 @@
 import { Popover, PopoverButton, PopoverPanel, Listbox, Transition } from '@headlessui/react';
 import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap } from 'lucide-react';
 import { Fragment, useState, useEffect, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
@@ -29,12 +30,8 @@ const utilityServices = [
   { name: 'Service Info', page: 'gateway-info' as const, icon: Info },
 ];
 
-interface HeaderProps {
-  currentPage?: 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info';
-  setCurrentPage?: (page: 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info') => void;
-}
-
-const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
+const Header = () => {
+  const location = useLocation();
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance } = useStore();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
@@ -137,92 +134,70 @@ const Header = ({ currentPage = 'home', setCurrentPage }: HeaderProps) => {
 
   return (
     <div className="flex items-center py-6 sm:py-8">
-      <button onClick={() => setCurrentPage?.('home')} className="cursor-pointer">
+      <Link to="/" className="cursor-pointer">
         <TurboLogo />
-      </button>
+      </Link>
       
       <div className="grow" />
       
-      {/* Clean Services Waffle Listbox */}
+      {/* Clean Services Waffle Popover */}
       <div className="mr-3">
-        <Listbox 
-          value={[...accountServices, ...utilityServices].find(s => s.page === currentPage) || { name: 'Services', page: 'home', icon: Grid3x3 }}
-          onChange={(service) => {
-            if (service.page !== 'home') {
-              setCurrentPage?.(service.page as any);
-            }
-          }}
-        >
-          <div className="relative">
-            <Listbox.Button className="flex items-center p-3 text-link hover:text-fg-muted transition-colors focus:outline-none" title="All Services">
-              <serviceInfo.icon className="w-6 h-6" />
-            </Listbox.Button>
+        <Popover className="relative">
+          <PopoverButton className="flex items-center p-3 text-link hover:text-fg-muted transition-colors focus:outline-none" title="All Services">
+            <Grid3x3 className="w-6 h-6" />
+          </PopoverButton>
+          
+          <PopoverPanel className="absolute right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
+            {/* Account Services (only if logged in) */}
+            {address && (
+              <>
+                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Account Services</div>
+                {accountServices.map((service) => {
+                  const isActive = location.pathname === `/${service.page}`;
+                  return (
+                    <Link
+                      key={service.page}
+                      to={`/${service.page}`}
+                      className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
+                        isActive 
+                          ? 'bg-canvas text-fg-muted font-medium' 
+                          : 'text-link hover:bg-canvas hover:text-fg-muted'
+                      }`}
+                    >
+                      <service.icon className={`w-4 h-4 ${
+                        isActive ? 'text-turbo-red' : 'text-link'
+                      }`} />
+                      {service.name}
+                    </Link>
+                  );
+                })}
+                <div className="border-t border-default my-1" />
+              </>
+            )}
             
-            <Transition
-              as={Fragment}
-              leave="transition ease-in duration-100"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
-              <Listbox.Options className="absolute right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
-                {/* Account Services (only if logged in) */}
-                {address && (
-                  <>
-                    <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Account Services</div>
-                    {accountServices.map((service) => (
-                      <Listbox.Option
-                        key={service.page}
-                        className={({ active }) =>
-                          `relative cursor-pointer select-none py-2 px-4 text-sm ${
-                            active ? 'bg-canvas text-fg-muted' : 'text-link'
-                          }`
-                        }
-                        value={service}
-                      >
-                        {({ selected }) => (
-                          <span className={`flex items-center gap-3 ${
-                            selected ? 'font-medium text-fg-muted' : 'font-normal'
-                          }`}>
-                            <service.icon className={`w-4 h-4 ${
-                              selected ? 'text-turbo-red' : 'text-link'
-                            }`} />
-                            {service.name}
-                          </span>
-                        )}
-                      </Listbox.Option>
-                    ))}
-                    <div className="border-t border-default my-1" />
-                  </>
-                )}
-                
-                {/* Public Services */}
-                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Public Tools</div>
-                {utilityServices.map((service) => (
-                  <Listbox.Option
-                    key={service.page}
-                    className={({ active }) =>
-                      `relative cursor-pointer select-none py-2 px-4 text-sm ${
-                        active ? 'bg-canvas text-fg-muted' : 'text-link'
-                      }`
-                    }
-                    value={service}
-                  >
-                    {({ selected }) => (
-                      <span className={`flex items-center gap-3 ${
-                        selected ? 'font-medium text-fg-muted' : 'font-normal'
-                      }`}>
-                        <service.icon className={`w-4 h-4 ${
-                          selected ? 'text-turbo-red' : 'text-link'
-                        }`} />
-                        {service.name}
-                      </span>
-                    )}
-                  </Listbox.Option>
-                ))}
-              </Listbox.Options>
-            </Transition>
-          </div>
-        </Listbox>
+            {/* Public Services */}
+            <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Public Tools</div>
+            {utilityServices.map((service) => {
+              const isActive = location.pathname === `/${service.page}`;
+              return (
+                <Link
+                  key={service.page}
+                  to={`/${service.page}`}
+                  className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
+                    isActive 
+                      ? 'bg-canvas text-fg-muted font-medium' 
+                      : 'text-link hover:bg-canvas hover:text-fg-muted'
+                  }`}
+                >
+                  <service.icon className={`w-4 h-4 ${
+                    isActive ? 'text-turbo-red' : 'text-link'
+                  }`} />
+                  {service.name}
+                </Link>
+              );
+            })}
+          </PopoverPanel>
+        </Popover>
       </div>
 
       {/* Profile Dropdown - only for logged in users */}

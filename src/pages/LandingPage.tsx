@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { 
   ArrowRight, Zap, Shield, Globe, Github, Book, FileCode, Database, 
   CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info
 } from 'lucide-react';
 
-interface LandingPageProps {
-  setCurrentPage?: (page: any) => void;
-  loggedIn?: boolean;
-}
-
-const LandingPage = ({ setCurrentPage, loggedIn = false }: LandingPageProps = {}) => {
+const LandingPage = () => {
+  const { address } = useStore();
+  const navigate = useNavigate();
+  const loggedIn = address !== null;
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(0);
@@ -135,7 +135,7 @@ const LandingPage = ({ setCurrentPage, loggedIn = false }: LandingPageProps = {}
             className="group relative rounded-lg bg-turbo-red px-8 py-4 font-bold text-white hover:bg-turbo-red/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2 text-lg"
             onClick={() => {
               if (loggedIn) {
-                setCurrentPage?.('upload');
+                navigate('/upload');
               } else {
                 setShowWalletModal(true);
               }
@@ -338,9 +338,9 @@ const LandingPage = ({ setCurrentPage, loggedIn = false }: LandingPageProps = {}
                 <button onClick={() => {
                   const feature = features[selectedFeatureIndex];
                   if (feature.action === 'redeem' || feature.action === 'balance-checker' || feature.action === 'gateway-info') {
-                    setCurrentPage?.(feature.action);
+                    navigate(`/${feature.action}`);
                   } else if (loggedIn) {
-                    setCurrentPage?.(feature.action);
+                    navigate(`/${feature.action}`);
                   } else {
                     setShowWalletModal(true);
                   }
@@ -422,9 +422,9 @@ const LandingPage = ({ setCurrentPage, loggedIn = false }: LandingPageProps = {}
                 <button onClick={() => {
                   const feature = features[selectedFeatureIndex];
                   if (feature.action === 'redeem' || feature.action === 'balance-checker' || feature.action === 'gateway-info') {
-                    setCurrentPage?.(feature.action);
+                    navigate(`/${feature.action}`);
                   } else if (loggedIn) {
-                    setCurrentPage?.(feature.action);
+                    navigate(`/${feature.action}`);
                   } else {
                     setShowWalletModal(true);
                   }

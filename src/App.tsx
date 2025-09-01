@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
@@ -17,129 +18,79 @@ import DeploySitePage from './pages/DeploySitePage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
 
-type PageType = 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info';
-
-export function App() {
+// Payment callback handler component
+function PaymentCallbackHandler() {
   const { address } = useStore();
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
-  // No more selectedFeature state needed
-  const loggedIn = address !== null;
+  const location = useLocation();
 
-  // Handle URL parameters for navigation
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(location.search);
     const paymentStatus = urlParams.get('payment');
-    const pageParam = urlParams.get('page');
     
     if (paymentStatus === 'success') {
-      // Clear URL parameters
-      window.history.replaceState({}, '', window.location.pathname);
-      
       // Show success message and refresh balance
-      if (loggedIn) {
+      if (address) {
         alert('Payment successful! Your credits have been added to your account.');
         // Trigger a balance refresh by dispatching a custom event
         window.dispatchEvent(new CustomEvent('refresh-balance'));
       }
     } else if (paymentStatus === 'cancelled') {
-      // Clear URL parameters
-      window.history.replaceState({}, '', window.location.pathname);
       alert('Payment cancelled.');
-    } else if (pageParam === 'redeem') {
-      // Navigate to redeem page
-      setCurrentPage('redeem');
-      // Clear URL parameter
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (pageParam === 'balance-checker') {
-      // Navigate to balance checker page
-      setCurrentPage('balance-checker');
-      // Clear URL parameter
-      window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [loggedIn]);
+  }, [location.search, address]);
 
-  // Helper function to navigate to specific service pages
+  return null;
+}
+
+function AppRoutes() {
+  const navigate = useNavigate();
+  
+  // Helper function for pages that need navigation
   const navigateToService = (service?: 'topup' | 'upload' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer') => {
     if (service) {
-      setCurrentPage(service);
+      navigate(`/${service}`);
     } else {
-      setCurrentPage('home');
+      navigate('/');
     }
-  };
-
-  // Simple routing - you could also use React Router for this
-  const renderPage = () => {
-    console.log('🔍 App.tsx renderPage - currentPage is:', currentPage);
-    
-    if (currentPage === 'topup') {
-      return <TopUpPage />;
-    }
-    
-    if (currentPage === 'upload') {
-      return <UploadPage />;
-    }
-    
-    if (currentPage === 'deploy') {
-      console.log('✅ App.tsx - Rendering DeploySitePage!');
-      return <DeploySitePage />;
-    }
-    
-    if (currentPage === 'share') {
-      return <ShareCreditsPage />;
-    }
-    
-    if (currentPage === 'gift') {
-      return <GiftPage />;
-    }
-    
-    if (currentPage === 'domains') {
-      return <DomainsPage />;
-    }
-    
-    if (currentPage === 'calculator') {
-      return <CalculatorPage navigateToService={navigateToService} />;
-    }
-    
-    if (currentPage === 'balance-checker') {
-      return <BalanceCheckerPage />;
-    }
-    
-    if (currentPage === 'redeem') {
-      return <RedeemPage />;
-    }
-    
-    if (currentPage === 'developer') {
-      return <DeveloperPage />;
-    }
-    
-    if (currentPage === 'gateway-info') {
-      return <GatewayInfoPage />;
-    }
-    
-    return <LandingPage setCurrentPage={handleSetPage} loggedIn={loggedIn} />;
-  };
-
-  
-  // Helper for Header to set page  
-  const handleSetPage = (page: PageType) => {
-    console.log('🎯 App.tsx - handleSetPage called with:', page);
-    setCurrentPage(page);
   };
 
   return (
-    <WalletProviders>
+    <>
+      <PaymentCallbackHandler />
       <div className="min-h-screen bg-canvas text-fg-muted flex flex-col">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
-          <Header 
-            currentPage={currentPage} 
-            setCurrentPage={handleSetPage}
-          />
+          <Header />
           <div className="mb-12">
-            {renderPage()}
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/topup" element={<TopUpPage />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/deploy" element={<DeploySitePage />} />
+              <Route path="/share" element={<ShareCreditsPage />} />
+              <Route path="/gift" element={<GiftPage />} />
+              <Route path="/domains" element={<DomainsPage />} />
+              <Route path="/calculator" element={<CalculatorPage />} />
+              <Route path="/balance-checker" element={<BalanceCheckerPage />} />
+              <Route path="/redeem" element={<RedeemPage />} />
+              <Route path="/developer" element={<DeveloperPage />} />
+              <Route path="/gateway-info" element={<GatewayInfoPage />} />
+              {/* Catch all route - redirect to home */}
+              <Route path="*" element={<LandingPage />} />
+            </Routes>
           </div>
         </div>
         <Footer />
       </div>
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <WalletProviders>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </WalletProviders>
   );
 }
