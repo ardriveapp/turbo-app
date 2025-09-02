@@ -4,7 +4,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig({
-  base: './', // Use relative paths for Arweave deployment compatibility
+  base: './', // Relative paths for Arweave subpath compatibility
   plugins: [
     react(),
     nodePolyfills({
@@ -13,12 +13,8 @@ export default defineConfig({
         global: true,
         process: true,
       },
-      // Polyfill Node.js modules commonly needed by blockchain/crypto SDKs
-      include: [
-        'crypto', 'buffer', 'process', 'util', 'stream', 'os', 
-        'events', 'http', 'https', 'url', 'querystring', 'net',
-        'assert', 'zlib', 'constants'
-      ],
+      // Essential polyfills for multi-chain unified app (based on actual errors seen)
+      include: ['buffer', 'crypto', 'stream', 'os', 'util', 'process', 'fs'],
       protocolImports: true,
     }),
   ],
@@ -52,8 +48,6 @@ export default defineConfig({
     commonjsOptions: {
       transformMixedEsModules: true,
     },
-    rollupOptions: {
-      external: ['fs', 'path'],
-    },
+    // No external exclusions like reference apps
   },
 });

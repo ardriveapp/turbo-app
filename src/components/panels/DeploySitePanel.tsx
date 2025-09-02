@@ -10,7 +10,6 @@ import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 
 export default function DeploySitePanel() {
-  console.log('⚡ DeploySitePanel is rendering!');
   const { address, creditBalance } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);

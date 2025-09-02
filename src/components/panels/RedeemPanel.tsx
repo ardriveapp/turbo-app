@@ -107,6 +107,9 @@ export default function RedeemPanel() {
             Connect your wallet to auto-fill this field
           </p>
         )}
+        <p className="text-xs text-link/70 mt-1">
+          Example: vLRHFqCw1uHu75xqB4fCDW-QxpkpJxBtFD9g4QYUbfw
+        </p>
       </div>
 
       {/* Gift Code */}
