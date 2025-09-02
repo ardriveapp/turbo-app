@@ -120,13 +120,14 @@ export default function BalanceCheckerPanel() {
       ]);
       
       console.log('Balance API result:', balance);
-      console.log('Balance.value contents:', balance.value);
       console.log('Share approvals API result:', shareApprovals);
       
       // Process balance data
       if (balance.status === 'rejected') {
         throw new Error('Failed to fetch balance');
       }
+      
+      console.log('Balance.value contents:', balance.value);
       
       const credits = Number(balance.value.winc) / wincPerCredit;
       let gibStorage = 0;
