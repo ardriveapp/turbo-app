@@ -13,8 +13,12 @@ export default defineConfig({
         global: true,
         process: true,
       },
-      // Polyfill Node.js modules
-      include: ['crypto', 'buffer', 'process', 'util', 'stream'],
+      // Polyfill Node.js modules commonly needed by blockchain/crypto SDKs
+      include: [
+        'crypto', 'buffer', 'process', 'util', 'stream', 'os', 
+        'events', 'http', 'https', 'url', 'querystring', 'net',
+        'assert', 'zlib', 'constants'
+      ],
       protocolImports: true,
     }),
   ],
@@ -49,7 +53,7 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
     rollupOptions: {
-      external: ['fs', 'path', 'os'],
+      external: ['fs', 'path'],
     },
   },
 });
