@@ -13,6 +13,9 @@ export default defineConfig({
         global: true,
         process: true,
       },
+      // Polyfill Node.js modules
+      include: ['crypto', 'buffer', 'process', 'util'],
+      protocolImports: true,
     }),
   ],
   resolve: {
@@ -44,7 +47,7 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
     rollupOptions: {
-      external: ['fs', 'path', 'os', 'crypto'],
+      external: ['fs', 'path', 'os'],
     },
   },
 });
