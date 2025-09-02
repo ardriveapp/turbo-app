@@ -14,7 +14,7 @@ export default defineConfig({
         process: true,
       },
       // Polyfill Node.js modules
-      include: ['crypto', 'buffer', 'process', 'util'],
+      include: ['crypto', 'buffer', 'process', 'util', 'stream'],
       protocolImports: true,
     }),
   ],
@@ -34,6 +34,8 @@ export default defineConfig({
       '@walletconnect/modal',
       '@walletconnect/sign-client',
       '@walletconnect/utils',
+      'stream',
+      'crypto',
     ],
   },
   server: {
