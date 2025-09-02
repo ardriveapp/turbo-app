@@ -216,6 +216,10 @@ export default function DeploySitePanel() {
         setShowFolderContents(false);
         setIndexFile('');
         setFallbackFile('');
+        
+        // Trigger balance refresh after successful deployment
+        window.dispatchEvent(new CustomEvent('refresh-balance'));
+        
         // Success message is redundant - results show everything
       }
     } catch (error) {
