@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { 
-  ArrowRight, Zap, Shield, Globe, Github, Book, FileCode, Database, 
-  CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info, Rss
+  ArrowRight, Zap, Github, Book, FileCode, Database, Rss,
+  CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info
 } from 'lucide-react';
 
 const LandingPage = () => {

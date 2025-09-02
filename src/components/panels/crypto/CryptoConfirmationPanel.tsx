@@ -73,7 +73,7 @@ export default function CryptoConfirmationPanel({
             signer,
             token: tokenType,
             paymentServiceConfig: {
-              url: turboConfig.paymentServiceConfig.url,
+              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
             },
           });
 
