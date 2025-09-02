@@ -173,14 +173,22 @@ export function useFolderUpload() {
         }
       }
       
-      // Create manifest manually (simplified approach)
-      // In a real implementation, you'd create a proper Arweave manifest
+      // Create manifest using version 0.2.0 spec with fallback support
       const manifestData = {
         manifest: 'arweave/paths',
-        version: '0.1.0',
+        version: '0.2.0',
         index: {
-          path: 'index.html'
+          path: manifestOptions?.indexFile || 'index.html'
         },
+        ...(manifestOptions?.fallbackFile && {
+          fallback: {
+            id: fileUploadResults.find(file => 
+              file.path.endsWith(manifestOptions.fallbackFile!)
+            )?.id || fileUploadResults.find(file => 
+              file.path.endsWith('index.html')
+            )?.id
+          }
+        }),
         paths: fileUploadResults.reduce((acc, file) => {
           const relativePath = file.path.startsWith(folderPath + '/') 
             ? file.path.substring(folderPath.length + 1)
