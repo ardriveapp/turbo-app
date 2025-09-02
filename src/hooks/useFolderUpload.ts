@@ -178,7 +178,11 @@ export function useFolderUpload() {
         manifest: 'arweave/paths',
         version: '0.2.0',
         index: {
-          path: manifestOptions?.indexFile || 'index.html'
+          path: manifestOptions?.indexFile 
+            ? (manifestOptions.indexFile.startsWith(folderPath + '/') 
+                ? manifestOptions.indexFile.substring(folderPath.length + 1)
+                : manifestOptions.indexFile)
+            : 'index.html'
         },
         ...(manifestOptions?.fallbackFile && {
           fallback: {
