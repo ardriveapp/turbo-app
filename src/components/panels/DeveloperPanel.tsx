@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ExternalLink, Code, Copy, Check } from 'lucide-react';
+import { ExternalLink, Code, Copy, Check, Database, Zap, Rss } from 'lucide-react';
 
 export default function DeveloperPanel() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'quickstart' | 'api' | 'guides'>('quickstart');
+  const [activeTab, setActiveTab] = useState<'quickstart' | 'api' | 'guides' | 'horizon'>('quickstart');
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -113,6 +113,16 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           }`}
         >
           Guides
+        </button>
+        <button
+          onClick={() => setActiveTab('horizon')}
+          className={`pb-2 px-1 transition-colors ${
+            activeTab === 'horizon' 
+              ? 'text-fg-muted border-b-2 border-turbo-red' 
+              : 'text-link hover:text-fg-muted'
+          }`}
+        >
+          On the Horizon
         </button>
       </div>
 
@@ -312,6 +322,52 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             <h5 className="font-bold mb-2 text-fg-muted">Deploy to Permaweb with GitHub</h5>
             <p className="text-xs text-link">Auto-deploy sites to Arweave with GitHub Actions and ArNS.</p>
           </a>
+        </div>
+      )}
+
+      {activeTab === 'horizon' && (
+        <div className="space-y-4">
+          <p className="text-sm text-link mb-6">
+            We're expanding the Turbo platform with new services to enhance your development experience
+          </p>
+          
+          <div className="space-y-4">
+            <div className="bg-canvas rounded-lg p-4 border border-default">
+              <div className="flex items-start gap-3">
+                <Database className="w-6 h-6 text-link mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-fg-muted text-lg mb-1">Data Indexer</div>
+                  <div className="text-sm text-link">Register custom on-chain indexes of Arweave data using AR.IO gateways</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-canvas rounded-lg p-4 border border-default">
+              <div className="flex items-start gap-3">
+                <Zap className="w-6 h-6 text-link mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-fg-muted text-lg mb-1">Fast Lane</div>
+                  <div className="text-sm text-link">Avoid rate limits for you and your data</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-canvas rounded-lg p-4 border border-default">
+              <div className="flex items-start gap-3">
+                <Rss className="w-6 h-6 text-link mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-fg-muted text-lg mb-1">Data Feeds</div>
+                  <div className="text-sm text-link">Subscribe to real-time notifications for new data uploaded through Turbo</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 pt-4 border-t border-default text-center">
+            <div className="text-xs text-link">
+              Stay tuned for updates on these upcoming features
+            </div>
+          </div>
         </div>
       )}
       </div>

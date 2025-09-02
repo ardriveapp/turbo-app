@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TurboCryptoFundResponse } from '@ardrive/turbo-sdk/web';
+import { PaymentIntent, PaymentIntentResult } from '@stripe/stripe-js';
 
 interface UploadResult {
   id: string;
@@ -10,6 +11,11 @@ interface UploadResult {
   winc: string;
   timestamp?: number;
   receipt?: any; // Store the full receipt response
+}
+
+export interface PaymentInformation {
+  paymentMethodId: string;
+  email?: string;
 }
 
 interface StoreState {
@@ -24,13 +30,17 @@ interface StoreState {
   // Upload history state
   uploadHistory: UploadResult[];
   
-  // Payment state - matching reference app
-  paymentIntent: any | null;
-  paymentInformation: any | null;
-  paymentIntentResult: any | null;
-  cryptoTopupValue?: number; // Token amount, not generic
+  // Payment state - matching reference app exactly
+  paymentAmount?: number;
+  paymentIntent?: PaymentIntent;
+  paymentInformation?: PaymentInformation;
+  paymentIntentResult?: PaymentIntentResult;
+  promoCode?: string;
+  
+  // Crypto payment state
+  cryptoTopupValue?: number;
   cryptoManualTopup: boolean;
-  cryptoTopupResponse?: TurboCryptoFundResponse; // Proper SDK type
+  cryptoTopupResponse?: TurboCryptoFundResponse;
   
   // UI state
   showResumeTransactionPanel: boolean;
@@ -43,12 +53,18 @@ interface StoreState {
   getArNSName: (address: string) => string | null;
   addUploadResults: (results: UploadResult[]) => void;
   clearUploadHistory: () => void;
-  setPaymentIntent: (intent: any) => void;
-  setPaymentInformation: (info: any) => void;
-  setPaymentIntentResult: (result: any) => void;
-  setCryptoTopupValue: (value: number | undefined) => void;
+  
+  // Payment actions - matching reference app
+  setPaymentAmount: (amount?: number) => void;
+  setPaymentIntent: (intent?: PaymentIntent) => void;
+  setPaymentInformation: (info?: PaymentInformation) => void;
+  setPaymentIntentResult: (result?: PaymentIntentResult) => void;
+  setPromoCode: (code?: string) => void;
+  
+  // Crypto actions
+  setCryptoTopupValue: (value?: number) => void;
   setCryptoManualTopup: (value: boolean) => void;
-  setCryptoTopupResponse: (response: any) => void;
+  setCryptoTopupResponse: (response?: TurboCryptoFundResponse) => void;
   setShowResumeTransactionPanel: (show: boolean) => void;
   clearAllPaymentState: () => void;
 }
@@ -62,9 +78,15 @@ export const useStore = create<StoreState>()(
       creditBalance: 0,
       arnsNamesCache: {},
       uploadHistory: [],
-      paymentIntent: null,
-      paymentInformation: null,
-      paymentIntentResult: null,
+      
+      // Payment state
+      paymentAmount: undefined,
+      paymentIntent: undefined,
+      paymentInformation: undefined,
+      paymentIntentResult: undefined,
+      promoCode: undefined,
+      
+      // Crypto state
       cryptoTopupValue: undefined,
       cryptoManualTopup: false,
       cryptoTopupResponse: undefined,
@@ -98,17 +120,25 @@ export const useStore = create<StoreState>()(
         set({ uploadHistory: [...results, ...currentHistory] });
       },
       clearUploadHistory: () => set({ uploadHistory: [] }),
+      
+      // Payment actions - matching reference app exactly
+      setPaymentAmount: (amount) => set({ paymentAmount: amount }),
       setPaymentIntent: (intent) => set({ paymentIntent: intent }),
       setPaymentInformation: (info) => set({ paymentInformation: info }),
       setPaymentIntentResult: (result) => set({ paymentIntentResult: result }),
+      setPromoCode: (code) => set({ promoCode: code }),
+      
+      // Crypto actions
       setCryptoTopupValue: (value) => set({ cryptoTopupValue: value }),
       setCryptoManualTopup: (value) => set({ cryptoManualTopup: value }),
       setCryptoTopupResponse: (response) => set({ cryptoTopupResponse: response }),
       setShowResumeTransactionPanel: (show) => set({ showResumeTransactionPanel: show }),
       clearAllPaymentState: () => set({
-        paymentIntent: null,
-        paymentInformation: null,
-        paymentIntentResult: null,
+        paymentAmount: undefined,
+        paymentIntent: undefined,
+        paymentInformation: undefined,
+        paymentIntentResult: undefined,
+        promoCode: undefined,
         cryptoTopupValue: undefined,
         cryptoManualTopup: false,
         cryptoTopupResponse: undefined,

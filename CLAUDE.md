@@ -58,14 +58,19 @@ This is a unified Turbo Gateway application consolidating three separate applica
 
 ### Core Architecture Patterns
 
-#### Page-Based Navigation System
-- **Entry Point** (`App.tsx`): Direct page routing based on currentPage state
+#### React Router Navigation System
+- **Entry Point** (`App.tsx`): React Router v6 with BrowserRouter
 - **Page Structure**: Each service has dedicated page wrapping panel components
-- **Simple Routing**: Custom routing system (not React Router) with URL parameter support
-- **Navigation**: Unified waffle menu (Grid3x3 icon) in header consolidating all services
+- **Client-Side Routing**: Full React Router implementation with direct URL access
+- **Navigation**: Unified waffle menu (Grid3x3 icon) in header with Link components
 
 ```typescript
-type PageType = 'home' | 'topup' | 'upload' | 'deploy' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer' | 'gateway-info';
+// Available routes
+const routes = [
+  '/', '/topup', '/upload', '/deploy', '/share', '/gift', 
+  '/domains', '/calculator', '/services-calculator', 
+  '/balance-checker', '/redeem', '/developer', '/gateway-info'
+];
 ```
 
 #### Multi-Chain Wallet Integration
@@ -130,14 +135,14 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 ### Navigation Structure
 
 #### Waffle Menu Services
-**Account Services** (login required):
+**Services** (login required):
 - Buy Credits (`topup`)
 - Upload Files (`upload`) 
 - Deploy Site (`deploy`) - temporarily disabled
 - Share Credits (`share`)
 - Send Gift (`gift`)
 
-**Public Tools**:
+**Tools**:
 - Search Domains (`domains`)
 - Developer Resources (`developer`)
 - Pricing Calculator (`calculator`)
@@ -147,10 +152,10 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - Service Info (`gateway-info`)
 
 #### URL Parameter Support
-- `?payment=success` - Payment success callback
-- `?payment=cancelled` - Payment cancellation
-- `?page=redeem` - Direct page navigation
-- `?page=balance-checker` - Direct page navigation
+- `?payment=success` - Payment success callback (handled by PaymentCallbackHandler)
+- `?payment=cancelled` - Payment cancellation callback
+- Direct URL routing: `/redeem`, `/balance-checker`, `/calculator`, etc.
+- Catch-all route: Any unknown path redirects to landing page
 
 ### Component Patterns
 
@@ -257,6 +262,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - `@tanstack/react-query`: Server state management and caching
 - `@stripe/react-stripe-js`: Payment processing
 - `@headlessui/react`: Unstyled UI components (dropdowns, modals)
+- `react-router-dom`: Client-side routing and navigation
 - `lucide-react`: Icon system
 - `tailwindcss`: Styling framework
 
@@ -303,6 +309,13 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Ephemeral state: balances, payment flows, UI state
 - Custom events for cross-component communication (`refresh-balance`)
 - 1-hour cache for ArNS name resolution
+
+### React Router Patterns
+- Use `useNavigate()` hook for programmatic navigation
+- Use `<Link to="/path">` components for navigation links
+- Payment callbacks handled by `PaymentCallbackHandler` component
+- All routes defined in `App.tsx` with clean separation
+- Catch-all route (`*`) redirects unknown paths to landing page
 
 ### API Endpoint Display
 When showing API endpoints in JSX, escape curly braces:

@@ -28,7 +28,7 @@ export const maxARAmount = 200;
 export const minUSDAmount = 5;
 
 // Turbo wallet addresses URL
-export const TURBO_WALLETS_URL = defaultPaymentServiceUrl + '/v1/wallets';
+export const TURBO_WALLETS_URL = defaultPaymentServiceUrl + '/info';
 
 // Crypto token configuration - matching reference app
 export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'matic', 'pol'] as const;
@@ -49,7 +49,7 @@ export const tokenLabels: Record<SupportedTokenType, string> = {
 // Detailed network labels for UI contexts
 export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
   arweave: 'Arweave Network',
-  ario: 'Arweave Network', 
+  ario: 'AR.IO Network', 
   ethereum: 'Ethereum Mainnet (L1)',
   'base-eth': 'Base Network (L2)',
   solana: 'Solana Network',
@@ -60,14 +60,62 @@ export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
 
 // Network descriptions for user clarity
 export const tokenNetworkDescriptions: Record<SupportedTokenType, string> = {
-  arweave: 'Native Arweave tokens on the Arweave blockchain',
-  ario: 'AR.IO tokens on the Arweave blockchain',
+  arweave: 'Native AR tokens on the Arweave blockchain',
+  ario: 'ARIO tokens on the AO Super Computer',
   ethereum: 'ETH on Ethereum Layer 1 mainnet (higher fees)',
   'base-eth': 'ETH on Base Layer 2 network (lower fees)',
   solana: 'Native SOL tokens on the Solana blockchain',
   kyve: 'KYVE tokens on the KYVE network',
   matic: 'MATIC tokens on the Polygon network',
   pol: 'POL tokens on the Polygon network',
+} as const;
+
+// Token processing time expectations for user communication
+export const tokenProcessingTimes: Record<SupportedTokenType, { 
+  time: string; 
+  speed: 'fast' | 'medium' | 'slow';
+  description: string;
+}> = {
+  arweave: { 
+    time: '15-45 minutes', 
+    speed: 'slow',
+    description: 'Arweave network confirmations take time for security'
+  },
+  ario: { 
+    time: '1-5 minutes', 
+    speed: 'fast',
+    description: 'ARIO transfers on AO are typically fast'
+  },
+  ethereum: { 
+    time: '10-30 minutes', 
+    speed: 'slow',
+    description: 'Ethereum L1 requires multiple confirmations'
+  },
+  'base-eth': { 
+    time: '1-3 minutes', 
+    speed: 'fast',
+    description: 'Base L2 offers faster confirmation times'
+  },
+  solana: { 
+    time: '1-2 minutes', 
+    speed: 'fast',
+    description: 'Solana transactions confirm quickly'
+  },
+  kyve: { 
+    time: '5-15 minutes', 
+    speed: 'medium',
+    description: 'KYVE network processing time'
+  },
+  matic: { 
+    time: '2-5 minutes', 
+    speed: 'fast',
+    description: 'Polygon network is optimized for speed'
+  },
+  pol: { 
+    time: '2-5 minutes', 
+    speed: 'fast',
+    description: 'Polygon network is optimized for speed'
+  },
 } as const;
 
 // Preset amounts for each token type

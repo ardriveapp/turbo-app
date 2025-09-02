@@ -6,18 +6,38 @@ import { useStore } from '../../store/useStore';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../constants';
 import { Loader2, Lock, CreditCard, Zap, DollarSign, Wallet, Info, Shield, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
-import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
+import { useWincForOneGiB, useWincForToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
+import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
+import PaymentConfirmationPanel from './fiat/PaymentConfirmationPanel';
+import PaymentSuccessPanel from './fiat/PaymentSuccessPanel';
+import { getPaymentIntent } from '../../services/paymentService';
 
 
 export default function TopUpPanel() {
-  const { address, walletType, creditBalance } = useStore();
+  const { 
+    address, 
+    walletType, 
+    creditBalance, 
+    paymentIntent,
+    paymentInformation,
+    paymentIntentResult,
+    setPaymentAmount,
+    setPaymentIntent,
+    clearAllPaymentState
+  } = useStore();
+  
   const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
   const [usdAmount, setUsdAmount] = useState(defaultUSDAmount);
   const [usdAmountInput, setUsdAmountInput] = useState(String(defaultUSDAmount));
+  const [cryptoAmount, setCryptoAmount] = useState(0.01); // Default crypto amount
+  const [cryptoAmountInput, setCryptoAmountInput] = useState('0.01');
   const [errorMessage, setErrorMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Payment flow state
+  const [fiatFlowStep, setFiatFlowStep] = useState<'amount' | 'details' | 'confirmation' | 'success'>('amount');
   
   // Crypto flow state  
   const [cryptoFlowStep, setCryptoFlowStep] = useState<'selection' | 'confirmation' | 'manual-payment' | 'complete'>('selection');
@@ -25,12 +45,18 @@ export default function TopUpPanel() {
   const [cryptoPaymentResult, setCryptoPaymentResult] = useState<any>(null);
   
   const debouncedUsdAmount = useDebounce(usdAmount);
+  const debouncedCryptoAmount = useDebounce(cryptoAmount);
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
+  // Use existing hook for AR/ARIO only since that's what it supports
+  const wincForArweave = useWincForToken(
+    (selectedTokenType === 'arweave' || selectedTokenType === 'ario') ? selectedTokenType : 'arweave', 
+    (selectedTokenType === 'arweave' || selectedTokenType === 'ario') ? debouncedCryptoAmount : 0
+  );
+  const cryptoCredits = (selectedTokenType === 'arweave' || selectedTokenType === 'ario') && wincForArweave 
+    ? Number(wincForArweave) / wincPerCredit 
+    : undefined;
   const wincForOneGiB = useWincForOneGiB();
   
-  // State for crypto amounts
-  const [cryptoAmount, setCryptoAmount] = useState<number>(0);
-  const [cryptoLoading, setCryptoLoading] = useState(false);
   
   // Helper function to get token amount for USD amount
   const getTokenAmountForUSD = async (usdAmount: number, tokenType: SupportedTokenType): Promise<number> => {
@@ -65,6 +91,21 @@ export default function TopUpPanel() {
   };
 
   const presetAmounts = [10, 25, 50, 100, 250, 500];
+  
+  // Crypto preset amounts based on token type (from reference app)
+  const getCryptoPresets = (tokenType: SupportedTokenType) => {
+    switch (tokenType) {
+      case 'arweave': return [0.5, 1, 5, 10];
+      case 'ario': return [50, 100, 500, 1000];
+      case 'ethereum': return [0.01, 0.05, 0.1, 0.25];
+      case 'base-eth': return [0.01, 0.05, 0.1, 0.25];
+      case 'solana': return [0.05, 0.1, 0.25, 0.5];
+      case 'kyve': return [100, 500, 1000, 2000];
+      case 'matic': return [10, 50, 100, 250];
+      case 'pol': return [10, 50, 100, 250];
+      default: return [0.01, 0.05, 0.1, 0.25];
+    }
+  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -85,6 +126,17 @@ export default function TopUpPanel() {
         setUsdAmount(amount);
         setErrorMessage('');
       }
+    }
+  };
+
+  const handleCryptoAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    setCryptoAmountInput(inputValue);
+    
+    const amount = Number(inputValue);
+    if (!isNaN(amount) && amount >= 0) {
+      setCryptoAmount(amount);
+      setErrorMessage('');
     }
   };
 
@@ -119,34 +171,25 @@ export default function TopUpPanel() {
         
         const token = tokenMap[walletType || 'arweave'];
         
-        // Create Turbo instance with the appropriate token
-        const turbo = TurboFactory.unauthenticated({
-          ...turboConfig,
-          token: token as any
-        });
+        // Create payment intent for inline flow
+        const paymentIntentResponse = await getPaymentIntent(
+          address,
+          usdAmount * 100, // Convert to cents
+          token as any,
+        );
         
-        // Create checkout session with Turbo SDK (no success/cancel URLs for testing)
-        // Creating checkout session for payment
+        // Store payment state
+        setPaymentAmount(usdAmount * 100);
+        setPaymentIntent(paymentIntentResponse.paymentSession);
         
-        const checkoutSession = await turbo.createCheckoutSession({
-          amount: USD(usdAmount),
-          owner: address,
-          uiMode: 'hosted',
-        });
-        
-        // Open Stripe checkout in new window
-        if (checkoutSession.url) {
-          window.open(checkoutSession.url, '_blank');
-        } else {
-          throw new Error('No checkout URL received');
-        }
+        // Move to payment details step
+        setFiatFlowStep('details');
       } catch (error) {
-        // Error creating checkout session
-        
+        // Error creating payment intent
         if (error instanceof Error) {
-          setErrorMessage(`Checkout failed: ${error.message}`);
+          setErrorMessage(`Payment initialization failed: ${error.message}`);
         } else {
-          setErrorMessage('Failed to create checkout session. Please try again.');
+          setErrorMessage('Failed to initialize payment. Please try again.');
         }
       } finally {
         setIsProcessing(false);
@@ -164,6 +207,7 @@ export default function TopUpPanel() {
         return;
       }
 
+      // Use crypto amount instead of USD amount for crypto flow
       setCryptoFlowStep('confirmation');
     }
   };
@@ -193,6 +237,27 @@ export default function TopUpPanel() {
   const handleCryptoBackToSelection = () => {
     setCryptoFlowStep('selection');
     setCryptoPaymentResult(null);
+  };
+
+  // Fiat flow handlers
+  const handleFiatBackToAmount = () => {
+    setFiatFlowStep('amount');
+    clearAllPaymentState();
+  };
+
+  const handleFiatPaymentDetailsNext = () => {
+    setFiatFlowStep('confirmation');
+  };
+
+  const handleFiatPaymentSuccess = () => {
+    setFiatFlowStep('success');
+  };
+
+  const handleFiatComplete = () => {
+    // Reset to amount selection
+    setFiatFlowStep('amount');
+    clearAllPaymentState();
+    setPaymentMethod('fiat');
   };
 
   // Get available tokens based on wallet type
@@ -247,13 +312,48 @@ export default function TopUpPanel() {
   }, [walletType, getAvailableTokens]);
 
 
+  // Clear payment state when wallet changes
+  useEffect(() => {
+    clearAllPaymentState();
+    setFiatFlowStep('amount');
+  }, [address, clearAllPaymentState]);
+
+
+  // Render fiat flow screens
+  if (paymentMethod === 'fiat' && fiatFlowStep !== 'amount') {
+    switch (fiatFlowStep) {
+      case 'details':
+        return (
+          <PaymentDetailsPanel
+            usdAmount={usdAmount}
+            onBack={handleFiatBackToAmount}
+            onNext={handleFiatPaymentDetailsNext}
+          />
+        );
+      case 'confirmation':
+        return (
+          <PaymentConfirmationPanel
+            usdAmount={usdAmount}
+            onBack={() => setFiatFlowStep('details')}
+            onSuccess={handleFiatPaymentSuccess}
+          />
+        );
+      case 'success':
+        return (
+          <PaymentSuccessPanel
+            onComplete={handleFiatComplete}
+          />
+        );
+    }
+  }
+
   // Render crypto flow screens
   if (paymentMethod === 'crypto' && cryptoFlowStep !== 'selection') {
     switch (cryptoFlowStep) {
       case 'confirmation':
         return (
           <CryptoConfirmationPanel
-            usdAmount={usdAmount}
+            cryptoAmount={cryptoAmount}
             tokenType={selectedTokenType}
             onBack={handleCryptoBackToSelection}
             onPaymentComplete={handleCryptoPaymentComplete}
@@ -266,6 +366,19 @@ export default function TopUpPanel() {
             tokenType={selectedTokenType}
             onBack={handleCryptoBackToSelection}
             onComplete={handleManualPaymentComplete}
+          />
+        );
+      case 'complete':
+        return (
+          <PaymentSuccessPanel
+            cryptoAmount={cryptoAmount}
+            tokenType={selectedTokenType}
+            transactionId={cryptoPaymentResult?.transactionId || cryptoPaymentResult?.id}
+            onComplete={() => {
+              setCryptoFlowStep('selection');
+              setCryptoPaymentResult(null);
+              setPaymentMethod('fiat');
+            }}
           />
         );
     }
@@ -358,7 +471,7 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {getAvailableTokens().map((tokenType) => (
                   <button 
                     key={tokenType}
@@ -402,80 +515,133 @@ export default function TopUpPanel() {
 
         {/* Amount Selection */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-link mb-3">Select Amount</label>
+          <label className="block text-sm font-medium text-link mb-3">
+            {paymentMethod === 'fiat' ? 'Select USD Amount' : `Select ${tokenLabels[selectedTokenType]} Amount`}
+          </label>
           
-          {/* Preset Amounts */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {presetAmounts.map((amount) => (
-              <button
-                key={amount}
-                onClick={() => {
-                  setUsdAmount(amount);
-                  setUsdAmountInput(String(amount));
-                  setErrorMessage('');
-                }}
-                className={`py-3 px-3 rounded-lg border transition-all font-medium ${
-                  usdAmount === amount
-                    ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
-                    : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                }`}
-              >
-                ${amount}
-              </button>
-            ))}
-          </div>
-          
-          {/* Custom Amount Input */}
-          <div className="bg-surface rounded-lg p-4">
-            <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-              Custom Amount {paymentMethod === 'crypto' ? `(USD ≈ ${tokenLabels[selectedTokenType as keyof typeof tokenLabels]})` : '(USD)'}
-            </label>
-            <div className="flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-fg-muted" />
-              <input
-                type="text"
-                value={usdAmountInput}
-                onChange={handleAmountChange}
-                onBlur={() => {
-                  // Clean up the input on blur
-                  if (usdAmount >= minUSDAmount && usdAmount <= maxUSDAmount) {
-                    setUsdAmountInput(String(usdAmount));
-                  }
-                }}
-                className={`flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors ${
-                  usdAmount > maxUSDAmount || (usdAmount < minUSDAmount && usdAmount > 0)
-                    ? 'border-red-500 focus:border-red-500' 
-                    : 'border-default focus:border-turbo-red'
-                }`}
-                placeholder="Enter amount"
-                inputMode="decimal"
-              />
-            </div>
-            <div className="mt-2 text-xs text-link">
-              Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
-            </div>
-            
-            {/* Note for crypto payments */}
-            {paymentMethod === 'crypto' && walletType && (
-              <div className="mt-3 text-xs text-link text-center">
-                Exact {tokenLabels[selectedTokenType as keyof typeof tokenLabels]} amount will be calculated at checkout
+          {paymentMethod === 'fiat' ? (
+            <>
+              {/* USD Preset Amounts */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {presetAmounts.map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => {
+                      setUsdAmount(amount);
+                      setUsdAmountInput(String(amount));
+                      setErrorMessage('');
+                    }}
+                    className={`py-3 px-3 rounded-lg border transition-all font-medium ${
+                      usdAmount === amount
+                        ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                    }`}
+                  >
+                    ${amount}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+              
+              {/* Custom USD Input */}
+              <div className="bg-surface rounded-lg p-4">
+                <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                  Custom Amount (USD)
+                </label>
+                <div className="flex items-center gap-3">
+                  <DollarSign className="w-5 h-5 text-fg-muted" />
+                  <input
+                    type="text"
+                    value={usdAmountInput}
+                    onChange={handleAmountChange}
+                    onBlur={() => {
+                      if (usdAmount >= minUSDAmount && usdAmount <= maxUSDAmount) {
+                        setUsdAmountInput(String(usdAmount));
+                      }
+                    }}
+                    className={`flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors ${
+                      usdAmount > maxUSDAmount || (usdAmount < minUSDAmount && usdAmount > 0)
+                        ? 'border-red-500 focus:border-red-500' 
+                        : 'border-default focus:border-turbo-red'
+                    }`}
+                    placeholder="Enter amount"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="mt-2 text-xs text-link">
+                  Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Crypto Preset Amounts */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {getCryptoPresets(selectedTokenType).map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => {
+                      setCryptoAmount(amount);
+                      setCryptoAmountInput(String(amount));
+                      setErrorMessage('');
+                    }}
+                    className={`py-3 px-2 rounded-lg border transition-all font-medium text-sm ${
+                      cryptoAmount === amount
+                        ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                    }`}
+                  >
+                    {amount} {tokenLabels[selectedTokenType].replace(/\s*\([^)]*\)/, '')}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Custom Crypto Input */}
+              <div className="bg-surface rounded-lg p-4">
+                <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                  Custom Amount ({tokenLabels[selectedTokenType]})
+                </label>
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-5 h-5 text-fg-muted" />
+                  <input
+                    type="text"
+                    value={cryptoAmountInput}
+                    onChange={handleCryptoAmountChange}
+                    onBlur={() => {
+                      if (cryptoAmount > 0) {
+                        setCryptoAmountInput(String(cryptoAmount));
+                      }
+                    }}
+                    className="flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors border-default focus:border-turbo-red"
+                    placeholder={`Enter ${tokenLabels[selectedTokenType]} amount`}
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="mt-2 text-xs text-link">
+                  Enter the amount of {tokenLabels[selectedTokenType]} you want to spend
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Credits Preview */}
-        {credits && usdAmount > 0 && (
+        {((paymentMethod === 'fiat' && credits && usdAmount > 0) || (paymentMethod === 'crypto' && cryptoCredits && cryptoCredits > 0)) && (
           <div className="space-y-4 mb-6">
             {/* Purchase Summary */}
             <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
               <div className="text-sm text-link mb-1">You'll Receive</div>
               <div className="text-4xl font-bold text-turbo-red mb-1">
-                {credits.toLocaleString()} Credits
+                {paymentMethod === 'fiat' 
+                  ? credits?.toLocaleString() || '...'
+                  : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
+                } Credits
               </div>
               {wincForOneGiB && (
                 <div className="text-sm text-link">
-                  = ~{((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB storage power
+                  = ~{paymentMethod === 'fiat' 
+                    ? credits ? ((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                    : cryptoCredits ? ((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                  } GiB storage power
                 </div>
               )}
             </div>
@@ -499,11 +665,17 @@ export default function TopUpPanel() {
                 <span className="text-sm text-link">After Purchase</span>
                 <div className="text-right">
                   <span className="font-bold text-turbo-green text-lg">
-                    {(creditBalance + credits).toLocaleString()} Credits
+                    {paymentMethod === 'fiat' 
+                      ? credits ? (creditBalance + credits).toLocaleString() : '...'
+                      : cryptoCredits ? (creditBalance + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                    } Credits
                   </span>
                   {wincForOneGiB && (
                     <div className="text-xs text-turbo-green">
-                      ~{(((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB storage power
+                      ~{paymentMethod === 'fiat'
+                        ? credits ? (((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                        : cryptoCredits ? (((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                      } GiB storage power
                     </div>
                   )}
                 </div>
@@ -524,11 +696,9 @@ export default function TopUpPanel() {
           onClick={handleCheckout}
           className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
-            !credits || 
-            usdAmount < minUSDAmount || 
-            usdAmount > maxUSDAmount || 
-            isProcessing ||
-            (paymentMethod === 'crypto' && (!walletType || !isTokenCompatibleWithWallet(selectedTokenType)))
+            (paymentMethod === 'fiat' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
+            (paymentMethod === 'crypto' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType))) ||
+            isProcessing
           }
         >
           {isProcessing ? (
@@ -541,7 +711,7 @@ export default function TopUpPanel() {
               {paymentMethod === 'fiat' ? (
                 <>
                   <Shield className="w-5 h-5" />
-                  Continue to Secure Payment
+                  Continue
                 </>
               ) : !walletType ? (
                 <>
@@ -573,74 +743,6 @@ export default function TopUpPanel() {
 
       </div>
 
-      {/* Info Cards */}
-      <div className="grid md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Instant Credits</h4>
-              <p className="text-xs text-link">
-                Credits are added to your account immediately after successful payment.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Permanent Storage</h4>
-              <p className="text-xs text-link">
-                Pay once, store forever. No monthly fees or expiration dates.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Live Pricing</h4>
-              <p className="text-xs text-link">
-                Real-time pricing based on current network rates and demand.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Terms */}
-      <div className="text-center bg-surface/30 rounded-lg p-4">
-        <p className="text-xs text-link">
-          By continuing, you agree to our{' '}
-          <a 
-            href="https://ardrive.io/tos-and-privacy/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-          >
-            Terms of Service
-          </a>
-          {' '}and{' '}
-          <a 
-            href="https://ardrive.io/tos-and-privacy/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-          >
-            Privacy Policy
-          </a>
-        </p>
-      </div>
     </div>
   );
 }

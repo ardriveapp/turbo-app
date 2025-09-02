@@ -11,7 +11,7 @@ import { turboConfig } from '../constants';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { useArNSName } from '../hooks/useArNSName';
 
-// Account services for logged-in users
+// Services for logged-in users
 const accountServices = [
   { name: 'Buy Credits', page: 'topup' as const, icon: CreditCard },
   { name: 'Upload Files', page: 'upload' as const, icon: Upload },
@@ -150,10 +150,10 @@ const Header = () => {
           <PopoverPanel className="absolute right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
             {({ close }) => (
               <>
-                {/* Account Services (only if logged in) */}
+                {/* Services (only if logged in) */}
                 {address && (
                   <>
-                    <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Account Services</div>
+                    <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Services</div>
                     {accountServices.map((service) => {
                       const isActive = location.pathname === `/${service.page}`;
                       return (
@@ -179,7 +179,7 @@ const Header = () => {
                 )}
                 
                 {/* Public Services */}
-                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Public Tools</div>
+                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Tools</div>
                 {utilityServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
                   return (

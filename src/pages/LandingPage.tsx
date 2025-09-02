@@ -6,7 +6,7 @@ import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { 
   ArrowRight, Zap, Shield, Globe, Github, Book, FileCode, Database, 
-  CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info
+  CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info, Rss
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -201,7 +201,7 @@ const LandingPage = () => {
               <div className="flex items-center">
                 <span className="text-white/70 select-none">$</span>
                 <span className="text-white ml-2">npm i @ardrive/turbo-sdk</span>
-                <span className="text-white/50 ml-1 animate-pulse">_</span>
+                <span className="text-white/50 ml-1 animate-[blink_1s_infinite]">|</span>
               </div>
             </div>
           </div>
@@ -215,71 +215,138 @@ const LandingPage = () => {
         )}
       </div>
 
-      {/* What You Can Do - Feature Showcase */}
+      {/* How it Works */}
       <div className="mb-12">
-        <h2 className="text-2xl font-bold mb-2 text-fg-muted text-center">What You Can Do with Turbo</h2>
-        <p className="text-center text-link mb-8">Connect your wallet to access these powerful features</p>
-        
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <CreditCard className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">Top Up Credits</h3>
-            <p className="text-xs text-link">Add credits with credit card or crypto payments</p>
-          </div>
-          
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <Gift className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">Gift Credits</h3>
-            <p className="text-xs text-link">Send credits to anyone via email</p>
-          </div>
-          
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <Ticket className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">Redeem Codes</h3>
-            <p className="text-xs text-link">Claim gift codes sent to you</p>
-          </div>
-          
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <Users className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">Share Credits</h3>
-            <p className="text-xs text-link">Authorize other wallets to use your credits</p>
-          </div>
-          
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <Upload className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">Upload Files</h3>
-            <p className="text-xs text-link">Store data permanently on Arweave</p>
-          </div>
-          
-          <div className="bg-surface border border-default rounded-lg p-5 hover:border-turbo-red/50 transition-colors text-center">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center mb-3 mx-auto">
-              <Globe2 className="w-5 h-5 text-turbo-red" />
-            </div>
-            <h3 className="font-bold mb-1 text-fg-muted">ArNS Names</h3>
-            <p className="text-xs text-link">Register permanent domain names</p>
-          </div>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-3 text-fg-muted">How Turbo Works</h2>
+          <p className="text-lg text-link/80 max-w-3xl mx-auto">
+            Ultrahigh-throughput bundling service that abstracts away Arweave complexity with instant payments and permanent settlement
+          </p>
         </div>
         
-        {!loggedIn && (
-          <div className="text-center mt-8">
-            <button
-              className="rounded-lg bg-turbo-red px-8 py-3 font-bold text-white hover:bg-turbo-red/90 transition-colors text-lg"
-              onClick={() => setShowWalletModal(true)}
-            >
-              Connect Wallet to Get Started →
-            </button>
+        <div className="grid md:grid-cols-4 gap-6">
+          {/* Step 1: Fund */}
+          <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-red/50 transition-colors group">
+            <div className="text-2xl font-bold text-turbo-red mb-2">1</div>
+            <h3 className="text-xl font-bold text-fg-muted mb-3">Fund</h3>
+            <p className="text-sm text-link">
+              Purchase Turbo Credits instantly with credit cards or topup with crypto like ETH, SOL, ARIO and more.
+            </p>
           </div>
-        )}
+          
+          {/* Step 2: Bundle */}
+          <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-red/50 transition-colors group">
+            <div className="text-2xl font-bold text-turbo-red mb-2">2</div>
+            <h3 className="text-xl font-bold text-fg-muted mb-3">Bundle</h3>
+            <p className="text-sm text-link">
+              Your data gets packaged in efficient Layer 2 bundles with cryptographic receipts, providing economies of scale.
+            </p>
+          </div>
+          
+          {/* Step 3: Settle */}
+          <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-red/50 transition-colors group">
+            <div className="text-2xl font-bold text-turbo-red mb-2">3</div>
+            <h3 className="text-xl font-bold text-fg-muted mb-3">Settle</h3>
+            <p className="text-sm text-link">
+              Bundles settle to the Arweave blockchain with a clear record of provenance. Your data becomes immutable forever.
+            </p>
+          </div>
+          
+          {/* Step 4: Access */}
+          <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-red/50 transition-colors group">
+            <div className="text-2xl font-bold text-turbo-red mb-2">4</div>
+            <h3 className="text-xl font-bold text-fg-muted mb-3">Access</h3>
+            <p className="text-sm text-link">
+              Data becomes instantly accessible with CDN-level performance through the decentralized AR.IO Network.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Turbo by the Numbers */}
+      <div className="mb-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-fg-muted mb-2">Turbo by the Numbers</h2>
+          <p className="text-link/80">Real performance metrics from production infrastructure</p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">1.5B+</div>
+            <div className="text-sm text-link">Files uploaded to Arweave</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">200+</div>
+            <div className="text-sm text-link">TiB of data stored</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">860</div>
+            <div className="text-sm text-link">Transactions per second</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">99.9%</div>
+            <div className="text-sm text-link">Gateway uptime</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Trusted by Industry Leaders */}
+      <div className="mb-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-fg-muted mb-2">Trusted by Industry Leaders</h2>
+          <p className="text-link/80">Powering critical infrastructure across the decentralized web</p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <a 
+            href="https://www.redstone.finance/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
+          >
+            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+              <img src="/RedStone_squarelogo.png" alt="RedStone Oracle" className="w-10 h-10 object-contain" />
+            </div>
+            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">RedStone Oracle</div>
+            <div className="text-xs text-link">Permanent price feed storage</div>
+          </a>
+          <a 
+            href="https://www.kyve.network/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
+          >
+            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+              <img src="/kyve-logo.jpeg" alt="KYVE Network" className="w-10 h-10 object-contain" />
+            </div>
+            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">KYVE Network</div>
+            <div className="text-xs text-link">Blockchain data archival</div>
+          </a>
+          <a 
+            href="https://www.metaplex.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
+          >
+            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+              <img src="/metaplex_studios_logo.jpeg" alt="Metaplex" className="w-10 h-10 object-contain" />
+            </div>
+            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">Metaplex</div>
+            <div className="text-xs text-link">Solana NFT metadata storage</div>
+          </a>
+          <a 
+            href="https://www.load.network/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
+          >
+            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+              <img src="/load-network-logo.svg" alt="Load Network" className="w-10 h-10 object-contain" />
+            </div>
+            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">Load Network</div>
+            <div className="text-xs text-link">High performance EVM storage chain</div>
+          </a>
+        </div>
       </div>
 
       {/* Interactive Feature Explorer */}
@@ -442,30 +509,6 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* Key Features */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <div className="bg-canvas border border-default rounded-lg p-6">
-          <Zap className="w-8 h-8 text-turbo-red mb-3" />
-          <h3 className="font-bold mb-2 text-fg-muted">860 tx/sec</h3>
-          <p className="text-sm text-link">Ultra-high throughput for production workloads</p>
-        </div>
-        <div className="bg-canvas border border-default rounded-lg p-6">
-          <Shield className="w-8 h-8 text-turbo-red mb-3" />
-          <h3 className="font-bold mb-2 text-fg-muted">Cryptographic Receipts</h3>
-          <p className="text-sm text-link">Verifiable upload proofs for every transaction</p>
-        </div>
-        <div className="bg-canvas border border-default rounded-lg p-6">
-          <Globe className="w-8 h-8 text-turbo-red mb-3" />
-          <h3 className="font-bold mb-2 text-fg-muted">Global CDN</h3>
-          <p className="text-sm text-link">Fast access via distributed AR.IO gateways</p>
-        </div>
-        <div className="bg-canvas border border-default rounded-lg p-6">
-          <Database className="w-8 h-8 text-turbo-red mb-3" />
-          <h3 className="font-bold mb-2 text-fg-muted">GraphQL Indexing</h3>
-          <p className="text-sm text-link">Query your data with powerful filters</p>
-        </div>
-      </div>
-
       {/* Build Section */}
       <section>
         <h2 className="text-2xl font-bold mb-6 text-fg-muted">Build</h2>
@@ -598,38 +641,67 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Beyond Uploads Section */}
+      {/* The Expanding Turbo Ecosystem Section */}
       <section className="bg-gradient-to-r from-turbo-red/10 to-turbo-blue/10 rounded-lg border border-default p-8">
         <div className="text-center">
-          <div className="text-xs text-link uppercase tracking-wider mb-2">TURBO GATEWAY</div>
-          <h2 className="text-3xl font-bold mb-4 text-fg-muted">Beyond uploads</h2>
+          <div className="text-xs text-link uppercase tracking-wider mb-2">TURBO ECOSYSTEM</div>
+          <h2 className="text-3xl font-bold mb-4 text-fg-muted">The Expanding Turbo Ecosystem</h2>
           <p className="text-lg mb-8 max-w-3xl mx-auto text-link">
-            Turbo isn't just for storage payments. It's a programmable edge that can price, prioritize, 
-            and power data access across the Permaweb.
+            From storage to indexing, prioritization, and real-time data feeds. Turbo is evolving into a complete programmable platform for the Permaweb.
           </p>
         </div>
         
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6">
-            <h3 className="font-bold mb-2 text-fg-muted">Prioritized retrieval</h3>
+          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6 border border-default/50">
+            <div className="flex items-center gap-3 mb-3">
+              <Database className="w-6 h-6 text-turbo-red" />
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-fg-muted">Data Indexer</h3>
+                <span className="bg-turbo-red/20 text-turbo-red text-xs px-2 py-1 rounded-full font-medium">
+                  Coming Soon
+                </span>
+              </div>
+            </div>
             <p className="text-sm text-link">
-              Opt-in paid QoS for lower-latency reads when speed matters.
+              Register custom on-chain indexes of Arweave data using AR.IO gateways for structured data access.
             </p>
           </div>
           
-          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6">
-            <h3 className="font-bold mb-2 text-fg-muted">Bigger, faster GraphQL</h3>
+          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6 border border-default/50">
+            <div className="flex items-center gap-3 mb-3">
+              <Zap className="w-6 h-6 text-turbo-red" />
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-fg-muted">Fast Lane</h3>
+                <span className="bg-turbo-red/20 text-turbo-red text-xs px-2 py-1 rounded-full font-medium">
+                  Coming Soon
+                </span>
+              </div>
+            </div>
             <p className="text-sm text-link">
-              Higher limits and tuned performance for heavy queries.
+              Avoid rate limits for you and your data with priority access and dedicated bandwidth.
             </p>
           </div>
           
-          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6">
-            <h3 className="font-bold mb-2 text-fg-muted">Custom indexing</h3>
+          <div className="bg-canvas/50 backdrop-blur rounded-lg p-6 border border-default/50">
+            <div className="flex items-center gap-3 mb-3">
+              <Rss className="w-6 h-6 text-turbo-red" />
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-fg-muted">Data Feeds</h3>
+                <span className="bg-turbo-red/20 text-turbo-red text-xs px-2 py-1 rounded-full font-medium">
+                  Coming Soon
+                </span>
+              </div>
+            </div>
             <p className="text-sm text-link">
-              Gateway-level indexes and tailored APIs for your app.
+              Subscribe to real-time notifications for new data uploaded through Turbo services.
             </p>
           </div>
+        </div>
+        
+        <div className="mt-6 text-center">
+          <p className="text-xs text-link/70">
+            Learn more about upcoming features in our <button onClick={() => navigate('/developer')} className="text-turbo-red hover:underline font-medium">Developer Resources</button>
+          </p>
         </div>
       </section>
 

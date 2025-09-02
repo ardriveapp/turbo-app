@@ -206,7 +206,7 @@ export default function GatewayInfoPanel() {
               </div>
               
               <div className="bg-surface rounded-lg p-4">
-                <div className="text-xs text-link uppercase tracking-wider mb-1">Performance</div>
+                <div className="text-xs text-link uppercase tracking-wider mb-1">Onchain Performance</div>
                 <div className="text-lg font-bold text-fg-muted">
                   {(arIOGatewayInfo.weights.compositeWeight * 100).toFixed(1)}%
                 </div>

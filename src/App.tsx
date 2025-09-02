@@ -70,6 +70,7 @@ function AppRoutes() {
               <Route path="/gift" element={<GiftPage />} />
               <Route path="/domains" element={<DomainsPage />} />
               <Route path="/calculator" element={<CalculatorPage />} />
+              <Route path="/services-calculator" element={<ServicesCalculatorPage />} />
               <Route path="/balance-checker" element={<BalanceCheckerPage />} />
               <Route path="/redeem" element={<RedeemPage />} />
               <Route path="/developer" element={<DeveloperPage />} />

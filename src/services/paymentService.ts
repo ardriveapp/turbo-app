@@ -1,4 +1,4 @@
-import { TokenType } from '@ardrive/turbo-sdk/web';
+import { TokenType, TurboWincForFiatResponse, TwoDecimalCurrency } from '@ardrive/turbo-sdk/web';
 import { loadStripe, PaymentIntent } from '@stripe/stripe-js';
 
 // Use VITE_NODE_ENV to determine production mode
@@ -47,6 +47,36 @@ export const getPaymentIntent = async (
     topUpQuote: { quotedPaymentAmount: number };
     paymentSession: PaymentIntent;
   }>;
+};
+
+// Function to get winc for fiat with promo code support
+export const getWincForFiat = async ({
+  amount,
+  promoCode,
+  destinationAddress,
+}: {
+  amount: TwoDecimalCurrency;
+  promoCode?: string;
+  destinationAddress?: string;
+}): Promise<TurboWincForFiatResponse> => {
+  const url = `https://${PAYMENT_SERVICE_FQDN}/v1/price/usd/${amount.amount}`;
+  const queryString =
+    promoCode && destinationAddress
+      ? `?${new URLSearchParams({ promoCode, destinationAddress }).toString()}`
+      : '';
+  const response = await fetch(url.concat(queryString));
+
+  if (response.status == 404) {
+    return {
+      winc: '0',
+      adjustments: [],
+      fees: [],
+      actualPaymentAmount: 0,
+      quotedPaymentAmount: 0,
+    };
+  }
+
+  return response.json();
 };
 
 export const submitCryptoTransaction = async (

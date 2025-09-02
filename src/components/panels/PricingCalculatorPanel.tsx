@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard } from 'lucide-react';
+import { Listbox, Transition } from '@headlessui/react';
+import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard, ChevronDown, Check } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useStore } from '../../store/useStore';
@@ -12,6 +13,12 @@ export default function PricingCalculatorPanel() {
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
   const [storageAmount, setStorageAmount] = useState(1);
   const [storageUnit, setStorageUnit] = useState<'MiB' | 'GiB' | 'TiB'>('GiB');
+  
+  const storageUnits = [
+    { value: 'MiB', label: 'MiB' },
+    { value: 'GiB', label: 'GiB' },
+    { value: 'TiB', label: 'TiB' },
+  ] as const;
   const [dollarAmount, setDollarAmount] = useState(10);
   
   // Get conversion rates
@@ -161,15 +168,52 @@ export default function PricingCalculatorPanel() {
                         className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
                         placeholder="Enter amount"
                       />
-                      <select
-                        value={storageUnit}
-                        onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
-                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-10 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                      <Listbox 
+                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                        onChange={(unit) => setStorageUnit(unit.value)}
                       >
-                        <option value="MiB">MiB</option>
-                        <option value="GiB">GiB</option>
-                        <option value="TiB">TiB</option>
-                      </select>
+                        <div className="relative w-full sm:w-auto">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                            <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                              {storageUnits.map((unit) => (
+                                <Listbox.Option
+                                  key={unit.value}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
+                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                    }`
+                                  }
+                                  value={unit}
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                        {unit.label}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                          <Check className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
                     </div>
                     
                     {/* Common storage sizes */}
