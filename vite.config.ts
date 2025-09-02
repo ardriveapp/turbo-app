@@ -4,6 +4,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig({
+  base: './', // Use relative paths for Arweave deployment compatibility
   plugins: [
     react(),
     nodePolyfills({
