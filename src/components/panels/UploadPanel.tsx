@@ -298,7 +298,7 @@ export default function UploadPanel() {
               <span className="text-link">Total Size:</span>
               <span className="font-medium">{formatFileSize(totalSize)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between mb-2">
               <span className="text-link">Estimated Cost:</span>
               <span className="font-medium">
                 {totalCost === 0 ? (
@@ -310,6 +310,47 @@ export default function UploadPanel() {
                 )}
               </span>
             </div>
+            {totalCost !== null && address && (
+              <div className="flex justify-between">
+                <span className="text-link">Balance After:</span>
+                <div className="text-right">
+                  <span className={`font-medium ${
+                    creditBalance - totalCost < 0 ? 'text-red-400' : 'text-fg-muted'
+                  }`}>
+                    {(creditBalance - totalCost).toFixed(6)} Credits
+                  </span>
+                  {wincForOneGiB && (
+                    <div className="text-xs text-link">
+                      ~{(((creditBalance - totalCost) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Terms */}
+          <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
+            <p className="text-xs text-link">
+              By continuing, you agree to our{' '}
+              <a 
+                href="https://ardrive.io/tos-and-privacy/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+              >
+                Terms of Service
+              </a>
+              {' '}and{' '}
+              <a 
+                href="https://ardrive.io/tos-and-privacy/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+              >
+                Privacy Policy
+              </a>
+            </p>
           </div>
 
           {/* Upload Button */}
@@ -526,7 +567,7 @@ export default function UploadPanel() {
                   <div className="flex items-start gap-2">
                     <Archive className="w-4 h-4 text-turbo-blue flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-fg-muted">CONFIRMED/new</strong> - File bundled, processing started
+                      <strong className="text-fg-muted">CONFIRMED/new</strong> - File bundling processing started
                     </div>
                   </div>
                   <div className="flex items-start gap-2">

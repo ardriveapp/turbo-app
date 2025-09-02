@@ -50,11 +50,23 @@ export default function BalanceCheckerPanel() {
   // Get ArNS name for the searched address
   const { arnsName, loading: loadingArNS } = useArNSName(balanceResult?.address || null);
 
-  // Load recent searches from localStorage
+  // Load recent searches from localStorage and check for pre-filled address
   useEffect(() => {
     const saved = localStorage.getItem('recentBalanceSearches');
     if (saved) {
       setRecentSearches(JSON.parse(saved));
+    }
+
+    // Check for pre-filled address from profile dropdown click
+    const preFilledAddress = localStorage.getItem('balance-checker-address');
+    if (preFilledAddress) {
+      setWalletAddress(preFilledAddress);
+      // Auto-search the pre-filled address
+      setTimeout(() => {
+        handleCheckBalance(preFilledAddress);
+      }, 100);
+      // Clear the localStorage item after using it
+      localStorage.removeItem('balance-checker-address');
     }
   }, []);
 
@@ -100,7 +112,7 @@ export default function BalanceCheckerPanel() {
     try {
       const turbo = TurboFactory.unauthenticated(turboConfig);
       
-      // Fetch balance and shared credits in parallel
+      // Fetch balance and shared credits in parallel (our API structure)
       console.log('Fetching balance and shared credits for:', targetAddress);
       const [balance, shareApprovals] = await Promise.allSettled([
         turbo.getBalance(targetAddress),
@@ -108,6 +120,7 @@ export default function BalanceCheckerPanel() {
       ]);
       
       console.log('Balance API result:', balance);
+      console.log('Balance.value contents:', balance.value);
       console.log('Share approvals API result:', shareApprovals);
       
       // Process balance data
@@ -121,6 +134,14 @@ export default function BalanceCheckerPanel() {
         gibStorage = Number(balance.value.winc) / Number(wincForOneGiB);
       }
       
+      // Check if balance response has reference app fields
+      const hasReferenceFields = balance.value.controlledWinc !== undefined && balance.value.effectiveBalance !== undefined;
+      console.log('Balance has reference app fields:', hasReferenceFields, {
+        controlledWinc: balance.value.controlledWinc,
+        effectiveBalance: balance.value.effectiveBalance,
+        winc: balance.value.winc
+      });
+
       // Process shared credits data
       let sharedCredits = undefined;
       if (shareApprovals.status === 'fulfilled') {
@@ -134,7 +155,7 @@ export default function BalanceCheckerPanel() {
         }, 0);
         
         const givenTotal = givenApprovals.reduce((sum: number, approval: any) => {
-          const winc = Number(approval.winc || 0);
+          const winc = Number(approval.approvedWincAmount || 0);
           return sum + (isNaN(winc) ? 0 : winc / wincPerCredit);
         }, 0);
         
@@ -154,14 +175,14 @@ export default function BalanceCheckerPanel() {
           },
           given: {
             totalCredits: givenTotal,
-            approvals: givenApprovals.filter((approval: any) => approval.recipientAddress).map((approval: any) => {
-              const winc = Number(approval.winc || 0);
+            approvals: givenApprovals.filter((approval: any) => approval.approvedAddress).map((approval: any) => {
+              const winc = Number(approval.approvedWincAmount || 0);
               return {
-                approvalId: approval.approvalId || 'unknown',
-                recipientAddress: approval.recipientAddress,
-                winc: approval.winc || '0',
+                approvalId: approval.approvalDataItemId || 'unknown',
+                recipientAddress: approval.approvedAddress,
+                winc: approval.approvedWincAmount || '0',
                 credits: isNaN(winc) ? 0 : winc / wincPerCredit,
-                dateCreated: approval.dateCreated
+                dateCreated: approval.creationDate
               };
             })
           }
@@ -407,15 +428,15 @@ export default function BalanceCheckerPanel() {
               </div>
             </div>
 
-            {/* Shared Credits Card */}
+            {/* Shared Out Credits Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
               <div className="flex items-center justify-between mb-2">
                 <Share2 className="w-5 h-5 text-purple-500" />
-                <span className="text-xs text-link uppercase tracking-wider">Shared</span>
+                <span className="text-xs text-link uppercase tracking-wider">Shared Out</span>
               </div>
               <div className="text-lg font-bold text-fg-muted">
                 {(() => {
-                  const total = balanceResult.sharedCredits?.received.totalCredits || 0;
+                  const total = balanceResult.sharedCredits?.given.totalCredits || 0;
                   if (isNaN(total)) return '0';
                   return total.toLocaleString('en-US', {
                     minimumFractionDigits: 0,
@@ -424,7 +445,7 @@ export default function BalanceCheckerPanel() {
                 })()}
               </div>
               <div className="text-xs text-purple-500 mt-1">
-                Credits others shared with you
+                Credits you've shared with others
               </div>
             </div>
           </div>

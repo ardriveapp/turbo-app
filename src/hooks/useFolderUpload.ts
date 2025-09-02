@@ -121,7 +121,7 @@ export function useFolderUpload() {
 
     setDeploying(true);
     setErrors({});
-    setDeployResults([]);
+    // Don't clear existing results - accumulate them
     setDeployProgress(0);
 
     try {
@@ -252,7 +252,8 @@ export function useFolderUpload() {
         });
       }
       
-      setDeployResults(results);
+      // Add new results to existing results (prepend for newest first)
+      setDeployResults(prev => [...results, ...prev]);
       setDeployProgress(100);
       
       return {
@@ -272,9 +273,13 @@ export function useFolderUpload() {
 
   const reset = useCallback(() => {
     setDeployProgress(0);
-    setDeployResults([]);
     setErrors({});
     setDeploying(false);
+    // Don't clear results in reset - that's now separate
+  }, []);
+
+  const clearResults = useCallback(() => {
+    setDeployResults([]);
   }, []);
 
   return {
@@ -284,5 +289,6 @@ export function useFolderUpload() {
     deployResults,
     errors,
     reset,
+    clearResults,
   };
 }

@@ -10,6 +10,7 @@ import TurboLogo from './TurboLogo';
 import { turboConfig } from '../constants';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { useArNSName } from '../hooks/useArNSName';
+import { useNavigate } from 'react-router-dom';
 
 // Services for logged-in users
 const accountServices = [
@@ -32,6 +33,7 @@ const utilityServices = [
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance } = useStore();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
@@ -242,8 +244,17 @@ const Header = () => {
               </div>
             </div>
             
-            {/* Credit Balance Section */}
-            <div className="px-6 py-4 border-b border-default">
+            {/* Credit Balance Section - Clickable */}
+            <button
+              className="w-full px-6 py-4 border-b border-default hover:bg-canvas transition-colors text-left"
+              onClick={() => {
+                // Navigate to balance checker with current address
+                navigate('/balance-checker');
+                // Pre-fill the address in balance checker if possible
+                window.localStorage.setItem('balance-checker-address', address);
+              }}
+              title="View detailed balance breakdown"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Coins className="w-4 h-4 text-fg-muted" />
@@ -254,16 +265,19 @@ const Header = () => {
                     {loadingBalance || isRefreshing ? '...' : credits}
                   </div>
                   <button
-                    onClick={handleRefresh}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent triggering the parent click
+                      handleRefresh();
+                    }}
                     disabled={isRefreshing || loadingBalance}
-                    className="p-1 rounded hover:bg-canvas transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title={isRefreshing ? 'Refreshing...' : 'Refresh balance'}
                   >
                     <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-turbo-red animate-spin' : 'text-link hover:text-fg-muted'}`} />
                   </button>
                 </div>
               </div>
-            </div>
+            </button>
             
             {/* Actions */}
             <button

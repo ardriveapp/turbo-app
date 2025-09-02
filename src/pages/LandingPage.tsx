@@ -40,6 +40,16 @@ const LandingPage = () => {
       connectText: 'Connect Wallet to Upload'
     },
     { 
+      name: 'Deploy', 
+      icon: Zap, 
+      title: 'Deploy Sites to the Permaweb',
+      description: 'Deploy complete websites with automatic manifest creation and permanent hosting. Perfect for static sites, SPAs, and documentation.',
+      benefits: ['Permanent hosting', 'Automatic manifests', 'Custom fallback pages'],
+      action: 'deploy',
+      loginText: 'Deploy Site',
+      connectText: 'Connect Wallet to Deploy'
+    },
+    { 
       name: 'Share', 
       icon: Users, 
       title: 'Share Credits Between Wallets',
@@ -64,7 +74,7 @@ const LandingPage = () => {
       icon: Ticket, 
       title: 'Redeem Gift Codes',
       description: 'Enter gift codes received via email to add credits to your wallet. Simple redemption process with instant credit delivery.',
-      benefits: ['Email gift codes', 'Instant delivery', 'Any wallet'],
+      benefits: ['Shared via Gift email', 'Instant delivery', 'Any wallet you want'],
       action: 'redeem',
       loginText: 'Redeem Gift Code',
       connectText: 'Redeem Gift Code'
@@ -272,16 +282,16 @@ const LandingPage = () => {
         
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">1.5B+</div>
+            <div className="text-3xl font-bold text-turbo-red mb-1">18B+</div>
             <div className="text-sm text-link">Files uploaded to Arweave</div>
           </div>
           <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">200+</div>
+            <div className="text-3xl font-bold text-turbo-red mb-1">150+</div>
             <div className="text-sm text-link">TiB of data stored</div>
           </div>
           <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">860</div>
-            <div className="text-sm text-link">Transactions per second</div>
+            <div className="text-3xl font-bold text-turbo-red mb-1">~860</div>
+            <div className="text-sm text-link">Files per second</div>
           </div>
           <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-default p-6 text-center">
             <div className="text-3xl font-bold text-turbo-red mb-1">99.9%</div>

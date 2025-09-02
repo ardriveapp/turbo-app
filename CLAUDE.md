@@ -43,6 +43,9 @@ All scripts use `cross-env NODE_OPTIONS=--max-old-space-size` with varying memor
 ### Package Manager
 This project uses **yarn** as the package manager (configured via packageManager field in package.json). All commands can be run with npm or yarn.
 
+### Testing
+This project currently has **no test framework configured**. No test scripts exist in package.json.
+
 ### Command Validation
 Commands that can be run without user approval:
 - `npm run type-check` - Type checking (safe to run automatically)
@@ -187,9 +190,11 @@ All service panels follow consistent styling:
 #### Custom Hooks
 - `useWincForOneGiB`: Storage pricing calculations
 - `useCreditsForFiat`: USD to credits conversion with debouncing
+- `useCreditsForCrypto`: Crypto to credits conversion calculations
 - `useFileUpload`: Multi-chain upload logic with proper signers
 - `useArNSName`: Primary name fetching with cache management
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
+- `useCountries`: Country data for payment forms
 - `useDebounce`: Input debouncing (500ms default)
 
 ### Styling System

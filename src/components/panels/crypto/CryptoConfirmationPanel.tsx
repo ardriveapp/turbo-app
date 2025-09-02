@@ -55,8 +55,7 @@ export default function CryptoConfirmationPanel({
     return () => clearInterval(interval);
   }, []);
 
-  // Only allow direct payment for AR - use manual flow for ARIO due to AO service issues
-  const canPayDirectly = walletType === 'arweave' && tokenType === 'arweave';
+  const canPayDirectly = walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario');
 
   const handlePayment = async () => {
     if (!address || !quote) return;

@@ -20,7 +20,7 @@ export default function DeploySitePanel() {
   const [indexFile, setIndexFile] = useState<string>('');
   const [fallbackFile, setFallbackFile] = useState<string>('');
   const wincForOneGiB = useWincForOneGiB();
-  const { deployFolder, deploying, deployResults, reset: resetDeploy } = useFolderUpload();
+  const { deployFolder, deploying, deployResults, reset: resetDeploy, clearResults } = useFolderUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
@@ -472,7 +472,7 @@ export default function DeploySitePanel() {
               <span className="text-link">Total Size:</span>
               <span className="font-medium">{(totalSize / 1024 / 1024).toFixed(2)} MB</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between mb-2">
               <span className="text-link">Estimated Cost:</span>
               <span className="font-medium">
                 {totalCost === 0 ? (
@@ -482,37 +482,80 @@ export default function DeploySitePanel() {
                 )}
               </span>
             </div>
-
-            {/* Deploy Button */}
-            <button
-              onClick={handleDeploy}
-              disabled={deploying || totalCost > creditBalance}
-              className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {deploying ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Deploying Site...
-                </>
-              ) : (
-                <>
-                  <Globe className="w-5 h-5" />
-                  Deploy to Permanent Web
-                </>
-              )}
-            </button>
-
-            {/* Insufficient Credits Warning */}
-            {totalCost > creditBalance && (
-              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
-                <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
-                </div>
+            <div className="flex justify-between">
+              <span className="text-link">Balance After:</span>
+              <div className="text-right">
+                <span className={`font-medium ${
+                  creditBalance - totalCost < 0 ? 'text-red-400' : 'text-fg-muted'
+                }`}>
+                  {(creditBalance - totalCost).toFixed(6)} Credits
+                </span>
+                {wincForOneGiB && (
+                  <div className="text-xs text-link">
+                    ~{(((creditBalance - totalCost) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        )}
+      )}
+
+      {/* Terms - Outside conditional, always show when folder selected */}
+      {selectedFolder && selectedFolder.length > 0 && (
+        <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
+          <p className="text-xs text-link">
+            By continuing, you agree to our{' '}
+            <a 
+              href="https://ardrive.io/tos-and-privacy/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+            >
+              Terms of Service
+            </a>
+            {' '}and{' '}
+            <a 
+              href="https://ardrive.io/tos-and-privacy/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </p>
+        </div>
+      )}
+
+      {/* Deploy Button - Outside conditional, always show when folder selected */}
+      {selectedFolder && selectedFolder.length > 0 && (
+        <button
+          onClick={handleDeploy}
+          disabled={deploying || totalCost > creditBalance}
+          className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {deploying ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Deploying Site...
+            </>
+          ) : (
+            <>
+              <Globe className="w-5 h-5" />
+              Deploy to Permanent Web
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Insufficient Credits Warning */}
+      {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
+        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4" />
+            <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
+          </div>
+        </div>
+      )}
 
       {/* Deploy Message */}
       {deployMessage && (
@@ -554,11 +597,11 @@ export default function DeploySitePanel() {
                 <span className="xs:hidden">Status</span>
               </button>
               <button
-                onClick={resetDeploy}
+                onClick={clearResults}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
               >
                 <XCircle className="w-3 h-3" />
-                <span className="hidden xs:inline">Clear Results</span>
+                <span className="hidden xs:inline">Clear History</span>
                 <span className="xs:hidden">Clear</span>
               </button>
             </div>
