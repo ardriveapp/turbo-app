@@ -26,7 +26,7 @@ const utilityServices = [
   { name: 'Search Domains', page: 'domains' as const, icon: Globe },
   { name: 'Developer Resources', page: 'developer' as const, icon: Code },
   { name: 'Pricing Calculator', page: 'calculator' as const, icon: Calculator },
-  { name: 'Balance Checker', page: 'balance-checker' as const, icon: Search },
+  { name: 'Check Balance', page: 'balance-checker' as const, icon: Search },
   { name: 'Redeem Gift', page: 'redeem' as const, icon: Ticket },
   { name: 'Service Info', page: 'gateway-info' as const, icon: Info },
 ];

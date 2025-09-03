@@ -13,9 +13,12 @@ import {
 } from 'lucide-react';
 import CopyButton from '../CopyButton';
 import { formatWalletAddress } from '../../utils';
+import { useStore } from '../../store/useStore';
 
 export default function GatewayInfoPanel() {
   const { uploadServiceInfo, gatewayInfo, arIOGatewayInfo, pricingInfo, arweaveNodeInfo, loading, error, refreshing, refresh } = useGatewayInfo();
+  const { getCurrentConfig } = useStore();
+  const currentConfig = getCurrentConfig();
 
   if (loading) {
     return (
@@ -263,7 +266,7 @@ export default function GatewayInfoPanel() {
         <h4 className="text-lg font-bold text-fg-muted">Related Services</h4>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           <a 
-            href="https://turbo.ardrive.io"
+            href={currentConfig.gatewayUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-link/50"

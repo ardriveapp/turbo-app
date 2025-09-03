@@ -56,7 +56,7 @@ The result is a feature-complete application that provides seamless access to al
 - **Features Dropdown** - Clean dropdown with: Buy Credits, Upload Files, Share Credits, Send Gift, Manage Domains
 - **Resources Menu** - Documentation, GitHub, API reference, Pricing Calculator
 - **Profile Dropdown** - Balance display with refresh, ArNS name support
-- **Standalone Pages** - Dedicated pages for Redeem, Balance Checker, Pricing Calculator
+- **Standalone Pages** - Dedicated pages for Redeem, Check Balance, Pricing Calculator
 - **Consistent Styling** - Standardized titles and descriptions across all panels
 
 ## Tech Stack
@@ -210,7 +210,7 @@ app/
 1. **Landing Page** (not logged in): Rich informational content about Turbo services
 2. **Wallet Connection**: Multi-chain wallet selection modal (Arweave, Ethereum, Solana)
 3. **Dashboard** (logged in): Features dropdown interface with core features
-4. **Standalone Pages**: Direct access to Redeem, Balance Checker, Calculator via URL params
+4. **Standalone Pages**: Direct access to Redeem, Check Balance, Calculator via URL params
 5. **State Management**: Zustand stores wallet address, preferences, and ArNS names
 6. **API Integration**: Direct calls to payment and upload services
 7. **URL Handling**: Deep linking support with automatic parameter cleanup
@@ -231,7 +231,7 @@ Main authenticated interface with Features dropdown:
 ### Standalone Pages
 Dedicated pages accessible from navigation:
 - Redeem (gift code redemption)
-- Balance Checker (lookup any wallet balance)
+- Check Balance (lookup any wallet balance)
 - Pricing Calculator (storage cost estimates)
 
 ### Payment Integration
@@ -250,7 +250,7 @@ Dedicated pages accessible from navigation:
 - [ ] Share Credits: Wallet-to-wallet transfers
 - [ ] Upload Files: Single and batch file uploads
 - [ ] Manage Domains: ArNS name search
-- [ ] Balance Checker: Lookup any wallet balance (standalone page)
+- [ ] Check Balance: Lookup any wallet balance (standalone page)
 - [ ] Navigation: URL parameter handling for deep linking
 - [ ] Balance updates after transactions
 

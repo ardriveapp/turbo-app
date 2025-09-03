@@ -151,7 +151,7 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - Developer Resources (`developer`)
 - Pricing Calculator (`calculator`)
 - Services Calculator (`services-calculator`) - combined storage + ArNS pricing
-- Balance Checker (`balance-checker`)
+- Check Balance (`balance-checker`)
 - Redeem Gift (`redeem`)
 - Service Info (`gateway-info`)
 

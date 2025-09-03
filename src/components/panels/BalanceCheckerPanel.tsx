@@ -226,7 +226,7 @@ export default function BalanceCheckerPanel() {
           <Search className="w-5 h-5 text-turbo-red" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Balance Checker</h3>
+          <h3 className="text-2xl font-bold text-fg-muted mb-1">Check Balance</h3>
           <p className="text-sm text-link">
             Check the Turbo credit balance of any wallet address (Arweave, Ethereum, or Solana)
           </p>

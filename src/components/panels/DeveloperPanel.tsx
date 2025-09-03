@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Code, Copy, Check, Database, Zap, Rss } from 'lucide-react';
+import { ExternalLink, Code, Copy, Check, Database, Zap, Rss, Globe, Wrench, Edit3 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import CopyButton from '../CopyButton';
 
@@ -18,6 +18,14 @@ export default function DeveloperPanel() {
   } = useStore();
   
   const currentConfig = getCurrentConfig();
+  const handleModeChange = (mode: 'production' | 'development' | 'custom') => {
+    setConfigMode(mode);
+  };
+
+  const applyConfiguration = () => {
+    // Force a page reload to ensure all components reinitialize with new config
+    window.location.reload();
+  };
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -129,16 +137,6 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           Guides
         </button>
         <button
-          onClick={() => setActiveTab('horizon')}
-          className={`pb-2 px-1 transition-colors ${
-            activeTab === 'horizon' 
-              ? 'text-fg-muted border-b-2 border-turbo-red' 
-              : 'text-link hover:text-fg-muted'
-          }`}
-        >
-          On the Horizon
-        </button>
-        <button
           onClick={() => setActiveTab('configuration')}
           className={`pb-2 px-1 transition-colors ${
             activeTab === 'configuration' 
@@ -147,6 +145,16 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           }`}
         >
           Configuration
+        </button>
+        <button
+          onClick={() => setActiveTab('horizon')}
+          className={`pb-2 px-1 transition-colors ${
+            activeTab === 'horizon' 
+              ? 'text-fg-muted border-b-2 border-turbo-red' 
+              : 'text-link hover:text-fg-muted'
+          }`}
+        >
+          On the Horizon
         </button>
       </div>
 
@@ -400,23 +408,47 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           {/* Environment Configuration Panel */}
           <div>
             <h4 className="text-lg font-semibold text-fg-muted mb-4">Environment Configuration</h4>
-            <p className="text-sm text-link mb-6">
+            <p className="text-sm text-link mb-2">
               Switch between environments or configure custom endpoints for development and testing
             </p>
 
             {/* Mode Selection */}
-            <div className="flex gap-6 mb-6">
-              {['production', 'development', 'custom'].map((mode) => (
-                <label key={mode} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={configMode === mode}
-                    onChange={() => setConfigMode(mode as any)}
-                    className="w-4 h-4 text-turbo-red border-gray-600 bg-black/40 focus:ring-turbo-red focus:ring-2"
-                  />
-                  <span className="text-sm font-medium capitalize text-fg-muted">{mode}</span>
-                </label>
-              ))}
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex bg-surface rounded-lg p-1 border border-default">
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    configMode === 'production'
+                      ? 'bg-turbo-red text-white'
+                      : 'text-link hover:text-fg-muted'
+                  }`}
+                  onClick={() => handleModeChange('production')}
+                >
+                  <Globe className="w-4 h-4 inline mr-2" />
+                  Production
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    configMode === 'development'
+                      ? 'bg-turbo-red text-white'
+                      : 'text-link hover:text-fg-muted'
+                  }`}
+                  onClick={() => handleModeChange('development')}
+                >
+                  <Wrench className="w-4 h-4 inline mr-2" />
+                  Development
+                </button>
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    configMode === 'custom'
+                      ? 'bg-turbo-red text-white'
+                      : 'text-link hover:text-fg-muted'
+                  }`}
+                  onClick={() => handleModeChange('custom')}
+                >
+                  <Edit3 className="w-4 h-4 inline mr-2" />
+                  Custom
+                </button>
+              </div>
             </div>
 
             {/* Configuration Fields */}
@@ -433,7 +465,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
                       {currentConfig.paymentServiceUrl}
                     </code>
                     <CopyButton textToCopy={currentConfig.paymentServiceUrl} />
@@ -453,7 +485,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
                       {currentConfig.uploadServiceUrl}
                     </code>
                     <CopyButton textToCopy={currentConfig.uploadServiceUrl} />
@@ -473,7 +505,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
                       {currentConfig.gatewayUrl}
                     </code>
                     <CopyButton textToCopy={currentConfig.gatewayUrl} />
@@ -493,7 +525,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
                       {currentConfig.stripeKey.substring(0, 20)}...{currentConfig.stripeKey.substring(currentConfig.stripeKey.length - 4)}
                     </code>
                     <CopyButton textToCopy={currentConfig.stripeKey} />
@@ -513,7 +545,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
                       {currentConfig.processId}
                     </code>
                     <CopyButton textToCopy={currentConfig.processId} />
@@ -524,7 +556,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
 
             {/* Token Gateway Map (collapsible) */}
             <details className="mb-6">
-              <summary className="cursor-pointer text-sm font-medium text-turbo-red mb-3 hover:text-turbo-red/80">
+              <summary className="cursor-pointer text-sm font-medium text-link mb-3 hover:text-fg-muted">
                 Token Gateway Configuration ({Object.keys(currentConfig.tokenMap).length} networks)
               </summary>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 p-4 bg-black/20 rounded-lg">
@@ -540,7 +572,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                       />
                     ) : (
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 px-2 py-1 bg-black/40 rounded text-xs text-turbo-red font-mono truncate">
+                        <code className="flex-1 px-2 py-1 bg-black/40 rounded text-xs text-fg-muted font-mono truncate">
                           {url}
                         </code>
                         <CopyButton textToCopy={url} />
@@ -551,8 +583,14 @@ console.log('Folder manifest ID:', folderUpload.id);`,
               </div>
             </details>
 
-            {/* Actions and Status */}
-            <div className="flex gap-3 pt-4 border-t border-default">
+            {configMode !== 'production' && (
+              <p className="text-sm text-amber-400 mb-6">
+                ⚠️ Non-production endpoint services may not work as expected
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-center gap-3 pt-6 border-t border-default">
               {configMode === 'custom' && (
                 <button 
                   onClick={resetToDefaults}
@@ -561,26 +599,15 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                   Reset to Production
                 </button>
               )}
-              <div className="flex-1" />
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  configMode === 'production' ? 'bg-turbo-green' : 
-                  configMode === 'development' ? 'bg-amber-400' : 
-                  'bg-turbo-red'
-                }`} />
-                <span className="text-xs text-link">
-                  Using <strong className="text-fg-muted">{configMode}</strong> configuration
-                </span>
-              </div>
+
+              <button
+                onClick={applyConfiguration}
+                className="px-6 py-2 bg-turbo-red text-white rounded-lg hover:bg-turbo-red/80 transition-colors text-sm font-medium"
+              >
+                Apply Changes
+              </button>
             </div>
 
-            {configMode !== 'production' && (
-              <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                <p className="text-xs text-amber-300">
-                  ⚠️ You are not using production endpoints. Real transactions may not work as expected.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}

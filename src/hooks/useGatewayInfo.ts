@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ARIO, type AoGateway } from '@ar.io/sdk';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
-import { turboConfig } from '../constants';
+import { useTurboConfig } from './useTurboConfig';
+import { useStore } from '../store/useStore';
 
 interface UploadServiceInfo {
   version: string;
@@ -70,6 +71,8 @@ export function useGatewayInfo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const turboConfig = useTurboConfig();
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
 
   useEffect(() => {
     const fetchGatewayInfo = async () => {
@@ -106,9 +109,10 @@ export function useGatewayInfo() {
         let pricingData = null;
         let arweaveNodeData = null;
 
-        // Fetch upload service info from turbo.ardrive.io
+        // Fetch upload service info from configured gateway
         try {
-          const uploadResponse = await fetch('https://turbo.ardrive.io');
+          const config = getCurrentConfig();
+          const uploadResponse = await fetch(config.gatewayUrl);
           uploadData = await uploadResponse.json();
           setUploadServiceInfo(uploadData);
         } catch (err) {
@@ -272,7 +276,8 @@ export function useGatewayInfo() {
 
       // Fetch upload service info
       try {
-        const uploadResponse = await fetch('https://turbo.ardrive.io');
+        const config = getCurrentConfig();
+        const uploadResponse = await fetch(config.gatewayUrl);
         uploadData = await uploadResponse.json();
         setUploadServiceInfo(uploadData);
       } catch (err) {

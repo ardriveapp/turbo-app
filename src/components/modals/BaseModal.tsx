@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface BaseModalProps {
@@ -8,23 +9,49 @@ interface BaseModalProps {
 }
 
 export default function BaseModal({ onClose, children, showCloseButton = false }: BaseModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  // Portal the modal to document.body to escape all container constraints
+  const modalContent = (
+    <>
+      {/* Modal backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998]"
         onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9998
+        }}
       />
-      <div className="relative z-10 bg-canvas border border-default rounded-lg shadow-xl">
+      
+      {/* Modal content - perfectly centered */}
+      <div 
+        className="fixed z-[9999] bg-canvas border border-default rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+          maxWidth: '90vw',
+          maxHeight: '90vh'
+        }}
+      >
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-fg-muted hover:text-white transition-colors"
+            className="absolute top-4 right-4 text-fg-muted hover:text-white transition-colors z-10"
           >
             <X className="w-5 h-5" />
           </button>
         )}
         {children}
       </div>
-    </div>
+    </>
   );
+
+  // Render to document.body to escape all container constraints
+  return createPortal(modalContent, document.body);
 }

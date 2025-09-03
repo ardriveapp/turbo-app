@@ -90,7 +90,7 @@ const LandingPage = () => {
       connectText: 'Search Available Domains'
     },
     { 
-      name: 'Balance Checker', 
+      name: 'Check Balance', 
       icon: Search, 
       title: 'Check Any Wallet Balance',
       description: 'Look up credit balances for any wallet address across Arweave, Ethereum, and Solana networks with storage estimates.',
