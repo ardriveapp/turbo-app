@@ -1,16 +1,16 @@
-import { Popover, PopoverButton, PopoverPanel, Listbox, Transition } from '@headlessui/react';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap } from 'lucide-react';
-import { Fragment, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
 import { formatWalletAddress } from '../utils';
 import TurboLogo from './TurboLogo';
-import { turboConfig } from '../constants';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { useArNSName } from '../hooks/useArNSName';
 import { useNavigate } from 'react-router-dom';
+import { useTurboConfig } from '../hooks/useTurboConfig';
 
 // Services for logged-in users
 const accountServices = [
@@ -34,12 +34,11 @@ const utilityServices = [
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance } = useStore();
+  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode } = useStore();
+  const turboConfig = useTurboConfig();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
   
-  // Always show waffle icon for Services
-  const serviceInfo = { icon: Grid3x3, name: 'Services' };
   const [credits, setCredits] = useState<string>('0');
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -113,11 +112,18 @@ const Header = () => {
       setLoadingBalance(false);
       setIsRefreshing(false);
     }
-  }, [address, walletType, setCreditBalance]);
+  }, [address, walletType, setCreditBalance, turboConfig]);
 
   useEffect(() => {
     fetchBalance();
-  }, [address, walletType]);
+  }, [fetchBalance]);
+
+  // Refresh balance when configuration changes
+  useEffect(() => {
+    if (address) {
+      fetchBalance();
+    }
+  }, [configMode, address, fetchBalance]);
 
   // Listen for balance refresh events from payment success
   useEffect(() => {
@@ -135,10 +141,20 @@ const Header = () => {
   };
 
   return (
-    <div className="flex items-center py-6 sm:py-8">
+    <div className="flex items-center py-3 sm:py-4">
       <Link to="/" className="cursor-pointer">
         <TurboLogo />
       </Link>
+      
+      {/* Dev Mode Indicator */}
+      {configMode !== 'production' && (
+        <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/20">
+          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+          <span className="text-xs text-amber-400 font-medium uppercase">
+            {configMode} MODE
+          </span>
+        </div>
+      )}
       
       <div className="grow" />
       
@@ -316,7 +332,7 @@ const Header = () => {
                   } else if (walletType === 'solana') {
                     // Solana wallet cleared from app state
                   }
-                } catch (_error) {
+                } catch {
                   // Error disconnecting from wallet extension
                 }
                 

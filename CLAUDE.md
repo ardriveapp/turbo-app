@@ -118,6 +118,7 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 
 #### Payment Integration
 - **Stripe Elements**: Hosted checkout with success/cancel callbacks
+- **Gift Payment Flow**: Multi-step payment process with confirmation panels
 - **Crypto Payments**: UI ready, backend integration pending
 - **Real-time Conversion**: USD to credits with debouncing (500ms)
 - **Balance Refresh**: Custom events trigger balance updates
@@ -196,6 +197,7 @@ All service panels follow consistent styling:
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
 - `useCountries`: Country data for payment forms
 - `useDebounce`: Input debouncing (500ms default)
+- `useTurboConfig`: Centralized Turbo SDK configuration with environment-based settings
 
 ### Styling System
 

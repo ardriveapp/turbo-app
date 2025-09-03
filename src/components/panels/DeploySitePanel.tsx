@@ -3,14 +3,14 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, FolderOpen, ExternalLink, Home, AlertTriangle } from 'lucide-react';
+import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle } from 'lucide-react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 
 export default function DeploySitePanel() {
-  const { address, creditBalance } = useStore();
+  const { address, creditBalance, deployHistory, addDeployResults, clearDeployHistory } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -20,7 +20,7 @@ export default function DeploySitePanel() {
   const [indexFile, setIndexFile] = useState<string>('');
   const [fallbackFile, setFallbackFile] = useState<string>('');
   const wincForOneGiB = useWincForOneGiB();
-  const { deployFolder, deploying, deployResults, reset: resetDeploy, clearResults } = useFolderUpload();
+  const { deployFolder, deploying } = useFolderUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
@@ -96,6 +96,23 @@ export default function DeploySitePanel() {
       if (found) {
         detectedFallback = found.webkitRelativePath || found.name;
         break;
+      }
+    }
+    
+    // If no dedicated fallback found and this looks like a SPA, suggest index.html
+    if (!detectedFallback && detectedIndex) {
+      // Check for common SPA indicators (React, Vue, Angular build artifacts)
+      const hasBuildArtifacts = files.some(file => {
+        const name = file.name.toLowerCase();
+        const path = file.webkitRelativePath?.toLowerCase() || '';
+        return name.includes('chunk') || name.includes('bundle') || 
+               path.includes('assets/') || path.includes('static/') ||
+               name.endsWith('.js') && name.includes('app');
+      });
+      
+      if (hasBuildArtifacts) {
+        console.log('🔍 SPA detected - suggesting index.html as fallback for client-side routing');
+        detectedFallback = detectedIndex; // Suggest same as index for SPA routing
       }
     }
 
@@ -210,6 +227,9 @@ export default function DeploySitePanel() {
       });
       
       if (result.manifestId) {
+        // Add results to store for persistence
+        addDeployResults(result.results || []);
+        
         // Clear the folder selection since deployment is complete
         setSelectedFolder(null);
         setShowFolderContents(false);
@@ -323,6 +343,11 @@ export default function DeploySitePanel() {
                     setShowFolderContents(false);
                     setIndexFile('');
                     setFallbackFile('');
+                    // Clear the file input value to allow re-selecting the same folder
+                    const fileInput = document.getElementById('folder-upload') as HTMLInputElement;
+                    if (fileInput) {
+                      fileInput.value = '';
+                    }
                   }}
                   className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
                 >
@@ -461,6 +486,20 @@ export default function DeploySitePanel() {
                   </div>
                 )}
             </div>
+            
+            {/* Fallback Info for SPA routing */}
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-400">
+                  <strong>SPA Routing Support:</strong> For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
+                  <code className="px-1 py-0.5 bg-blue-500/20 rounded text-blue-300 font-mono text-xs">index.html</code>
+                  ) to enable client-side routing. This ensures URLs like{' '}
+                  <code className="px-1 py-0.5 bg-blue-500/20 rounded text-blue-300 font-mono text-xs">/topup</code>
+                  {' '}work correctly instead of showing 404 errors.
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -571,7 +610,7 @@ export default function DeploySitePanel() {
       )}
 
       {/* Deploy Results - Unified with Upload Results */}
-      {deployResults.length > 0 && (
+      {deployHistory.length > 0 && (
         <div className="bg-surface rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h4 className="font-bold text-fg-muted flex items-center gap-2">
@@ -582,7 +621,7 @@ export default function DeploySitePanel() {
               <button
                 onClick={() => {
                   // Check status for all deployed items (manifest + files)
-                  const allIds = deployResults.flatMap(result => {
+                  const allIds = deployHistory.flatMap(result => {
                     if (result.type === 'manifest') return result.id ? [result.id] : [];
                     if (result.type === 'files') return result.files?.map(f => f.id) || [];
                     return [];
@@ -597,7 +636,7 @@ export default function DeploySitePanel() {
                 <span className="xs:hidden">Status</span>
               </button>
               <button
-                onClick={clearResults}
+                onClick={clearDeployHistory}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
               >
                 <XCircle className="w-3 h-3" />
@@ -608,7 +647,7 @@ export default function DeploySitePanel() {
           </div>
           
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {deployResults.map((result, index) => (
+            {deployHistory.map((result, index) => (
               <div key={index}>
                 {/* Manifest Result - Special but Unified Styling */}
                 {result.type === 'manifest' && result.id && (
@@ -848,7 +887,7 @@ export default function DeploySitePanel() {
       {showReceiptModal && (
         <ReceiptModal
           onClose={() => setShowReceiptModal(null)}
-          receipt={deployResults.find(r => 
+          receipt={deployHistory.find(r => 
             (r.type === 'manifest' && r.id === showReceiptModal) || 
             (r.type === 'files' && r.files?.find(f => f.id === showReceiptModal))
           )}

@@ -1,9 +1,23 @@
 import { useState } from 'react';
 import { ExternalLink, Code, Copy, Check, Database, Zap, Rss } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import CopyButton from '../CopyButton';
 
 export default function DeveloperPanel() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'quickstart' | 'api' | 'guides' | 'horizon'>('quickstart');
+  const [activeTab, setActiveTab] = useState<'quickstart' | 'api' | 'guides' | 'horizon' | 'configuration'>('quickstart');
+  
+  // Developer configuration state
+  const { 
+    configMode,
+    setConfigMode, 
+    updateCustomConfig, 
+    updateTokenMap, 
+    getCurrentConfig,
+    resetToDefaults 
+  } = useStore();
+  
+  const currentConfig = getCurrentConfig();
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -123,6 +137,16 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           }`}
         >
           On the Horizon
+        </button>
+        <button
+          onClick={() => setActiveTab('configuration')}
+          className={`pb-2 px-1 transition-colors ${
+            activeTab === 'configuration' 
+              ? 'text-fg-muted border-b-2 border-turbo-red' 
+              : 'text-link hover:text-fg-muted'
+          }`}
+        >
+          Configuration
         </button>
       </div>
 
@@ -367,6 +391,196 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             <div className="text-xs text-link">
               Stay tuned for updates on these upcoming features
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'configuration' && (
+        <div className="space-y-6">
+          {/* Environment Configuration Panel */}
+          <div>
+            <h4 className="text-lg font-semibold text-fg-muted mb-4">Environment Configuration</h4>
+            <p className="text-sm text-link mb-6">
+              Switch between environments or configure custom endpoints for development and testing
+            </p>
+
+            {/* Mode Selection */}
+            <div className="flex gap-6 mb-6">
+              {['production', 'development', 'custom'].map((mode) => (
+                <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={configMode === mode}
+                    onChange={() => setConfigMode(mode as any)}
+                    className="w-4 h-4 text-turbo-red border-gray-600 bg-black/40 focus:ring-turbo-red focus:ring-2"
+                  />
+                  <span className="text-sm font-medium capitalize text-fg-muted">{mode}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Configuration Fields */}
+            <div className="space-y-4 mb-6">
+              {/* Payment Service URL */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">Payment Service URL</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.paymentServiceUrl}
+                    onChange={(e) => updateCustomConfig('paymentServiceUrl', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-red focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                      {currentConfig.paymentServiceUrl}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.paymentServiceUrl} />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Service URL */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">Upload Service URL</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.uploadServiceUrl}
+                    onChange={(e) => updateCustomConfig('uploadServiceUrl', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-red focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                      {currentConfig.uploadServiceUrl}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.uploadServiceUrl} />
+                  </div>
+                )}
+              </div>
+
+              {/* Gateway URL */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">Gateway URL</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.gatewayUrl}
+                    onChange={(e) => updateCustomConfig('gatewayUrl', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-red focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                      {currentConfig.gatewayUrl}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.gatewayUrl} />
+                  </div>
+                )}
+              </div>
+
+              {/* Stripe Key */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">Stripe Publishable Key</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.stripeKey}
+                    onChange={(e) => updateCustomConfig('stripeKey', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-red focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                      {currentConfig.stripeKey.substring(0, 20)}...{currentConfig.stripeKey.substring(currentConfig.stripeKey.length - 4)}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.stripeKey} />
+                  </div>
+                )}
+              </div>
+
+              {/* Process ID */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">AR.IO Process ID</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.processId}
+                    onChange={(e) => updateCustomConfig('processId', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-red focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-turbo-red font-mono">
+                      {currentConfig.processId}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.processId} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Token Gateway Map (collapsible) */}
+            <details className="mb-6">
+              <summary className="cursor-pointer text-sm font-medium text-turbo-red mb-3 hover:text-turbo-red/80">
+                Token Gateway Configuration ({Object.keys(currentConfig.tokenMap).length} networks)
+              </summary>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 p-4 bg-black/20 rounded-lg">
+                {Object.entries(currentConfig.tokenMap).map(([token, url]) => (
+                  <div key={token}>
+                    <label className="block text-xs font-medium text-link mb-1 uppercase">{token}</label>
+                    {configMode === 'custom' ? (
+                      <input
+                        type="text"
+                        value={url}
+                        onChange={(e) => updateTokenMap(token as any, e.target.value)}
+                        className="w-full px-2 py-1 bg-black/40 border border-default rounded text-fg-muted text-xs focus:ring-1 focus:ring-turbo-red focus:border-transparent"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 px-2 py-1 bg-black/40 rounded text-xs text-turbo-red font-mono truncate">
+                          {url}
+                        </code>
+                        <CopyButton textToCopy={url} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            {/* Actions and Status */}
+            <div className="flex gap-3 pt-4 border-t border-default">
+              {configMode === 'custom' && (
+                <button 
+                  onClick={resetToDefaults}
+                  className="px-4 py-2 border border-default text-link rounded-lg hover:bg-surface transition-colors text-sm"
+                >
+                  Reset to Production
+                </button>
+              )}
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  configMode === 'production' ? 'bg-turbo-green' : 
+                  configMode === 'development' ? 'bg-amber-400' : 
+                  'bg-turbo-red'
+                }`} />
+                <span className="text-xs text-link">
+                  Using <strong className="text-fg-muted">{configMode}</strong> configuration
+                </span>
+              </div>
+            </div>
+
+            {configMode !== 'production' && (
+              <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="text-xs text-amber-300">
+                  ⚠️ You are not using production endpoints. Real transactions may not work as expected.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -1,11 +1,12 @@
 import { tokenToBaseMap, TurboFactory } from "@ardrive/turbo-sdk/web";
 import { useState, useEffect } from "react";
-import { turboConfig } from "../constants";
+import { useTurboConfig } from "./useTurboConfig";
 
 export function useWincForOneGiB() {
   const [wincForOneGiB, setWincForOneGiB] = useState<string | undefined>(
     undefined,
   );
+  const turboConfig = useTurboConfig();
 
   // On first render, get winc for 1 GiB for conversions
   useEffect(() => {
@@ -14,7 +15,7 @@ export function useWincForOneGiB() {
       .then(({ winc }) => {
         setWincForOneGiB(winc);
       });
-  }, []);
+  }, [turboConfig]);
 
   return wincForOneGiB;
 }
@@ -23,6 +24,8 @@ export function useWincForToken(token: "arweave" | "ario", amount: number) {
   const [wincForToken, setWincForToken] = useState<string | undefined>(
     undefined,
   );
+  const turboConfig = useTurboConfig();
+  
   useEffect(() => {
     TurboFactory.unauthenticated({ ...turboConfig, token })
       .getWincForToken({
@@ -31,7 +34,7 @@ export function useWincForToken(token: "arweave" | "ario", amount: number) {
       .then(({ winc }) => {
         setWincForToken(winc);
       });
-  }, [token, amount]);
+  }, [token, amount, turboConfig]);
 
   return wincForToken;
 }

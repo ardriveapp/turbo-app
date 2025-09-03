@@ -22,7 +22,8 @@
       "WebSearch",
       "WebSearch",
       "WebSearch",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

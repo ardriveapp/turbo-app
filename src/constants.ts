@@ -3,6 +3,7 @@ import { TurboUnauthenticatedConfiguration } from "@ardrive/turbo-sdk";
 // Use VITE_NODE_ENV to determine production mode
 const isProd = import.meta.env.VITE_NODE_ENV === 'production';
 
+// Legacy constants for backwards compatibility
 export const defaultPaymentServiceUrl = isProd
   ? "https://payment.ardrive.io"
   : "https://payment.ardrive.dev";
@@ -14,11 +15,31 @@ export const arioProcessId = isProd
   : "agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA";
 export const termsOfServiceUrl = "https://ardrive.io/tos-and-privacy/";
 export const defaultUSDAmount = 10.0;
-export const turboConfig: TurboUnauthenticatedConfiguration = {
-  paymentServiceConfig: { url: defaultPaymentServiceUrl },
-  uploadServiceConfig: { url: uploadServiceUrl },
-  processId: arioProcessId,
+
+// Dynamic configuration functions (will be used by components)
+export const getTurboConfig = (config?: {
+  paymentServiceUrl: string;
+  uploadServiceUrl: string;
+  processId: string;
+}): TurboUnauthenticatedConfiguration => {
+  if (config) {
+    return {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+    };
+  }
+  
+  // Fallback to legacy behavior
+  return {
+    paymentServiceConfig: { url: defaultPaymentServiceUrl },
+    uploadServiceConfig: { url: uploadServiceUrl },
+    processId: arioProcessId,
+  };
 };
+
+// Legacy turboConfig for backwards compatibility (will be replaced)
+export const turboConfig: TurboUnauthenticatedConfiguration = getTurboConfig();
 export const wincPerCredit = 1_000_000_000_000;
 export const defaultDebounceMs = 500;
 export const ardriveAppUrl = "https://app.ardrive.io";

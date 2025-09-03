@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
-import { turboConfig, wincPerCredit } from '../../constants';
+import { wincPerCredit } from '../../constants';
+import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useStore } from '../../store/useStore';
-import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp } from 'lucide-react';
+import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useArNSName } from '../../hooks/useArNSName';
@@ -40,11 +41,13 @@ interface BalanceResult {
 
 export default function BalanceCheckerPanel() {
   const { address: connectedAddress } = useStore();
+  const turboConfig = useTurboConfig();
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [balanceResult, setBalanceResult] = useState<BalanceResult | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [showSharingDetails, setShowSharingDetails] = useState(false);
   const wincForOneGiB = useWincForOneGiB();
   
   // Get ArNS name for the searched address
@@ -112,89 +115,73 @@ export default function BalanceCheckerPanel() {
     try {
       const turbo = TurboFactory.unauthenticated(turboConfig);
       
-      // Fetch balance and shared credits in parallel (our API structure)
-      console.log('Fetching balance and shared credits for:', targetAddress);
-      const [balance, shareApprovals] = await Promise.allSettled([
-        turbo.getBalance(targetAddress),
-        turbo.getCreditShareApprovals({ userAddress: targetAddress })
-      ]);
+      // Fetch balance (includes all shared credits data like reference app)
+      console.log('Fetching balance for:', targetAddress);
+      const balance = await turbo.getBalance(targetAddress);
       
-      console.log('Balance API result:', balance);
-      console.log('Share approvals API result:', shareApprovals);
+      console.log('Balance API result (full response):', balance);
       
-      // Process balance data
-      if (balance.status === 'rejected') {
-        throw new Error('Failed to fetch balance');
-      }
+      // Process balance data using reference app pattern
+      const {
+        winc,
+        controlledWinc,
+        effectiveBalance,
+        givenApprovals,
+        receivedApprovals,
+      } = balance;
       
-      console.log('Balance.value contents:', balance.value);
-      
-      const credits = Number(balance.value.winc) / wincPerCredit;
+      const credits = Number(winc) / wincPerCredit;
       let gibStorage = 0;
       if (wincForOneGiB) {
-        gibStorage = Number(balance.value.winc) / Number(wincForOneGiB);
+        gibStorage = Number(winc) / Number(wincForOneGiB);
       }
       
-      // Check if balance response has reference app fields
-      const hasReferenceFields = balance.value.controlledWinc !== undefined && balance.value.effectiveBalance !== undefined;
-      console.log('Balance has reference app fields:', hasReferenceFields, {
-        controlledWinc: balance.value.controlledWinc,
-        effectiveBalance: balance.value.effectiveBalance,
-        winc: balance.value.winc
+      console.log('Processing shared credits with balance data:', { givenApprovals, receivedApprovals });
+      
+      // Calculate shared credits using reference app formulas
+      const spendPower = Number(winc) / wincPerCredit;
+      const sharedCreditsOut = controlledWinc ? (Number(controlledWinc) - Number(winc)) / wincPerCredit : 0;
+      const receivedCreditsTotal = effectiveBalance ? (Number(effectiveBalance) - Number(winc)) / wincPerCredit : 0;
+      
+      console.log('Reference app calculations:', {
+        spendPower,
+        sharedCreditsOut,
+        receivedCreditsTotal,
+        winc,
+        controlledWinc,
+        effectiveBalance
       });
-
-      // Process shared credits data
-      let sharedCredits = undefined;
-      if (shareApprovals.status === 'fulfilled') {
-        const { givenApprovals, receivedApprovals } = shareApprovals.value;
-        console.log('Share approvals data:', { givenApprovals, receivedApprovals });
-        
-        // Calculate totals and format data with NaN protection
-        const receivedTotal = receivedApprovals.reduce((sum: number, approval: any) => {
-          const winc = Number(approval.winc || 0);
-          return sum + (isNaN(winc) ? 0 : winc / wincPerCredit);
-        }, 0);
-        
-        const givenTotal = givenApprovals.reduce((sum: number, approval: any) => {
-          const winc = Number(approval.approvedWincAmount || 0);
-          return sum + (isNaN(winc) ? 0 : winc / wincPerCredit);
-        }, 0);
-        
-        sharedCredits = {
-          received: {
-            totalCredits: receivedTotal,
-            approvals: receivedApprovals.filter((approval: any) => approval.granterAddress).map((approval: any) => {
-              const winc = Number(approval.winc || 0);
-              return {
-                approvalId: approval.approvalId || 'unknown',
-                granterAddress: approval.granterAddress,
-                winc: approval.winc || '0',
-                credits: isNaN(winc) ? 0 : winc / wincPerCredit,
-                dateCreated: approval.dateCreated
-              };
-            })
-          },
-          given: {
-            totalCredits: givenTotal,
-            approvals: givenApprovals.filter((approval: any) => approval.approvedAddress).map((approval: any) => {
-              const winc = Number(approval.approvedWincAmount || 0);
-              return {
-                approvalId: approval.approvalDataItemId || 'unknown',
-                recipientAddress: approval.approvedAddress,
-                winc: approval.approvedWincAmount || '0',
-                credits: isNaN(winc) ? 0 : winc / wincPerCredit,
-                dateCreated: approval.creationDate
-              };
-            })
-          }
-        };
-      } else {
-        console.warn('Failed to fetch shared credits:', shareApprovals.reason);
-      }
+      
+      // Process shared credits using balance data (like reference app)
+      const sharedCredits = {
+        received: {
+          totalCredits: receivedCreditsTotal, // Use reference app calculation
+          approvals: receivedApprovals ? receivedApprovals.map((approval: any) => {
+            console.log('Processing received approval:', approval);
+            return {
+              approvalId: approval.approvalDataItemId || approval.id || 'unknown',
+              granterAddress: approval.granterAddress || approval.payingAddress || approval.fromAddress || 'Invalid Address',
+              winc: approval.approvedWincAmount || approval.winc || '0',
+              credits: Number(approval.approvedWincAmount || approval.winc || 0) / wincPerCredit,
+              dateCreated: approval.creationDate || approval.dateCreated,
+            };
+          }) : []
+        },
+        given: {
+          totalCredits: sharedCreditsOut, // Use reference app calculation
+          approvals: givenApprovals ? givenApprovals.map((approval: any) => ({
+            approvalId: approval.approvalDataItemId || approval.id || 'unknown',
+            recipientAddress: approval.approvedAddress,
+            winc: approval.approvedWincAmount || approval.winc || '0',
+            credits: Number(approval.approvedWincAmount || approval.winc || 0) / wincPerCredit,
+            dateCreated: approval.creationDate || approval.dateCreated,
+          })) : []
+        }
+      };
 
       setBalanceResult({
         address: targetAddress,
-        winc: balance.value.winc,
+        winc: winc,
         credits: credits,
         gibStorage: gibStorage,
         sharedCredits: sharedCredits
@@ -384,7 +371,7 @@ export default function BalanceCheckerPanel() {
           </div>
 
           {/* Balance Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Credits Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 border border-turbo-red/20">
               <div className="flex items-center justify-between mb-2">
@@ -449,73 +436,102 @@ export default function BalanceCheckerPanel() {
                 Credits you've shared with others
               </div>
             </div>
+
+            {/* Credits Available from Others Card */}
+            <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <ArrowDown className="w-5 h-5 text-green-500" />
+                <span className="text-xs text-link uppercase tracking-wider">Available</span>
+              </div>
+              <div className="text-lg font-bold text-fg-muted">
+                {(() => {
+                  const total = balanceResult.sharedCredits?.received.totalCredits || 0;
+                  if (isNaN(total)) return '0';
+                  return total.toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2
+                  });
+                })()}
+              </div>
+              <div className="text-xs text-green-500 mt-1">
+                Credits available from others
+              </div>
+            </div>
           </div>
 
-          {/* Shared Credits Details */}
+          {/* Shared Credits Details - Expandable */}
           {balanceResult.sharedCredits && (balanceResult.sharedCredits.received.approvals.length > 0 || balanceResult.sharedCredits.given.approvals.length > 0) && (
-            <div className="p-4 rounded-lg bg-surface border border-default">
-              <h4 className="font-bold text-fg-muted mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Credit Sharing Details
-              </h4>
+            <div className="rounded-lg bg-surface border border-default">
+              <button
+                onClick={() => setShowSharingDetails(!showSharingDetails)}
+                className="w-full p-4 text-left hover:bg-canvas/50 transition-colors flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-link" />
+                  <h4 className="font-bold text-fg-muted">Credit Sharing Details</h4>
+                </div>
+                <ChevronDown className={`w-5 h-5 text-link transition-transform ${showSharingDetails ? 'rotate-180' : ''}`} />
+              </button>
               
-              <div className="space-y-4">
-                {/* Received Credits */}
-                {balanceResult.sharedCredits.received.approvals.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <ArrowDown className="w-4 h-4 text-turbo-green" />
-                      <span className="text-sm font-medium text-fg-muted">
-                        Credits Available From Others ({isNaN(balanceResult.sharedCredits.received.totalCredits) ? '0.00' : balanceResult.sharedCredits.received.totalCredits.toFixed(2)} total)
-                      </span>
-                    </div>
-                    <p className="text-xs text-link mb-2">These users have shared their credits with this wallet:</p>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {balanceResult.sharedCredits.received.approvals.map((approval) => (
-                        <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="font-mono text-xs text-link">
-                              {formatWalletAddress(approval.granterAddress, 8)}
+              {showSharingDetails && (
+                <div className="px-4 pb-4 border-t border-default/30 space-y-4">
+                  {/* Received Credits */}
+                  {balanceResult.sharedCredits.received.approvals.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <ArrowDown className="w-4 h-4 text-turbo-green" />
+                        <span className="text-sm font-medium text-fg-muted">
+                          Credits Available From Others ({isNaN(balanceResult.sharedCredits.received.totalCredits) ? '0.00' : balanceResult.sharedCredits.received.totalCredits.toFixed(2)} total)
+                        </span>
+                      </div>
+                      <p className="text-xs text-link mb-2">These users have shared their credits with this wallet:</p>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {balanceResult.sharedCredits.received.approvals.map((approval) => (
+                          <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="font-mono text-xs text-link">
+                                {formatWalletAddress(approval.granterAddress, 8)}
+                              </div>
+                              <CopyButton textToCopy={approval.granterAddress} />
                             </div>
-                            <CopyButton textToCopy={approval.granterAddress} />
+                            <div className="text-turbo-green font-medium">
+                              +{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                            </div>
                           </div>
-                          <div className="text-turbo-green font-medium">
-                            +{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Given Credits */}
-                {balanceResult.sharedCredits.given.approvals.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <ArrowUp className="w-4 h-4 text-turbo-red" />
-                      <span className="text-sm font-medium text-fg-muted">
-                        Credits This Wallet Shared Out ({isNaN(balanceResult.sharedCredits.given.totalCredits) ? '0.00' : balanceResult.sharedCredits.given.totalCredits.toFixed(2)} total)
-                      </span>
-                    </div>
-                    <p className="text-xs text-link mb-2">This wallet has shared credits with these recipients:</p>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {balanceResult.sharedCredits.given.approvals.map((approval) => (
-                        <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="font-mono text-xs text-link">
-                              {formatWalletAddress(approval.recipientAddress, 8)}
+                  {/* Given Credits */}
+                  {balanceResult.sharedCredits.given.approvals.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <ArrowUp className="w-4 h-4 text-turbo-red" />
+                        <span className="text-sm font-medium text-fg-muted">
+                          Credits This Wallet Shared Out ({isNaN(balanceResult.sharedCredits.given.totalCredits) ? '0.00' : balanceResult.sharedCredits.given.totalCredits.toFixed(2)} total)
+                        </span>
+                      </div>
+                      <p className="text-xs text-link mb-2">This wallet has shared credits with these recipients:</p>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {balanceResult.sharedCredits.given.approvals.map((approval) => (
+                          <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="font-mono text-xs text-link">
+                                {formatWalletAddress(approval.recipientAddress, 8)}
+                              </div>
+                              <CopyButton textToCopy={approval.recipientAddress} />
                             </div>
-                            <CopyButton textToCopy={approval.recipientAddress} />
+                            <div className="text-turbo-red font-medium">
+                              -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                            </div>
                           </div>
-                          <div className="text-turbo-red font-medium">
-                            -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

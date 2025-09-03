@@ -9,7 +9,8 @@ import {
   InjectedSolanaSigner
 } from '@dha-team/arbundles';
 import { useStore } from '../../store/useStore';
-import { wincPerCredit, turboConfig } from '../../constants';
+import { wincPerCredit } from '../../constants';
+import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 
@@ -22,6 +23,7 @@ interface Approval {
 export default function ShareCreditsPanel() {
   const { address, walletType, creditBalance } = useStore();
   const wincForOneGiB = useWincForOneGiB();
+  const turboConfig = useTurboConfig();
   
   // Create authenticated turbo client based on wallet type
   const createTurboClient = async (): Promise<TurboAuthenticatedClient> => {

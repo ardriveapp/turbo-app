@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { wincPerCredit } from '../constants';
+import { useStore } from '../store/useStore';
 
 export interface UploadStatus {
   status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND';
@@ -16,12 +17,14 @@ export interface UploadStatus {
 export function useUploadStatus() {
   const [statusChecking, setStatusChecking] = useState<Record<string, boolean>>({});
   const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({});
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
 
   const checkUploadStatus = useCallback(async (txId: string): Promise<UploadStatus> => {
     setStatusChecking(prev => ({ ...prev, [txId]: true }));
     
     try {
-      const response = await fetch(`https://upload.ardrive.io/tx/${txId}/status`);
+      const config = getCurrentConfig();
+      const response = await fetch(`${config.uploadServiceUrl}/tx/${txId}/status`);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -55,7 +58,7 @@ export function useUploadStatus() {
     } finally {
       setStatusChecking(prev => ({ ...prev, [txId]: false }));
     }
-  }, []);
+  }, [getCurrentConfig]);
 
   const checkMultipleStatuses = useCallback(async (txIds: string[]) => {
     const promises = txIds.map(txId => checkUploadStatus(txId));

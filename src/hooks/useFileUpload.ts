@@ -8,8 +8,8 @@ import {
 // Removed unused imports - now using walletAdapter pattern instead of direct signers
 import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
-import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
+import { useTurboConfig } from './useTurboConfig';
 
 interface UploadResult {
   id: string;
@@ -23,6 +23,7 @@ interface UploadResult {
 
 export function useFileUpload() {
   const { address, walletType } = useStore();
+  const turboConfig = useTurboConfig();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -89,7 +90,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType]);
+  }, [address, walletType, turboConfig]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!address) {

@@ -1,6 +1,7 @@
 import { TurboFactory, tokenToBaseMap } from "@ardrive/turbo-sdk/web";
 import { useState, useRef, useEffect } from "react";
-import { turboConfig, wincPerCredit, SupportedTokenType } from "../constants";
+import { wincPerCredit, SupportedTokenType } from "../constants";
+import { useTurboConfig } from "./useTurboConfig";
 
 export function useCreditsForCrypto(
   debouncedCryptoAmount: number,
@@ -11,6 +12,7 @@ export function useCreditsForCrypto(
   const cryptoWhenCreditsWereLastUpdatedRef = useRef<number | undefined>(
     undefined,
   );
+  const turboConfig = useTurboConfig();
 
   // Get credits for crypto amount when crypto amount has stopped debouncing
   useEffect(() => {
@@ -35,7 +37,7 @@ export function useCreditsForCrypto(
         console.error(err);
         errorCallback(`Error getting credits for ${tokenType} amount: ${err.message}`);
       });
-  }, [debouncedCryptoAmount, tokenType, errorCallback]);
+  }, [debouncedCryptoAmount, tokenType, errorCallback, turboConfig]);
 
   return [
     winc ? +winc / wincPerCredit : undefined,

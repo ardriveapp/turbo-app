@@ -2,13 +2,31 @@ import { useState } from 'react';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount } from '../../constants';
-import { Gift, Mail, MessageSquare, Send, CheckCircle, Heart } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import { Gift, Mail, MessageSquare, Send, CheckCircle, Heart, Loader2, Lock } from 'lucide-react';
+import { getGiftPaymentIntent } from '../../services/paymentService';
+import GiftPaymentDetailsPanel from './fiat/GiftPaymentDetailsPanel';
+import GiftPaymentConfirmationPanel from './fiat/GiftPaymentConfirmationPanel';
+import GiftPaymentSuccessPanel from './fiat/GiftPaymentSuccessPanel';
 
 export default function GiftPanel() {
+  const { 
+    paymentIntent,
+    paymentInformation,
+    paymentIntentResult,
+    setPaymentAmount,
+    setPaymentIntent,
+    clearAllPaymentState
+  } = useStore();
+  
   const [usdAmount, setUsdAmount] = useState(defaultUSDAmount);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [giftMessage, setGiftMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Gift flow state
+  const [giftFlowStep, setGiftFlowStep] = useState<'form' | 'details' | 'confirmation' | 'success'>('form');
   
   const debouncedUsdAmount = useDebounce(usdAmount);
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
@@ -26,14 +44,32 @@ export default function GiftPanel() {
     setUsdAmount(amount);
   };
 
-  const handleSendGift = () => {
-    // This would integrate with the gift API
-    console.log('Sending gift:', { 
-      amount: usdAmount, 
-      credits, 
-      recipientEmail, 
-      giftMessage 
-    });
+  const handleSendGift = async () => {
+    if (!canSubmit) return;
+    
+    setIsProcessing(true);
+    setErrorMessage('');
+    
+    try {
+      // Create gift payment intent
+      const result = await getGiftPaymentIntent({
+        amount: usdAmount,
+        recipientEmail,
+        giftMessage: giftMessage || undefined,
+      });
+      
+      // Store payment intent and amount in store
+      setPaymentIntent(result.paymentSession);
+      setPaymentAmount(usdAmount);
+      
+      // Move to payment details step
+      setGiftFlowStep('details');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create gift payment';
+      setErrorMessage(errorMessage);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const isValidEmail = (email: string) => {
@@ -41,6 +77,54 @@ export default function GiftPanel() {
   };
 
   const canSubmit = credits && recipientEmail && isValidEmail(recipientEmail) && usdAmount >= minUSDAmount;
+
+  // Handle flow step rendering
+  if (giftFlowStep === 'details') {
+    return (
+      <GiftPaymentDetailsPanel 
+        usdAmount={usdAmount}
+        recipientEmail={recipientEmail}
+        giftMessage={giftMessage}
+        paymentIntent={paymentIntent}
+        onBack={() => {
+          setGiftFlowStep('form');
+          clearAllPaymentState();
+        }}
+        onNext={() => setGiftFlowStep('confirmation')}
+      />
+    );
+  }
+
+  if (giftFlowStep === 'confirmation') {
+    return (
+      <GiftPaymentConfirmationPanel 
+        usdAmount={usdAmount}
+        recipientEmail={recipientEmail}
+        giftMessage={giftMessage}
+        paymentIntent={paymentIntent}
+        onBack={() => setGiftFlowStep('details')}
+        onSuccess={() => setGiftFlowStep('success')}
+      />
+    );
+  }
+
+  if (giftFlowStep === 'success') {
+    return (
+      <GiftPaymentSuccessPanel 
+        usdAmount={usdAmount}
+        recipientEmail={recipientEmail}
+        giftMessage={giftMessage}
+        onContinue={() => {
+          setGiftFlowStep('form');
+          clearAllPaymentState();
+          // Reset form
+          setUsdAmount(defaultUSDAmount);
+          setRecipientEmail('');
+          setGiftMessage('');
+        }}
+      />
+    );
+  }
 
   return (
     <div>
@@ -124,11 +208,26 @@ export default function GiftPanel() {
       <button
         onClick={handleSendGift}
         className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        disabled={!canSubmit}
+        disabled={!canSubmit || isProcessing}
       >
-        <Send className="w-5 h-5" />
-        Send Gift
+        {isProcessing ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Creating Gift...
+          </>
+        ) : (
+          <>
+            <Send className="w-5 h-5" />
+            Send Gift
+          </>
+        )}
       </button>
+
+      {/* Stripe Security Notice */}
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-link">
+        <Lock className="w-3.5 h-3.5" />
+        <span>Secure payment powered by Stripe</span>
+      </div>
       </div>
 
       {/* Gift Process Info */}

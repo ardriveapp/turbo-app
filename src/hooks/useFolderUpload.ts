@@ -184,15 +184,29 @@ export function useFolderUpload() {
                 : manifestOptions.indexFile)
             : 'index.html'
         },
-        ...(manifestOptions?.fallbackFile && {
-          fallback: {
-            id: fileUploadResults.find(file => 
-              file.path.endsWith(manifestOptions.fallbackFile!)
-            )?.id || fileUploadResults.find(file => 
-              file.path.endsWith('index.html')
-            )?.id
+        ...(manifestOptions?.fallbackFile && (() => {
+          // Find the fallback file by exact path match or relative path match
+          const fallbackFile = fileUploadResults.find(file => {
+            const relativePath = file.path.startsWith(folderPath + '/') 
+              ? file.path.substring(folderPath.length + 1)
+              : file.path;
+            
+            return file.path === manifestOptions.fallbackFile ||
+                   relativePath === manifestOptions.fallbackFile ||
+                   file.path.endsWith('/' + manifestOptions.fallbackFile);
+          });
+          
+          if (!fallbackFile) {
+            console.warn(`Warning: Specified fallback file "${manifestOptions.fallbackFile}" not found in uploaded files. No fallback will be set.`);
+            return {};
           }
-        }),
+          
+          return {
+            fallback: {
+              id: fallbackFile.id
+            }
+          };
+        })()),
         paths: fileUploadResults.reduce((acc, file) => {
           const relativePath = file.path.startsWith(folderPath + '/') 
             ? file.path.substring(folderPath.length + 1)

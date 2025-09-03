@@ -5,7 +5,7 @@ import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabel
 import { useStore } from '../../store/useStore';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../constants';
-import { Loader2, Lock, CreditCard, Zap, DollarSign, Wallet, Info, Shield, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive } from 'lucide-react';
 import { useWincForOneGiB, useWincForToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
@@ -29,8 +29,11 @@ export default function TopUpPanel() {
   } = useStore();
   
   const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
+  const [inputType, setInputType] = useState<'dollars' | 'storage'>('dollars');
   const [usdAmount, setUsdAmount] = useState(defaultUSDAmount);
   const [usdAmountInput, setUsdAmountInput] = useState(String(defaultUSDAmount));
+  const [storageAmount, setStorageAmount] = useState(1);
+  const [storageUnit, setStorageUnit] = useState<'MiB' | 'GiB' | 'TiB'>('GiB');
   const [cryptoAmount, setCryptoAmount] = useState(0.01); // Default crypto amount
   const [cryptoAmountInput, setCryptoAmountInput] = useState('0.01');
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,6 +49,7 @@ export default function TopUpPanel() {
   
   const debouncedUsdAmount = useDebounce(usdAmount);
   const debouncedCryptoAmount = useDebounce(cryptoAmount);
+  const debouncedStorageAmount = useDebounce(storageAmount);
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
   // Use existing hook for AR/ARIO only since that's what it supports
   const wincForArweave = useWincForToken(
@@ -56,6 +60,42 @@ export default function TopUpPanel() {
     ? Number(wincForArweave) / wincPerCredit 
     : undefined;
   const wincForOneGiB = useWincForOneGiB();
+  const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
+  
+  // Calculate storage in GiB
+  const getStorageInGiB = () => {
+    switch (storageUnit) {
+      case 'MiB':
+        return debouncedStorageAmount / 1024;
+      case 'TiB':
+        return debouncedStorageAmount * 1024;
+      default:
+        return debouncedStorageAmount;
+    }
+  };
+  
+  // Calculate cost in dollars for storage
+  const calculateStorageCost = () => {
+    if (!wincForOneGiB || !creditsForOneUSD) return 0;
+    const storageInGiB = getStorageInGiB();
+    const wincNeeded = storageInGiB * Number(wincForOneGiB);
+    const creditsNeeded = wincNeeded / 1e12; // Convert winc to credits
+    const dollarsNeeded = creditsNeeded / creditsForOneUSD;
+    return dollarsNeeded;
+  };
+  
+  // Get the effective USD amount to use for checkout
+  const getEffectiveUsdAmount = () => {
+    return inputType === 'storage' ? calculateStorageCost() : usdAmount;
+  };
+  
+  // Format number with commas
+  const formatNumber = (num: number, decimals = 2) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals,
+    }).format(num);
+  };
   
   
   // Helper function to get token amount for USD amount
@@ -146,14 +186,16 @@ export default function TopUpPanel() {
       return;
     }
 
+    const effectiveAmount = getEffectiveUsdAmount();
+    
     // Validate amount limits
-    if (usdAmount < minUSDAmount) {
-      setErrorMessage(`Minimum purchase amount is $${minUSDAmount}`);
+    if (effectiveAmount < minUSDAmount) {
+      setErrorMessage(`Minimum purchase amount is $${minUSDAmount}${inputType === 'storage' ? ' (reduce storage amount)' : ''}`);
       return;
     }
     
-    if (usdAmount > maxUSDAmount) {
-      setErrorMessage(`Maximum purchase amount is $${maxUSDAmount}`);
+    if (effectiveAmount > maxUSDAmount) {
+      setErrorMessage(`Maximum purchase amount is $${maxUSDAmount}${inputType === 'storage' ? ' (reduce storage amount)' : ''}`);
       return;
     }
 
@@ -174,12 +216,12 @@ export default function TopUpPanel() {
         // Create payment intent for inline flow
         const paymentIntentResponse = await getPaymentIntent(
           address,
-          usdAmount * 100, // Convert to cents
+          effectiveAmount * 100, // Convert to cents
           token as any,
         );
         
         // Store payment state
-        setPaymentAmount(usdAmount * 100);
+        setPaymentAmount(effectiveAmount * 100);
         setPaymentIntent(paymentIntentResponse.paymentSession);
         
         // Move to payment details step
@@ -325,7 +367,7 @@ export default function TopUpPanel() {
       case 'details':
         return (
           <PaymentDetailsPanel
-            usdAmount={usdAmount}
+            usdAmount={getEffectiveUsdAmount()}
             onBack={handleFiatBackToAmount}
             onNext={handleFiatPaymentDetailsNext}
           />
@@ -333,7 +375,7 @@ export default function TopUpPanel() {
       case 'confirmation':
         return (
           <PaymentConfirmationPanel
-            usdAmount={usdAmount}
+            usdAmount={getEffectiveUsdAmount()}
             onBack={() => setFiatFlowStep('details')}
             onSuccess={handleFiatPaymentSuccess}
           />
@@ -435,6 +477,46 @@ export default function TopUpPanel() {
           </div>
         </div>
 
+        {/* Input Mode Toggle - Only for fiat payments */}
+        {paymentMethod === 'fiat' && (
+          <div className="mb-6">
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex w-full max-w-sm sm:w-auto bg-surface rounded-lg p-1 border border-default">
+                <button
+                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    inputType === 'storage'
+                      ? 'bg-turbo-red text-white'
+                      : 'text-link hover:text-fg-muted'
+                  }`}
+                  onClick={() => {
+                    setInputType('storage');
+                    setErrorMessage('');
+                  }}
+                >
+                  <HardDrive className="w-4 h-4" />
+                  <span className="hidden sm:inline">Storage to Cost</span>
+                  <span className="sm:hidden">Storage</span>
+                </button>
+                <button
+                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    inputType === 'dollars'
+                      ? 'bg-turbo-red text-white'
+                      : 'text-link hover:text-fg-muted'
+                  }`}
+                  onClick={() => {
+                    setInputType('dollars');
+                    setErrorMessage('');
+                  }}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span className="hidden sm:inline">Budget to Storage</span>
+                  <span className="sm:hidden">Budget</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Crypto Token Selection - Show immediately after selecting crypto */}
         {paymentMethod === 'crypto' && (
           <div className="mb-6">
@@ -515,65 +597,145 @@ export default function TopUpPanel() {
 
         {/* Amount Selection */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-link mb-3">
-            {paymentMethod === 'fiat' ? 'Select USD Amount' : `Select ${tokenLabels[selectedTokenType]} Amount`}
-          </label>
-          
           {paymentMethod === 'fiat' ? (
             <>
-              {/* USD Preset Amounts */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {presetAmounts.map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => {
-                      setUsdAmount(amount);
-                      setUsdAmountInput(String(amount));
-                      setErrorMessage('');
-                    }}
-                    className={`py-3 px-3 rounded-lg border transition-all font-medium ${
-                      usdAmount === amount
-                        ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
-                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                    }`}
-                  >
-                    ${amount}
-                  </button>
-                ))}
-              </div>
+              <label className="block text-sm font-medium text-link mb-3">
+                {inputType === 'dollars' ? 'Select USD Amount' : 'Enter Storage Amount'}
+              </label>
               
-              {/* Custom USD Input */}
-              <div className="bg-surface rounded-lg p-4">
-                <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-                  Custom Amount (USD)
-                </label>
-                <div className="flex items-center gap-3">
-                  <DollarSign className="w-5 h-5 text-fg-muted" />
-                  <input
-                    type="text"
-                    value={usdAmountInput}
-                    onChange={handleAmountChange}
-                    onBlur={() => {
-                      if (usdAmount >= minUSDAmount && usdAmount <= maxUSDAmount) {
-                        setUsdAmountInput(String(usdAmount));
-                      }
-                    }}
-                    className={`flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors ${
-                      usdAmount > maxUSDAmount || (usdAmount < minUSDAmount && usdAmount > 0)
-                        ? 'border-red-500 focus:border-red-500' 
-                        : 'border-default focus:border-turbo-red'
-                    }`}
-                    placeholder="Enter amount"
-                    inputMode="decimal"
-                  />
-                </div>
-                <div className="mt-2 text-xs text-link">
-                  Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
-                </div>
-              </div>
+              {inputType === 'dollars' ? (
+                <>
+                  {/* USD Preset Amounts */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {presetAmounts.map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => {
+                          setUsdAmount(amount);
+                          setUsdAmountInput(String(amount));
+                          setErrorMessage('');
+                        }}
+                        className={`py-3 px-3 rounded-lg border transition-all font-medium ${
+                          usdAmount === amount
+                            ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                        }`}
+                      >
+                        ${amount}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Custom USD Input */}
+                  <div className="bg-surface rounded-lg p-4">
+                    <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                      Custom Amount (USD)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="w-5 h-5 text-fg-muted" />
+                      <input
+                        type="text"
+                        value={usdAmountInput}
+                        onChange={handleAmountChange}
+                        onBlur={() => {
+                          if (usdAmount >= minUSDAmount && usdAmount <= maxUSDAmount) {
+                            setUsdAmountInput(String(usdAmount));
+                          }
+                        }}
+                        className={`flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors ${
+                          usdAmount > maxUSDAmount || (usdAmount < minUSDAmount && usdAmount > 0)
+                            ? 'border-red-500 focus:border-red-500' 
+                            : 'border-default focus:border-turbo-red'
+                        }`}
+                        placeholder="Enter amount"
+                        inputMode="decimal"
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-link">
+                      Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Storage Amount Input */}
+                  <div className="bg-surface rounded-lg p-4 mb-4">
+                    <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                      How much data do you need to store?
+                    </label>
+                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={storageAmount}
+                        onChange={(e) => {
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          setStorageAmount(value);
+                          setErrorMessage('');
+                        }}
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        placeholder="Enter amount"
+                      />
+                      <select
+                        value={storageUnit}
+                        onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
+                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                      >
+                        <option value="MiB">MiB</option>
+                        <option value="GiB">GiB</option>
+                        <option value="TiB">TiB</option>
+                      </select>
+                    </div>
+                    
+                    {/* Common storage sizes */}
+                    <div className="text-xs text-link mb-2">Quick select:</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { amount: 100, unit: 'MiB', label: '100 MiB' },
+                        { amount: 500, unit: 'MiB', label: '500 MiB' },
+                        { amount: 1, unit: 'GiB', label: '1 GiB' },
+                        { amount: 10, unit: 'GiB', label: '10 GiB' },
+                        { amount: 100, unit: 'GiB', label: '100 GiB' },
+                        { amount: 1, unit: 'TiB', label: '1 TiB' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setStorageAmount(preset.amount);
+                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
+                            setErrorMessage('');
+                          }}
+                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Cost Display for Storage Mode */}
+                  {wincForOneGiB && creditsForOneUSD && (
+                    <div className="bg-canvas border-2 border-turbo-red rounded-lg p-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-sm text-link mb-1">Estimated Cost</div>
+                        <div className="text-2xl font-bold text-turbo-red">
+                          ${formatNumber(calculateStorageCost())} USD
+                        </div>
+                        <div className="text-sm text-link mt-2">
+                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           ) : (
             <>
+              <label className="block text-sm font-medium text-link mb-3">
+                Select {tokenLabels[selectedTokenType]} Amount
+              </label>
               {/* Crypto Preset Amounts */}
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {getCryptoPresets(selectedTokenType).map((amount) => (
@@ -625,21 +787,27 @@ export default function TopUpPanel() {
         </div>
 
         {/* Credits Preview */}
-        {((paymentMethod === 'fiat' && credits && usdAmount > 0) || (paymentMethod === 'crypto' && cryptoCredits && cryptoCredits > 0)) && (
+        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && cryptoCredits && cryptoCredits > 0)) && (
           <div className="space-y-4 mb-6">
             {/* Purchase Summary */}
             <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
               <div className="text-sm text-link mb-1">You'll Receive</div>
               <div className="text-4xl font-bold text-turbo-red mb-1">
                 {paymentMethod === 'fiat' 
-                  ? credits?.toLocaleString() || '...'
+                  ? (inputType === 'storage' 
+                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                      : credits?.toLocaleString() || '...'
+                    )
                   : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
                 } Credits
               </div>
               {wincForOneGiB && (
                 <div className="text-sm text-link">
                   = ~{paymentMethod === 'fiat' 
-                    ? credits ? ((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                    ? (inputType === 'storage' 
+                        ? formatNumber(getStorageInGiB(), 2)
+                        : credits ? ((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                      )
                     : cryptoCredits ? ((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
                   } GiB storage power
                 </div>
@@ -666,14 +834,20 @@ export default function TopUpPanel() {
                 <div className="text-right">
                   <span className="font-bold text-turbo-green text-lg">
                     {paymentMethod === 'fiat' 
-                      ? credits ? (creditBalance + credits).toLocaleString() : '...'
+                      ? (inputType === 'storage' 
+                          ? (creditBalance + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
+                          : credits ? (creditBalance + credits).toLocaleString() : '...'
+                        )
                       : cryptoCredits ? (creditBalance + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
                     } Credits
                   </span>
                   {wincForOneGiB && (
                     <div className="text-xs text-turbo-green">
                       ~{paymentMethod === 'fiat'
-                        ? credits ? (((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                        ? (inputType === 'storage' 
+                            ? (((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)
+                            : credits ? (((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                          )
                         : cryptoCredits ? (((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
                       } GiB storage power
                     </div>
@@ -696,7 +870,10 @@ export default function TopUpPanel() {
           onClick={handleCheckout}
           className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
-            (paymentMethod === 'fiat' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
+            (paymentMethod === 'fiat' && (
+              (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
+              (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
+            )) ||
             (paymentMethod === 'crypto' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType))) ||
             isProcessing
           }

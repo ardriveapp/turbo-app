@@ -1,15 +1,27 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import { Navigation } from './Navigation';
+import Footer from './Footer';
 
 export function Layout() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Navigation />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <Outlet />
-      </main>
+    <div className="min-h-screen bg-canvas text-fg-muted flex flex-col">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-50 bg-canvas/95 backdrop-blur-sm border-b border-default/20">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
+          <Header />
+        </div>
+      </div>
+      
+      {/* Main Content with proper spacing */}
+      <div className="flex-1">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
+          <div className="py-4 mb-8">
+            <Outlet />
+          </div>
+        </div>
+      </div>
+      
+      <Footer />
     </div>
   );
 }

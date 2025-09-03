@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import Header from './components/Header';
-import Footer from './components/Footer';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { Layout } from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import TopUpPage from './pages/TopUpPage';
 import UploadPage from './pages/UploadPage';
@@ -43,45 +42,30 @@ function PaymentCallbackHandler() {
 }
 
 function AppRoutes() {
-  const navigate = useNavigate();
   
-  // Helper function for pages that need navigation
-  const navigateToService = (service?: 'topup' | 'upload' | 'share' | 'gift' | 'domains' | 'calculator' | 'balance-checker' | 'redeem' | 'developer') => {
-    if (service) {
-      navigate(`/${service}`);
-    } else {
-      navigate('/');
-    }
-  };
 
   return (
     <>
       <PaymentCallbackHandler />
-      <div className="min-h-screen bg-canvas text-fg-muted flex flex-col">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
-          <Header />
-          <div className="mb-12">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/topup" element={<TopUpPage />} />
-              <Route path="/upload" element={<UploadPage />} />
-              <Route path="/deploy" element={<DeploySitePage />} />
-              <Route path="/share" element={<ShareCreditsPage />} />
-              <Route path="/gift" element={<GiftPage />} />
-              <Route path="/domains" element={<DomainsPage />} />
-              <Route path="/calculator" element={<CalculatorPage />} />
-              <Route path="/services-calculator" element={<ServicesCalculatorPage />} />
-              <Route path="/balance-checker" element={<BalanceCheckerPage />} />
-              <Route path="/redeem" element={<RedeemPage />} />
-              <Route path="/developer" element={<DeveloperPage />} />
-              <Route path="/gateway-info" element={<GatewayInfoPage />} />
-              {/* Catch all route - redirect to home */}
-              <Route path="*" element={<LandingPage />} />
-            </Routes>
-          </div>
-        </div>
-        <Footer />
-      </div>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<LandingPage />} />
+          <Route path="topup" element={<TopUpPage />} />
+          <Route path="upload" element={<UploadPage />} />
+          <Route path="deploy" element={<DeploySitePage />} />
+          <Route path="share" element={<ShareCreditsPage />} />
+          <Route path="gift" element={<GiftPage />} />
+          <Route path="domains" element={<DomainsPage />} />
+          <Route path="calculator" element={<CalculatorPage />} />
+          <Route path="services-calculator" element={<ServicesCalculatorPage />} />
+          <Route path="balance-checker" element={<BalanceCheckerPage />} />
+          <Route path="redeem" element={<RedeemPage />} />
+          <Route path="developer" element={<DeveloperPage />} />
+          <Route path="gateway-info" element={<GatewayInfoPage />} />
+          {/* Catch all route - redirect to home */}
+          <Route path="*" element={<LandingPage />} />
+        </Route>
+      </Routes>
     </>
   );
 }
