@@ -129,3 +129,8 @@ export const getArweaveUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
   return `${gatewayBase}/${txId}`;
 };
+
+export const getArweaveRawUrl = (txId: string): string => {
+  const gatewayBase = getGatewayBaseUrl();
+  return `${gatewayBase}/raw/${txId}`;
+};

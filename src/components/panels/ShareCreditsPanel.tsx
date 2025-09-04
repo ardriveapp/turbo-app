@@ -183,13 +183,13 @@ export default function ShareCreditsPanel() {
       {/* Current Balance */}
       {balance && (
         <div className="bg-surface rounded-lg p-4 mb-6">
-          <div className="flex justify-between mb-2">
+          <div className="flex justify-between items-center">
             <span className="text-link">Available to Share:</span>
             <div className="text-right">
-              <span className="font-bold">{spendPower} Credits</span>
+              <span className="font-bold text-fg-muted">{spendPower} Credits</span>
               {wincForOneGiB && (
                 <div className="text-xs text-link">
-                  {((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
+                  ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
                 </div>
               )}
             </div>

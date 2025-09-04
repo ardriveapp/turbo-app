@@ -26,7 +26,7 @@ const utilityServices = [
   { name: 'Search Domains', page: 'domains' as const, icon: Globe },
   { name: 'Developer Resources', page: 'developer' as const, icon: Code },
   { name: 'Pricing Calculator', page: 'calculator' as const, icon: Calculator },
-  { name: 'Check Balance', page: 'balance-checker' as const, icon: Search },
+  { name: 'Check Balance', page: 'balances' as const, icon: Search },
   { name: 'Redeem Gift', page: 'redeem' as const, icon: Ticket },
   { name: 'Service Info', page: 'gateway-info' as const, icon: Info },
 ];
@@ -265,9 +265,9 @@ const Header = () => {
               className="w-full px-6 py-4 border-b border-default hover:bg-canvas transition-colors text-left"
               onClick={() => {
                 // Navigate to balance checker with current address
-                navigate('/balance-checker');
+                navigate('/balances');
                 // Pre-fill the address in balance checker if possible
-                window.localStorage.setItem('balance-checker-address', address);
+                window.localStorage.setItem('balances-address', address);
               }}
               title="View detailed balance breakdown"
             >

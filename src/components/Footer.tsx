@@ -7,8 +7,13 @@ export default function Footer() {
     <footer className="mt-auto border-t border-default bg-surface/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-xs text-link">
-            © {currentYear} Permanent Data Solutions Inc. Powered by AR.IO.
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <div className="text-xs text-link">
+              © {currentYear} Permanent Data Solutions Inc. Powered by AR.IO.
+            </div>
+            <div className="text-xs text-link/60" title={`Built: ${import.meta.env.BUILD_TIME || 'Unknown'}`}>
+              v{import.meta.env.PACKAGE_VERSION || '0.1.0'}
+            </div>
           </div>
           
           {/* Social Icons */}

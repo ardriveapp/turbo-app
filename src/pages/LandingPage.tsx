@@ -95,7 +95,7 @@ const LandingPage = () => {
       title: 'Check Any Wallet Balance',
       description: 'Look up credit balances for any wallet address across Arweave, Ethereum, and Solana networks with storage estimates.',
       benefits: ['Multi-chain support', 'Real-time data', 'Storage estimates'],
-      action: 'balance-checker',
+      action: 'balances',
       loginText: 'Check Balance',
       connectText: 'Check Balance'
     },
@@ -414,7 +414,7 @@ const LandingPage = () => {
                 </div>
                 <button onClick={() => {
                   const feature = features[selectedFeatureIndex];
-                  if (feature.action === 'redeem' || feature.action === 'balance-checker' || feature.action === 'gateway-info') {
+                  if (feature.action === 'redeem' || feature.action === 'balances' || feature.action === 'gateway-info') {
                     navigate(`/${feature.action}`);
                   } else if (loggedIn) {
                     navigate(`/${feature.action}`);
@@ -422,7 +422,7 @@ const LandingPage = () => {
                     setShowWalletModal(true);
                   }
                 }} className="bg-turbo-red text-white px-6 py-2 rounded-lg font-medium hover:bg-turbo-red/90">
-                  {(features[selectedFeatureIndex].action === 'redeem' || features[selectedFeatureIndex].action === 'balance-checker' || features[selectedFeatureIndex].action === 'gateway-info') 
+                  {(features[selectedFeatureIndex].action === 'redeem' || features[selectedFeatureIndex].action === 'balances' || features[selectedFeatureIndex].action === 'gateway-info') 
                     ? features[selectedFeatureIndex].loginText
                     : loggedIn 
                       ? features[selectedFeatureIndex].loginText 
@@ -498,7 +498,7 @@ const LandingPage = () => {
                 </div>
                 <button onClick={() => {
                   const feature = features[selectedFeatureIndex];
-                  if (feature.action === 'redeem' || feature.action === 'balance-checker' || feature.action === 'gateway-info') {
+                  if (feature.action === 'redeem' || feature.action === 'balances' || feature.action === 'gateway-info') {
                     navigate(`/${feature.action}`);
                   } else if (loggedIn) {
                     navigate(`/${feature.action}`);
@@ -506,7 +506,7 @@ const LandingPage = () => {
                     setShowWalletModal(true);
                   }
                 }} className="bg-turbo-red text-white px-6 py-2 rounded-lg font-medium hover:bg-turbo-red/90">
-                  {(features[selectedFeatureIndex].action === 'redeem' || features[selectedFeatureIndex].action === 'balance-checker' || features[selectedFeatureIndex].action === 'gateway-info') 
+                  {(features[selectedFeatureIndex].action === 'redeem' || features[selectedFeatureIndex].action === 'balances' || features[selectedFeatureIndex].action === 'gateway-info') 
                     ? features[selectedFeatureIndex].loginText
                     : loggedIn 
                       ? features[selectedFeatureIndex].loginText 

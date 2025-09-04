@@ -680,7 +680,7 @@ export default function TopUpPanel() {
                       <select
                         value={storageUnit}
                         onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
-                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-8 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
                       >
                         <option value="MiB">MiB</option>
                         <option value="GiB">GiB</option>

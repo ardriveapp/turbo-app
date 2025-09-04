@@ -3,9 +3,9 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle } from 'lucide-react';
+import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle } from 'lucide-react';
 import CopyButton from '../CopyButton';
-import { getArweaveUrl } from '../../utils';
+import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 
@@ -20,14 +20,16 @@ export default function DeploySitePanel() {
   const [indexFile, setIndexFile] = useState<string>('');
   const [fallbackFile, setFallbackFile] = useState<string>('');
   const wincForOneGiB = useWincForOneGiB();
-  const { deployFolder, deploying } = useFolderUpload();
+  const { deployFolder, deploying, deployProgress, fileProgress, deployStage, currentFile } = useFolderUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
     statusChecking, 
     uploadStatuses, 
     getStatusColor,
-    getStatusIcon
+    getStatusIcon,
+    formatFileSize,
+    formatWinc
   } = useUploadStatus();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -131,6 +133,16 @@ export default function DeploySitePanel() {
     return Array.from(selectedFolder).reduce((total, file) => total + file.size, 0);
   };
 
+  const calculateUploadCost = (bytes: number) => {
+    if (bytes < 100 * 1024) return 0; // Free tier: files under 100KB
+    if (!wincForOneGiB) return null;
+    
+    const gibSize = bytes / (1024 * 1024 * 1024);
+    const wincCost = gibSize * Number(wincForOneGiB);
+    const creditCost = wincCost / wincPerCredit;
+    return creditCost;
+  };
+
   const calculateTotalCost = (): number => {
     if (!wincForOneGiB || !selectedFolder) return 0;
     
@@ -206,6 +218,138 @@ export default function DeploySitePanel() {
     });
     
     return structure;
+  };
+
+  // Convert status icon strings to JSX components
+  const renderStatusIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'check-circle':
+        return <CheckCircle className="w-3 h-3 text-turbo-green" />;
+      case 'clock':
+        return <Clock className="w-3 h-3 text-yellow-500" />;
+      case 'archive':
+        return <Archive className="w-3 h-3 text-turbo-blue" />;
+      case 'x-circle':
+        return <XCircle className="w-3 h-3 text-red-400" />;
+      case 'help-circle':
+        return <HelpCircle className="w-3 h-3 text-link" />;
+      default:
+        return <Clock className="w-3 h-3 text-yellow-500" />;
+    }
+  };
+
+  const exportDeployToCSV = () => {
+    if (deployHistory.length === 0) return;
+
+    // Group deployments by manifest ID like we do in the UI
+    const deploymentGroups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
+    
+    deployHistory.forEach(result => {
+      const manifestId = result.manifestId || result.id;
+      if (!manifestId) return;
+      
+      if (!deploymentGroups[manifestId]) {
+        deploymentGroups[manifestId] = {};
+      }
+      
+      if (result.type === 'manifest') {
+        deploymentGroups[manifestId].manifest = result;
+      } else if (result.type === 'files') {
+        deploymentGroups[manifestId].files = result;
+      }
+    });
+
+    const headers = [
+      'Deployment Type',
+      'Manifest ID', 
+      'Site URL',
+      'Deployment Date',
+      'File Path',
+      'File Transaction ID',
+      'File Size (Bytes)',
+      'File Size (Human)',
+      'Content Type',
+      'Owner Address',
+      'Total Files in Site',
+      'Total Site Size'
+    ];
+
+    const rows: string[][] = [];
+
+    Object.entries(deploymentGroups).forEach(([manifestId, group]) => {
+      const deployDate = group.manifest?.timestamp ? 
+        new Date(group.manifest.timestamp).toLocaleString() : 
+        'Unknown';
+      
+      const siteUrl = getArweaveUrl(manifestId);
+      const totalFiles = group.files?.files?.length || 0;
+      const totalSize = group.files?.files?.reduce((sum: number, file: any) => sum + file.size, 0) || 0;
+      const totalSizeHuman = totalSize > 0 ? (
+        totalSize < 1024 ? `${totalSize}B` :
+        totalSize < 1024 * 1024 ? `${(totalSize / 1024).toFixed(1)}KB` :
+        `${(totalSize / 1024 / 1024).toFixed(1)}MB`
+      ) : '0B';
+
+      // Add manifest row
+      rows.push([
+        'Manifest',
+        manifestId,
+        siteUrl,
+        deployDate,
+        'manifest.json',
+        manifestId,
+        'Unknown',
+        'Unknown', 
+        'application/x.arweave-manifest+json',
+        group.manifest?.receipt?.owner || 'Unknown',
+        totalFiles.toString(),
+        `${totalSize} (${totalSizeHuman})`
+      ]);
+
+      // Add individual file rows  
+      if (group.files?.files) {
+        group.files.files.forEach((file: any) => {
+          const fileSizeHuman = file.size < 1024 ? `${file.size}B` :
+            file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)}KB` :
+            `${(file.size / 1024 / 1024).toFixed(1)}MB`;
+          
+          const contentType = file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 
+                              'application/octet-stream';
+
+          rows.push([
+            'File',
+            manifestId,
+            siteUrl,
+            deployDate,
+            file.path,
+            file.id,
+            file.size.toString(),
+            fileSizeHuman,
+            contentType,
+            file.receipt?.owner || 'Unknown',
+            totalFiles.toString(),
+            `${totalSize} (${totalSizeHuman})`
+          ]);
+        });
+      }
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `turbo-deployments-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleDeploy = async () => {
@@ -586,6 +730,119 @@ export default function DeploySitePanel() {
         </button>
       )}
 
+      {/* Deploy Progress */}
+      {deploying && selectedFolder && (
+        <div className="mt-4 p-4 bg-surface rounded-lg border border-turbo-red/20">
+          <div className="space-y-4">
+            {/* Stage Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 text-turbo-red animate-spin" />
+                <span className="font-medium text-fg-muted">
+                  {deployStage === 'uploading' && 'Uploading Files'}
+                  {deployStage === 'manifest' && 'Creating Manifest'}
+                  {deployStage === 'complete' && 'Complete'}
+                </span>
+              </div>
+              <span className="text-sm text-link">
+                {deployStage === 'uploading' && `${Object.keys(fileProgress).filter(key => fileProgress[key] === 100).length} / ${selectedFolder.length} files`}
+                {deployStage === 'manifest' && 'Finalizing deployment...'}
+                {deployStage === 'complete' && 'Deployment complete!'}
+              </span>
+            </div>
+
+            {/* Overall Progress Bar */}
+            <div className="w-full bg-canvas rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-turbo-red h-full transition-all duration-300"
+                style={{ width: `${deployProgress}%` }}
+              />
+            </div>
+
+            {/* Current File/Stage Info */}
+            {currentFile && (
+              <div className="flex items-center gap-2 text-sm text-link">
+                {deployStage === 'uploading' && (
+                  <>
+                    <div className="w-2 h-2 bg-turbo-red rounded-full animate-pulse" />
+                    <span>Uploading: {currentFile}</span>
+                  </>
+                )}
+                {deployStage === 'manifest' && (
+                  <>
+                    <div className="w-2 h-2 bg-turbo-red rounded-full animate-pulse" />
+                    <span>{currentFile}</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Expandable File Progress List */}
+            {deployStage === 'uploading' && Object.keys(fileProgress).length > 0 && (
+              <details className="group">
+                <summary className="cursor-pointer text-sm text-link hover:text-fg-muted transition-colors flex items-center gap-2">
+                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
+                  View Individual File Progress
+                </summary>
+                <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                  {Array.from(selectedFolder).map((file, index) => {
+                    const progress = fileProgress[file.name];
+                    const isComplete = progress === 100;
+                    const hasError = progress === -1;
+                    const isUploading = progress !== undefined && progress >= 0 && progress < 100;
+                    const cost = calculateUploadCost(file.size);
+                    const isFree = file.size < 100 * 1024;
+                    
+                    return (
+                      <div key={index} className="bg-canvas rounded p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-medium truncate">{file.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-link text-right">
+                              <div>
+                                {file.size < 1024 
+                                  ? `${file.size}B` 
+                                  : file.size < 1024 * 1024 
+                                  ? `${(file.size / 1024).toFixed(1)}KB`
+                                  : `${(file.size / 1024 / 1024).toFixed(1)}MB`}
+                                {isFree && <span className="ml-2 text-turbo-green">• FREE</span>}
+                                {cost !== null && cost > 0 && (
+                                  <span className="ml-2">• {cost.toFixed(6)} Credits</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {isComplete && <CheckCircle className="w-4 h-4 text-turbo-green ml-2" />}
+                              {hasError && <XCircle className="w-4 h-4 text-red-400 ml-2" />}
+                              {isUploading && <Loader2 className="w-4 h-4 text-turbo-red animate-spin ml-2" />}
+                              {progress === undefined && <div className="w-4 h-4 border border-link/30 rounded-full ml-2" />}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Individual File Progress Bar */}
+                        {progress !== undefined && progress >= 0 && (
+                          <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-300 ${
+                                hasError ? 'bg-red-400' : isComplete ? 'bg-turbo-green' : 'bg-turbo-red'
+                              }`}
+                              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Insufficient Credits Warning */}
       {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
         <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
@@ -611,13 +868,22 @@ export default function DeploySitePanel() {
 
       {/* Deploy Results - Unified with Upload Results */}
       {deployHistory.length > 0 && (
-        <div className="bg-surface rounded-lg p-4">
+        <div className="mt-6 bg-surface rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h4 className="font-bold text-fg-muted flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-turbo-green" />
               Site Deployment Results
             </h4>
             <div className="flex items-center gap-2">
+              <button
+                onClick={exportDeployToCSV}
+                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-green/20 text-turbo-green rounded hover:bg-turbo-green/30 transition-colors"
+                title="Export deployment history to CSV"
+              >
+                <Archive className="w-3 h-3" />
+                <span className="hidden xs:inline">Export CSV</span>
+                <span className="xs:hidden">CSV</span>
+              </button>
               <button
                 onClick={() => {
                   // Check status for all deployed items (manifest + files)
@@ -630,6 +896,7 @@ export default function DeploySitePanel() {
                 }}
                 disabled={Object.values(statusChecking).some(checking => checking)}
                 className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
+                title="Check status for all deployed files"
               >
                 <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
                 <span className="hidden xs:inline">Check Status</span>
@@ -638,6 +905,7 @@ export default function DeploySitePanel() {
               <button
                 onClick={clearDeployHistory}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
+                title="Clear all deployment history"
               >
                 <XCircle className="w-3 h-3" />
                 <span className="hidden xs:inline">Clear History</span>
@@ -646,150 +914,255 @@ export default function DeploySitePanel() {
             </div>
           </div>
           
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {deployHistory.map((result, index) => (
-              <div key={index}>
-                {/* Manifest Result - Special but Unified Styling */}
-                {result.type === 'manifest' && result.id && (
-                  <div className="bg-canvas rounded-lg p-3 sm:p-4 border-2 border-turbo-green/50 bg-gradient-to-br from-turbo-green/5 to-transparent overflow-hidden">
-                    <div className="space-y-3">
-                      {/* Manifest Badge */}
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 px-2 py-1 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
-                          <Globe2 className="w-3 h-3" />
-                          SITE MANIFEST
-                        </div>
-                      </div>
-                      
-                      {/* Transaction ID */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="font-mono text-sm text-fg-muted">
-                            {result.id.substring(0, 6)}...
-                          </div>
-                          <CopyButton textToCopy={result.id} />
-                          {uploadStatuses[result.id] && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs">
-                                {getStatusIcon(uploadStatuses[result.id].status, uploadStatuses[result.id].info)} 
-                              </span>
-                              <span className={`text-xs font-medium ${getStatusColor(uploadStatuses[result.id].status, uploadStatuses[result.id].info)}`}>
-                                {uploadStatuses[result.id].status}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Manifest Actions */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setShowReceiptModal(result.id || null)}
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                            title="View Receipt"
-                          >
-                            <Receipt className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => result.id && checkUploadStatus(result.id)}
-                            disabled={result.id ? !!statusChecking[result.id] : false}
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
-                            title="Check Status"
-                          >
-                            <RefreshCw className={`w-4 h-4 ${result.id && statusChecking[result.id] ? 'animate-spin' : ''}`} />
-                          </button>
-                          <a
-                            href={getArweaveUrl(result.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 px-3 py-1.5 bg-turbo-green text-white rounded hover:bg-turbo-green/90 transition-colors text-xs font-medium"
-                            title="Visit Deployed Site"
-                          >
-                            <Globe className="w-3 h-3" />
-                            <span>Visit Site</span>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {(() => {
+              // Group deploy results by manifest ID to show complete deployments
+              const deploymentGroups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
+              
+              deployHistory.forEach(result => {
+                const manifestId = result.manifestId || result.id;
+                if (!manifestId) return;
                 
-                {/* Individual Files - Same as Upload Results */}
-                {result.type === 'files' && result.files && result.files.length > 0 && (
-                  <details className="bg-canvas rounded-lg border border-default/30">
-                    <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
-                      <Folder className="w-4 h-4" />
-                      Site Files ({result.files.length})
-                      <ChevronDown className="w-3 h-3 text-link ml-auto" />
-                    </summary>
-                    <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
-                      {result.files.map((file, fileIndex) => {
-                        const status = uploadStatuses[file.id];
-                        const isChecking = statusChecking[file.id];
-                        
-                        return (
-                          <div key={fileIndex} className="bg-surface rounded-lg p-3 border border-default/30">
-                            <div className="space-y-2">
-                              {/* File Info */}
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <div className="font-mono text-sm text-fg-muted">
-                                      {file.id.substring(0, 6)}...
+                if (!deploymentGroups[manifestId]) {
+                  deploymentGroups[manifestId] = {};
+                }
+                
+                if (result.type === 'manifest') {
+                  deploymentGroups[manifestId].manifest = result;
+                } else if (result.type === 'files') {
+                  deploymentGroups[manifestId].files = result;
+                }
+              });
+
+              return Object.entries(deploymentGroups).map(([manifestId, group]) => {
+                // Debug logging to check data structure
+                console.log('Deployment group:', { manifestId, group, files: group.files?.files });
+                
+                return (
+                <div key={manifestId} className="border border-default/30 rounded-lg p-4 bg-canvas/50">
+                  {/* Deployment Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-turbo-green" />
+                      <span className="font-medium text-fg-muted">Site Deployment</span>
+                      {group.manifest?.timestamp && (
+                        <span className="text-xs text-link">
+                          {new Date(group.manifest.timestamp).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <a
+                      href={getArweaveUrl(manifestId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-turbo-green text-white rounded hover:bg-turbo-green/90 transition-colors text-sm font-medium"
+                      title="Visit Deployed Site"
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span>Visit Site</span>
+                    </a>
+                  </div>
+
+                  <div>
+                    {/* Manifest Section */}
+                    {group.manifest && (
+                      <div className="bg-surface rounded-lg p-3 border border-turbo-green/30 mb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 px-2 py-1 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
+                              <Globe2 className="w-3 h-3" />
+                              MANIFEST
+                            </div>
+                            <div className="font-mono text-sm text-fg-muted">
+                              {manifestId.substring(0, 8)}...{manifestId.substring(manifestId.length - 6)}
+                            </div>
+                            <CopyButton textToCopy={manifestId} />
+                            {uploadStatuses[manifestId] && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs">
+                                  {getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info)} 
+                                </span>
+                                <span className={`text-xs font-medium ${getStatusColor(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info)}`}>
+                                  {uploadStatuses[manifestId].status}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setShowReceiptModal(manifestId)}
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              title="View Receipt"
+                            >
+                              <Receipt className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => checkUploadStatus(manifestId)}
+                              disabled={!!statusChecking[manifestId]}
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                              title="Check Status"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
+                            </button>
+                            <a
+                              href={getArweaveRawUrl(manifestId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              title="View Raw Manifest JSON"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Files Section */}
+                    {group.files && group.files.files && (
+                      <details className="bg-surface rounded-lg border border-default/30">
+                        <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
+                          <Folder className="w-4 h-4" />
+                          Site Files ({group.files.files.length})
+                          <ChevronDown className="w-3 h-3 text-link ml-auto" />
+                        </summary>
+                        <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
+                          {group.files.files.map((file: any, fileIndex: number) => {
+                            const status = uploadStatuses[file.id];
+                            const isChecking = statusChecking[file.id];
+                            
+                            return (
+                              <div key={fileIndex} className="bg-canvas rounded-lg p-3 border border-default/30">
+                                <div className="space-y-2">
+                                  {/* File Info */}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <div className="font-mono text-sm text-fg-muted">
+                                          {file.id.substring(0, 6)}...
+                                        </div>
+                                        <CopyButton textToCopy={file.id} />
+                                      </div>
+                                      <span className="text-xs text-link truncate" title={file.path}>
+                                        {file.path}
+                                      </span>
+                                      {status && (
+                                        <div className="flex items-center gap-1">
+                                          {renderStatusIcon(getStatusIcon(status.status, status.info))}
+                                          <span className={`text-xs font-medium ${getStatusColor(status.status, status.info)}`}>
+                                            {status.status}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
-                                    <CopyButton textToCopy={file.id} />
-                                  </div>
-                                  <span className="text-xs text-link truncate" title={file.path}>
-                                    {file.path}
-                                  </span>
-                                  {status && (
+                                    
+                                    {/* File Actions */}
                                     <div className="flex items-center gap-1">
-                                      <span className="text-xs">
-                                        {getStatusIcon(status.status, status.info)} 
-                                      </span>
-                                      <span className={`text-xs font-medium ${getStatusColor(status.status, status.info)}`}>
-                                        {status.status}
+                                      <button
+                                        onClick={() => setShowReceiptModal(file.id)}
+                                        className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                        title="View Receipt"
+                                      >
+                                        <Receipt className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => checkUploadStatus(file.id)}
+                                        disabled={isChecking}
+                                        className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                                        title="Check Status"
+                                      >
+                                        <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                      </button>
+                                      <a
+                                        href={getArweaveUrl(file.id)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                        title="View File"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    </div>
+                                  </div>
+                                
+                                  {/* File Details - Enhanced metadata like Upload Files */}
+                                  <div className="text-xs text-link space-y-1 pl-4 border-l border-default/30">
+                                    {/* Content Type */}
+                                    <div>
+                                      <span className="text-link">Type:</span>
+                                      <span className="ml-1 text-fg-muted font-medium">
+                                        {file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 'application/octet-stream'}
                                       </span>
                                     </div>
-                                  )}
-                                </div>
-                                
-                                {/* File Actions */}
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => setShowReceiptModal(file.id)}
-                                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                                    title="View Receipt"
-                                  >
-                                    <Receipt className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => checkUploadStatus(file.id)}
-                                    disabled={isChecking}
-                                    className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
-                                    title="Check Status"
-                                  >
-                                    <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-                                  </button>
-                                  <a
-                                    href={getArweaveUrl(file.id)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                                    title="View File"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                  </a>
+                                    
+                                    {/* File Size */}
+                                    <div>
+                                      <span className="text-link">Size:</span>
+                                      <span className="ml-1 text-fg-muted font-medium">
+                                        {file.size < 1024 
+                                          ? `${file.size}B` 
+                                          : file.size < 1024 * 1024 
+                                          ? `${(file.size / 1024).toFixed(2)} KB`
+                                          : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Cost */}
+                                    <div>
+                                      <span className="text-link">Cost:</span>
+                                      <span className="ml-1 text-fg-muted font-medium">
+                                        {file.size < 100 * 1024 ? (
+                                          <span className="text-turbo-green">FREE</span>
+                                        ) : wincForOneGiB ? (
+                                          `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
+                                        ) : (
+                                          'Unknown'
+                                        )}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Deploy Time */}
+                                    {group.files.timestamp && (
+                                      <div>
+                                        <span className="text-link">Deploy Time:</span>
+                                        <span className="ml-1 text-fg-muted font-medium">
+                                          {new Date(group.files.timestamp).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Additional Status Details from API (like Upload Files) */}
+                                    {status && status.rawContentLength && (
+                                      <div>
+                                        <span className="text-link">Verified Size:</span>
+                                        <span className="ml-1 text-fg-muted font-medium">
+                                          {formatFileSize(status.rawContentLength)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    
+                                    {status && status.winc && (
+                                      <div>
+                                        <span className="text-link">WINC Cost:</span>
+                                        <span className="ml-1 text-fg-muted font-medium">
+                                          {formatWinc(status.winc)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                )}
-              </div>
-            ))}
+                            );
+                          })}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                </div>
+                );
+              });
+            })()}
           </div>
 
           {/* Collapsible Status Guide */}
@@ -800,7 +1173,7 @@ export default function DeploySitePanel() {
             >
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4 text-turbo-red" />
-                <span className="text-sm font-medium text-fg-muted">Deployment Guide</span>
+                <span className="text-sm font-medium text-fg-muted">Status Guide</span>
               </div>
               <ChevronDown className={`w-4 h-4 text-link transition-transform ${showStatusGuide ? 'rotate-180' : ''}`} />
             </button>
@@ -809,27 +1182,27 @@ export default function DeploySitePanel() {
               <div className="mt-2 p-4 bg-surface/50 rounded-lg border border-default/30">
                 <div className="text-xs text-link space-y-2">
                   <div className="flex items-start gap-2">
-                    <span>🌐</span>
+                    <Clock className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-fg-muted">Manifest</strong> - The main site link that serves your deployed application
+                      <strong className="text-fg-muted">CONFIRMED/pending</strong> - File bundled, waiting for Arweave mining (most common)
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span>📁</span>
+                    <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-fg-muted">Individual Files</strong> - Each file gets its own permanent transaction ID
+                      <strong className="text-fg-muted">FINALIZED/permanent</strong> - File is permanently stored on Arweave
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span>🔗</span>
+                    <Archive className="w-4 h-4 text-turbo-blue flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-fg-muted">Relative Paths</strong> - Folder structure is preserved for proper site navigation
+                      <strong className="text-fg-muted">CONFIRMED/new</strong> - File bundling processing started
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span>⚡</span>
+                    <HelpCircle className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
                     <div>
-                      <strong className="text-fg-muted">Instant Access</strong> - Site is immediately accessible via manifest link
+                      <strong className="text-fg-muted">NOT_FOUND</strong> - File not yet indexed (try again in a few minutes)
                     </div>
                   </div>
                 </div>

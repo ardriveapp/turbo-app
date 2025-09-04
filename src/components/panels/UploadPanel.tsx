@@ -57,6 +57,75 @@ export default function UploadPanel() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const exportToCSV = () => {
+    if (uploadHistory.length === 0) return;
+
+    const headers = [
+      'Transaction ID',
+      'File Name', 
+      'Upload Date',
+      'File Size (Bytes)',
+      'File Size (Human)',
+      'Cost (Credits)',
+      'WINC Amount',
+      'Owner Address',
+      'Content Type',
+      'Data Caches',
+      'Fast Finality Indexes',
+      'Arweave URL'
+    ];
+
+    const rows = uploadHistory.map(result => {
+      // Use stored file metadata (preferred) or fallback to receipt tags
+      const fileName = result.fileName || 
+                       result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value || 
+                       'Unknown';
+      
+      const contentType = result.contentType || 
+                          result.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 
+                          'application/octet-stream';
+      
+      const fileSizeBytes = result.fileSize || 'Unknown';
+      const fileSizeHuman = typeof fileSizeBytes === 'number' ? formatFileSize(fileSizeBytes) : 'Unknown';
+      
+      // Calculate credits from WINC
+      const wincAmount = Number(result.winc || '0');
+      const credits = wincForOneGiB && wincAmount > 0 ? (wincAmount / wincPerCredit) : 0;
+      
+      return [
+        result.id,
+        fileName,
+        result.timestamp ? new Date(result.timestamp).toLocaleString() : new Date().toLocaleString(),
+        fileSizeBytes,
+        fileSizeHuman,
+        typeof credits === 'number' ? credits.toFixed(6) : credits,
+        result.winc,
+        result.owner,
+        contentType,
+        result.dataCaches.join('; '),
+        result.fastFinalityIndexes.join('; '),
+        getArweaveUrl(result.id)
+      ];
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `turbo-uploads-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const calculateUploadCost = (bytes: number) => {
     if (bytes < 100 * 1024) return 0; // Free tier: files under 100KB
@@ -385,9 +454,19 @@ export default function UploadPanel() {
             </h4>
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <button
+                onClick={exportToCSV}
+                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-green/20 text-turbo-green rounded hover:bg-turbo-green/30 transition-colors"
+                title="Export upload history to CSV"
+              >
+                <Archive className="w-3 h-3" />
+                <span className="hidden xs:inline">Export CSV</span>
+                <span className="xs:hidden">CSV</span>
+              </button>
+              <button
                 onClick={() => checkMultipleStatuses(uploadHistory.map(r => r.id))}
                 disabled={Object.values(statusChecking).some(checking => checking)}
                 className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
+                title="Check status for all uploaded files"
               >
                 <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
                 <span className="hidden xs:inline">Check Status</span>
@@ -399,6 +478,7 @@ export default function UploadPanel() {
                   resetFileUpload();
                 }}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
+                title="Clear all upload history"
               >
                 <XCircle className="w-3 h-3" />
                 <span className="hidden xs:inline">Clear History</span>

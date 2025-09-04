@@ -49,6 +49,9 @@ interface UploadResult {
   fastFinalityIndexes: string[];
   winc: string;
   timestamp?: number;
+  fileName?: string; // Original file name
+  fileSize?: number; // Original file size in bytes
+  contentType?: string; // Original file MIME type
   receipt?: any; // Store the full receipt response
 }
 

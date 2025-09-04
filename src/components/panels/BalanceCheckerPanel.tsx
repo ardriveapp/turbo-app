@@ -61,7 +61,7 @@ export default function BalanceCheckerPanel() {
     }
 
     // Check for pre-filled address from profile dropdown click
-    const preFilledAddress = localStorage.getItem('balance-checker-address');
+    const preFilledAddress = localStorage.getItem('balances-address');
     if (preFilledAddress) {
       setWalletAddress(preFilledAddress);
       // Auto-search the pre-filled address
@@ -69,7 +69,7 @@ export default function BalanceCheckerPanel() {
         handleCheckBalance(preFilledAddress);
       }, 100);
       // Clear the localStorage item after using it
-      localStorage.removeItem('balance-checker-address');
+      localStorage.removeItem('balances-address');
     }
   }, []);
 

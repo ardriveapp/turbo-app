@@ -119,56 +119,90 @@ export default function PricingCalculator() {
       ) : (
         <>
           {inputType === 'storage' ? (
-            <div className="max-w-2xl mx-auto">
-              {/* Storage Input */}
-              <div className="bg-surface rounded-lg p-6 mb-4">
-                <label className="block text-sm font-medium text-link mb-3">
-                  How much storage do you need?
-                </label>
-                <div className="flex gap-3">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={storageAmount}
-                    onChange={(e) => setStorageAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="flex-1 rounded-lg border border-default bg-canvas px-4 py-2 text-fg-muted focus:border-turbo-red focus:outline-none"
-                  />
-                  <select
-                    value={storageUnit}
-                    onChange={(e) => setStorageUnit(e.target.value as 'MB' | 'GB' | 'TB')}
-                    className="rounded-lg border border-default bg-canvas px-4 py-2 text-fg-muted focus:border-turbo-red focus:outline-none"
-                  >
-                    <option value="MB">MB</option>
-                    <option value="GB">GB</option>
-                    <option value="TB">TB</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Results */}
-              <div className="space-y-3">
-                <div className="bg-canvas border border-default rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-link">Total Storage</span>
-                    <span className="text-xl font-bold text-fg-muted">
-                      {formatBytes(getStorageInBytes())}
-                    </span>
+            <div className="max-w-6xl mx-auto">
+              <div className="grid lg:grid-cols-2 gap-8 items-start">
+                {/* Left: Storage Input */}
+                <div>
+                  <h3 className="text-xl font-bold text-fg-muted mb-4">Enter Storage Amount</h3>
+                  <div className="bg-surface rounded-lg p-6">
+                    <label className="block text-sm font-medium text-link mb-3">
+                      How much data do you need to store?
+                    </label>
+                    <div className="flex gap-3 mb-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={storageAmount}
+                        onChange={(e) => setStorageAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="flex-1 rounded-lg border border-default bg-canvas px-4 py-2 text-fg-muted focus:border-turbo-red focus:outline-none"
+                      />
+                      <select
+                        value={storageUnit}
+                        onChange={(e) => setStorageUnit(e.target.value as 'MB' | 'GB' | 'TB')}
+                        className="rounded-lg border border-default bg-canvas px-4 py-2 text-fg-muted focus:border-turbo-red focus:outline-none"
+                      >
+                        <option value="MB">MB</option>
+                        <option value="GB">GB</option>
+                        <option value="TB">TB</option>
+                      </select>
+                    </div>
+                    
+                    {/* Quick select buttons */}
+                    <div className="space-y-2">
+                      <div className="text-xs text-link mb-2">Quick select:</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { amount: 100, unit: 'MB' as const },
+                          { amount: 500, unit: 'MB' as const },
+                          { amount: 1, unit: 'GB' as const },
+                          { amount: 10, unit: 'GB' as const },
+                          { amount: 100, unit: 'GB' as const },
+                          { amount: 1, unit: 'TB' as const },
+                        ].map(({ amount, unit }) => (
+                          <button
+                            key={`${amount}${unit}`}
+                            onClick={() => {
+                              setStorageAmount(amount);
+                              setStorageUnit(unit);
+                            }}
+                            className="px-3 py-2 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors"
+                          >
+                            {amount} {unit}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">Cost in USD</span>
-                    <span className="text-2xl font-bold text-turbo-red">
-                      ${formatNumber(calculateStorageCost())}
-                    </span>
-                  </div>
                 </div>
 
-                <div className="bg-surface/50 rounded-lg p-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-link">Credits Needed</span>
-                    <span className="text-fg-muted font-medium">
-                      {formatNumber((getStorageInGB() * Number(wincForOneGiB)) / 1e12)}
-                    </span>
+                {/* Right: Cost Breakdown */}
+                <div>
+                  <h3 className="text-xl font-bold text-fg-muted mb-4">Cost Breakdown</h3>
+                  <div className="space-y-3">
+                    <div className="bg-canvas border border-default rounded-lg p-6">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-link">Total Storage</span>
+                        <span className="text-xl font-bold text-fg-muted">
+                          {formatBytes(getStorageInBytes())}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-link">Cost in USD</span>
+                        <span className="text-2xl font-bold text-turbo-red">
+                          ${formatNumber(calculateStorageCost())}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-surface/50 rounded-lg p-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-link">Credits Needed</span>
+                        <span className="text-lg font-bold text-fg-muted">
+                          {formatNumber((getStorageInGB() * Number(wincForOneGiB)) / 1e12)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

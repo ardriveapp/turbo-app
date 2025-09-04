@@ -72,7 +72,7 @@ This is a unified Turbo Gateway application consolidating three separate applica
 const routes = [
   '/', '/topup', '/upload', '/deploy', '/share', '/gift', 
   '/domains', '/calculator', '/services-calculator', 
-  '/balance-checker', '/redeem', '/developer', '/gateway-info'
+  '/balances', '/redeem', '/developer', '/gateway-info'
 ];
 ```
 
@@ -151,14 +151,14 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - Developer Resources (`developer`)
 - Pricing Calculator (`calculator`)
 - Services Calculator (`services-calculator`) - combined storage + ArNS pricing
-- Check Balance (`balance-checker`)
+- Check Balance (`balances`)
 - Redeem Gift (`redeem`)
 - Service Info (`gateway-info`)
 
 #### URL Parameter Support
 - `?payment=success` - Payment success callback (handled by PaymentCallbackHandler)
 - `?payment=cancelled` - Payment cancellation callback
-- Direct URL routing: `/redeem`, `/balance-checker`, `/calculator`, etc.
+- Direct URL routing: `/redeem`, `/balances`, `/calculator`, etc.
 - Catch-all route: Any unknown path redirects to landing page
 
 ### Component Patterns

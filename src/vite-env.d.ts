@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_PUBLISHABLE_KEY_TEST: string
   readonly PROD: boolean
   readonly DEV: boolean
+  readonly PACKAGE_VERSION: string
+  readonly BUILD_TIME: string
 }
 
 interface ImportMeta {

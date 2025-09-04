@@ -134,10 +134,13 @@ export function useFileUpload() {
         }
       });
       
-      // Add timestamp and capture full receipt for display
+      // Add timestamp, file metadata, and capture full receipt for display
       const result = {
         ...uploadResult,
         timestamp: Date.now(),
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type || 'application/octet-stream',
         receipt: uploadResult // Store the entire upload response as receipt
       };
       

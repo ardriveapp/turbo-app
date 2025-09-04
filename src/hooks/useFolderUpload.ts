@@ -31,6 +31,9 @@ export function useFolderUpload() {
   // useFolderUpload store state logged
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
+  const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
+  const [deployStage, setDeployStage] = useState<'idle' | 'uploading' | 'manifest' | 'complete'>('idle');
+  const [currentFile, setCurrentFile] = useState<string>('');
   const [deployResults, setDeployResults] = useState<DeployResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -121,8 +124,10 @@ export function useFolderUpload() {
 
     setDeploying(true);
     setErrors({});
-    // Don't clear existing results - accumulate them
+    setFileProgress({});
     setDeployProgress(0);
+    setDeployStage('uploading');
+    setCurrentFile('');
 
     try {
       // Creating Turbo client for folder deployment
@@ -138,14 +143,17 @@ export function useFolderUpload() {
       // Uploading files individually to create manifest
       
       const fileUploadResults = [];
-      let processedBytes = 0;
-      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      let processedFiles = 0;
+      const totalFiles = files.length;
       
       // Upload each file individually
       for (const file of files) {
         try {
-          // Uploading individual file
+          // Set current file being uploaded
+          setCurrentFile(file.name);
+          setFileProgress(prev => ({ ...prev, [file.name]: 0 }));
           
+          // Uploading individual file
           const fileResult = await turbo.uploadFile({
             file: file,
             dataItemOpts: {
@@ -157,6 +165,9 @@ export function useFolderUpload() {
             }
           });
           
+          // Mark file as complete
+          setFileProgress(prev => ({ ...prev, [file.name]: 100 }));
+          
           fileUploadResults.push({
             id: fileResult.id,
             path: file.webkitRelativePath || file.name,
@@ -164,14 +175,21 @@ export function useFolderUpload() {
             receipt: fileResult // Store full result as receipt
           });
           
-          processedBytes += file.size;
-          setDeployProgress(Math.round((processedBytes / totalBytes) * 90)); // Reserve 10% for manifest
+          processedFiles += 1;
+          setDeployProgress(Math.round((processedFiles / totalFiles) * 90)); // Reserve 10% for manifest
           
         } catch (fileError) {
-          // Failed to upload individual file
+          // Mark file as failed
+          setFileProgress(prev => ({ ...prev, [file.name]: -1 })); // -1 indicates error
+          setErrors(prev => ({ ...prev, [file.name]: fileError instanceof Error ? fileError.message : 'Upload failed' }));
           throw new Error(`Failed to upload ${file.name}: ${fileError}`);
         }
       }
+      
+      // Switch to manifest creation stage
+      setDeployStage('manifest');
+      setCurrentFile('Creating manifest...');
+      setDeployProgress(90);
       
       // Create manifest using version 0.2.0 spec with fallback support
       const manifestData = {
@@ -243,6 +261,13 @@ export function useFolderUpload() {
         files: fileUploadResults
       };
       
+      // Debug logging for deployment results
+      console.log('📁 Deploy completion:', {
+        manifestId: manifestResult.id,
+        fileCount: fileUploadResults.length,
+        files: fileUploadResults
+      });
+      
       // Folder deployment completed
       
       // Create results structure
@@ -261,6 +286,7 @@ export function useFolderUpload() {
       if (uploadResult.files && uploadResult.files.length > 0) {
         results.push({
           type: 'files',
+          manifestId: uploadResult.manifestId,
           files: uploadResult.files,
           timestamp: Date.now()
         });
@@ -269,6 +295,8 @@ export function useFolderUpload() {
       // Add new results to existing results (prepend for newest first)
       setDeployResults(prev => [...results, ...prev]);
       setDeployProgress(100);
+      setDeployStage('complete');
+      setCurrentFile('');
       
       return {
         manifestId: uploadResult.manifestId,
@@ -287,6 +315,9 @@ export function useFolderUpload() {
 
   const reset = useCallback(() => {
     setDeployProgress(0);
+    setFileProgress({});
+    setDeployStage('idle');
+    setCurrentFile('');
     setErrors({});
     setDeploying(false);
     // Don't clear results in reset - that's now separate
@@ -300,6 +331,9 @@ export function useFolderUpload() {
     deployFolder,
     deploying,
     deployProgress,
+    fileProgress,
+    deployStage,
+    currentFile,
     deployResults,
     errors,
     reset,

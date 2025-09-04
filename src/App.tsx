@@ -58,7 +58,7 @@ function AppRoutes() {
           <Route path="domains" element={<DomainsPage />} />
           <Route path="calculator" element={<CalculatorPage />} />
           <Route path="services-calculator" element={<ServicesCalculatorPage />} />
-          <Route path="balance-checker" element={<BalanceCheckerPage />} />
+          <Route path="balances" element={<BalanceCheckerPage />} />
           <Route path="redeem" element={<RedeemPage />} />
           <Route path="developer" element={<DeveloperPage />} />
           <Route path="gateway-info" element={<GatewayInfoPage />} />
