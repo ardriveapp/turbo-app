@@ -261,13 +261,6 @@ export function useFolderUpload() {
         files: fileUploadResults
       };
       
-      // Debug logging for deployment results
-      console.log('📁 Deploy completion:', {
-        manifestId: manifestResult.id,
-        fileCount: fileUploadResults.length,
-        files: fileUploadResults
-      });
-      
       // Folder deployment completed
       
       // Create results structure
