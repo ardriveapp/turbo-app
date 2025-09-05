@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,29 @@ const LandingPage = () => {
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Company data for the carousel
+  const companies = [
+    { name: 'Forward Research', url: 'https://fwd.ar.io/', logo: '/forward-research-logo.jpg', description: 'Arweave core development team' },
+    { name: 'Drip Haus', url: 'https://drip.haus/', logo: '/drip-haus-logo.png', description: 'NFT curation and discovery platform' },
+    { name: 'Manifold', url: 'https://manifold.xyz/', logo: '/manifold_logo.jpg', description: 'NFT creation and deployment tools' },
+    { name: 'Meta/Instagram', url: 'https://www.theblock.co/post/182569/meta-arweave-instagram-nfts', logo: '/meta-logo.svg', description: 'Digital collectibles platform' },
+    { name: 'RedStone Oracle', url: 'https://www.redstone.finance/', logo: '/RedStone_squarelogo.png', description: 'Permanent price feed storage' },
+    { name: 'KYVE Network', url: 'https://www.kyve.network/', logo: '/kyve-logo.jpeg', description: 'Blockchain data archival' },
+    { name: 'Metaplex', url: 'https://www.metaplex.com/', logo: '/metaplex_studios_logo.jpeg', description: 'Solana NFT metadata storage' },
+    { name: 'Load Network', url: 'https://www.load.network/', logo: '/load-network-logo.svg', description: 'High performance EVM storage chain' },
+    { name: 'Solana Mobile', url: 'https://solanamobile.com/', logo: '/Solana_logo.png', description: 'Mobile app storage and distribution' }
+  ];
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % companies.length);
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [companies.length]);
 
   // Feature data for consistent rendering
   const features = [
@@ -228,9 +251,9 @@ const LandingPage = () => {
       {/* How it Works */}
       <div className="mb-12">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-3 text-fg-muted">How Turbo Works</h2>
+          <h2 className="text-3xl font-bold mb-3 text-fg-muted">How Turbo Bundling Works</h2>
           <p className="text-lg text-link/80 max-w-3xl mx-auto">
-            Ultrahigh-throughput bundling service that abstracts away Arweave complexity with instant payments and permanent settlement
+            Ultrahigh-throughput upload service that abstracts away Arweave complexity with instant payments and reliable, permanent settlement
           </p>
         </div>
         
@@ -247,9 +270,9 @@ const LandingPage = () => {
           {/* Step 2: Bundle */}
           <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-red/50 transition-colors group">
             <div className="text-2xl font-bold text-turbo-red mb-2">2</div>
-            <h3 className="text-xl font-bold text-fg-muted mb-3">Bundle</h3>
+            <h3 className="text-xl font-bold text-fg-muted mb-3">Upload </h3>
             <p className="text-sm text-link">
-              Your data gets packaged in efficient Layer 2 bundles with cryptographic receipts, providing economies of scale.
+              Upload your data using the Turbo SDK and any Arweave, Ethereum or Solana wallet.
             </p>
           </div>
           
@@ -258,7 +281,7 @@ const LandingPage = () => {
             <div className="text-2xl font-bold text-turbo-red mb-2">3</div>
             <h3 className="text-xl font-bold text-fg-muted mb-3">Settle</h3>
             <p className="text-sm text-link">
-              Bundles settle to the Arweave blockchain with a clear record of provenance. Your data becomes immutable forever.
+              Your files are bundled up settled to the Arweave blockchain. Time stamped, tamper proof and a clear record of provenance.
             </p>
           </div>
           
@@ -303,59 +326,76 @@ const LandingPage = () => {
       {/* Trusted by Industry Leaders */}
       <div className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-fg-muted mb-2">Trusted by Industry Leaders</h2>
+          <h2 className="text-2xl font-bold text-fg-muted mb-2">Trusted by Web3 Leaders</h2>
           <p className="text-link/80">Powering critical infrastructure across the decentralized web</p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <a 
-            href="https://www.redstone.finance/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
-          >
-            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-              <img src="/RedStone_squarelogo.png" alt="RedStone Oracle" className="w-10 h-10 object-contain" />
+        {/* Carousel container */}
+        <div className="carousel-wrapper relative">
+          <div className="overflow-hidden rounded-xl">
+            <div 
+              className="carousel-container flex"
+              style={{ transform: `translateX(-${currentSlide * (100 / 3)}%)` }}
+            >
+              {companies.map((company, index) => (
+                <div key={`${company.name}-${index}`} className="w-1/3 flex-shrink-0 px-3">
+                  <a
+                    href={company.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group block h-full"
+                  >
+                    <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <img src={company.logo} alt={company.name} className="w-12 h-12 object-contain" />
+                    </div>
+                    <div className="text-lg font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">
+                      {company.name}
+                    </div>
+                    <div className="text-sm text-link">
+                      {company.description}
+                    </div>
+                  </a>
+                </div>
+              ))}
+              
+              {/* Duplicate first few items for seamless loop */}
+              {companies.slice(0, 3).map((company, index) => (
+                <div key={`${company.name}-duplicate-${index}`} className="w-1/3 flex-shrink-0 px-3">
+                  <a
+                    href={company.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group block h-full"
+                  >
+                    <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <img src={company.logo} alt={company.name} className="w-12 h-12 object-contain" />
+                    </div>
+                    <div className="text-lg font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">
+                      {company.name}
+                    </div>
+                    <div className="text-sm text-link">
+                      {company.description}
+                    </div>
+                  </a>
+                </div>
+              ))}
             </div>
-            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">RedStone Oracle</div>
-            <div className="text-xs text-link">Permanent price feed storage</div>
-          </a>
-          <a 
-            href="https://www.kyve.network/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
-          >
-            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-              <img src="/kyve-logo.jpeg" alt="KYVE Network" className="w-10 h-10 object-contain" />
-            </div>
-            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">KYVE Network</div>
-            <div className="text-xs text-link">Blockchain data archival</div>
-          </a>
-          <a 
-            href="https://www.metaplex.com/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
-          >
-            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-              <img src="/metaplex_studios_logo.jpeg" alt="Metaplex" className="w-10 h-10 object-contain" />
-            </div>
-            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">Metaplex</div>
-            <div className="text-xs text-link">Solana NFT metadata storage</div>
-          </a>
-          <a 
-            href="https://www.load.network/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group"
-          >
-            <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-              <img src="/load-network-logo.svg" alt="Load Network" className="w-10 h-10 object-contain" />
-            </div>
-            <div className="text-sm font-bold text-fg-muted mb-2 group-hover:text-turbo-red transition-colors">Load Network</div>
-            <div className="text-xs text-link">High performance EVM storage chain</div>
-          </a>
+          </div>
+          
+          {/* Dots indicator */}
+          <div className="flex justify-center mt-6 gap-2">
+            {companies.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  index === currentSlide % companies.length
+                    ? 'bg-turbo-red w-6'
+                    : 'bg-turbo-red/30 hover:bg-turbo-red/50'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

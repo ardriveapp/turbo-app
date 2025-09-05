@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@ar.io/sdk": "^3.18.3",
-    "@ardrive/turbo-sdk": "^1.23.0",
+    "@ardrive/turbo-sdk": "^1.31.0",
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
     "@radix-ui/react-tabs": "^1.1.0",
