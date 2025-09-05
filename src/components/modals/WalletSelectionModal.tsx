@@ -180,49 +180,49 @@ const WalletSelectionModal = ({
 
   return (
     <BaseModal onClose={onClose} showCloseButton={true}>
-      <div className="flex w-[24.5rem] flex-col items-center justify-center text-fg-muted p-8">
-        <div className="mb-10 text-2xl font-bold">Connect a Wallet</div>
+      <div className="flex w-full max-w-sm sm:max-w-md flex-col items-center justify-center text-fg-muted p-4 sm:p-8">
+        <div className="mb-8 sm:mb-10 text-xl sm:text-2xl font-bold">Connect a Wallet</div>
 
-        <div className="flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-3 sm:gap-4">
           <button
-            className="w-full bg-surface p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
             onClick={connectWander}
           >
-            <img src="/wander-logo.png" alt="Wander" className="w-8 h-8 object-contain" />
-            <div>
-              <div className="font-semibold mb-1">Wander</div>
+            <img src="/wander-logo.png" alt="Wander" className="w-7 h-7 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="font-semibold mb-1 text-sm sm:text-base">Wander</div>
               <div className="text-xs text-link">Arweave native wallet</div>
             </div>
           </button>
 
           <button
-            className="w-full bg-surface p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
             onClick={connectMetaMask}
           >
-            <img src="/metamask-logo.svg" alt="MetaMask" className="w-8 h-8" />
-            <div>
-              <div className="font-semibold mb-1">MetaMask</div>
+            <img src="/metamask-logo.svg" alt="MetaMask" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="font-semibold mb-1 text-sm sm:text-base">MetaMask</div>
               <div className="text-xs text-link">Ethereum wallet</div>
             </div>
           </button>
 
           <button
-            className="w-full bg-surface p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
             onClick={connectPhantom}
           >
-            <img src="/phantom-logo.svg" alt="Phantom" className="w-8 h-8" />
-            <div>
-              <div className="font-semibold mb-1">Phantom / Solflare</div>
+            <img src="/phantom-logo.svg" alt="Phantom" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
+            <div className="min-w-0">
+              <div className="font-semibold mb-1 text-sm sm:text-base">Phantom / Solflare</div>
               <div className="text-xs text-link">Solana wallets</div>
             </div>
           </button>
         </div>
 
-        <div className="mt-8 text-center">
-          <div className="text-sm text-link mb-3">
+        <div className="mt-6 sm:mt-8 text-center">
+          <div className="text-sm text-link mb-3 px-2">
             {message || 'Connect your wallet to access all features'}
           </div>
-          <div className="text-xs text-link">
+          <div className="text-xs text-link px-2">
             By connecting, you agree to our{' '}
             <a
               href="https://ardrive.io/tos-and-privacy/"
