@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
-import { TurboFactory } from '@ardrive/turbo-sdk/web';
+import { useState, useEffect, useCallback } from 'react';
+import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner, SolanaWalletAdapter } from '@ardrive/turbo-sdk/web';
+import { ethers } from 'ethers';
+import { PublicKey } from '@solana/web3.js';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useStore } from '../../store/useStore';
-import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
+import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Calendar, Clock } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useArNSName } from '../../hooks/useArNSName';
@@ -48,10 +50,70 @@ export default function BalanceCheckerPanel() {
   const [balanceResult, setBalanceResult] = useState<BalanceResult | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showSharingDetails, setShowSharingDetails] = useState(false);
+  const [revoking, setRevoking] = useState<string | null>(null);
   const wincForOneGiB = useWincForOneGiB();
   
   // Get ArNS name for the searched address
   const { arnsName, loading: loadingArNS } = useArNSName(balanceResult?.address || null);
+
+  // Create Turbo client with proper wallet support (same as file upload)
+  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+    const { address, walletType } = useStore.getState();
+    if (!address || !walletType) {
+      throw new Error('Wallet not connected');
+    }
+    
+    switch (walletType) {
+      case 'arweave':
+        if (!window.arweaveWallet) {
+          throw new Error('Wander wallet extension not found. Please install from https://wander.app');
+        }
+        const signer = new ArconnectSigner(window.arweaveWallet);
+        return TurboFactory.authenticated({ 
+          ...turboConfig,
+          signer 
+        });
+        
+      case 'ethereum':
+        if (!window.ethereum) {
+          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        }
+        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+        const ethersSigner = await ethersProvider.getSigner();
+        
+        return TurboFactory.authenticated({
+          token: "ethereum",
+          walletAdapter: {
+            getSigner: () => ethersSigner as any,
+          },
+          ...turboConfig,
+        });
+        
+      case 'solana':
+        if (!window.solana) {
+          throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
+        }
+        const provider = window.solana;
+        const publicKey = new PublicKey((await provider.connect()).publicKey);
+
+        const walletAdapter: SolanaWalletAdapter = {
+          publicKey,
+          signMessage: async (message: Uint8Array) => {
+            const { signature } = await provider.signMessage(message);
+            return signature;
+          },
+        };
+
+        return TurboFactory.authenticated({
+          token: "solana",
+          walletAdapter,
+          ...turboConfig,
+        });
+        
+      default:
+        throw new Error(`Unsupported wallet type: ${walletType}`);
+    }
+  }, [turboConfig]);
 
   // Load recent searches from localStorage and check for pre-filled address
   useEffect(() => {
@@ -164,6 +226,8 @@ export default function BalanceCheckerPanel() {
               winc: approval.approvedWincAmount || approval.winc || '0',
               credits: Number(approval.approvedWincAmount || approval.winc || 0) / wincPerCredit,
               dateCreated: approval.creationDate || approval.dateCreated,
+              expirationDate: approval.expirationDate,
+              usedWincAmount: approval.usedWincAmount,
             };
           }) : []
         },
@@ -175,6 +239,8 @@ export default function BalanceCheckerPanel() {
             winc: approval.approvedWincAmount || approval.winc || '0',
             credits: Number(approval.approvedWincAmount || approval.winc || 0) / wincPerCredit,
             dateCreated: approval.creationDate || approval.dateCreated,
+            expirationDate: approval.expirationDate,
+            usedWincAmount: approval.usedWincAmount,
           })) : []
         }
       };
@@ -215,6 +281,57 @@ export default function BalanceCheckerPanel() {
     } else if (type === 'recent' && address) {
       setWalletAddress(address);
       handleCheckBalance(address);
+    }
+  };
+
+  const handleRevokeApproval = async (approvalId: string, revokedAddress: string) => {
+    if (!connectedAddress || connectedAddress !== balanceResult?.address) {
+      setError('You can only revoke approvals from your own connected wallet');
+      return;
+    }
+
+    setRevoking(approvalId);
+    setError('');
+    
+    try {
+      // Create Turbo client using same multi-chain pattern as file uploads
+      const turbo = await createTurboClient();
+      
+      console.log('Revoking credits - wallet info:', { connectedAddress, walletType: useStore.getState().walletType });
+      console.log('Approval data for debugging:', { approvalId, revokedAddress });
+      
+      // Revoke all credits shared with this address  
+      console.log('Revoking credits for revoked address:', revokedAddress);
+      const revokedApprovals = await turbo.revokeCredits({
+        revokedAddress: revokedAddress,
+      });
+      
+      console.log('Revoke result:', revokedApprovals);
+      
+      // Show success and refresh balance data
+      alert(`Successfully revoked credits shared with ${formatWalletAddress(revokedAddress, 8)}`);
+      
+      // Refresh the balance data to show updated approvals
+      if (balanceResult?.address) {
+        await handleCheckBalance(balanceResult.address);
+      }
+    } catch (error) {
+      console.error('Failed to revoke approval:', error);
+      
+      let errorMessage = 'Failed to revoke approval';
+      if (error instanceof Error) {
+        if (error.message.includes('Unable to revoke delegated payment approval')) {
+          errorMessage = 'This approval may already be revoked or expired, or you may not have permission to revoke it.';
+        } else if (error.message.includes('400')) {
+          errorMessage = 'Invalid revoke request. The approval may no longer exist or be revokable.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(`Revoke failed: ${errorMessage}`);
+    } finally {
+      setRevoking(null);
     }
   };
 
@@ -474,10 +591,10 @@ export default function BalanceCheckerPanel() {
               </button>
               
               {showSharingDetails && (
-                <div className="px-4 pb-4 border-t border-default/30 space-y-4">
+                <div className="px-4 pb-4 border-t border-default/30 space-y-6">
                   {/* Received Credits */}
                   {balanceResult.sharedCredits.received.approvals.length > 0 && (
-                    <div>
+                    <div className="pt-2">
                       <div className="flex items-center gap-2 mb-3">
                         <ArrowDown className="w-4 h-4 text-turbo-green" />
                         <span className="text-sm font-medium text-fg-muted">
@@ -485,17 +602,59 @@ export default function BalanceCheckerPanel() {
                         </span>
                       </div>
                       <p className="text-xs text-link mb-2">These users have shared their credits with this wallet:</p>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
                         {balanceResult.sharedCredits.received.approvals.map((approval) => (
-                          <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
-                            <div className="flex items-center gap-3">
-                              <div className="font-mono text-xs text-link">
-                                {formatWalletAddress(approval.granterAddress, 8)}
+                          <div key={approval.approvalId} className="bg-canvas rounded-lg p-4 border border-default/30">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="font-mono text-xs text-link">
+                                  {formatWalletAddress(approval.granterAddress, 8)}
+                                </div>
+                                <CopyButton textToCopy={approval.granterAddress} />
                               </div>
-                              <CopyButton textToCopy={approval.granterAddress} />
+                              <div className="text-turbo-green font-medium">
+                                +{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                              </div>
                             </div>
-                            <div className="text-turbo-green font-medium">
-                              +{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                            
+                            {/* Enhanced Details */}
+                            <div className="text-xs text-link space-y-1 pl-2 border-l border-default/30">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                {approval.dateCreated && (
+                                  <div>
+                                    <span className="text-link">Shared:</span>
+                                    <span className="ml-1 text-fg-muted">
+                                      {new Date(approval.dateCreated).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-link">Expires:</span>
+                                  <span className="ml-1 text-fg-muted">
+                                    {(approval as any).expirationDate 
+                                      ? new Date((approval as any).expirationDate).toLocaleDateString()
+                                      : 'Never'
+                                    }
+                                  </span>
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-link">Approval ID:</span>
+                                  <span className="ml-1 text-fg-muted font-mono text-xs">
+                                    {approval.approvalId.substring(0, 8)}...
+                                  </span>
+                                  <span className="ml-1">
+                                    <CopyButton textToCopy={approval.approvalId} />
+                                  </span>
+                                </div>
+                                {(approval as any).usedWincAmount && Number((approval as any).usedWincAmount) > 0 && (
+                                  <div className="col-span-2">
+                                    <span className="text-link">Used:</span>
+                                    <span className="ml-1 text-fg-muted">
+                                      {(Number((approval as any).usedWincAmount) / 1e12).toFixed(4)} Credits
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -513,17 +672,76 @@ export default function BalanceCheckerPanel() {
                         </span>
                       </div>
                       <p className="text-xs text-link mb-2">This wallet has shared credits with these recipients:</p>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                      <div className="space-y-3 max-h-40 overflow-y-auto">
                         {balanceResult.sharedCredits.given.approvals.map((approval) => (
-                          <div key={approval.approvalId} className="flex items-center justify-between bg-canvas rounded p-3 text-sm">
-                            <div className="flex items-center gap-3">
-                              <div className="font-mono text-xs text-link">
-                                {formatWalletAddress(approval.recipientAddress, 8)}
+                          <div key={approval.approvalId} className="bg-canvas rounded-lg p-4 border border-default/30">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="font-mono text-xs text-link">
+                                  {formatWalletAddress(approval.recipientAddress, 8)}
+                                </div>
+                                <CopyButton textToCopy={approval.recipientAddress} />
                               </div>
-                              <CopyButton textToCopy={approval.recipientAddress} />
+                              <div className="flex items-center gap-2">
+                                <div className="text-turbo-red font-medium">
+                                  -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                                </div>
+                                {/* Revoke Button - only show if viewing your own connected wallet */}
+                                {connectedAddress && connectedAddress === balanceResult.address && (
+                                  <button
+                                    onClick={() => handleRevokeApproval(approval.approvalId, approval.recipientAddress)}
+                                    disabled={revoking === approval.approvalId}
+                                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
+                                    title={`Revoke all credits shared with ${formatWalletAddress(approval.recipientAddress, 8)}`}
+                                  >
+                                    {revoking === approval.approvalId ? (
+                                      <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <X className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-turbo-red font-medium">
-                              -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
+                            
+                            {/* Enhanced Details */}
+                            <div className="text-xs text-link space-y-1 pl-2 border-l border-default/30">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                {approval.dateCreated && (
+                                  <div>
+                                    <span className="text-link">Created:</span>
+                                    <span className="ml-1 text-fg-muted">
+                                      {new Date(approval.dateCreated).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-link">Expires:</span>
+                                  <span className="ml-1 text-fg-muted">
+                                    {(approval as any).expirationDate 
+                                      ? new Date((approval as any).expirationDate).toLocaleDateString()
+                                      : 'Never'
+                                    }
+                                  </span>
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-link">Approval ID:</span>
+                                  <span className="ml-1 text-fg-muted font-mono text-xs">
+                                    {approval.approvalId.substring(0, 8)}...
+                                  </span>
+                                  <span className="ml-1">
+                                    <CopyButton textToCopy={approval.approvalId} />
+                                  </span>
+                                </div>
+                                {(approval as any).usedWincAmount && Number((approval as any).usedWincAmount) > 0 && (
+                                  <div className="col-span-2">
+                                    <span className="text-link">Used:</span>
+                                    <span className="ml-1 text-fg-muted">
+                                      {(Number((approval as any).usedWincAmount) / 1e12).toFixed(4)} Credits
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}

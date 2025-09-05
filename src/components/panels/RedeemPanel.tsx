@@ -55,8 +55,7 @@ export default function RedeemPanel() {
       }
 
       const redemptionData = await response.json();
-      console.log('Redemption API response:', redemptionData); // Debug log
-      
+            
       // Fetch the balance of the destination address to show updated info
       try {
         const turbo = TurboFactory.unauthenticated(turboConfig);
@@ -67,9 +66,6 @@ export default function RedeemPanel() {
         const creditsReceived = redemptionData.userBalance 
           ? Number(redemptionData.userBalance) / 1e12  // Convert winc to credits
           : 0;
-        
-        console.log('Credits received from API:', creditsReceived); // Debug log
-        console.log('New balance from API:', creditsBalance); // Debug log
         
         setRedemptionDetails({
           creditsReceived,

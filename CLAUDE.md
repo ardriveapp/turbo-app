@@ -51,6 +51,11 @@ Commands that can be run without user approval:
 - `npm run type-check` - Type checking (safe to run automatically)
 - `npm run type-check:*` - Any type-check variant
 
+### Required Commands for Development
+Always run these commands after making code changes:
+- `npm run type-check` - TypeScript type checking
+- `npm run lint` - ESLint validation
+
 ## Architecture Overview
 
 ### Application Structure
@@ -119,8 +124,10 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 #### Payment Integration
 - **Stripe Elements**: Hosted checkout with success/cancel callbacks
 - **Gift Payment Flow**: Multi-step payment process with confirmation panels
-- **Crypto Payments**: UI ready, backend integration pending
-- **Real-time Conversion**: USD to credits with debouncing (500ms)
+- **Fiat Payments**: Complete fiat payment panels (PaymentDetailsPanel, PaymentConfirmationPanel, PaymentSuccessPanel)
+- **Gift Fiat Flow**: Dedicated gift payment panels (GiftPaymentDetailsPanel, GiftPaymentConfirmationPanel, GiftPaymentSuccessPanel)
+- **Crypto Payments**: UI ready with crypto-to-credits conversion, backend integration pending
+- **Real-time Conversion**: USD/crypto to credits with debouncing (500ms)
 - **Balance Refresh**: Custom events trigger balance updates
 
 #### File Upload System
@@ -191,13 +198,18 @@ All service panels follow consistent styling:
 #### Custom Hooks
 - `useWincForOneGiB`: Storage pricing calculations
 - `useCreditsForFiat`: USD to credits conversion with debouncing
-- `useCreditsForCrypto`: Crypto to credits conversion calculations
+- `useCreditsForCrypto`: Crypto to credits conversion calculations (newly implemented)
 - `useFileUpload`: Multi-chain upload logic with proper signers
+- `useFolderUpload`: Folder upload with drag & drop support
 - `useArNSName`: Primary name fetching with cache management
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
-- `useCountries`: Country data for payment forms
+- `useCountries`: Country data for payment forms (newly implemented)
 - `useDebounce`: Input debouncing (500ms default)
 - `useTurboConfig`: Centralized Turbo SDK configuration with environment-based settings
+- `useAddressState`: Address state management
+- `useGatewayInfo`: Gateway information fetching
+- `useTurboWallets`: Turbo wallet management
+- `useUploadStatus`: Upload status tracking
 
 ### Styling System
 
@@ -277,7 +289,9 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ### ✅ Completed Features
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
-- Buy Credits with Stripe checkout
+- Buy Credits with Stripe checkout including full fiat payment flow
+- Complete fiat payment panels with form validation and country selection
+- Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - File upload with progress tracking (Arweave wallets only)
 - Credit sharing between wallets (Wander wallet required for signing)
 - Gift credit system (send/redeem)
@@ -289,7 +303,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Gateway information display
 
 ### ⚠️ Known Limitations
-- **Crypto Payments**: UI ready, backend integration pending
+- **Crypto Payments**: UI ready with conversion calculations, backend integration pending
 - **Share Credits**: Requires Wander wallet for transaction signing
 - **ArNS Purchase**: Search UI ready, purchase not connected
 - **Upload Restrictions**: Limited to Arweave wallets only
@@ -310,6 +324,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Use `useFileUpload` hook for proper multi-chain signer creation
 - Progress tracking includes both signing and upload phases
 - Error handling includes per-file error states
+
 
 ### State Management
 - Persistent state: wallet info, ArNS cache, upload history

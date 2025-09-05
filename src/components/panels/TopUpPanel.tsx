@@ -442,6 +442,44 @@ export default function TopUpPanel() {
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-blue/5 rounded-xl border border-default p-6 mb-6">
         
+        {/* Input Mode Toggle - Universal for all payment methods */}
+        <div className="mb-6">
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex w-full max-w-sm sm:w-auto bg-surface rounded-lg p-1 border border-default">
+              <button
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  inputType === 'storage'
+                    ? 'bg-turbo-red text-white'
+                    : 'text-link hover:text-fg-muted'
+                }`}
+                onClick={() => {
+                  setInputType('storage');
+                  setErrorMessage('');
+                }}
+              >
+                <HardDrive className="w-4 h-4" />
+                <span className="hidden sm:inline">Storage to Cost</span>
+                <span className="sm:hidden">Storage</span>
+              </button>
+              <button
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  inputType === 'dollars'
+                    ? 'bg-turbo-red text-white'
+                    : 'text-link hover:text-fg-muted'
+                }`}
+                onClick={() => {
+                  setInputType('dollars');
+                  setErrorMessage('');
+                }}
+              >
+                <DollarSign className="w-4 h-4" />
+                <span className="hidden sm:inline">Budget to Storage</span>
+                <span className="sm:hidden">Budget</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Payment Method Selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-link mb-3">Choose Payment Method</label>
@@ -476,46 +514,6 @@ export default function TopUpPanel() {
             </button>
           </div>
         </div>
-
-        {/* Input Mode Toggle - Only for fiat payments */}
-        {paymentMethod === 'fiat' && (
-          <div className="mb-6">
-            <div className="flex justify-center mb-6">
-              <div className="inline-flex w-full max-w-sm sm:w-auto bg-surface rounded-lg p-1 border border-default">
-                <button
-                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                    inputType === 'storage'
-                      ? 'bg-turbo-red text-white'
-                      : 'text-link hover:text-fg-muted'
-                  }`}
-                  onClick={() => {
-                    setInputType('storage');
-                    setErrorMessage('');
-                  }}
-                >
-                  <HardDrive className="w-4 h-4" />
-                  <span className="hidden sm:inline">Storage to Cost</span>
-                  <span className="sm:hidden">Storage</span>
-                </button>
-                <button
-                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                    inputType === 'dollars'
-                      ? 'bg-turbo-red text-white'
-                      : 'text-link hover:text-fg-muted'
-                  }`}
-                  onClick={() => {
-                    setInputType('dollars');
-                    setErrorMessage('');
-                  }}
-                >
-                  <DollarSign className="w-4 h-4" />
-                  <span className="hidden sm:inline">Budget to Storage</span>
-                  <span className="sm:hidden">Budget</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Crypto Token Selection - Show immediately after selecting crypto */}
         {paymentMethod === 'crypto' && (
@@ -734,54 +732,135 @@ export default function TopUpPanel() {
           ) : (
             <>
               <label className="block text-sm font-medium text-link mb-3">
-                Select {tokenLabels[selectedTokenType]} Amount
+                {inputType === 'storage' ? 'Enter Storage Amount' : `Select ${tokenLabels[selectedTokenType]} Amount`}
               </label>
-              {/* Crypto Preset Amounts */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {getCryptoPresets(selectedTokenType).map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => {
-                      setCryptoAmount(amount);
-                      setCryptoAmountInput(String(amount));
-                      setErrorMessage('');
-                    }}
-                    className={`py-3 px-2 rounded-lg border transition-all font-medium text-sm ${
-                      cryptoAmount === amount
-                        ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
-                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                    }`}
-                  >
-                    {amount} {tokenLabels[selectedTokenType].replace(/\s*\([^)]*\)/, '')}
-                  </button>
-                ))}
-              </div>
               
-              {/* Custom Crypto Input */}
-              <div className="bg-surface rounded-lg p-4">
-                <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-                  Custom Amount ({tokenLabels[selectedTokenType]})
-                </label>
-                <div className="flex items-center gap-3">
-                  <Wallet className="w-5 h-5 text-fg-muted" />
-                  <input
-                    type="text"
-                    value={cryptoAmountInput}
-                    onChange={handleCryptoAmountChange}
-                    onBlur={() => {
-                      if (cryptoAmount > 0) {
-                        setCryptoAmountInput(String(cryptoAmount));
-                      }
-                    }}
-                    className="flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors border-default focus:border-turbo-red"
-                    placeholder={`Enter ${tokenLabels[selectedTokenType]} amount`}
-                    inputMode="decimal"
-                  />
-                </div>
-                <div className="mt-2 text-xs text-link">
-                  Enter the amount of {tokenLabels[selectedTokenType]} you want to spend
-                </div>
-              </div>
+              {inputType === 'storage' ? (
+                <>
+                  {/* Storage Amount Input for Crypto */}
+                  <div className="bg-surface rounded-lg p-4 mb-4">
+                    <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                      How much data do you need to store?
+                    </label>
+                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={storageAmount}
+                        onChange={(e) => {
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          setStorageAmount(value);
+                          setErrorMessage('');
+                        }}
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        placeholder="Enter amount"
+                      />
+                      <select
+                        value={storageUnit}
+                        onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
+                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-8 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                      >
+                        <option value="MiB">MiB</option>
+                        <option value="GiB">GiB</option>
+                        <option value="TiB">TiB</option>
+                      </select>
+                    </div>
+                    
+                    {/* Common storage sizes */}
+                    <div className="text-xs text-link mb-2">Quick select:</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { amount: 100, unit: 'MiB', label: '100 MiB' },
+                        { amount: 500, unit: 'MiB', label: '500 MiB' },
+                        { amount: 1, unit: 'GiB', label: '1 GiB' },
+                        { amount: 10, unit: 'GiB', label: '10 GiB' },
+                        { amount: 100, unit: 'GiB', label: '100 GiB' },
+                        { amount: 1, unit: 'TiB', label: '1 TiB' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setStorageAmount(preset.amount);
+                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
+                            setErrorMessage('');
+                          }}
+                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Crypto Cost Display for Storage Mode */}
+                  {wincForOneGiB && creditsForOneUSD && (
+                    <div className="bg-canvas border-2 border-turbo-red rounded-lg p-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-sm text-link mb-1">Estimated Cost</div>
+                        <div className="text-xl font-bold text-turbo-red mb-2">
+                          ${formatNumber(calculateStorageCost())} USD
+                        </div>
+                        <div className="text-sm text-link">
+                          Pay with {tokenLabels[selectedTokenType]}
+                        </div>
+                        <div className="text-xs text-link mt-1">
+                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Crypto Preset Amounts */}
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {getCryptoPresets(selectedTokenType).map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => {
+                          setCryptoAmount(amount);
+                          setCryptoAmountInput(String(amount));
+                          setErrorMessage('');
+                        }}
+                        className={`py-3 px-2 rounded-lg border transition-all font-medium text-sm ${
+                          cryptoAmount === amount
+                            ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                        }`}
+                      >
+                        {amount} {tokenLabels[selectedTokenType].replace(/\s*\([^)]*\)/, '')}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Custom Crypto Input */}
+                  <div className="bg-surface rounded-lg p-4">
+                    <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
+                      Custom Amount ({tokenLabels[selectedTokenType]})
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <Wallet className="w-5 h-5 text-fg-muted" />
+                      <input
+                        type="text"
+                        value={cryptoAmountInput}
+                        onChange={handleCryptoAmountChange}
+                        onBlur={() => {
+                          if (cryptoAmount > 0) {
+                            setCryptoAmountInput(String(cryptoAmount));
+                          }
+                        }}
+                        className="flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors border-default focus:border-turbo-red"
+                        placeholder={`Enter ${tokenLabels[selectedTokenType]} amount`}
+                        inputMode="decimal"
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-link">
+                      Enter the amount of {tokenLabels[selectedTokenType]} you want to spend
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

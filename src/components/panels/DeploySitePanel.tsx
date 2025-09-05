@@ -935,8 +935,6 @@ export default function DeploySitePanel() {
               });
 
               return Object.entries(deploymentGroups).map(([manifestId, group]) => {
-                // Debug logging to check data structure
-                console.log('Deployment group:', { manifestId, group, files: group.files?.files });
                 
                 return (
                 <div key={manifestId} className="border border-default/30 rounded-lg p-4 bg-canvas/50">
