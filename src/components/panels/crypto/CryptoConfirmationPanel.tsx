@@ -1,5 +1,5 @@
 import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
@@ -20,7 +20,6 @@ export default function CryptoConfirmationPanel({
   onPaymentComplete
 }: CryptoConfirmationPanelProps) {
   const { address, walletType } = useStore();
-  const [countdown, setCountdown] = useState(5 * 60); // 5 minutes
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   
@@ -37,25 +36,7 @@ export default function CryptoConfirmationPanel({
   // Get the turbo wallet address for manual payments
   const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
 
-  const formatCountdown = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  };
 
-  // Simplified countdown for quote refresh display
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          return 5 * 60; // Reset countdown
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Determine if user can pay directly or needs manual payment
   const canPayDirectly = (

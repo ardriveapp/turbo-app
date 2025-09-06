@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, ExternalLink, Receipt, Globe2, Folder, ChevronDown } from 'lucide-react';
+import { Globe, Receipt, Globe2, Folder } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getArweaveUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -11,7 +11,7 @@ export default function RecentDeploymentsSection() {
   const { deployHistory } = useStore();
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [showAllDeployments, setShowAllDeployments] = useState(false);
-  const { uploadStatuses, checkUploadStatus, statusChecking, getStatusColor, getStatusIcon } = useUploadStatus();
+  const { uploadStatuses } = useUploadStatus();
   const navigate = useNavigate();
 
   // Group deploy results by manifest ID like in DeploySitePanel

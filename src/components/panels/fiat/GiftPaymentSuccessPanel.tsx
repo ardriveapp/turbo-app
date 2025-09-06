@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { CheckCircle, Gift, Mail, ArrowRight, Send, MessageSquare } from 'lucide-react';
+import { CheckCircle, Gift, Mail, Send, MessageSquare } from 'lucide-react';
 
 interface GiftPaymentSuccessPanelProps {
   usdAmount: number;

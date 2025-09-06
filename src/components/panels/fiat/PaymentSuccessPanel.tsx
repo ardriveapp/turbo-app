@@ -1,6 +1,6 @@
 import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import { wincPerCredit, tokenLabels, SupportedTokenType } from '../../../constants';
+import { tokenLabels, SupportedTokenType } from '../../../constants';
 import { useNavigate } from 'react-router-dom';
 
 interface PaymentSuccessPanelProps {

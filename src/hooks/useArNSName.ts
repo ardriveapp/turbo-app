@@ -33,7 +33,7 @@ export function useArNSName(address: string | null) {
         } else {
           setArnsName(null);
         }
-      } catch (_error) {
+      } catch {
         // If no primary name found or error, just use address
         console.log('No ArNS primary name found for address:', address);
         setArnsName(null);

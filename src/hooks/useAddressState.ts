@@ -13,7 +13,6 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { parseEther } from 'viem';
 import {
-  useDisconnect,
   useSendTransaction,
 } from 'wagmi';
 import { mainnet } from 'wagmi/chains';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins, HardDrive, Share2, ArrowDown, Plus, ArrowRight } from 'lucide-react';
+import { Coins, HardDrive, Share2, ArrowDown, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 import { useStore } from '../../store/useStore';
@@ -15,7 +15,7 @@ interface BalanceData {
 }
 
 export default function BalanceCardsGrid() {
-  const { address, walletType } = useStore();
+  const { address } = useStore();
   const navigate = useNavigate();
   const turboConfig = useTurboConfig();
   const wincForOneGiB = useWincForOneGiB();

@@ -2,12 +2,10 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
-import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType, defaultPaymentServiceUrl } from '../../constants';
+import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
-import { turboConfig } from '../../constants';
 import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
-import { useWincForOneGiB, useWincForToken, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
+import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
 import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
@@ -21,9 +19,6 @@ export default function TopUpPanel() {
     address, 
     walletType, 
     creditBalance, 
-    paymentIntent,
-    paymentInformation,
-    paymentIntentResult,
     setPaymentAmount,
     setPaymentIntent,
     clearAllPaymentState
@@ -104,36 +99,6 @@ export default function TopUpPanel() {
   
   
   // Helper function to get token amount for USD amount
-  const getTokenAmountForUSD = async (usdAmount: number, tokenType: SupportedTokenType): Promise<number> => {
-    try {
-      const turbo = TurboFactory.unauthenticated({
-        ...turboConfig,
-        token: tokenType as any,
-      });
-      
-      const wincForFiat = await turbo.getWincForFiat({
-        amount: USD(usdAmount),
-      });
-      
-      const targetWinc = Number(wincForFiat.winc);
-      const PAYMENT_SERVICE_FQDN = defaultPaymentServiceUrl.replace('https://', '');
-      
-      // Quick estimation using 1 token unit as baseline
-      const url = `https://${PAYMENT_SERVICE_FQDN}/v1/price/${tokenType}/1`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const result = await response.json();
-        const wincPerToken = Number(result.winc);
-        if (wincPerToken > 0) {
-          return targetWinc / wincPerToken;
-        }
-      }
-      
-      return 0;
-    } catch (error) {
-      return 0;
-    }
-  };
 
   const presetAmounts = [10, 25, 50, 100, 250, 500];
   

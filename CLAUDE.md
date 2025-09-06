@@ -75,7 +75,7 @@ This is a unified Turbo Gateway application consolidating three separate applica
 ```typescript
 // Available routes
 const routes = [
-  '/', '/topup', '/upload', '/deploy', '/share', '/gift', 
+  '/', '/topup', '/upload', '/deploy', '/share', '/gift', '/account',
   '/domains', '/calculator', '/services-calculator', 
   '/balances', '/redeem', '/developer', '/gateway-info'
 ];
@@ -149,9 +149,10 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 **Services** (login required):
 - Buy Credits (`topup`)
 - Upload Files (`upload`) 
-- Deploy Site (`deploy`) - temporarily disabled
+- Deploy Site (`deploy`) - now available with site data export functionality
 - Share Credits (`share`)
 - Send Gift (`gift`)
+- Account (`account`) - new account management page
 
 **Tools**:
 - Search Domains (`domains`)
@@ -292,28 +293,35 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
+- Crypto payments for Solana and Ethereum (improved UX and testing needed)
 - File upload with progress tracking (Arweave wallets only)
+- Site deployment with data export functionality
 - Credit sharing between wallets (Wander wallet required for signing)
+- Credit revocation system
 - Gift credit system (send/redeem)
 - ArNS name display with caching
-- Balance checking for any wallet
+- Balance checking for any wallet with credits shared in tracking
+- Account management page
 - Developer resources with API documentation
 - Pricing calculator with storage estimates
 - Services calculator with combined storage + ArNS pricing
 - Gateway information display
+- Improved mobile views and responsive design
+- Sticky top header navigation
 
 ### ⚠️ Known Limitations
-- **Crypto Payments**: UI ready with conversion calculations, backend integration pending
+- **Crypto Payments**: Solana and Ethereum crypto payments implemented but need improved UX and additional testing
 - **Share Credits**: Requires Wander wallet for transaction signing
 - **ArNS Purchase**: Search UI ready, purchase not connected
 - **Upload Restrictions**: Limited to Arweave wallets only
-- **Deploy Site**: Feature temporarily disabled
 
 ### 🔄 Wallet Capability Matrix
 | Feature | Arweave | Ethereum | Solana |
 |---------|---------|----------|--------|
-| Buy Credits | ✅ | ✅ | ✅ |
+| Buy Credits (Fiat) | ✅ | ✅ | ✅ |
+| Buy Credits (Crypto) | ✅ | ✅ | ✅ |
 | Upload Files | ✅ | ❌ | ❌ |
+| Deploy Sites | ✅ | ❌ | ❌ |
 | Share Credits | ✅ | ❌ | ❌ |
 | ArNS Names | ✅ | ✅ | ❌ |
 

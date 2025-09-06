@@ -28,7 +28,7 @@ const isValidPromoCode = async (
       destinationAddress,
     });
     return response.adjustments.length > 0;
-  } catch (e: unknown) {
+  } catch {
     return false;
   }
 };
@@ -38,7 +38,6 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
   const { address, walletType } = useStore();
 
   const {
-    paymentIntent,
     setPaymentIntent,
     setPaymentInformation,
     promoCode,

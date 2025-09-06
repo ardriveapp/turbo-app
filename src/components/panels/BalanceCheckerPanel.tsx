@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useStore } from '../../store/useStore';
-import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Calendar, Clock, Check } from 'lucide-react';
+import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Check } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useArNSName } from '../../hooks/useArNSName';
@@ -133,16 +133,17 @@ export default function BalanceCheckerPanel() {
       // Clear the localStorage item after using it
       localStorage.removeItem('balances-address');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save recent searches
-  const addToRecentSearches = (address: string) => {
+  const addToRecentSearches = useCallback((address: string) => {
     const updated = [address, ...recentSearches.filter(a => a !== address)].slice(0, 5);
     setRecentSearches(updated);
     localStorage.setItem('recentBalanceSearches', JSON.stringify(updated));
-  };
+  }, [recentSearches]);
 
-  const validateAddress = (address: string): boolean => {
+  const validateAddress = useCallback((address: string): boolean => {
     if (!address) return false;
     
     // Arweave address (43 characters, base64url)
@@ -155,9 +156,9 @@ export default function BalanceCheckerPanel() {
     const solanaRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     
     return arweaveRegex.test(address) || ethereumRegex.test(address) || solanaRegex.test(address);
-  };
+  }, []);
 
-  const handleCheckBalance = async (addressToCheck?: string) => {
+  const handleCheckBalance = useCallback(async (addressToCheck?: string) => {
     const targetAddress = addressToCheck || walletAddress.trim();
     
     if (!targetAddress) {
@@ -266,7 +267,7 @@ export default function BalanceCheckerPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [walletAddress, turboConfig, wincForOneGiB, validateAddress, addToRecentSearches]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -303,7 +304,7 @@ export default function BalanceCheckerPanel() {
       const turbo = await createTurboClient();
       
       // Revoke all credits shared with this address
-      const revokedApprovals = await turbo.revokeCredits({
+      await turbo.revokeCredits({
         revokedAddress: revokedAddress,
       });
       

@@ -3,7 +3,7 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
+import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
@@ -27,10 +27,7 @@ export default function DeploySitePanel() {
     checkMultipleStatuses, 
     statusChecking, 
     uploadStatuses, 
-    getStatusColor,
-    getStatusIcon,
-    formatFileSize,
-    formatWinc
+    getStatusIcon
   } = useUploadStatus();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -408,7 +405,7 @@ export default function DeploySitePanel() {
         checkMultipleStatuses(allIds);
       }, 1000);
     }
-  }, [deployHistory.length, checkMultipleStatuses]);
+  }, [deployHistory, checkMultipleStatuses]);
 
   const handleDeploy = async () => {
     if (!selectedFolder || selectedFolder.length === 0) {
@@ -1005,7 +1002,6 @@ export default function DeploySitePanel() {
                           {/* Status Icon */}
                           {uploadStatuses[manifestId] ? (() => {
                             const iconType = getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
-                            const iconColor = getStatusColor(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
                             return renderStatusIcon(iconType);
                           })() : <Clock className="w-4 h-4 text-yellow-500" />}
                           
@@ -1161,7 +1157,6 @@ export default function DeploySitePanel() {
                                       {/* Status Icon (no text) */}
                                       {status ? (() => {
                                         const iconType = getStatusIcon(status.status, status.info);
-                                        const iconColor = getStatusColor(status.status, status.info);
                                         return renderStatusIcon(iconType);
                                       })() : <Clock className="w-4 h-4 text-yellow-500" />}
                                       

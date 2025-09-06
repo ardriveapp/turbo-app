@@ -257,7 +257,7 @@ export function useGatewayInfo() {
     };
 
     fetchGatewayInfo();
-  }, []);
+  }, [getCurrentConfig, turboConfig]);
 
   const refresh = async () => {
     setRefreshing(true);

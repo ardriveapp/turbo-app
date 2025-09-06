@@ -75,7 +75,7 @@ export function useUploadStatus() {
     } finally {
       setStatusChecking(prev => ({ ...prev, [txId]: false }));
     }
-  }, [getCurrentConfig]);
+  }, [getCurrentConfig, getUploadStatus, setUploadStatus]);
 
   const checkMultipleStatuses = useCallback(async (txIds: string[]) => {
     const promises = txIds.map(txId => checkUploadStatus(txId));

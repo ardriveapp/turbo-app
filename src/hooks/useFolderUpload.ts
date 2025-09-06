@@ -346,7 +346,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [address, createTurboClient]);
+  }, [address, createTurboClient, getContentType]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);

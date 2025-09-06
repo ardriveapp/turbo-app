@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { User, CreditCard, Share2, Upload, Globe, Gift } from 'lucide-react';
+import { User } from 'lucide-react';
 import WalletOverviewCard from '../components/account/WalletOverviewCard';
 import BalanceCardsGrid from '../components/account/BalanceCardsGrid';
 import CreditSharingSection from '../components/account/CreditSharingSection';
 import ActivityOverview from '../components/account/ActivityOverview';
 
 export default function MyAccountPage() {
-  const { address, walletType } = useStore();
+  const { address } = useStore();
   const navigate = useNavigate();
 
   // Redirect to home if not logged in

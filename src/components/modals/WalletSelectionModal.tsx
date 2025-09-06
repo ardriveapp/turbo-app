@@ -30,12 +30,12 @@ const WalletSelectionModal = ({
           console.log('Setting Ethereum address:', rawAddress);
           setAddress(rawAddress, 'ethereum');
           onClose();
-        } catch (_error) {
+        } catch {
           // Failed to process Ethereum connection
           setConnectingWallet(undefined);
         }
       },
-      onError: (_error) => {
+      onError: () => {
         // Failed to connect wallet
         setConnectingWallet(undefined);
       },
@@ -59,7 +59,7 @@ const WalletSelectionModal = ({
       onClose();
       setIntentionalSolanaConnect(false); // Reset flag
     }
-  }, [publicKey, intentionalSolanaConnect]); // Only connect when we intentionally triggered it
+  }, [publicKey, intentionalSolanaConnect, setAddress, onClose]); // Only connect when we intentionally triggered it
 
   const connectPhantom = async () => {
     try {
@@ -105,7 +105,7 @@ const WalletSelectionModal = ({
         setSolanaModalVisible(true);
       }
       
-    } catch (_error) {
+    } catch {
       // Failed to connect Phantom wallet
       setIntentionalSolanaConnect(false); // Reset flag on error
     } finally {
@@ -135,7 +135,7 @@ const WalletSelectionModal = ({
       console.log('Setting Arweave address:', addr);
       setAddress(addr, 'arweave');
       onClose();
-    } catch (_error) {
+    } catch {
       // Failed to connect Wander wallet
     } finally {
       setConnectingWallet(undefined);
@@ -166,7 +166,7 @@ const WalletSelectionModal = ({
             await disconnect();
             await new Promise(resolve => setTimeout(resolve, 200));
             await connect({ connector: metamask });
-          } catch (_retryError) {
+          } catch {
             // Retry failed
           }
         }

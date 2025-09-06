@@ -26,7 +26,6 @@ export default function UploadPanel() {
     statusChecking, 
     uploadStatuses, 
     formatFileSize,
-    formatWinc,
     getStatusColor,
     getStatusIcon
   } = useUploadStatus();
@@ -71,7 +70,7 @@ export default function UploadPanel() {
         checkMultipleStatuses(uploadIds);
       }, 1000);
     }
-  }, [uploadHistory.length, checkMultipleStatuses]);
+  }, [uploadHistory, checkMultipleStatuses]);
 
   const exportToCSV = () => {
     if (uploadHistory.length === 0) return;

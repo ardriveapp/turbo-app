@@ -12,8 +12,6 @@ import GiftPaymentSuccessPanel from './fiat/GiftPaymentSuccessPanel';
 export default function GiftPanel() {
   const { 
     paymentIntent,
-    paymentInformation,
-    paymentIntentResult,
     setPaymentAmount,
     setPaymentIntent,
     clearAllPaymentState

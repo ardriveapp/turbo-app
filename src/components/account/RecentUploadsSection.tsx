@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, ExternalLink, Receipt, ChevronDown, FileText } from 'lucide-react';
+import { Upload, ExternalLink, Receipt } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getArweaveUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -11,7 +11,7 @@ export default function RecentUploadsSection() {
   const { uploadHistory } = useStore();
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [showAllUploads, setShowAllUploads] = useState(false);
-  const { uploadStatuses, checkUploadStatus, statusChecking, getStatusColor, getStatusIcon } = useUploadStatus();
+  const { uploadStatuses, getStatusColor, getStatusIcon } = useUploadStatus();
   const navigate = useNavigate();
 
   const recentUploads = uploadHistory.slice(0, 3); // Show latest 3
@@ -63,7 +63,6 @@ export default function RecentUploadsSection() {
       <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
         {displayUploads.map((upload, index) => {
           const status = uploadStatuses[upload.id];
-          const isChecking = statusChecking[upload.id];
           
           return (
             <div key={index} className="bg-canvas rounded-lg p-3 border border-default/30">

@@ -2,7 +2,7 @@ import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { StripeCardElementOptions } from '@stripe/stripe-js';
 import { FC, useState } from 'react';
 import { isEmail } from 'validator';
-import { CircleX, CreditCard, ArrowLeft, Gift, Loader2 } from 'lucide-react';
+import { CircleX, CreditCard, Gift, Loader2 } from 'lucide-react';
 import useCountries from '../../../hooks/useCountries';
 import { useStore } from '../../../store/useStore';
 
@@ -19,7 +19,8 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
   usdAmount, 
   recipientEmail, 
   giftMessage, 
-  paymentIntent,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  paymentIntent, 
   onBack, 
   onNext 
 }) => {
@@ -114,7 +115,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
       };
 
       onNext();
-    } catch (err) {
+    } catch {
       setCardError('Failed to process payment information');
     } finally {
       setIsProcessing(false);

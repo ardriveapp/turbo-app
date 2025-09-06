@@ -99,7 +99,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
         window.dispatchEvent(new CustomEvent('refresh-balance'));
         onSuccess();
       }
-    } catch (error) {
+    } catch {
       setPaymentError('Payment processing failed. Please try again.');
     } finally {
       setSendingPayment(false);
