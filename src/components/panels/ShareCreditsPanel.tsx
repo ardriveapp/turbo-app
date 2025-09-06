@@ -2,12 +2,11 @@ import { useState, useMemo } from 'react';
 import { 
   TurboFactory, 
   TurboAuthenticatedClient,
-  ArconnectSigner
+  ArconnectSigner,
+  SolanaWalletAdapter
 } from '@ardrive/turbo-sdk/web';
-import { 
-  InjectedEthereumSigner,
-  InjectedSolanaSigner
-} from '@dha-team/arbundles';
+import { ethers } from 'ethers';
+import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../../store/useStore';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
@@ -25,44 +24,62 @@ export default function ShareCreditsPanel() {
   const wincForOneGiB = useWincForOneGiB();
   const turboConfig = useTurboConfig();
   
-  // Create authenticated turbo client based on wallet type
+  // Create authenticated turbo client based on wallet type (same pattern as working BalanceCheckerPanel)
   const createTurboClient = async (): Promise<TurboAuthenticatedClient> => {
     if (!address || !walletType) {
       throw new Error('Wallet not connected');
     }
-
-    let signer;
     
     switch (walletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
-          throw new Error('Wander wallet extension not found');
+          throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
-        signer = new ArconnectSigner(window.arweaveWallet);
-        break;
+        const signer = new ArconnectSigner(window.arweaveWallet);
+        return TurboFactory.authenticated({ 
+          ...turboConfig,
+          signer 
+        });
         
       case 'ethereum':
         if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found');
+          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
         }
-        signer = new InjectedEthereumSigner(window.ethereum as any);
-        break;
+        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+        const ethersSigner = await ethersProvider.getSigner();
+        
+        return TurboFactory.authenticated({
+          token: "ethereum",
+          walletAdapter: {
+            getSigner: () => ethersSigner as any,
+          },
+          ...turboConfig,
+        });
         
       case 'solana':
         if (!window.solana) {
-          throw new Error('Solana wallet extension not found');
+          throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
-        signer = new InjectedSolanaSigner(window.solana as any);
-        break;
+        const provider = window.solana;
+        const publicKey = new PublicKey((await provider.connect()).publicKey);
+
+        const walletAdapter: SolanaWalletAdapter = {
+          publicKey,
+          signMessage: async (message: Uint8Array) => {
+            const { signature } = await provider.signMessage(message);
+            return signature;
+          },
+        };
+
+        return TurboFactory.authenticated({
+          token: "solana",
+          walletAdapter,
+          ...turboConfig,
+        });
         
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-
-    return TurboFactory.authenticated({ 
-      ...turboConfig,
-      signer 
-    });
   };
   const [creditAmount, setCreditAmount] = useState(1);
   const [creditAmountInput, setCreditAmountInput] = useState('1');
@@ -116,8 +133,15 @@ export default function ShareCreditsPanel() {
       
       setTimeout(() => {
         setSuccess(false);
-      }, 5000);
+      }, 10000);
     } catch (err) {
+      console.error('Share credits error details:', err);
+      console.error('Error type:', typeof err);
+      console.error('Error constructor:', err?.constructor?.name);
+      if (err instanceof Error) {
+        console.error('Error message:', err.message);
+        console.error('Error stack:', err.stack);
+      }
       setError(err instanceof Error ? err.message : 'Failed to share credits');
     } finally {
       setSending(false);
@@ -178,7 +202,7 @@ export default function ShareCreditsPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
       
       {/* Current Balance */}
       {balance && (

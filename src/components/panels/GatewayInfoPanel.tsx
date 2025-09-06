@@ -32,7 +32,7 @@ export default function GatewayInfoPanel() {
   return (
     <div>
       {/* Inline Header with Description */}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-4 sm:mb-6">
         <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Server className="w-5 h-5 text-turbo-red" />
         </div>
@@ -53,7 +53,7 @@ export default function GatewayInfoPanel() {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-2 text-red-400">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm">{error}</span>
@@ -62,7 +62,7 @@ export default function GatewayInfoPanel() {
       )}
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Service Overview */}
         {uploadServiceInfo && (
@@ -72,7 +72,7 @@ export default function GatewayInfoPanel() {
               <h4 className="text-lg font-bold text-fg-muted">Service Overview</h4>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Version</div>
                 <div className="text-lg font-bold text-turbo-red">{uploadServiceInfo.version}</div>
@@ -182,7 +182,7 @@ export default function GatewayInfoPanel() {
               <h4 className="text-lg font-bold text-fg-muted">AR.IO Network Status</h4>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Status</div>
                 <div className="flex items-center gap-2 mb-1">

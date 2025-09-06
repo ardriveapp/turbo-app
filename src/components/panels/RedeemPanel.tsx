@@ -113,7 +113,7 @@ export default function RedeemPanel() {
     return (
       <div>
         {/* Header */}
-        <div className="flex items-start gap-3 mb-6">
+        <div className="flex items-start gap-3 mb-4 sm:mb-6">
           <div className="w-10 h-10 bg-turbo-green/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
             <CheckCircle className="w-5 h-5 text-turbo-green" />
           </div>
@@ -126,7 +126,7 @@ export default function RedeemPanel() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-6 mb-6">
+        <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
           
           {/* Success Message */}
           <div className="text-center mb-6">
@@ -140,7 +140,7 @@ export default function RedeemPanel() {
 
           {/* Balance Information */}
           {redemptionDetails && (
-            <div className="bg-surface rounded-lg p-6 mb-6">
+            <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
               <h5 className="font-bold text-fg-muted mb-4">Updated Wallet Balance</h5>
               
               <div className="space-y-4">
@@ -230,7 +230,7 @@ export default function RedeemPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Wallet Address */}
       <div className="mb-6">

@@ -83,8 +83,8 @@ export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
 export const tokenNetworkDescriptions: Record<SupportedTokenType, string> = {
   arweave: 'Native AR tokens on the Arweave blockchain',
   ario: 'ARIO tokens on the AO Super Computer',
-  ethereum: 'ETH on Ethereum Layer 1 mainnet (higher fees)',
-  'base-eth': 'ETH on Base Layer 2 network (lower fees)',
+  ethereum: 'ETH on Ethereum Layer 1 mainnet',
+  'base-eth': 'ETH on Base Layer 2 network',
   solana: 'Native SOL tokens on the Solana blockchain',
   kyve: 'KYVE tokens on the KYVE network',
   matic: 'MATIC tokens on the Polygon network',

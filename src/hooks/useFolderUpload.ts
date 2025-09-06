@@ -117,6 +117,48 @@ export function useFolderUpload() {
     }
   }, [address, walletType]);
 
+  // Smart content type detection based on file extensions
+  const getContentType = useCallback((file: File): string => {
+    // Use file.type if available and valid
+    if (file.type && file.type !== 'application/octet-stream') {
+      return file.type;
+    }
+    
+    // Fallback to extension-based detection
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      // Images
+      'png': 'image/png',
+      'jpg': 'image/jpeg', 
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'svg': 'image/svg+xml',
+      'webp': 'image/webp',
+      'ico': 'image/x-icon',
+      
+      // Documents
+      'html': 'text/html',
+      'css': 'text/css',
+      'js': 'application/javascript',
+      'json': 'application/json',
+      'xml': 'application/xml',
+      'txt': 'text/plain',
+      'md': 'text/markdown',
+      
+      // Fonts
+      'woff': 'font/woff',
+      'woff2': 'font/woff2',
+      'ttf': 'font/ttf',
+      'otf': 'font/otf',
+      
+      // Other
+      'pdf': 'application/pdf',
+      'zip': 'application/zip',
+    };
+    
+    return mimeTypes[extension || ''] || 'application/octet-stream';
+  }, []);
+
   const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
     if (!address) {
       throw new Error('Wallet not connected');
@@ -158,7 +200,7 @@ export function useFolderUpload() {
             file: file,
             dataItemOpts: {
               tags: [
-                { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                { name: 'Content-Type', value: getContentType(file) },
                 { name: 'File-Path', value: file.webkitRelativePath || file.name },
                 { name: 'App-Name', value: 'Turbo-Deploy' }
               ]

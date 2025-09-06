@@ -17,6 +17,33 @@ const LandingPage = () => {
   const [copied, setCopied] = useState(false);
   const [selectedFeatureIndex, setSelectedFeatureIndex] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+
+  // Handle touch gestures for mobile swiping
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(0); // Reset touch end
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = 50;
+
+    if (distance > minSwipeDistance) {
+      // Swipe left - go to next slide
+      setCurrentSlide((prev) => (prev + 1) % companies.length);
+    }
+    if (distance < -minSwipeDistance) {
+      // Swipe right - go to previous slide
+      setCurrentSlide((prev) => (prev - 1 + companies.length) % companies.length);
+    }
+  };
 
   // Company data for the carousel
   const companies = [
@@ -332,9 +359,42 @@ const LandingPage = () => {
         
         {/* Carousel container */}
         <div className="carousel-wrapper relative">
-          <div className="overflow-hidden rounded-xl">
+          <div 
+            className="overflow-hidden rounded-xl"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Desktop: 3 columns, Mobile: 1 column */}
             <div 
-              className="carousel-container flex"
+              className="carousel-container flex md:hidden"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {companies.map((company, index) => (
+                <div key={`${company.name}-${index}`} className="w-full flex-shrink-0 px-4">
+                  <a
+                    href={company.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center hover:border-turbo-red/30 transition-all group block h-full"
+                  >
+                    <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                      <img src={company.logo} alt={company.name} className="w-16 h-16 object-contain" />
+                    </div>
+                    <div className="text-xl font-bold text-fg-muted mb-3 group-hover:text-turbo-red transition-colors">
+                      {company.name}
+                    </div>
+                    <div className="text-base text-link leading-relaxed">
+                      {company.description}
+                    </div>
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop version */}
+            <div 
+              className="carousel-container hidden md:flex"
               style={{ transform: `translateX(-${currentSlide * (100 / 3)}%)` }}
             >
               {companies.map((company, index) => (
@@ -383,17 +443,23 @@ const LandingPage = () => {
           </div>
           
           {/* Dots indicator */}
-          <div className="flex justify-center mt-6 gap-2">
+          <div className="flex justify-center mt-6 gap-3">
             {companies.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                className={`relative p-2 transition-all duration-300 ${
+                  index === currentSlide % companies.length
+                    ? 'scale-110'
+                    : 'hover:scale-105'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
                   index === currentSlide % companies.length
                     ? 'bg-turbo-red w-6'
                     : 'bg-turbo-red/30 hover:bg-turbo-red/50'
-                }`}
-              />
+                }`} />
+              </button>
             ))}
           </div>
         </div>
@@ -435,7 +501,7 @@ const LandingPage = () => {
             </div>
             
             {/* Content */}
-            <div className="flex-1 p-8">
+            <div className="flex-1 p-4 sm:p-8">
               <div className="text-center py-4">
                 {(() => {
                   const Icon = features[selectedFeatureIndex].icon;
@@ -692,7 +758,7 @@ const LandingPage = () => {
       </section>
 
       {/* The Expanding Turbo Ecosystem Section */}
-      <section className="bg-gradient-to-r from-turbo-red/10 to-turbo-blue/10 rounded-lg border border-default p-8">
+      <section className="bg-gradient-to-r from-turbo-red/10 to-turbo-blue/10 rounded-lg border border-default p-4 sm:p-8">
         <div className="text-center">
           <div className="text-xs text-link uppercase tracking-wider mb-2">TURBO ECOSYSTEM</div>
           <h2 className="text-3xl font-bold mb-4 text-fg-muted">The Expanding Turbo Ecosystem</h2>
@@ -756,7 +822,7 @@ const LandingPage = () => {
       </section>
 
       {/* ArDrive Section - For Non-Developers */}
-      <section className="text-center bg-gradient-to-r from-surface/50 to-surface/30 rounded-lg border border-default p-8">
+      <section className="text-center bg-gradient-to-r from-surface/50 to-surface/30 rounded-lg border border-default p-4 sm:p-8">
         <div className="max-w-3xl mx-auto">
           <h3 className="text-xl font-bold text-fg-muted mb-3">Looking for a no-code solution?</h3>
           <p className="text-link mb-6">

@@ -18,8 +18,22 @@ export function useUploadStatus() {
   const [statusChecking, setStatusChecking] = useState<Record<string, boolean>>({});
   const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({});
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+  const setUploadStatus = useStore((state) => state.setUploadStatus);
+  const getUploadStatus = useStore((state) => state.getUploadStatus);
 
   const checkUploadStatus = useCallback(async (txId: string): Promise<UploadStatus> => {
+    // Check cache first
+    const cachedStatus = getUploadStatus(txId);
+    if (cachedStatus) {
+      const status: UploadStatus = cachedStatus as UploadStatus;
+      setUploadStatuses(prev => ({ ...prev, [txId]: status }));
+      
+      // If already finalized, don't check again
+      if (status.status === 'FINALIZED') {
+        return status;
+      }
+    }
+    
     setStatusChecking(prev => ({ ...prev, [txId]: true }));
     
     try {
@@ -48,7 +62,10 @@ export function useUploadStatus() {
         winc: data.winc,
       };
 
+      // Save to both local state and persistent cache
       setUploadStatuses(prev => ({ ...prev, [txId]: status }));
+      setUploadStatus(txId, { status: status.status, info: status.info });
+      
       return status;
     } catch (error) {
       console.error(`Failed to check status for ${txId}:`, error);

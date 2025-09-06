@@ -100,6 +100,13 @@ interface StoreState {
   // Deploy history state
   deployHistory: DeployResult[];
   
+  // Upload status cache (persisted)
+  uploadStatusCache: Record<string, {
+    status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND';
+    info?: string;
+    timestamp: number; // When status was fetched
+  }>;
+  
   // Payment state - matching reference app exactly
   paymentAmount?: number;
   paymentIntent?: PaymentIntent;
@@ -129,6 +136,8 @@ interface StoreState {
   clearUploadHistory: () => void;
   addDeployResults: (results: DeployResult[]) => void;
   clearDeployHistory: () => void;
+  setUploadStatus: (txId: string, status: { status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND'; info?: string }) => void;
+  getUploadStatus: (txId: string) => { status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND'; info?: string } | null;
   
   // Payment actions - matching reference app
   setPaymentAmount: (amount?: number) => void;
@@ -162,6 +171,7 @@ export const useStore = create<StoreState>()(
       arnsNamesCache: {},
       uploadHistory: [],
       deployHistory: [],
+      uploadStatusCache: {},
       
       // Developer configuration state
       configMode: 'production',
@@ -214,6 +224,28 @@ export const useStore = create<StoreState>()(
         set({ deployHistory: [...results, ...currentHistory] });
       },
       clearDeployHistory: () => set({ deployHistory: [] }),
+      setUploadStatus: (txId, status) => {
+        const cache = get().uploadStatusCache;
+        set({ 
+          uploadStatusCache: { 
+            ...cache, 
+            [txId]: { ...status, timestamp: Date.now() }
+          }
+        });
+      },
+      getUploadStatus: (txId) => {
+        const cache = get().uploadStatusCache;
+        const cached = cache[txId];
+        if (!cached) return null;
+        
+        // Cache expires after 1 hour for confirmed files, 24 hours for finalized
+        const maxAge = cached.status === 'FINALIZED' ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+        if (Date.now() - cached.timestamp > maxAge) {
+          return null; // Expired
+        }
+        
+        return { status: cached.status, info: cached.info };
+      },
       
       // Payment actions - matching reference app exactly
       setPaymentAmount: (amount) => set({ paymentAmount: amount }),
@@ -295,6 +327,7 @@ export const useStore = create<StoreState>()(
         arnsNamesCache: state.arnsNamesCache,
         uploadHistory: state.uploadHistory,
         deployHistory: state.deployHistory,
+        uploadStatusCache: state.uploadStatusCache,
         configMode: state.configMode,
         customConfig: state.customConfig,
       }),

@@ -62,7 +62,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
 
   return (
     <BaseModal onClose={onClose} showCloseButton={false}>
-      <div className="w-full max-w-2xl max-h-[90vh] sm:max-h-[80vh] flex flex-col text-fg-muted mx-4 sm:mx-auto">
+      <div className="w-full max-w-sm sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] flex flex-col text-fg-muted">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-default/30">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -92,10 +92,10 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
             <button
               key={id}
               onClick={() => setActiveTab(id as any)}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
                 activeTab === id
-                  ? 'text-turbo-red border-b-2 border-turbo-red bg-turbo-red/5'
-                  : 'text-link hover:text-fg-muted hover:bg-surface/50'
+                  ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
+                  : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
               }`}
             >
               <Icon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
@@ -229,7 +229,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
             </div>
           ) : activeTab === 'receipt' ? (
             /* Receipt Details Tab - Raw JSON data only */
-            <div className="p-4 sm:p-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h3 className="text-lg font-semibold">Complete Receipt JSON</h3>
                 <div className="flex items-center gap-2">
@@ -238,15 +238,15 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                 </div>
               </div>
 
-              <div className="bg-canvas rounded-lg p-3 sm:p-4 border border-default">
-                <div className="font-mono text-xs text-link overflow-auto max-h-64 sm:max-h-96">
-                  <pre className="whitespace-pre-wrap break-words">{JSON.stringify(receipt, null, 2)}</pre>
+              <div className="bg-canvas rounded-lg p-2 sm:p-4 border border-default">
+                <div className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 sm:max-h-96">
+                  <pre className="whitespace-pre-wrap break-words leading-tight">{JSON.stringify(receipt, null, 2)}</pre>
                 </div>
               </div>
             </div>
           ) : (
             /* Status Details Tab - Processing status and raw JSON only */
-            <div className="p-4 sm:p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                 <h3 className="text-lg font-semibold">Processing Status</h3>
                 <button
@@ -282,13 +282,13 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   </div>
 
                   {/* Complete Status Response */}
-                  <div className="bg-canvas rounded-lg p-3 sm:p-4">
+                  <div className="bg-canvas rounded-lg p-2 sm:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3">
                       <h4 className="text-sm font-medium">Complete Status Response</h4>
                       <CopyButton textToCopy={JSON.stringify(currentStatus, null, 2)} />
                     </div>
-                    <div className="font-mono text-xs text-link overflow-auto max-h-48 sm:max-h-64">
-                      <pre className="whitespace-pre-wrap break-words">{JSON.stringify(currentStatus, null, 2)}</pre>
+                    <div className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-32 sm:max-h-64">
+                      <pre className="whitespace-pre-wrap break-words leading-tight">{JSON.stringify(currentStatus, null, 2)}</pre>
                     </div>
                   </div>
                 </div>

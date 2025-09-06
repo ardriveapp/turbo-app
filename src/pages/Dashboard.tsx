@@ -33,7 +33,7 @@ export default function Dashboard({ selectedFeature }: DashboardProps = {}) {
     <div>
       <div className="rounded-lg border border-default bg-canvas">
         {/* Panel Content */}
-        <div className="p-8">
+        <div className="p-3 sm:p-8">
           <SelectedComponent />
         </div>
       </div>

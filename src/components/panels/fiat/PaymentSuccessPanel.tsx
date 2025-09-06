@@ -48,7 +48,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Success Icon and Message */}
         <div className="text-center mb-8">
@@ -60,7 +60,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
         </div>
 
         {/* Payment Summary */}
-        <div className="bg-canvas rounded-lg p-6 mb-6">
+        <div className="bg-canvas rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm text-link">Payment Amount:</span>
@@ -162,7 +162,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
         </div>
 
         {/* Support Link */}
-        <div className="text-center mt-6">
+        <div className="text-center mt-4 sm:mt-6">
           <p className="text-xs text-link mb-2">
             Need help? Contact our support team
           </p>

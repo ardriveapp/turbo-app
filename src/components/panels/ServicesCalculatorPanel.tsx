@@ -112,7 +112,7 @@ export default function ServicesCalculatorPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Services Notice */}
         <div className="text-center mb-6">
@@ -480,7 +480,7 @@ export default function ServicesCalculatorPanel() {
       </div>
 
       {/* Coming Soon Services Teaser */}
-      <div className="mt-6 p-4 bg-canvas rounded-lg border border-default">
+      <div className="mt-4 sm:mt-6 p-4 bg-canvas rounded-lg border border-default">
         <div className="text-xs text-link mb-3 text-center font-medium uppercase tracking-wider">More services coming soon</div>
         <div className="flex justify-center gap-8 text-xs">
           <div className="text-center">

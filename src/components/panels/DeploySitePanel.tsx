@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle } from 'lucide-react';
+import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, Globe2, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -238,6 +239,45 @@ export default function DeploySitePanel() {
     }
   };
 
+  // Smart content type detection for display (same logic as useFolderUpload)
+  const getDisplayContentType = (filePath: string, storedContentType?: string): string => {
+    // If stored type is valid and not generic, use it
+    if (storedContentType && storedContentType !== 'application/octet-stream') {
+      return storedContentType;
+    }
+    
+    // Apply smart detection based on file extension
+    const extension = filePath.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      // Images
+      'png': 'image/png',
+      'jpg': 'image/jpeg', 
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'svg': 'image/svg+xml',
+      'webp': 'image/webp',
+      'ico': 'image/x-icon',
+      
+      // Documents
+      'html': 'text/html',
+      'css': 'text/css',
+      'js': 'application/javascript',
+      'json': 'application/json',
+      'txt': 'text/plain',
+      'md': 'text/markdown',
+      
+      // Fonts
+      'woff': 'font/woff',
+      'woff2': 'font/woff2',
+      'ttf': 'font/ttf',
+      
+      // Other
+      'pdf': 'application/pdf',
+    };
+    
+    return mimeTypes[extension || ''] || storedContentType || 'application/octet-stream';
+  };
+
   const exportDeployToCSV = () => {
     if (deployHistory.length === 0) return;
 
@@ -352,6 +392,24 @@ export default function DeploySitePanel() {
     document.body.removeChild(link);
   };
 
+  // Auto-check status for recent deployments when page loads (same as Upload Results)
+  useEffect(() => {
+    if (deployHistory.length > 0) {
+      // Check status for recent deployments automatically
+      const recentDeployments = deployHistory.slice(0, 10);
+      const allIds = recentDeployments.flatMap(result => {
+        if (result.type === 'manifest') return result.id ? [result.id] : [];
+        if (result.type === 'files') return result.files?.map(f => f.id) || [];
+        return [];
+      });
+      
+      // Small delay to avoid overwhelming the API
+      setTimeout(() => {
+        checkMultipleStatuses(allIds);
+      }, 1000);
+    }
+  }, [deployHistory.length, checkMultipleStatuses]);
+
   const handleDeploy = async () => {
     if (!selectedFolder || selectedFolder.length === 0) {
       setDeployMessage({ type: 'error', text: 'Please select a folder to deploy' });
@@ -423,7 +481,7 @@ export default function DeploySitePanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Current Balance */}
         <div className="bg-surface rounded-lg p-4 mb-6">
@@ -476,7 +534,7 @@ export default function DeploySitePanel() {
 
         {/* Folder Preview with Expandable Tree */}
         {selectedFolder && selectedFolder.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <div className="bg-surface rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-link uppercase tracking-wider">Selected Folder</span>
@@ -868,7 +926,7 @@ export default function DeploySitePanel() {
 
       {/* Deploy Results - Unified with Upload Results */}
       {deployHistory.length > 0 && (
-        <div className="mt-6 bg-surface rounded-lg p-4">
+        <div className="mt-4 sm:mt-6 bg-surface rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h4 className="font-bold text-fg-muted flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-turbo-green" />
@@ -914,7 +972,7 @@ export default function DeploySitePanel() {
             </div>
           </div>
           
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-4 max-h-[700px] overflow-y-auto">
             {(() => {
               // Group deploy results by manifest ID to show complete deployments
               const deploymentGroups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
@@ -938,93 +996,157 @@ export default function DeploySitePanel() {
                 
                 return (
                 <div key={manifestId} className="border border-default/30 rounded-lg p-4 bg-canvas/50">
-                  {/* Deployment Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-turbo-green" />
-                      <span className="font-medium text-fg-muted">Site Deployment</span>
-                      {group.manifest?.timestamp && (
-                        <span className="text-xs text-link">
-                          {new Date(group.manifest.timestamp).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                    <a
-                      href={getArweaveUrl(manifestId)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-turbo-green text-white rounded hover:bg-turbo-green/90 transition-colors text-sm font-medium"
-                      title="Visit Deployed Site"
-                    >
-                      <Globe className="w-4 h-4" />
-                      <span>Visit Site</span>
-                    </a>
-                  </div>
-
-                  <div>
-                    {/* Manifest Section */}
-                    {group.manifest && (
-                      <div className="bg-surface rounded-lg p-3 border border-turbo-green/30 mb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2 px-2 py-1 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
-                              <Globe2 className="w-3 h-3" />
-                              MANIFEST
-                            </div>
-                            <div className="font-mono text-sm text-fg-muted">
-                              {manifestId.substring(0, 8)}...{manifestId.substring(manifestId.length - 6)}
-                            </div>
-                            <CopyButton textToCopy={manifestId} />
-                            {uploadStatuses[manifestId] && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs">
-                                  {getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info)} 
-                                </span>
-                                <span className={`text-xs font-medium ${getStatusColor(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info)}`}>
-                                  {uploadStatuses[manifestId].status}
-                                </span>
-                              </div>
-                            )}
+                  {/* Single Consolidated Header - Manifest as Primary */}
+                  {group.manifest && (
+                    <div className="bg-surface rounded-lg p-3 border border-turbo-green/30 mb-3">
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Main Info Row */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {/* Status Icon */}
+                          {uploadStatuses[manifestId] ? (() => {
+                            const iconType = getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
+                            const iconColor = getStatusColor(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
+                            return renderStatusIcon(iconType);
+                          })() : <Clock className="w-4 h-4 text-yellow-500" />}
+                          
+                          {/* Globe Icon - Indicates site manifest */}
+                          <Globe className="w-4 h-4 text-turbo-green" />
+                          
+                          {/* Shortened Transaction ID */}
+                          <div className="font-mono text-sm text-fg-muted">
+                            {manifestId.substring(0, 5)}...
                           </div>
                           
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setShowReceiptModal(manifestId)}
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                              title="View Receipt"
-                            >
-                              <Receipt className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => checkUploadStatus(manifestId)}
-                              disabled={!!statusChecking[manifestId]}
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
-                              title="Check Status"
-                            >
-                              <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
-                            </button>
-                            <a
-                              href={getArweaveRawUrl(manifestId)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                              title="View Raw Manifest JSON"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          </div>
+                          {/* Timestamp - Desktop only */}
+                          {group.manifest.timestamp && (
+                            <span className="text-xs text-link hidden sm:inline">
+                              {new Date(group.manifest.timestamp).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Desktop: Show all actions */}
+                        <div className="hidden sm:flex items-center gap-1">
+                          <CopyButton textToCopy={manifestId} />
+                          <button
+                            onClick={() => setShowReceiptModal(manifestId)}
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                            title="View Receipt"
+                          >
+                            <Receipt className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => checkUploadStatus(manifestId)}
+                            disabled={!!statusChecking[manifestId]}
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                            title="Check Status"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
+                          </button>
+                          <a
+                            href={getArweaveRawUrl(manifestId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                            title="View Raw Manifest JSON"
+                          >
+                            <Code className="w-4 h-4" />
+                          </a>
+                          <a
+                            href={getArweaveUrl(manifestId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                            title="Visit Deployed Site"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+
+                        {/* Mobile: 3-dot menu */}
+                        <div className="sm:hidden">
+                          <Popover className="relative">
+                            <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                              <MoreVertical className="w-4 h-4" />
+                            </PopoverButton>
+                            <PopoverPanel className="absolute right-0 mt-2 w-48 bg-surface border border-default rounded-lg shadow-lg z-[100] py-1">
+                              {({ close }) => (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(manifestId);
+                                      close();
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  >
+                                    <Receipt className="w-4 h-4" />
+                                    Copy Manifest ID
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setShowReceiptModal(manifestId);
+                                      close();
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  >
+                                    <Receipt className="w-4 h-4" />
+                                    View Receipt
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      checkUploadStatus(manifestId);
+                                      close();
+                                    }}
+                                    disabled={!!statusChecking[manifestId]}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
+                                    Check Status
+                                  </button>
+                                  <a
+                                    href={getArweaveRawUrl(manifestId)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => close()}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  >
+                                    <Code className="w-4 h-4" />
+                                    View Raw JSON
+                                  </a>
+                                  <a
+                                    href={getArweaveUrl(manifestId)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => close()}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Visit Deployed Site
+                                  </a>
+                                </>
+                              )}
+                            </PopoverPanel>
+                          </Popover>
                         </div>
                       </div>
-                    )}
+                      
+                      {/* Mobile Timestamp Row */}
+                      {group.manifest.timestamp && (
+                        <div className="text-xs text-link sm:hidden mt-2">
+                          {new Date(group.manifest.timestamp).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                    {/* Files Section */}
-                    {group.files && group.files.files && (
-                      <details className="bg-surface rounded-lg border border-default/30">
-                        <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
-                          <Folder className="w-4 h-4" />
-                          Site Files ({group.files.files.length})
-                          <ChevronDown className="w-3 h-3 text-link ml-auto" />
-                        </summary>
+                  {/* Files Section */}
+                  {group.files && group.files.files && (
+                    <details className="bg-surface rounded-lg border border-default/30">
+                      <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
+                        <Folder className="w-4 h-4" />
+                        Files ({group.files.files.length})
+                        <ChevronDown className="w-3 h-3 text-link ml-auto" />
+                      </summary>
                         <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
                           {group.files.files.map((file: any, fileIndex: number) => {
                             const status = uploadStatuses[file.id];
@@ -1033,30 +1155,30 @@ export default function DeploySitePanel() {
                             return (
                               <div key={fileIndex} className="bg-canvas rounded-lg p-3 border border-default/30">
                                 <div className="space-y-2">
-                                  {/* File Info */}
+                                  {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
                                   <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <div className="font-mono text-sm text-fg-muted">
-                                          {file.id.substring(0, 6)}...
-                                        </div>
-                                        <CopyButton textToCopy={file.id} />
+                                    <div className="flex items-center gap-2">
+                                      {/* Status Icon (no text) */}
+                                      {status ? (() => {
+                                        const iconType = getStatusIcon(status.status, status.info);
+                                        const iconColor = getStatusColor(status.status, status.info);
+                                        return renderStatusIcon(iconType);
+                                      })() : <Clock className="w-4 h-4 text-yellow-500" />}
+                                      
+                                      {/* Shortened Transaction ID */}
+                                      <div className="font-mono text-sm text-fg-muted">
+                                        {file.id.substring(0, 5)}...
                                       </div>
-                                      <span className="text-xs text-link truncate" title={file.path}>
-                                        {file.path}
-                                      </span>
-                                      {status && (
-                                        <div className="flex items-center gap-1">
-                                          {renderStatusIcon(getStatusIcon(status.status, status.info))}
-                                          <span className={`text-xs font-medium ${getStatusColor(status.status, status.info)}`}>
-                                            {status.status}
-                                          </span>
-                                        </div>
-                                      )}
+                                      
+                                      {/* File Path */}
+                                      <div className="text-sm text-fg-muted truncate" title={file.path}>
+                                        {file.path.split('/').pop() || file.path}
+                                      </div>
                                     </div>
                                     
-                                    {/* File Actions */}
-                                    <div className="flex items-center gap-1">
+                                    {/* Desktop: Show all actions */}
+                                    <div className="hidden sm:flex items-center gap-1">
+                                      <CopyButton textToCopy={file.id} />
                                       <button
                                         onClick={() => setShowReceiptModal(file.id)}
                                         className="p-1.5 text-link hover:text-turbo-red transition-colors"
@@ -1082,72 +1204,100 @@ export default function DeploySitePanel() {
                                         <ExternalLink className="w-4 h-4" />
                                       </a>
                                     </div>
+
+                                    {/* Mobile: 3-dot menu */}
+                                    <div className="sm:hidden">
+                                      <Popover className="relative">
+                                        <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                                          <MoreVertical className="w-4 h-4" />
+                                        </PopoverButton>
+                                        <PopoverPanel className="absolute right-0 mt-2 w-40 bg-surface border border-default rounded-lg shadow-lg z-[100] py-1">
+                                          {({ close }) => (
+                                            <>
+                                              <button
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(file.id);
+                                                  close();
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                              >
+                                                <Receipt className="w-4 h-4" />
+                                                Copy File ID
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  setShowReceiptModal(file.id);
+                                                  close();
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                              >
+                                                <Receipt className="w-4 h-4" />
+                                                View Receipt
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  checkUploadStatus(file.id);
+                                                  close();
+                                                }}
+                                                disabled={isChecking}
+                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                              >
+                                                <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                                Check Status
+                                              </button>
+                                              <a
+                                                href={getArweaveUrl(file.id)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={() => close()}
+                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                              >
+                                                <ExternalLink className="w-4 h-4" />
+                                                View File
+                                              </a>
+                                            </>
+                                          )}
+                                        </PopoverPanel>
+                                      </Popover>
+                                    </div>
                                   </div>
-                                
-                                  {/* File Details - Enhanced metadata like Upload Files */}
-                                  <div className="text-xs text-link space-y-1 pl-4 border-l border-default/30">
-                                    {/* Content Type */}
-                                    <div>
-                                      <span className="text-link">Type:</span>
-                                      <span className="ml-1 text-fg-muted font-medium">
-                                        {file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 'application/octet-stream'}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* File Size */}
-                                    <div>
-                                      <span className="text-link">Size:</span>
-                                      <span className="ml-1 text-fg-muted font-medium">
-                                        {file.size < 1024 
-                                          ? `${file.size}B` 
-                                          : file.size < 1024 * 1024 
-                                          ? `${(file.size / 1024).toFixed(2)} KB`
-                                          : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Cost */}
-                                    <div>
-                                      <span className="text-link">Cost:</span>
-                                      <span className="ml-1 text-fg-muted font-medium">
-                                        {file.size < 100 * 1024 ? (
-                                          <span className="text-turbo-green">FREE</span>
-                                        ) : wincForOneGiB ? (
-                                          `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
-                                        ) : (
-                                          'Unknown'
-                                        )}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Deploy Time */}
-                                    {group.files.timestamp && (
-                                      <div>
-                                        <span className="text-link">Deploy Time:</span>
-                                        <span className="ml-1 text-fg-muted font-medium">
-                                          {new Date(group.files.timestamp).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Additional Status Details from API (like Upload Files) */}
-                                    {status && status.rawContentLength && (
-                                      <div>
-                                        <span className="text-link">Verified Size:</span>
-                                        <span className="ml-1 text-fg-muted font-medium">
-                                          {formatFileSize(status.rawContentLength)}
-                                        </span>
-                                      </div>
-                                    )}
-                                    
-                                    {status && status.winc && (
-                                      <div>
-                                        <span className="text-link">WINC Cost:</span>
-                                        <span className="ml-1 text-fg-muted font-medium">
-                                          {formatWinc(status.winc)}
-                                        </span>
-                                      </div>
-                                    )}
+
+                                  {/* Row 2: Content Type + File Size */}
+                                  <div className="flex items-center gap-2 text-sm text-link">
+                                    <span>
+                                      {getDisplayContentType(
+                                        file.path,
+                                        file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value
+                                      )}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {file.size < 1024 
+                                        ? `${file.size}B` 
+                                        : file.size < 1024 * 1024 
+                                        ? `${(file.size / 1024).toFixed(2)} KB`
+                                        : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                                    </span>
+                                  </div>
+
+                                  {/* Row 3: Cost + Deploy Timestamp */}
+                                  <div className="flex items-center gap-2 text-sm text-link">
+                                    <span>
+                                      {file.size < 100 * 1024 ? (
+                                        <span className="text-turbo-green">FREE</span>
+                                      ) : wincForOneGiB ? (
+                                        `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
+                                      ) : (
+                                        'Unknown Cost'
+                                      )}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {group.files.timestamp 
+                                        ? new Date(group.files.timestamp).toLocaleString()
+                                        : 'Unknown Time'
+                                      }
+                                    </span>
                                   </div>
                                 </div>
                               </div>
@@ -1156,7 +1306,6 @@ export default function DeploySitePanel() {
                         </div>
                       </details>
                     )}
-                  </div>
                 </div>
                 );
               });
@@ -1211,7 +1360,7 @@ export default function DeploySitePanel() {
       )}
 
       {/* Technical Features */}
-      <div className="grid md:grid-cols-3 gap-4 mt-6">
+      <div className="grid md:grid-cols-3 gap-4 mt-4 sm:mt-6">
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">

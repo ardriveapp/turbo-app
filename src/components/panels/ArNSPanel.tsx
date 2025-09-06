@@ -75,7 +75,7 @@ export default function ArNSPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Name Search */}
       <div className="mb-6">
@@ -161,7 +161,7 @@ export default function ArNSPanel() {
           </div>
 
           {/* Price Summary */}
-          <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6 mb-6">
+          <div className="bg-canvas border-2 border-turbo-red rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="text-sm text-link mb-1">Registration Summary</div>
             <div className="space-y-3 mb-4">
               <div className="flex justify-between items-center">
@@ -267,9 +267,6 @@ export default function ArNSPanel() {
       {/* ArNS App Integration */}
       <div className="bg-surface rounded-lg p-6 border border-default">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Globe className="w-6 h-6 text-turbo-red" />
-          </div>
           <div className="flex-1">
             <h4 className="text-lg font-bold text-fg-muted mb-2">Ready to Register?</h4>
             <p className="text-sm text-link mb-4">

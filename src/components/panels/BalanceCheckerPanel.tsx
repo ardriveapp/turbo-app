@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useStore } from '../../store/useStore';
-import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Calendar, Clock } from 'lucide-react';
+import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Calendar, Clock, Check } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useArNSName } from '../../hooks/useArNSName';
@@ -42,7 +42,7 @@ interface BalanceResult {
 }
 
 export default function BalanceCheckerPanel() {
-  const { address: connectedAddress } = useStore();
+  const { address: connectedAddress, walletType } = useStore();
   const turboConfig = useTurboConfig();
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,15 +51,15 @@ export default function BalanceCheckerPanel() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showSharingDetails, setShowSharingDetails] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [revokedApprovals, setRevokedApprovals] = useState<Set<string>>(new Set());
   const wincForOneGiB = useWincForOneGiB();
   
   // Get ArNS name for the searched address
   const { arnsName, loading: loadingArNS } = useArNSName(balanceResult?.address || null);
 
-  // Create Turbo client with proper wallet support (same as file upload)
+  // Create Turbo client with proper wallet support (exact same pattern as file upload)
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
-    const { address, walletType } = useStore.getState();
-    if (!address || !walletType) {
+    if (!connectedAddress || !walletType) {
       throw new Error('Wallet not connected');
     }
     
@@ -113,7 +113,7 @@ export default function BalanceCheckerPanel() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [turboConfig]);
+  }, [connectedAddress, walletType, turboConfig]);
 
   // Load recent searches from localStorage and check for pre-filled address
   useEffect(() => {
@@ -290,14 +290,20 @@ export default function BalanceCheckerPanel() {
       return;
     }
 
+    if (!walletType) {
+      setError('Wallet type not detected. Please reconnect your wallet.');
+      return;
+    }
+
     setRevoking(approvalId);
     setError('');
     
     try {
-      // Create Turbo client using same multi-chain pattern as file uploads
+      // Create Turbo client using exact same pattern as file uploads
+      console.log('Creating Turbo client with:', { connectedAddress, walletType });
       const turbo = await createTurboClient();
       
-      console.log('Revoking credits - wallet info:', { connectedAddress, walletType: useStore.getState().walletType });
+      console.log('Revoking credits - wallet info:', { connectedAddress, walletType });
       console.log('Approval data for debugging:', { approvalId, revokedAddress });
       
       // Revoke all credits shared with this address  
@@ -308,13 +314,21 @@ export default function BalanceCheckerPanel() {
       
       console.log('Revoke result:', revokedApprovals);
       
-      // Show success and refresh balance data
-      alert(`Successfully revoked credits shared with ${formatWalletAddress(revokedAddress, 8)}`);
+      // Immediately mark this approval as revoked for UI feedback
+      setRevokedApprovals(prev => new Set([...prev, approvalId]));
       
-      // Refresh the balance data to show updated approvals
-      if (balanceResult?.address) {
-        await handleCheckBalance(balanceResult.address);
-      }
+      // Auto-refresh data after 2 seconds to show updated state
+      setTimeout(async () => {
+        if (balanceResult?.address) {
+          await handleCheckBalance(balanceResult.address);
+          // Clear the revoked state after refresh
+          setRevokedApprovals(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(approvalId);
+            return newSet;
+          });
+        }
+      }, 2000);
     } catch (error) {
       console.error('Failed to revoke approval:', error);
       
@@ -351,7 +365,7 @@ export default function BalanceCheckerPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Search Input */}
       <div className="mb-6">
@@ -436,7 +450,7 @@ export default function BalanceCheckerPanel() {
 
       {/* Balance Result */}
       {balanceResult && (
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 sm:mt-6 space-y-4">
           {/* Address Info */}
           <div className="p-4 rounded-lg bg-surface border border-default">
             <div className="flex items-center justify-between mb-3">
@@ -491,21 +505,20 @@ export default function BalanceCheckerPanel() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Credits Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 border border-turbo-red/20">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Coins className="w-5 h-5 text-turbo-red" />
-                <span className="text-xs text-link uppercase tracking-wider">Credits</span>
+                <span className="font-medium text-fg-muted">Credits</span>
               </div>
-              <div className="text-2xl font-bold text-fg-muted">
+              
+              <div className="text-2xl font-bold text-fg-muted mb-1">
                 {(() => {
                   const credits = balanceResult.credits;
                   if (credits >= 1) {
-                    // Normal credits display
                     return credits.toLocaleString('en-US', {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 2
                     });
                   } else if (credits > 0) {
-                    // Very small amounts - show more decimals
                     return credits.toLocaleString('en-US', {
                       minimumFractionDigits: 6,
                       maximumFractionDigits: 8
@@ -515,31 +528,39 @@ export default function BalanceCheckerPanel() {
                   }
                 })()}
               </div>
-              {balanceResult.credits < 1 && balanceResult.credits > 0 && (
-                <div className="text-xs text-yellow-500 mt-1">
-                  Very small amount - needs top-up
-                </div>
-              )}
+              
+              <div className="text-xs text-link">
+                {balanceResult.credits < 1 && balanceResult.credits > 0 
+                  ? 'Very small amount - needs top-up'
+                  : 'Spendable balance'
+                }
+              </div>
             </div>
 
             {/* Storage Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-blue/10 to-turbo-blue/5 border border-turbo-blue/20">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <HardDrive className="w-5 h-5 text-turbo-blue" />
-                <span className="text-xs text-link uppercase tracking-wider">Storage</span>
+                <span className="font-medium text-fg-muted">Storage</span>
               </div>
-              <div className="text-2xl font-bold text-fg-muted">
+              
+              <div className="text-2xl font-bold text-fg-muted mb-1">
                 {balanceResult.gibStorage.toFixed(2)} GiB
+              </div>
+              
+              <div className="text-xs text-link">
+                Available storage capacity
               </div>
             </div>
 
             {/* Shared Out Credits Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Share2 className="w-5 h-5 text-purple-500" />
-                <span className="text-xs text-link uppercase tracking-wider">Shared Out</span>
+                <span className="font-medium text-fg-muted">Credits Shared</span>
               </div>
-              <div className="text-lg font-bold text-fg-muted">
+              
+              <div className="text-2xl font-bold text-fg-muted mb-1">
                 {(() => {
                   const total = balanceResult.sharedCredits?.given.totalCredits || 0;
                   if (isNaN(total)) return '0';
@@ -549,18 +570,20 @@ export default function BalanceCheckerPanel() {
                   });
                 })()}
               </div>
-              <div className="text-xs text-purple-500 mt-1">
-                Credits you've shared with others
+              
+              <div className="text-xs text-link">
+                Credits shared with others
               </div>
             </div>
 
             {/* Credits Available from Others Card */}
             <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <ArrowDown className="w-5 h-5 text-green-500" />
-                <span className="text-xs text-link uppercase tracking-wider">Available</span>
+                <span className="font-medium text-fg-muted">Credits Available</span>
               </div>
-              <div className="text-lg font-bold text-fg-muted">
+              
+              <div className="text-2xl font-bold text-fg-muted mb-1">
                 {(() => {
                   const total = balanceResult.sharedCredits?.received.totalCredits || 0;
                   if (isNaN(total)) return '0';
@@ -570,8 +593,9 @@ export default function BalanceCheckerPanel() {
                   });
                 })()}
               </div>
-              <div className="text-xs text-green-500 mt-1">
-                Credits available from others
+              
+              <div className="text-xs text-link">
+                Shared by others for use
               </div>
             </div>
           </div>
@@ -632,7 +656,7 @@ export default function BalanceCheckerPanel() {
                                   <span className="text-link">Expires:</span>
                                   <span className="ml-1 text-fg-muted">
                                     {(approval as any).expirationDate 
-                                      ? new Date((approval as any).expirationDate).toLocaleDateString()
+                                      ? new Date((approval as any).expirationDate).toLocaleString()
                                       : 'Never'
                                     }
                                   </span>
@@ -668,7 +692,7 @@ export default function BalanceCheckerPanel() {
                       <div className="flex items-center gap-2 mb-3">
                         <ArrowUp className="w-4 h-4 text-turbo-red" />
                         <span className="text-sm font-medium text-fg-muted">
-                          Credits This Wallet Shared Out ({isNaN(balanceResult.sharedCredits.given.totalCredits) ? '0.00' : balanceResult.sharedCredits.given.totalCredits.toFixed(2)} total)
+                          Credits Shared Out ({isNaN(balanceResult.sharedCredits.given.totalCredits) ? '0.00' : balanceResult.sharedCredits.given.totalCredits.toFixed(2)} total)
                         </span>
                       </div>
                       <p className="text-xs text-link mb-2">This wallet has shared credits with these recipients:</p>
@@ -690,12 +714,22 @@ export default function BalanceCheckerPanel() {
                                 {connectedAddress && connectedAddress === balanceResult.address && (
                                   <button
                                     onClick={() => handleRevokeApproval(approval.approvalId, approval.recipientAddress)}
-                                    disabled={revoking === approval.approvalId}
-                                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
-                                    title={`Revoke all credits shared with ${formatWalletAddress(approval.recipientAddress, 8)}`}
+                                    disabled={revoking === approval.approvalId || revokedApprovals.has(approval.approvalId)}
+                                    className={`p-1.5 rounded transition-colors ${
+                                      revokedApprovals.has(approval.approvalId)
+                                        ? 'text-turbo-green bg-turbo-green/10 cursor-default'
+                                        : 'text-red-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-50'
+                                    }`}
+                                    title={
+                                      revokedApprovals.has(approval.approvalId)
+                                        ? 'Successfully revoked - refreshing data...'
+                                        : `Revoke all credits shared with ${formatWalletAddress(approval.recipientAddress, 8)}`
+                                    }
                                   >
                                     {revoking === approval.approvalId ? (
                                       <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                                    ) : revokedApprovals.has(approval.approvalId) ? (
+                                      <Check className="w-3 h-3" />
                                     ) : (
                                       <X className="w-3 h-3" />
                                     )}
@@ -719,7 +753,7 @@ export default function BalanceCheckerPanel() {
                                   <span className="text-link">Expires:</span>
                                   <span className="ml-1 text-fg-muted">
                                     {(approval as any).expirationDate 
-                                      ? new Date((approval as any).expirationDate).toLocaleDateString()
+                                      ? new Date((approval as any).expirationDate).toLocaleString()
                                       : 'Never'
                                     }
                                   </span>

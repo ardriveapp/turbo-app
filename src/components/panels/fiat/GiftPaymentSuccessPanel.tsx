@@ -30,7 +30,7 @@ const GiftPaymentSuccessPanel: FC<GiftPaymentSuccessPanelProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Success Message */}
         <div className="text-center mb-6">
@@ -46,7 +46,7 @@ const GiftPaymentSuccessPanel: FC<GiftPaymentSuccessPanelProps> = ({
         </div>
 
         {/* Gift Details */}
-        <div className="bg-surface rounded-lg p-6 mb-6">
+        <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h5 className="font-bold text-fg-muted mb-4">Gift Details</h5>
           
           <div className="space-y-3">

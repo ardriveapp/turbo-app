@@ -14,6 +14,7 @@ import RedeemPage from './pages/RedeemPage';
 import { DeveloperPage } from './pages/DeveloperPage';
 import GatewayInfoPage from './pages/GatewayInfoPage';
 import DeploySitePage from './pages/DeploySitePage';
+import AccountPage from './pages/AccountPage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
 
@@ -59,6 +60,7 @@ function AppRoutes() {
           <Route path="calculator" element={<CalculatorPage />} />
           <Route path="services-calculator" element={<ServicesCalculatorPage />} />
           <Route path="balances" element={<BalanceCheckerPage />} />
+          <Route path="account" element={<AccountPage />} />
           <Route path="redeem" element={<RedeemPage />} />
           <Route path="developer" element={<DeveloperPage />} />
           <Route path="gateway-info" element={<GatewayInfoPage />} />

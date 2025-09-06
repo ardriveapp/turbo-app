@@ -1,9 +1,10 @@
-import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useEffect, useState, useCallback } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
-import { useWincForToken } from '../../../hooks/useWincForOneGiB';
+import { useWincForAnyToken } from '../../../hooks/useWincForOneGiB';
+import useTurboWallets from '../../../hooks/useTurboWallets';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -23,17 +24,18 @@ export default function CryptoConfirmationPanel({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   
-  // Use existing hook for AR/ARIO quote calculation
-  const wincForToken = useWincForToken(
-    (tokenType === 'arweave' || tokenType === 'ario') ? tokenType : 'arweave', 
-    (tokenType === 'arweave' || tokenType === 'ario') ? cryptoAmount : 0
-  );
+  // Use comprehensive hook for all token types
+  const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
+  const { data: turboWallets } = useTurboWallets();
   
-  const quote = (tokenType === 'arweave' || tokenType === 'ario') && wincForToken ? {
+  const quote = wincForToken ? {
     tokenAmount: cryptoAmount,
     credits: Number(wincForToken) / wincPerCredit,
     gigabytes: (Number(wincForToken) / wincPerCredit) * 0.000268,
   } : null;
+  
+  // Get the turbo wallet address for manual payments
+  const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -55,7 +57,12 @@ export default function CryptoConfirmationPanel({
     return () => clearInterval(interval);
   }, []);
 
-  const canPayDirectly = walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario');
+  // Determine if user can pay directly or needs manual payment
+  const canPayDirectly = (
+    (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) ||
+    (walletType === 'solana' && tokenType === 'solana')
+  );
 
   const handlePayment = async () => {
     if (!address || !quote) return;
@@ -65,8 +72,8 @@ export default function CryptoConfirmationPanel({
 
     try {
       if (canPayDirectly) {
-        // Direct payment via Turbo SDK (only for Arweave wallets)
-        if (walletType === 'arweave' && window.arweaveWallet) {
+        // Direct payment via Turbo SDK with proper wallet support
+        if (walletType === 'arweave' && window.arweaveWallet && (tokenType === 'arweave' || tokenType === 'ario')) {
           const signer = new ArconnectSigner(window.arweaveWallet);
           const turbo = TurboFactory.authenticated({
             signer,
@@ -76,17 +83,75 @@ export default function CryptoConfirmationPanel({
             },
           });
 
-          // Use SDK helper functions like reference app - returns BigNumber (which SDK expects)
+          // Use SDK helper functions - returns BigNumber (which SDK expects)
           let tokenAmount;
           if (tokenType === 'arweave') {
             tokenAmount = ARToTokenAmount(cryptoAmount);
           } else if (tokenType === 'ario') {
             tokenAmount = ARIOToTokenAmount(cryptoAmount);
           } else {
-            throw new Error(`Unsupported token type for direct payment: ${tokenType}`);
+            throw new Error(`Unsupported token type for Arweave wallet: ${tokenType}`);
           }
 
-          console.log('🔍 ARIO amount conversion:', cryptoAmount, 'ARIO →', tokenAmount.toString(), 'mARIO');
+          const result = await turbo.topUpWithTokens({
+            tokenAmount,
+          });
+
+          onPaymentComplete({
+            ...result,
+            quote,
+            tokenType,
+            transactionId: result.id,
+          });
+        } else if (walletType === 'ethereum' && window.ethereum && (tokenType === 'ethereum' || tokenType === 'base-eth')) {
+          // ETH/Base ETH direct payment via Ethereum wallet
+          const { ethers } = await import('ethers');
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          
+          const turbo = TurboFactory.authenticated({
+            token: tokenType,
+            walletAdapter: {
+              getSigner: () => signer as any,
+            },
+            paymentServiceConfig: {
+              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
+            },
+          });
+
+          const tokenAmount = ETHToTokenAmount(cryptoAmount); // Convert to wei
+
+          const result = await turbo.topUpWithTokens({
+            tokenAmount,
+          });
+
+          onPaymentComplete({
+            ...result,
+            quote,
+            tokenType,
+            transactionId: result.id,
+          });
+        } else if (walletType === 'solana' && window.solana && tokenType === 'solana') {
+          // SOL direct payment via Solana wallet
+          const { PublicKey } = await import('@solana/web3.js');
+          const provider = window.solana;
+          const { publicKey } = await provider.connect();
+          
+          const turbo = TurboFactory.authenticated({
+            token: tokenType,
+            walletAdapter: {
+              publicKey: new PublicKey(publicKey),
+              signMessage: async (message: Uint8Array) => {
+                const { signature } = await provider.signMessage(message);
+                return signature;
+              },
+            },
+            paymentServiceConfig: {
+              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
+            },
+          });
+
+          const tokenAmount = SOLToTokenAmount(cryptoAmount); // Convert to lamports
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
@@ -99,14 +164,15 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else {
-          throw new Error('Arweave wallet not available');
+          throw new Error('Wallet not available for direct payment');
         }
       } else {
         // Manual payment flow - user needs to send crypto manually
         onPaymentComplete({ 
           requiresManualPayment: true, 
           quote,
-          tokenType 
+          tokenType,
+          turboWalletAddress
         });
       }
     } catch (error) {
@@ -133,11 +199,31 @@ export default function CryptoConfirmationPanel({
 
       {/* Quote Display */}
       <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6">
-        {quote ? (
+        {pricingLoading ? (
+          <div className="text-center py-8">
+            <div className="w-12 h-12 border-4 border-turbo-red border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-fg-muted mb-2">Getting Live Pricing</p>
+            <p className="text-sm text-link">
+              Fetching current {tokenLabels[tokenType]} rates...
+            </p>
+          </div>
+        ) : pricingError ? (
+          <div className="text-center py-8">
+            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+            <p className="text-fg-muted mb-2">Quote Generation Unavailable</p>
+            <p className="text-sm text-link mb-4">{pricingError}</p>
+            <button
+              onClick={onBack}
+              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+            >
+              Go Back and Try Different Token
+            </button>
+          </div>
+        ) : quote ? (
           <>
-            <div className="text-center mb-6">
+            <div className="text-center mb-4 sm:mb-6">
               <div className="text-4xl font-bold text-turbo-red mb-2">
-                {quote.tokenAmount.toFixed(6)} {tokenLabels[tokenType]}
+                {quote.tokenAmount.toFixed(tokenType === 'ethereum' || tokenType === 'base-eth' ? 6 : tokenType === 'solana' ? 4 : 8)} {tokenLabels[tokenType]}
               </div>
               <div className="text-sm text-link mb-2">
                 on {tokenNetworkLabels[tokenType]}
@@ -150,12 +236,12 @@ export default function CryptoConfirmationPanel({
               </div>
             </div>
 
-            {/* Quote Status */}
-            <div className="flex items-center justify-center bg-surface/50 rounded-lg p-4">
+            {/* Processing Time Info */}
+            <div className="flex items-center justify-center bg-surface/50 rounded-lg p-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-link" />
                 <span className="text-sm text-link">
-                  Live pricing • Updated automatically
+                  Expected processing: {tokenProcessingTimes[tokenType]?.time || '5-15 minutes'}
                 </span>
               </div>
             </div>
@@ -163,12 +249,9 @@ export default function CryptoConfirmationPanel({
         ) : (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <p className="text-fg-muted mb-2">Quote Generation Unavailable</p>
+            <p className="text-fg-muted mb-2">Quote Generation Failed</p>
             <p className="text-sm text-link mb-4">
-              {tokenType === 'arweave' || tokenType === 'ario' 
-                ? 'Unable to calculate pricing for this amount'
-                : `${tokenLabels[tokenType]} pricing not yet implemented`
-              }
+              Unable to generate pricing for {tokenLabels[tokenType]}
             </p>
             <button onClick={onBack} className="text-turbo-red hover:text-turbo-red/80">
               Go Back

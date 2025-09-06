@@ -34,7 +34,7 @@ export default function InfoPanel() {
       </div>
 
       {/* Balance Card */}
-      <div className="bg-surface rounded-lg p-6 mb-6">
+      <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="text-sm text-link mb-1">Current Balance</div>
         {loading ? (
           <div className="animate-pulse h-8 bg-default rounded w-32"></div>

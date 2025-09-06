@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, Archive, Clock, HelpCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
@@ -16,6 +17,7 @@ export default function UploadPanel() {
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [showStatusGuide, setShowStatusGuide] = useState(false);
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const wincForOneGiB = useWincForOneGiB();
   const { uploadMultipleFiles, uploading, uploadProgress, errors, reset: resetFileUpload } = useFileUpload();
   const { 
@@ -56,6 +58,20 @@ export default function UploadPanel() {
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Auto-check status for recent uploads when page loads
+  useEffect(() => {
+    if (uploadHistory.length > 0) {
+      // Check status for recent uploads (last 10) automatically
+      const recentUploads = uploadHistory.slice(0, 10);
+      const uploadIds = recentUploads.map(upload => upload.id);
+      
+      // Small delay to avoid overwhelming the API
+      setTimeout(() => {
+        checkMultipleStatuses(uploadIds);
+      }, 1000);
+    }
+  }, [uploadHistory.length, checkMultipleStatuses]);
 
   const exportToCSV = () => {
     if (uploadHistory.length === 0) return;
@@ -187,7 +203,7 @@ export default function UploadPanel() {
   return (
     <div>
       {/* Inline Header with Description */}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-4 sm:mb-6">
         <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Upload className="w-5 h-5 text-turbo-red" />
         </div>
@@ -198,11 +214,11 @@ export default function UploadPanel() {
       </div>
       
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Current Balance */}
         {address && (
-          <div className="bg-surface rounded-lg p-4 mb-6">
+          <div className="bg-surface rounded-lg p-4 mb-4 sm:mb-6">
             <div className="flex justify-between items-center">
               <span className="text-link">Available Credits:</span>
               <div className="text-right">
@@ -219,7 +235,7 @@ export default function UploadPanel() {
 
         {/* Connection Warning */}
         {!address && (
-          <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-yellow-500" />
               <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
@@ -229,7 +245,7 @@ export default function UploadPanel() {
 
       {/* Upload Message */}
       {uploadMessage && (
-        <div className={`mb-6 p-4 rounded-lg border ${
+        <div className={`mb-4 sm:mb-6 p-4 rounded-lg border ${
           uploadMessage.type === 'error' 
             ? 'bg-red-500/10 border-red-500/20 text-red-500' 
             : uploadMessage.type === 'success'
@@ -289,7 +305,7 @@ export default function UploadPanel() {
 
       {/* File List */}
       {files.length > 0 && (
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <div className="mb-3 flex justify-between items-center">
             <h4 className="font-medium">Selected Files ({files.length})</h4>
             <button 
@@ -446,7 +462,7 @@ export default function UploadPanel() {
 
       {/* Upload Results - Enhanced with Status Checking */}
       {uploadHistory.length > 0 && (
-        <div className="mt-6 bg-surface rounded-lg p-4">
+        <div className="mt-4 sm:mt-6 bg-surface rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h4 className="font-bold text-fg-muted flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-turbo-green" />
@@ -494,23 +510,12 @@ export default function UploadPanel() {
               
               return (
                 <div key={index} className="bg-canvas rounded-lg p-3 sm:p-4 border border-default/30 overflow-hidden">
-                  {/* Mobile-First: Stack Everything */}
-                  <div className="space-y-3">
-                    {/* Transaction ID - Full Width */}
+                  <div className="space-y-2">
+                    {/* Row 1: Status Icon + Shortened TxID + Actions */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-xs text-fg-muted break-all sm:text-sm">
-                          <span className="sm:hidden">{result.id.substring(0, 10)}...{result.id.substring(result.id.length - 6)}</span>
-                          <span className="hidden sm:inline">{result.id}</span>
-                        </div>
-                      </div>
-                      <CopyButton textToCopy={result.id} />
-                    </div>
-
-                    {/* Status Row */}
-                    {status && (
                       <div className="flex items-center gap-2">
-                        {(() => {
+                        {/* Status Icon (no text) */}
+                        {status ? (() => {
                           const iconType = getStatusIcon(status.status, status.info);
                           const iconColor = getStatusColor(status.status, status.info);
                           switch (iconType) {
@@ -525,92 +530,168 @@ export default function UploadPanel() {
                             case 'help-circle':
                               return <HelpCircle className={`w-4 h-4 ${iconColor}`} />;
                             default:
-                              return <Clock className={`w-4 h-4 ${iconColor}`} />;
+                              return <Clock className={`w-4 h-4 text-yellow-500`} />;
                           }
-                        })()}
-                        <span className={`text-xs font-medium ${getStatusColor(status.status, status.info)}`}>
-                          {status.status}
-                          {status.info && <span className="ml-1 text-link">• {status.info}</span>}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Actions Row - Spread Out */}
-                    <div className="flex items-center justify-between pt-2 border-t border-default/20">
-                      <div className="flex items-center gap-3">
-                        {result.receipt && (
-                          <button
-                            onClick={() => setShowReceiptModal(result.id)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-turbo-red/10 text-turbo-red rounded hover:bg-turbo-red/20 transition-colors"
-                            title="View Receipt"
-                          >
-                            <Receipt className="w-3 h-3" />
-                            <span className="hidden xs:inline">Receipt</span>
-                          </button>
+                        })() : <Clock className="w-4 h-4 text-yellow-500" />}
+                        
+                        {/* Shortened Transaction ID */}
+                        <div className="font-mono text-sm text-fg-muted">
+                          {result.id.substring(0, 5)}...
+                        </div>
+                        {/* File Name (if available) */}
+                        {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
+                          <div className="text-sm text-fg-muted">
+                            {result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}
+                          </div>
                         )}
+                      </div>
+                      
+                      {/* Desktop: Show all actions */}
+                      <div className="hidden sm:flex items-center gap-1">
+                        <CopyButton textToCopy={result.id} />
+                        <button
+                          onClick={() => setShowReceiptModal(result.id)}
+                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                          title="View Receipt"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => checkUploadStatus(result.id)}
                           disabled={isChecking}
-                          className="flex items-center gap-1 px-2 py-1 text-xs bg-surface border border-default text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                          className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
                           title="Check Status"
                         >
-                          <RefreshCw className={`w-3 h-3 ${isChecking ? 'animate-spin' : ''}`} />
-                          <span className="hidden xs:inline">Status</span>
+                          <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                         </button>
+                        <a
+                          href={getArweaveUrl(result.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                          title="View File"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
                       </div>
-                      
-                      <a
-                        href={getArweaveUrl(result.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-link hover:text-turbo-red border border-default/30 rounded transition-colors"
-                        title="View on Gateway"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span className="hidden xs:inline">View</span>
-                      </a>
+
+                      {/* Mobile: 3-dot menu */}
+                      <div className="sm:hidden">
+                        <Popover className="relative">
+                          <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                            <MoreVertical className="w-4 h-4" />
+                          </PopoverButton>
+                          <PopoverPanel 
+                            anchor="bottom end"
+                            className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[200] py-1 mt-1"
+                          >
+                            {({ close }) => (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(result.id);
+                                    setCopiedItems(prev => new Set([...prev, result.id]));
+                                    // Show feedback for 1 second before closing menu
+                                    setTimeout(() => {
+                                      close();
+                                      // Clear copied state after menu closes
+                                      setTimeout(() => {
+                                        setCopiedItems(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.delete(result.id);
+                                          return newSet;
+                                        });
+                                      }, 500);
+                                    }, 1000);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                >
+                                  {copiedItems.has(result.id) ? (
+                                    <>
+                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                      Copied!
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Receipt className="w-4 h-4" />
+                                      Copy Tx ID
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowReceiptModal(result.id);
+                                    close();
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                >
+                                  <Receipt className="w-4 h-4" />
+                                  View Receipt
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    checkUploadStatus(result.id);
+                                    close();
+                                  }}
+                                  disabled={isChecking}
+                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                  Check Status
+                                </button>
+                                <a
+                                  href={getArweaveUrl(result.id)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => close()}
+                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  View File
+                                </a>
+                              </>
+                            )}
+                          </PopoverPanel>
+                        </Popover>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Content Type + File Size */}
+                    <div className="flex items-center gap-2 text-sm text-link">
+                      <span>
+                        {result.contentType || 
+                         result.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 
+                         'Unknown Type'}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        {result.fileSize ? formatFileSize(result.fileSize) : 'Unknown Size'}
+                      </span>
+                    </div>
+
+                    {/* Row 3: Cost + Upload Timestamp */}
+                    <div className="flex items-center gap-2 text-sm text-link">
+                      <span>
+                        {(() => {
+                          if (result.fileSize && result.fileSize < 100 * 1024) {
+                            return <span className="text-turbo-green">FREE</span>;
+                          } else if (wincForOneGiB && result.winc) {
+                            const credits = Number(result.winc) / wincPerCredit;
+                            return `${credits.toFixed(6)} Credits`;
+                          } else {
+                            return 'Unknown Cost';
+                          }
+                        })()}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        {result.timestamp 
+                          ? new Date(result.timestamp).toLocaleString()
+                          : 'Unknown Time'
+                        }
+                      </span>
                     </div>
                   </div>
-
-                  {/* Enhanced Metadata */}
-                  {status && (
-                    <div className="mt-3 pt-2 border-t border-default/20">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
-                        {status.payloadContentType && (
-                          <div>
-                            <span className="text-link">Type:</span>
-                            <span className="ml-1 text-fg-muted font-medium">
-                              {status.payloadContentType}
-                            </span>
-                          </div>
-                        )}
-                        {status.rawContentLength && (
-                          <div>
-                            <span className="text-link">Size:</span>
-                            <span className="ml-1 text-fg-muted font-medium">
-                              {formatFileSize(status.rawContentLength)}
-                            </span>
-                          </div>
-                        )}
-                        {status.winc && (
-                          <div>
-                            <span className="text-link">Cost:</span>
-                            <span className="ml-1 text-fg-muted font-medium">
-                              {formatWinc(status.winc)}
-                            </span>
-                          </div>
-                        )}
-                        {result.timestamp && (
-                          <div>
-                            <span className="text-link">Upload Time:</span>
-                            <span className="ml-1 text-fg-muted font-medium">
-                              {new Date(result.timestamp).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}

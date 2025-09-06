@@ -74,10 +74,10 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Gift Details */}
-        <div className="bg-surface rounded-lg p-6 mb-6">
+        <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <h4 className="font-bold text-fg-muted mb-4 flex items-center gap-2">
             <Gift className="w-5 h-5 text-turbo-red" />
             Gift Details

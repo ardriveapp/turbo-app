@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
+import { Listbox, Transition } from '@headlessui/react';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType, defaultPaymentServiceUrl } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
 import { turboConfig } from '../../constants';
-import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive } from 'lucide-react';
-import { useWincForOneGiB, useWincForToken } from '../../hooks/useWincForOneGiB';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { useWincForOneGiB, useWincForToken, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
 import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
@@ -34,6 +35,13 @@ export default function TopUpPanel() {
   const [usdAmountInput, setUsdAmountInput] = useState(String(defaultUSDAmount));
   const [storageAmount, setStorageAmount] = useState(1);
   const [storageUnit, setStorageUnit] = useState<'MiB' | 'GiB' | 'TiB'>('GiB');
+  
+  // Storage units for the Listbox
+  const storageUnits = [
+    { value: 'MiB', label: 'MiB' },
+    { value: 'GiB', label: 'GiB' },
+    { value: 'TiB', label: 'TiB' },
+  ] as const;
   const [cryptoAmount, setCryptoAmount] = useState(0.01); // Default crypto amount
   const [cryptoAmountInput, setCryptoAmountInput] = useState('0.01');
   const [errorMessage, setErrorMessage] = useState('');
@@ -51,14 +59,11 @@ export default function TopUpPanel() {
   const debouncedCryptoAmount = useDebounce(cryptoAmount);
   const debouncedStorageAmount = useDebounce(storageAmount);
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
-  // Use existing hook for AR/ARIO only since that's what it supports
-  const wincForArweave = useWincForToken(
-    (selectedTokenType === 'arweave' || selectedTokenType === 'ario') ? selectedTokenType : 'arweave', 
-    (selectedTokenType === 'arweave' || selectedTokenType === 'ario') ? debouncedCryptoAmount : 0
-  );
-  const cryptoCredits = (selectedTokenType === 'arweave' || selectedTokenType === 'ario') && wincForArweave 
-    ? Number(wincForArweave) / wincPerCredit 
-    : undefined;
+  // Use comprehensive hook for all token types
+  const { wincForToken: wincForSelectedToken, error: tokenPricingError, loading: tokenPricingLoading } = useWincForAnyToken(selectedTokenType, debouncedCryptoAmount);
+  
+  // Calculate credits from winc (works for all tokens that have pricing)
+  const cryptoCredits = wincForSelectedToken ? Number(wincForSelectedToken) / wincPerCredit : undefined;
   const wincForOneGiB = useWincForOneGiB();
   const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
   
@@ -440,7 +445,7 @@ export default function TopUpPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-blue/5 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-blue/5 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Input Mode Toggle - Universal for all payment methods */}
         <div className="mb-6">
@@ -675,15 +680,52 @@ export default function TopUpPanel() {
                         className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
                         placeholder="Enter amount"
                       />
-                      <select
-                        value={storageUnit}
-                        onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
-                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-8 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                      <Listbox 
+                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                        onChange={(unit) => setStorageUnit(unit.value)}
                       >
-                        <option value="MiB">MiB</option>
-                        <option value="GiB">GiB</option>
-                        <option value="TiB">TiB</option>
-                      </select>
+                        <div className="relative w-full sm:w-auto">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                            <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                              {storageUnits.map((unit) => (
+                                <Listbox.Option
+                                  key={unit.value}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
+                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                    }`
+                                  }
+                                  value={unit}
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                        {unit.label}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                          <Check className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
                     </div>
                     
                     {/* Common storage sizes */}
@@ -756,15 +798,52 @@ export default function TopUpPanel() {
                         className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
                         placeholder="Enter amount"
                       />
-                      <select
-                        value={storageUnit}
-                        onChange={(e) => setStorageUnit(e.target.value as 'MiB' | 'GiB' | 'TiB')}
-                        className="w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-8 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                      <Listbox 
+                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                        onChange={(unit) => setStorageUnit(unit.value)}
                       >
-                        <option value="MiB">MiB</option>
-                        <option value="GiB">GiB</option>
-                        <option value="TiB">TiB</option>
-                      </select>
+                        <div className="relative w-full sm:w-auto">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                            <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                              {storageUnits.map((unit) => (
+                                <Listbox.Option
+                                  key={unit.value}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
+                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                    }`
+                                  }
+                                  value={unit}
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                        {unit.label}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                          <Check className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
                     </div>
                     
                     {/* Common storage sizes */}
@@ -858,6 +937,26 @@ export default function TopUpPanel() {
                     <div className="mt-2 text-xs text-link">
                       Enter the amount of {tokenLabels[selectedTokenType]} you want to spend
                     </div>
+                    
+                    {/* Token Pricing Status */}
+                    {tokenPricingLoading && (
+                      <div className="mt-3 flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <Loader2 className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5 animate-spin" />
+                        <div>
+                          <div className="text-blue-400 font-medium text-sm mb-1">Fetching Pricing...</div>
+                          <div className="text-blue-300 text-xs">Getting current {tokenLabels[selectedTokenType]} rates</div>
+                        </div>
+                      </div>
+                    )}
+                    {tokenPricingError && !tokenPricingLoading && (
+                      <div className="mt-3 flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-yellow-400 font-medium text-sm mb-1">Quote Generation Unavailable</div>
+                          <div className="text-yellow-300 text-xs">{tokenPricingError}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -866,7 +965,7 @@ export default function TopUpPanel() {
         </div>
 
         {/* Credits Preview */}
-        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && cryptoCredits && cryptoCredits > 0)) && (
+        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && !tokenPricingError && ((inputType === 'dollars' && cryptoCredits && cryptoCredits > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0)))) && (
           <div className="space-y-4 mb-6">
             {/* Purchase Summary */}
             <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
@@ -877,7 +976,10 @@ export default function TopUpPanel() {
                       ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
                       : credits?.toLocaleString() || '...'
                     )
-                  : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
+                  : (inputType === 'storage'
+                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                      : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
+                    )
                 } Credits
               </div>
               {wincForOneGiB && (
@@ -887,7 +989,10 @@ export default function TopUpPanel() {
                         ? formatNumber(getStorageInGiB(), 2)
                         : credits ? ((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
                       )
-                    : cryptoCredits ? ((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                    : (inputType === 'storage'
+                        ? formatNumber(getStorageInGiB(), 2)
+                        : cryptoCredits ? ((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                      )
                   } GiB storage power
                 </div>
               )}
@@ -917,7 +1022,10 @@ export default function TopUpPanel() {
                           ? (creditBalance + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
                           : credits ? (creditBalance + credits).toLocaleString() : '...'
                         )
-                      : cryptoCredits ? (creditBalance + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                      : (inputType === 'storage'
+                          ? (creditBalance + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
+                          : cryptoCredits ? (creditBalance + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                        )
                     } Credits
                   </span>
                   {wincForOneGiB && (
@@ -927,7 +1035,10 @@ export default function TopUpPanel() {
                             ? (((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)
                             : credits ? (((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
                           )
-                        : cryptoCredits ? (((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                        : (inputType === 'storage'
+                            ? (((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)
+                            : cryptoCredits ? (((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                          )
                       } GiB storage power
                     </div>
                   )}
@@ -953,7 +1064,10 @@ export default function TopUpPanel() {
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
             )) ||
-            (paymentMethod === 'crypto' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType))) ||
+            (paymentMethod === 'crypto' && (
+              (inputType === 'dollars' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType) || !!tokenPricingError)) ||
+              (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType)))
+            )) ||
             isProcessing
           }
         >
@@ -978,6 +1092,11 @@ export default function TopUpPanel() {
                 <>
                   <AlertCircle className="w-5 h-5" />
                   Incompatible Wallet Type
+                </>
+              ) : tokenPricingError ? (
+                <>
+                  <AlertCircle className="w-5 h-5" />
+                  Pricing Unavailable for {tokenLabels[selectedTokenType as keyof typeof tokenLabels]}
                 </>
               ) : (
                 <>

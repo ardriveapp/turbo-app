@@ -28,7 +28,7 @@ export default function BaseModal({ onClose, children, showCloseButton = false }
       
       {/* Modal content - perfectly centered */}
       <div 
-        className="fixed z-[9999] bg-canvas border border-default rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
+        className="fixed z-[9999] bg-canvas border border-default rounded-lg shadow-xl overflow-hidden"
         style={{
           position: 'fixed',
           top: '50%',

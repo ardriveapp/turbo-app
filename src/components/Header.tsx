@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap } from 'lucide-react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
@@ -142,7 +142,7 @@ const Header = () => {
 
   return (
     <div className="flex items-center py-3 sm:py-4">
-      <Link to="/" className="cursor-pointer">
+      <Link to="/" className="cursor-pointer ml-2 sm:ml-0">
         <TurboLogo />
       </Link>
       
@@ -246,6 +246,8 @@ const Header = () => {
           </PopoverButton>
 
           <PopoverPanel className="absolute right-0 mt-4 flex flex-col rounded-lg bg-surface text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
+            {({ close }) => (
+              <>
             {/* Account Info Section */}
             <div className="px-6 py-4 border-b border-default">
               <div className="text-xs text-link mb-1">Account</div>
@@ -260,17 +262,8 @@ const Header = () => {
               </div>
             </div>
             
-            {/* Credit Balance Section - Clickable */}
-            <button
-              className="w-full px-6 py-4 border-b border-default hover:bg-canvas transition-colors text-left"
-              onClick={() => {
-                // Navigate to balance checker with current address
-                navigate('/balances');
-                // Pre-fill the address in balance checker if possible
-                window.localStorage.setItem('balances-address', address);
-              }}
-              title="View detailed balance breakdown"
-            >
+            {/* Credit Balance Section - Display Only */}
+            <div className="px-6 py-4 border-b border-default">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Coins className="w-4 h-4 text-fg-muted" />
@@ -293,9 +286,20 @@ const Header = () => {
                   </button>
                 </div>
               </div>
-            </button>
+            </div>
             
             {/* Actions */}
+            <button
+              className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
+              onClick={() => {
+                navigate('/account');
+                close(); // Close the popover when navigating
+              }}
+            >
+              <User className="w-4 h-4" />
+              My Account
+            </button>
+            
             <button
               className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
               onClick={() => {
@@ -343,6 +347,8 @@ const Header = () => {
             >
               Disconnect
             </button>
+              </>
+            )}
           </PopoverPanel>
         </Popover>
       )}
@@ -351,7 +357,7 @@ const Header = () => {
       {!address && (
         <button
           onClick={() => setShowWalletModal(true)}
-          className="flex items-center gap-2 bg-turbo-red text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-turbo-red/90 transition-colors"
+          className="flex items-center gap-2 bg-turbo-red text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-turbo-red/90 transition-colors mr-2 sm:mr-0"
         >
           <Wallet className="w-4 h-4" />
           Connect

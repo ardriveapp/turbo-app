@@ -89,7 +89,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
   return (
     <div>
       {/* Inline Header with Description */}
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-4 sm:mb-6">
         <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Code className="w-5 h-5 text-turbo-red" />
         </div>
@@ -102,10 +102,10 @@ console.log('Folder manifest ID:', folderUpload.id);`,
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Tab Navigation */}
-      <div className="flex gap-4 mb-6 border-b border-default">
+      <div className="flex gap-4 mb-4 sm:mb-6 border-b border-default">
         <button
           onClick={() => setActiveTab('quickstart')}
           className={`pb-2 px-1 transition-colors ${
@@ -359,7 +359,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
 
       {activeTab === 'horizon' && (
         <div className="space-y-4">
-          <p className="text-sm text-link mb-6">
+          <p className="text-sm text-link mb-4 sm:mb-6">
             We're expanding the Turbo platform with new services to enhance your development experience
           </p>
           
@@ -395,7 +395,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             </div>
           </div>
           
-          <div className="mt-6 pt-4 border-t border-default text-center">
+          <div className="mt-4 sm:mt-6 pt-4 border-t border-default text-center">
             <div className="text-xs text-link">
               Stay tuned for updates on these upcoming features
             </div>
@@ -413,7 +413,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             </p>
 
             {/* Mode Selection */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4 sm:mb-6">
               <div className="inline-flex bg-surface rounded-lg p-1 border border-default">
                 <button
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
@@ -452,7 +452,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             </div>
 
             {/* Configuration Fields */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4 mb-4 sm:mb-6">
               {/* Payment Service URL */}
               <div>
                 <label className="block text-sm font-medium text-link mb-2">Payment Service URL</label>
@@ -555,7 +555,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             </div>
 
             {/* Token Gateway Map (collapsible) */}
-            <details className="mb-6">
+            <details className="mb-4 sm:mb-6">
               <summary className="cursor-pointer text-sm font-medium text-link mb-3 hover:text-fg-muted">
                 Token Gateway Configuration ({Object.keys(currentConfig.tokenMap).length} networks)
               </summary>
@@ -584,7 +584,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
             </details>
 
             {configMode !== 'production' && (
-              <p className="text-sm text-amber-400 mb-6">
+              <p className="text-sm text-amber-400 mb-4 sm:mb-6">
                 ⚠️ Non-production endpoint services may not work as expected
               </p>
             )}
