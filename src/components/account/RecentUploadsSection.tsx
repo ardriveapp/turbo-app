@@ -14,7 +14,7 @@ export default function RecentUploadsSection() {
   const { uploadStatuses, getStatusColor, getStatusIcon } = useUploadStatus();
   const navigate = useNavigate();
 
-  const recentUploads = uploadHistory.slice(0, 3); // Show latest 3
+  const recentUploads = uploadHistory.slice(0, 5); // Show latest 5
   const displayUploads = showAllUploads ? uploadHistory : recentUploads;
 
   if (uploadHistory.length === 0) {
@@ -42,7 +42,7 @@ export default function RecentUploadsSection() {
           Recent Uploads ({uploadHistory.length})
         </h3>
         <div className="flex items-center gap-2">
-          {uploadHistory.length > 3 && (
+          {uploadHistory.length > 5 && (
             <button
               onClick={() => setShowAllUploads(!showAllUploads)}
               className="text-xs text-link hover:text-fg-muted transition-colors"

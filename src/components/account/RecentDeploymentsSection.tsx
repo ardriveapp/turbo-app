@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, Receipt, Globe2, Folder } from 'lucide-react';
+import { Globe, Receipt, Globe2, Folder, ExternalLink } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getArweaveUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -14,10 +14,13 @@ export default function RecentDeploymentsSection() {
   const { uploadStatuses } = useUploadStatus();
   const navigate = useNavigate();
 
+  // Get the most recent deployment entries first, then group them
+  const recentDeployHistory = deployHistory.slice(0, showAllDeployments ? deployHistory.length : 10); // Get more entries to ensure we have enough groups
+  
   // Group deploy results by manifest ID like in DeploySitePanel
   const deploymentGroups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
   
-  deployHistory.forEach(result => {
+  recentDeployHistory.forEach(result => {
     const manifestId = result.manifestId || result.id;
     if (!manifestId) return;
     
@@ -33,7 +36,7 @@ export default function RecentDeploymentsSection() {
   });
 
   const deployments = Object.entries(deploymentGroups);
-  const recentDeployments = deployments.slice(0, 2); // Show latest 2
+  const recentDeployments = deployments.slice(0, 5); // Show latest 5 groups
   const displayDeployments = showAllDeployments ? deployments : recentDeployments;
 
   if (deployments.length === 0) {
@@ -61,7 +64,7 @@ export default function RecentDeploymentsSection() {
           Recent Deployments ({deployments.length})
         </h3>
         <div className="flex items-center gap-2">
-          {deployments.length > 2 && (
+          {deployments.length > 5 && (
             <button
               onClick={() => setShowAllDeployments(!showAllDeployments)}
               className="text-xs text-link hover:text-fg-muted transition-colors"
@@ -119,6 +122,15 @@ export default function RecentDeploymentsSection() {
               </div>
               
               <div className="flex items-center gap-1">
+                <a
+                  href={getArweaveUrl(manifestId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 text-link hover:text-turbo-red transition-colors"
+                  title="View Manifest"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
                 <button
                   onClick={() => setShowReceiptModal(manifestId)}
                   className="p-1 text-link hover:text-turbo-red transition-colors"

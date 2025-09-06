@@ -1,4 +1,4 @@
-import { Upload, Globe, ArrowRight } from 'lucide-react';
+import { Upload, Globe, ArrowRight, ExternalLink } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getArweaveUrl } from '../../utils';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +27,7 @@ export default function ActivityOverview() {
 
   const deployments = Object.entries(deploymentGroups);
   const recentUploads = uploadHistory.slice(0, 5);
-  const recentDeployments = deployments.slice(0, 2);
+  const recentDeployments = deployments.slice(0, 5);
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -76,7 +76,7 @@ export default function ActivityOverview() {
                       className="p-1 text-link hover:text-turbo-red transition-colors"
                       title="View File"
                     >
-                      <ArrowRight className="w-3 h-3" />
+                      <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                 </div>
@@ -123,36 +123,40 @@ export default function ActivityOverview() {
         ) : (
           <div className="p-4 space-y-2">
             {recentDeployments.map(([manifestId, group]) => (
-              <div key={manifestId} className="flex items-center justify-between bg-canvas rounded p-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="font-mono text-xs text-link">
-                    {manifestId.substring(0, 5)}...
-                  </div>
-                  <span className="text-xs text-fg-muted">
-                    Site ({group.files?.files?.length || 0} files)
-                  </span>
-                  {group.manifest?.timestamp && (
-                    <span className="text-xs text-link">
-                      {new Date(group.manifest.timestamp).toLocaleDateString()}
+              <div key={manifestId} className="bg-canvas rounded p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="font-mono text-xs text-link">
+                      {manifestId.substring(0, 5)}...
+                    </div>
+                    <span className="text-xs text-fg-muted truncate">
+                      Site ({group.files?.files?.length || 0} files)
                     </span>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <a
+                      href={getArweaveUrl(manifestId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 text-link hover:text-turbo-red transition-colors"
+                      title="Visit Site"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <a
-                    href={getArweaveUrl(manifestId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 text-link hover:text-turbo-red transition-colors"
-                    title="Visit Site"
-                  >
-                    <ArrowRight className="w-3 h-3" />
-                  </a>
-                </div>
+                
+                {/* Deployment timestamp */}
+                {group.manifest?.timestamp && (
+                  <div className="text-xs text-link">
+                    {new Date(group.manifest.timestamp).toLocaleString()}
+                  </div>
+                )}
               </div>
             ))}
-            {deployments.length > 2 && (
+            {deployments.length > 5 && (
               <div className="text-xs text-link text-center pt-2">
-                +{deployments.length - 2} more sites
+                +{deployments.length - 5} more sites
               </div>
             )}
           </div>
