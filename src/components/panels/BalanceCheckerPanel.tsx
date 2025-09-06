@@ -300,19 +300,13 @@ export default function BalanceCheckerPanel() {
     
     try {
       // Create Turbo client using exact same pattern as file uploads
-      console.log('Creating Turbo client with:', { connectedAddress, walletType });
       const turbo = await createTurboClient();
       
-      console.log('Revoking credits - wallet info:', { connectedAddress, walletType });
-      console.log('Approval data for debugging:', { approvalId, revokedAddress });
-      
-      // Revoke all credits shared with this address  
-      console.log('Revoking credits for revoked address:', revokedAddress);
+      // Revoke all credits shared with this address
       const revokedApprovals = await turbo.revokeCredits({
         revokedAddress: revokedAddress,
       });
       
-      console.log('Revoke result:', revokedApprovals);
       
       // Immediately mark this approval as revoked for UI feedback
       setRevokedApprovals(prev => new Set([...prev, approvalId]));

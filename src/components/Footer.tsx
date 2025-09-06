@@ -11,9 +11,15 @@ export default function Footer() {
             <div className="text-xs text-link">
               © {currentYear} Permanent Data Solutions Inc. Powered by AR.IO.
             </div>
-            <div className="text-xs text-link/60" title={`Built: ${import.meta.env.BUILD_TIME || 'Unknown'}`}>
-              v{import.meta.env.PACKAGE_VERSION || '0.1.0'}
-            </div>
+            <a 
+              href="https://github.com/ardriveapp/turbo-gateway-app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-link/60 hover:text-link transition-colors cursor-pointer" 
+              title={`Built: ${import.meta.env.BUILD_TIME || 'Unknown'} • Click to view source code`}
+            >
+              v{import.meta.env.PACKAGE_VERSION || '0.2.0'}
+            </a>
           </div>
           
           {/* Social Icons */}
