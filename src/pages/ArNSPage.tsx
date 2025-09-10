@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Globe, Search, Shield, Clock } from 'lucide-react';
+import { Globe, Search, Shield } from 'lucide-react';
 
 export function ArNSPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [duration, setDuration] = useState(1); // years
   
   return (
     <div className="max-w-4xl mx-auto">
@@ -34,49 +33,22 @@ export function ArNSPage() {
         </div>
       </div>
 
-      {/* Registration Form */}
+      {/* Available Domain Link */}
       {searchQuery && (
-        <div className="card mb-8">
-          <h3 className="text-lg font-semibold mb-4">Register "{searchQuery}"</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                <Clock className="inline w-4 h-4 mr-1" />
-                Registration Period
-              </label>
-              <select 
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className="input"
-              >
-                <option value={1}>1 Year</option>
-                <option value={2}>2 Years</option>
-                <option value={5}>5 Years</option>
-                <option value={10}>10 Years</option>
-              </select>
-            </div>
-
-            <div className="p-4 bg-card rounded-lg border border-border">
-              <div className="flex justify-between mb-2">
-                <span className="text-muted">Base Price</span>
-                <span className="font-mono">10 Credits/year</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-muted">Duration</span>
-                <span className="font-mono">{duration} year{duration > 1 && 's'}</span>
-              </div>
-              <div className="h-px bg-border my-2" />
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span className="font-mono">{10 * duration} Credits</span>
-              </div>
-            </div>
-
-            <button className="btn-primary w-full">
-              Register Name
-            </button>
-          </div>
+        <div className="card mb-8 text-center">
+          <h3 className="text-lg font-semibold mb-4">"{searchQuery}" availability</h3>
+          <p className="text-muted mb-4">
+            Check availability and register this name on the ArNS registry
+          </p>
+          <a
+            href={`https://arns.ar.io/#/register/${searchQuery}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            Register on ArNS App
+            <Globe className="w-4 h-4" />
+          </a>
         </div>
       )}
 

@@ -13,7 +13,7 @@ const decodePunycode = (name: string): string => {
       return decoded !== name ? decoded : name;
     }
     return name;
-  } catch (error) {
+  } catch {
     // If decoding fails, return original name
     return name;
   }
@@ -204,14 +204,14 @@ export function useOwnedArNSNames() {
         result = await ant.setUndernameRecord({
           undername,
           transactionId: manifestId,
-          ttlSeconds: 3600 // 1 hour TTL
+          ttlSeconds: 600 // 10 minutes TTL (default for all records)
         });
       } else {
         // Update base name record (@ record)
         console.log('Updating base name record');
         result = await ant.setBaseNameRecord({
           transactionId: manifestId,
-          ttlSeconds: 3600
+          ttlSeconds: 600 // 10 minutes TTL (default for all records)
         });
       }
       
@@ -228,18 +228,44 @@ export function useOwnedArNSNames() {
               const ant = ANT.init({ processId: nameRecord.processId });
               const freshState = await ant.getState();
               
+              const updatedTarget = freshState.Records?.['@']?.transactionId;
+              const updatedUndernames = Object.keys(freshState.Records || {}).filter(key => key !== '@');
+              
               // Update just this name in our local state
               setNames(prevNames => prevNames.map(prevName => 
                 prevName.name === name 
                   ? {
                       ...prevName,
-                      currentTarget: freshState.Records?.['@']?.transactionId,
-                      undernames: Object.keys(freshState.Records || {}).filter(key => key !== '@')
+                      currentTarget: updatedTarget,
+                      undernames: updatedUndernames
                     }
                   : prevName
               ));
               
-              console.log('Refreshed ANT state for', name, ':', freshState);
+              // Also update the cache with the refreshed data
+              const cachedNames = getOwnedArNSNames(address) || [];
+              const updatedCacheNames = cachedNames.map(cachedName => 
+                cachedName.name === name 
+                  ? {
+                      ...cachedName,
+                      currentTarget: updatedTarget,
+                      undernames: updatedUndernames
+                    }
+                  : cachedName
+              );
+              
+              // If the name wasn't in cache (shouldn't happen), add it
+              if (!cachedNames.find(n => n.name === name)) {
+                updatedCacheNames.push({
+                  name: nameRecord.name,
+                  processId: nameRecord.processId,
+                  currentTarget: updatedTarget,
+                  undernames: updatedUndernames
+                });
+              }
+              
+              setOwnedArNSNames(address, updatedCacheNames);
+              console.log('Refreshed ANT state and cache for', name, ':', freshState);
             }
           } catch (error) {
             console.warn('Failed to refresh ANT state after update:', error);
@@ -262,7 +288,68 @@ export function useOwnedArNSNames() {
     } finally {
       setUpdating(prev => ({ ...prev, [name]: false }));
     }
-  }, [names, address, fetchOwnedNames]);
+  }, [names, address, fetchOwnedNames, getOwnedArNSNames, setOwnedArNSNames]);
+
+  // Refresh a specific ArNS name's state
+  const refreshSpecificName = useCallback(async (name: string): Promise<boolean> => {
+    if (!address) return false;
+    
+    console.log('Refreshing specific ArNS name:', name);
+    const nameRecord = names.find(n => n.name === name);
+    
+    if (!nameRecord) {
+      console.warn('Name not found in local state:', name);
+      return false;
+    }
+    
+    try {
+      const ant = ANT.init({ processId: nameRecord.processId });
+      const freshState = await ant.getState();
+      
+      const updatedTarget = freshState.Records?.['@']?.transactionId;
+      const updatedUndernames = Object.keys(freshState.Records || {}).filter(key => key !== '@');
+      
+      // Update local state
+      setNames(prevNames => prevNames.map(prevName => 
+        prevName.name === name 
+          ? {
+              ...prevName,
+              currentTarget: updatedTarget,
+              undernames: updatedUndernames
+            }
+          : prevName
+      ));
+      
+      // Update cache
+      const cachedNames = getOwnedArNSNames(address) || [];
+      const updatedCacheNames = cachedNames.map(cachedName => 
+        cachedName.name === name 
+          ? {
+              ...cachedName,
+              currentTarget: updatedTarget,
+              undernames: updatedUndernames
+            }
+          : cachedName
+      );
+      
+      // If the name wasn't in cache, add it
+      if (!cachedNames.find(n => n.name === name)) {
+        updatedCacheNames.push({
+          name: nameRecord.name,
+          processId: nameRecord.processId,
+          currentTarget: updatedTarget,
+          undernames: updatedUndernames
+        });
+      }
+      
+      setOwnedArNSNames(address, updatedCacheNames);
+      console.log('Successfully refreshed ArNS name:', name, freshState);
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh specific ArNS name:', error);
+      return false;
+    }
+  }, [names, address, getOwnedArNSNames, setOwnedArNSNames]);
 
   // Auto-fetch on address change
   useEffect(() => {
@@ -276,6 +363,7 @@ export function useOwnedArNSNames() {
     loading,
     updating,
     fetchOwnedNames,
-    updateArNSRecord
+    updateArNSRecord,
+    refreshSpecificName
   };
 }

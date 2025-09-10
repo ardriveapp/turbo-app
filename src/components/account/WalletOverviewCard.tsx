@@ -1,6 +1,5 @@
 import { Wallet, ExternalLink } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { formatWalletAddress } from '../../utils';
 import { usePrimaryArNSName } from '../../hooks/usePrimaryArNSName';
 import CopyButton from '../CopyButton';
 

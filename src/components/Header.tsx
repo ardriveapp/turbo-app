@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User } from 'lucide-react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
@@ -43,6 +43,7 @@ const Header = () => {
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletModalMessage, setWalletModalMessage] = useState('');
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
@@ -168,35 +169,60 @@ const Header = () => {
           <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
             {({ close }) => (
               <>
-                {/* Services (only if logged in) */}
-                {address && (
-                  <>
-                    <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Services</div>
-                    {accountServices.map((service) => {
-                      const isActive = location.pathname === `/${service.page}`;
-                      return (
-                        <Link
-                          key={service.page}
-                          to={`/${service.page}`}
-                          onClick={() => close()}
-                          className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
-                            isActive 
-                              ? 'bg-canvas text-fg-muted font-medium' 
-                              : 'text-link hover:bg-canvas hover:text-fg-muted'
-                          }`}
-                        >
-                          <service.icon className={`w-4 h-4 ${
-                            isActive ? 'text-turbo-red' : 'text-link'
-                          }`} />
-                          {service.name}
-                        </Link>
-                      );
-                    })}
-                    <div className="border-t border-default my-1" />
-                  </>
-                )}
+                {/* Services - Always show, but require login */}
+                <div className="px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-link uppercase tracking-wider">Services</span>
+                  {!address && (
+                    <span className="text-xs text-link/60 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      Login Required
+                    </span>
+                  )}
+                </div>
+                {accountServices.map((service) => {
+                  const isActive = location.pathname === `/${service.page}`;
+                  
+                  // If not logged in, handle click differently
+                  if (!address) {
+                    return (
+                      <button
+                        key={service.page}
+                        onClick={() => {
+                          close();
+                          setWalletModalMessage(`Connect your wallet to ${service.name.toLowerCase()}`);
+                          setShowWalletModal(true);
+                        }}
+                        className="w-full flex items-center gap-3 py-2 px-4 text-sm text-link/60 hover:bg-canvas hover:text-fg-muted transition-colors group"
+                      >
+                        <service.icon className="w-4 h-4 text-link/60 group-hover:text-link" />
+                        <span className="flex-1 text-left">{service.name}</span>
+                        <Lock className="w-3 h-3 text-link/40" />
+                      </button>
+                    );
+                  }
+                  
+                  // Normal link for logged-in users
+                  return (
+                    <Link
+                      key={service.page}
+                      to={`/${service.page}`}
+                      onClick={() => close()}
+                      className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
+                        isActive 
+                          ? 'bg-canvas text-fg-muted font-medium' 
+                          : 'text-link hover:bg-canvas hover:text-fg-muted'
+                      }`}
+                    >
+                      <service.icon className={`w-4 h-4 ${
+                        isActive ? 'text-turbo-red' : 'text-link'
+                      }`} />
+                      {service.name}
+                    </Link>
+                  );
+                })}
+                <div className="border-t border-default my-1" />
                 
-                {/* Public Services */}
+                {/* Public Tools */}
                 <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Tools</div>
                 {utilityServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
@@ -384,7 +410,10 @@ const Header = () => {
       {/* Connect Wallet Button for non-logged-in users */}
       {!address && (
         <button
-          onClick={() => setShowWalletModal(true)}
+          onClick={() => {
+            setWalletModalMessage('');
+            setShowWalletModal(true);
+          }}
           className="flex items-center gap-2 bg-turbo-red text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-turbo-red/90 transition-colors mr-2 sm:mr-0"
         >
           <Wallet className="w-4 h-4" />
@@ -395,8 +424,11 @@ const Header = () => {
       {/* Wallet Selection Modal */}
       {showWalletModal && (
         <WalletSelectionModal
-          onClose={() => setShowWalletModal(false)}
-          message={''}
+          onClose={() => {
+            setShowWalletModal(false);
+            setWalletModalMessage('');
+          }}
+          message={walletModalMessage}
         />
       )}
     </div>

@@ -21,11 +21,32 @@ export function useUploadStatus() {
   const setUploadStatus = useStore((state) => state.setUploadStatus);
   const getUploadStatus = useStore((state) => state.getUploadStatus);
 
+  // Initialize local state from cache for a list of transaction IDs
+  const initializeFromCache = useCallback((txIds: string[]) => {
+    const cachedStatuses: Record<string, UploadStatus> = {};
+    
+    txIds.forEach(txId => {
+      const cached = getUploadStatus(txId);
+      if (cached) {
+        // Use the full cached status object
+        cachedStatuses[txId] = cached as UploadStatus;
+      }
+    });
+    
+    // Only update if we have cached items to avoid unnecessary re-renders
+    if (Object.keys(cachedStatuses).length > 0) {
+      setUploadStatuses(prev => ({ ...prev, ...cachedStatuses }));
+    }
+    
+    return cachedStatuses;
+  }, [getUploadStatus]);
+
   const checkUploadStatus = useCallback(async (txId: string, force: boolean = false): Promise<UploadStatus> => {
     // Check cache first (unless forced refresh)
     if (!force) {
       const cachedStatus = getUploadStatus(txId);
       if (cachedStatus) {
+        // Use the full cached status object
         const status: UploadStatus = cachedStatus as UploadStatus;
         setUploadStatuses(prev => ({ ...prev, [txId]: status }));
         
@@ -64,9 +85,9 @@ export function useUploadStatus() {
         winc: data.winc,
       };
 
-      // Save to both local state and persistent cache
+      // Save to both local state and persistent cache (save full status)
       setUploadStatuses(prev => ({ ...prev, [txId]: status }));
-      setUploadStatus(txId, { status: status.status, info: status.info });
+      setUploadStatus(txId, status);
       
       return status;
     } catch (error) {
@@ -86,19 +107,42 @@ export function useUploadStatus() {
       return Promise.all(promises);
     }
     
-    // Filter out already finalized items to improve efficiency (for auto-checks only)
-    const idsToCheck = txIds.filter(txId => {
+    // First, populate local state with any cached statuses
+    const cachedStatuses: Record<string, UploadStatus> = {};
+    const idsToCheck: string[] = [];
+    
+    txIds.forEach(txId => {
       const cachedStatus = getUploadStatus(txId);
-      return !cachedStatus || cachedStatus.status !== 'FINALIZED';
+      if (cachedStatus) {
+        // Add to local state immediately - use full cached status
+        cachedStatuses[txId] = cachedStatus as UploadStatus;
+        
+        // Only check API if not finalized
+        if (cachedStatus.status !== 'FINALIZED') {
+          idsToCheck.push(txId);
+        }
+      } else {
+        // No cache, need to check
+        idsToCheck.push(txId);
+      }
     });
     
-    // If no items need checking, return early
-    if (idsToCheck.length === 0) {
-      return [];
+    // Update local state with all cached items first for immediate UI feedback
+    if (Object.keys(cachedStatuses).length > 0) {
+      setUploadStatuses(prev => ({ ...prev, ...cachedStatuses }));
     }
     
+    // If no items need API checking, return the cached results
+    if (idsToCheck.length === 0) {
+      return Object.values(cachedStatuses);
+    }
+    
+    // Check the remaining items that need updates
     const promises = idsToCheck.map(txId => checkUploadStatus(txId));
-    return Promise.all(promises);
+    const apiResults = await Promise.all(promises);
+    
+    // Return combined results
+    return [...Object.values(cachedStatuses), ...apiResults];
   }, [checkUploadStatus, getUploadStatus]);
 
   const formatFileSize = useCallback((bytes: number) => {
@@ -168,6 +212,7 @@ export function useUploadStatus() {
   return {
     checkUploadStatus,
     checkMultipleStatuses,
+    initializeFromCache,
     statusChecking,
     uploadStatuses,
     formatFileSize,

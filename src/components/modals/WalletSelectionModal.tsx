@@ -59,7 +59,10 @@ const WalletSelectionModal = ({
       onClose();
       setIntentionalSolanaConnect(false); // Reset flag
     }
-  }, [publicKey, intentionalSolanaConnect, setAddress, onClose]); // Only connect when we intentionally triggered it
+    // Remove setAddress and onClose from dependencies to prevent infinite loop
+    // These functions don't need to trigger re-runs of this effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicKey, intentionalSolanaConnect]); // Only connect when we intentionally triggered it
 
   const connectPhantom = async () => {
     try {

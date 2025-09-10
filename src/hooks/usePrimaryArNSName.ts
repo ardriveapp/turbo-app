@@ -18,7 +18,7 @@ const decodePunycode = (name: string): string => {
       return decoded !== name ? decoded : name;
     }
     return name;
-  } catch (error) {
+  } catch {
     // If decoding fails, return original name
     return name;
   }

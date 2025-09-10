@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Globe, ExternalLink, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, Fragment } from 'react';
+import { Globe, ExternalLink, AlertCircle, Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
+import { Listbox, Transition } from '@headlessui/react';
 import { useOwnedArNSNames } from '../hooks/useOwnedArNSNames';
 
 interface ArNSAssociationPanelProps {
@@ -28,14 +29,9 @@ export default function ArNSAssociationPanel({
   const fullDomainName = `${selectedUndername ? selectedUndername + '_' : ''}${displayName}`;
   const previewUrl = `https://${selectedUndername ? selectedUndername + '_' : ''}${selectedName}.ar.io`; // URL uses raw name for correct links
   
-  // Debug logging
-  console.log('ArNS Debug:', { 
-    selectedName, 
-    selectedNameRecord, 
-    displayName, 
-    fullDomainName,
-    names: names.map(n => ({ name: n.name, displayName: n.displayName }))
-  });
+  // Check if this is an existing undername or a new one
+  const isExistingUndername = selectedUndername && selectedNameRecord?.undernames?.includes(selectedUndername);
+  const isNewUndername = selectedUndername && !isExistingUndername;
 
   useEffect(() => {
     if (enabled && names.length === 0 && !loading) {
@@ -58,9 +54,8 @@ export default function ArNSAssociationPanel({
       setShowUndername(false);
     }
   }, [selectedName, onUndernameChange]);
-
   return (
-    <div className="bg-gradient-to-br from-turbo-yellow/10 to-turbo-yellow/5 rounded-xl border border-turbo-yellow/20 p-6 mb-6">
+    <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-default p-6 mb-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Globe className="w-5 h-5 text-turbo-yellow" />
@@ -72,7 +67,7 @@ export default function ArNSAssociationPanel({
               id="arns-enabled"
               checked={enabled}
               onChange={(e) => onEnabledChange(e.target.checked)}
-              className="w-4 h-4 text-turbo-red bg-surface border-default rounded focus:ring-turbo-red"
+              className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors"
             />
             <label htmlFor="arns-enabled" className="font-medium text-fg-muted cursor-pointer">
               Associate with ArNS name
@@ -129,19 +124,73 @@ export default function ArNSAssociationPanel({
                     Refresh
                   </button>
                 </div>
-                <select
-                  value={selectedName}
-                  onChange={(e) => onNameChange(e.target.value)}
+                <Listbox 
+                  value={selectedName} 
+                  onChange={onNameChange}
                   disabled={loading}
-                  className="w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:ring-2 focus:ring-turbo-yellow disabled:opacity-50"
                 >
-                  <option value="">Choose a name...</option>
-                  {names.map(name => (
-                    <option key={name.name} value={name.name}>
-                      {name.displayName !== name.name ? `${name.displayName} (${name.name})` : name.displayName}
-                    </option>
-                  ))}
-                </select>
+                  <div className="relative">
+                    <Listbox.Button className="relative w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:border-turbo-yellow focus:outline-none disabled:opacity-50 text-left cursor-pointer">
+                      <span className="block truncate">
+                        {selectedName ? (
+                          names.find(n => n.name === selectedName)?.displayName !== selectedName
+                            ? `${names.find(n => n.name === selectedName)?.displayName} (${selectedName})`
+                            : selectedName
+                        ) : (
+                          <span className="text-link">Choose a name...</span>
+                        )}
+                      </span>
+                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                        <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                      </span>
+                    </Listbox.Button>
+                    <Transition
+                      as={Fragment}
+                      leave="transition ease-in duration-100"
+                      leaveFrom="opacity-100"
+                      leaveTo="opacity-0"
+                    >
+                      <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                        <Listbox.Option
+                          value=""
+                          className={({ active }) =>
+                            `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                              active ? 'bg-canvas text-fg-muted' : 'text-link'
+                            }`
+                          }
+                        >
+                          <span className="block truncate">Choose a name...</span>
+                        </Listbox.Option>
+                        {names.map(name => (
+                          <Listbox.Option
+                            key={name.name}
+                            value={name.name}
+                            className={({ active }) =>
+                              `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                                active ? 'bg-canvas text-fg-muted' : 'text-fg-muted'
+                              }`
+                            }
+                          >
+                            {({ selected }) => (
+                              <>
+                                <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                  {name.displayName !== name.name 
+                                    ? `${name.displayName} (${name.name})` 
+                                    : name.displayName}
+                                </span>
+                                {selected && (
+                                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-turbo-yellow">
+                                    <Check className="h-4 w-4" aria-hidden="true" />
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </Listbox.Option>
+                        ))}
+                      </Listbox.Options>
+                    </Transition>
+                  </div>
+                </Listbox>
               </div>
 
               {/* Undername Option */}
@@ -159,7 +208,7 @@ export default function ArNSAssociationPanel({
                         onUndernameChange('');
                       }
                     }}
-                    className="w-4 h-4 text-turbo-yellow bg-surface border-default rounded focus:ring-turbo-yellow disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   />
                   <span className="text-sm text-fg-muted">Use undername (subdomain)</span>
                 </label>
@@ -216,7 +265,7 @@ export default function ArNSAssociationPanel({
                       />
                       {selectedUndername && (
                         <p className="text-xs text-link mt-1">
-                          Will {selectedNameRecord?.undernames?.includes(selectedUndername) ? 'update' : 'create'}: {selectedUndername}_{selectedName}.ar.io
+                          Will {selectedNameRecord?.undernames?.includes(selectedUndername) ? 'update existing' : 'create new'} undername: {selectedUndername}_{selectedName}.ar.io
                         </p>
                       )}
                     </div>
@@ -240,9 +289,22 @@ export default function ArNSAssociationPanel({
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
-                    {currentTarget && (
+                    {/* Only show current target for base name or when no undername is selected */}
+                    {!selectedUndername && currentTarget && (
                       <div className="text-xs text-link">
-                        Currently points to: {currentTarget.substring(0, 8)}...{currentTarget.substring(currentTarget.length - 6)}
+                        Currently points to: {currentTarget.substring(0, 6)}...
+                      </div>
+                    )}
+                    {/* Show status for new undernames */}
+                    {isNewUndername && (
+                      <div className="text-xs text-turbo-green">
+                        New undername - will be created on deployment
+                      </div>
+                    )}
+                    {/* Show status for existing undernames */}
+                    {isExistingUndername && (
+                      <div className="text-xs text-link">
+                        Existing undername - will be updated
                       </div>
                     )}
                   </div>

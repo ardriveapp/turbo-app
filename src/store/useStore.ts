@@ -107,10 +107,17 @@ interface StoreState {
   // Deploy history state
   deployHistory: DeployResult[];
   
-  // Upload status cache (persisted)
+  // Upload status cache (persisted) - stores full API response
   uploadStatusCache: Record<string, {
     status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND';
+    bundleId?: string;
     info?: string;
+    startOffsetInRootBundle?: number;
+    rawContentLength?: number;
+    payloadContentType?: string;
+    payloadDataStart?: number;
+    payloadContentLength?: number;
+    winc?: string;
     timestamp: number; // When status was fetched
   }>;
   
@@ -145,8 +152,28 @@ interface StoreState {
   clearUploadHistory: () => void;
   addDeployResults: (results: DeployResult[]) => void;
   clearDeployHistory: () => void;
-  setUploadStatus: (txId: string, status: { status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND'; info?: string }) => void;
-  getUploadStatus: (txId: string) => { status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND'; info?: string } | null;
+  setUploadStatus: (txId: string, status: {
+    status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND';
+    bundleId?: string;
+    info?: string;
+    startOffsetInRootBundle?: number;
+    rawContentLength?: number;
+    payloadContentType?: string;
+    payloadDataStart?: number;
+    payloadContentLength?: number;
+    winc?: string;
+  }) => void;
+  getUploadStatus: (txId: string) => {
+    status: 'CONFIRMED' | 'FINALIZED' | 'FAILED' | 'NOT_FOUND';
+    bundleId?: string;
+    info?: string;
+    startOffsetInRootBundle?: number;
+    rawContentLength?: number;
+    payloadContentType?: string;
+    payloadDataStart?: number;
+    payloadContentLength?: number;
+    winc?: string;
+  } | null;
   
   // Payment actions - matching reference app
   setPaymentAmount: (amount?: number) => void;

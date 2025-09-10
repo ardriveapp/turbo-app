@@ -112,8 +112,8 @@ function DeployConfirmationModal({
               <div className="border-t border-default/30 pt-3 mt-3">
                 <div className="text-xs text-link mb-2">Domain Configuration:</div>
                 <div className="flex items-center gap-2">
-                  <Globe className="w-3 h-3 text-turbo-yellow" />
-                  <span className="text-sm font-medium text-turbo-yellow">
+                  <Globe className="w-3 h-3 text-fg-muted" />
+                  <span className="text-sm font-medium text-fg-muted">
                     {undername ? undername + '_' : ''}{arnsName}.ar.io
                   </span>
                 </div>
@@ -160,8 +160,9 @@ export default function DeploySitePanel() {
   const [selectedUndername, setSelectedUndername] = useState('');
   const [arnsUpdateCancelled, setArnsUpdateCancelled] = useState(false);
   const [showDeployResults, setShowDeployResults] = useState(true);
-  const [deploySuccessInfo, setDeploySuccessInfo] = useState<{manifestId: string; arnsConfigured: boolean; arnsName?: string; undername?: string} | null>(null);
+  const [deploySuccessInfo, setDeploySuccessInfo] = useState<{manifestId: string; arnsConfigured: boolean; arnsName?: string; undername?: string; arnsTransactionId?: string} | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [currentDeployResult, setCurrentDeployResult] = useState<any>(null);
   const [postDeployArNSName, setPostDeployArNSName] = useState('');
   const [postDeployUndername, setPostDeployUndername] = useState('');
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
@@ -177,7 +178,7 @@ export default function DeploySitePanel() {
     uploadStatuses, 
     getStatusIcon
   } = useUploadStatus();
-  const { updateArNSRecord, names: arnsNames, loading: arnsLoading } = useOwnedArNSNames();
+  const { updateArNSRecord, refreshSpecificName } = useOwnedArNSNames();
 
   // Memoize deployment grouping to prevent lag
   const deploymentGroups = useMemo(() => {
@@ -577,9 +578,7 @@ export default function DeploySitePanel() {
         if (group.files?.files) ids.push(...group.files.files.map((f: any) => f.id));
         return ids;
       });
-      
-      console.log('Auto-checking status for displayed recent deployments:', allIds);
-      
+            
       // Small delay to avoid overwhelming the API
       setTimeout(() => {
         checkMultipleStatuses(allIds);
@@ -618,10 +617,13 @@ export default function DeploySitePanel() {
         // Add results to store for persistence
         addDeployResults(result.results || []);
         
+        // Store current deployment result for cancel button access
+        setCurrentDeployResult(result);
+        
         // Handle ArNS update if enabled and not cancelled
         if (arnsEnabled && selectedArnsName && !arnsUpdateCancelled) {
           try {
-            // Update progress stage to show ArNS update
+            // Keep deployment progress visible and update stage to show ArNS update
             updateDeployStage('updating-arns');
             console.log('Updating ArNS record:', { name: selectedArnsName, manifestId: result.manifestId, undername: selectedUndername });
             
@@ -647,14 +649,23 @@ export default function DeploySitePanel() {
             addDeployResults([arnsUpdateRecord]);
             
             if (arnsResult.success) {
-              // Store success info for rich display
+              // Mark deployment as complete and store success info
+              updateDeployStage('complete');
               setDeploySuccessInfo({
                 manifestId: result.manifestId,
                 arnsConfigured: true,
                 arnsName: selectedArnsName,
-                undername: selectedUndername || undefined
+                undername: selectedUndername || undefined,
+                arnsTransactionId: arnsResult.transactionId
               });
+              
+              // Refresh the specific ArNS name to get latest state
+              setTimeout(() => {
+                refreshSpecificName(selectedArnsName);
+              }, 3000); // Wait 3 seconds for propagation
             } else {
+              // Mark deployment as complete even if ArNS failed
+              updateDeployStage('complete');
               // Site deployed successfully but ArNS failed - still show success with error info
               setDeploySuccessInfo({
                 manifestId: result.manifestId,
@@ -667,6 +678,8 @@ export default function DeploySitePanel() {
             }
           } catch (arnsError) {
             console.error('ArNS update failed:', arnsError);
+            // Mark deployment as complete even if ArNS failed
+            updateDeployStage('complete');
             // Still show success since site deployed, just note ArNS failed
             setDeploySuccessInfo({
               manifestId: result.manifestId,
@@ -678,7 +691,8 @@ export default function DeploySitePanel() {
             });
           }
         } else {
-          // No ArNS update - store success info for rich display
+          // No ArNS update - mark deployment complete and store success info
+          updateDeployStage('complete');
           setDeploySuccessInfo({
             manifestId: result.manifestId,
             arnsConfigured: false
@@ -753,7 +767,7 @@ export default function DeploySitePanel() {
           <div>
             <h3 className="text-2xl font-bold text-fg-muted mb-1">Deploy Site</h3>
             <p className="text-sm text-link">
-              Deploy static sites and web apps to the permanent web with automatic manifest generation
+              Deploy NFT collections, static sites and apps to the permanent web
             </p>
           </div>
         </div>
@@ -781,7 +795,7 @@ export default function DeploySitePanel() {
               Drop site folder here or click to browse
             </p>
             <p className="text-sm text-link mb-4">
-              Select your site folder (HTML, CSS, JS, assets) for permanent deployment
+              Select your site folder (HTML, CSS, JS, assets) for deployment
             </p>
             <input
               type="file"
@@ -829,10 +843,13 @@ export default function DeploySitePanel() {
                 </button>
               </div>
 
+              {/* Separator */}
+              <div className="border-t border-default/20 my-4" />
+
               {/* Expandable File Tree */}
               <button
                 onClick={() => setShowFolderContents(!showFolderContents)}
-                className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors mb-2"
+                className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors"
               >
                 <span className="text-sm text-fg-muted">View folder contents</span>
                 <ChevronDown className={`w-4 h-4 text-link transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
@@ -895,11 +912,7 @@ export default function DeploySitePanel() {
                                       </div>
                                       
                                       <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-link/70 text-xs">
-                                          {fileSize}
-                                          {file.size < 100 * 1024 && <span className="ml-1 text-turbo-green">• FREE</span>}
-                                        </span>
-                                        
+
                                         {/* Action buttons for HTML files */}
                                         {isHtml && (
                                           <div className="flex items-center gap-1">
@@ -943,6 +956,12 @@ export default function DeploySitePanel() {
                                             Clear
                                           </button>
                                         )}
+
+                                        <span className="text-link/70 text-xs">
+                                          {fileSize}
+                                          {file.size < 100 * 1024 && <span className="ml-1 text-turbo-green">• FREE</span>}
+                                        </span>
+                                        
                                       </div>
                                     </div>
                                   );
@@ -955,19 +974,21 @@ export default function DeploySitePanel() {
                   </div>
                 )}
 
-            {/* Fallback Info for SPA routing */}
-            <div className="mt-4 p-3 bg-turbo-red/10 border border-turbo-red/20 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-link">
-                  <strong className="text-fg-muted">SPA Routing Support:</strong> For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
-                  <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">index.html</code>
-                  ) to enable client-side routing. This ensures URLs like{' '}
-                  <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">/topup</code>
-                  {' '}work correctly instead of showing 404 errors.
+            {/* SPA Routing Info - Only show when we couldn't auto-detect proper fallback */}
+            {(!indexFile || !fallbackFile || fallbackFile !== indexFile) && (
+              <div className="mt-4 p-3 bg-turbo-red/10 border border-turbo-red/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-link">
+                    <strong className="text-fg-muted">SPA Routing Configuration:</strong> We couldn't automatically detect your fallback file. For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
+                    <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">index.html</code>
+                    ) to enable client-side routing. This ensures URLs like{' '}
+                    <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">/topup</code>
+                    {' '}work correctly instead of showing 404 errors.
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         </div>
@@ -1129,6 +1150,11 @@ export default function DeploySitePanel() {
                   onClick={() => {
                     setArnsUpdateCancelled(true);
                     updateDeployStage('complete');
+                    // Show success info since deployment was successful
+                    setDeploySuccessInfo({
+                      manifestId: currentDeployResult?.manifestId || '',
+                      arnsConfigured: false
+                    });
                     setDeployMessage({
                       type: 'info',
                       text: 'Site deployed successfully! ArNS update was cancelled.'
@@ -1235,13 +1261,25 @@ export default function DeploySitePanel() {
             <div>
               <div className="text-sm text-link mb-2">Deployment Transaction ID:</div>
               <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
-                <File className="w-4 h-4 text-link" />
                 <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
                   {deploySuccessInfo.manifestId}
                 </span>
                 <CopyButton textToCopy={deploySuccessInfo.manifestId} />
               </div>
             </div>
+
+            {/* ArNS Transaction ID - Only show if ArNS was configured */}
+            {deploySuccessInfo.arnsTransactionId && (
+              <div>
+                <div className="text-sm text-link mb-2">Domain Update Transaction ID:</div>
+                <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
+                  <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+                    {deploySuccessInfo.arnsTransactionId}
+                  </span>
+                  <CopyButton textToCopy={deploySuccessInfo.arnsTransactionId} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Primary Actions */}
@@ -1326,8 +1364,14 @@ export default function DeploySitePanel() {
                         ...prev,
                         arnsConfigured: true,
                         arnsName: postDeployArNSName,
-                        undername: postDeployUndername || undefined
+                        undername: postDeployUndername || undefined,
+                        arnsTransactionId: result.transactionId
                       } : prev);
+                      
+                      // Refresh the specific ArNS name to get latest state
+                      setTimeout(() => {
+                        refreshSpecificName(postDeployArNSName);
+                      }, 3000); // Wait 3 seconds for propagation
                       
                       // Reset ArNS panel state
                       setPostDeployArNSName('');
@@ -1398,16 +1442,18 @@ export default function DeploySitePanel() {
           <div className={`flex items-center justify-between p-4 ${showDeployResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
               onClick={() => setShowDeployResults(!showDeployResults)}
-              className="flex items-center gap-2 hover:text-turbo-green transition-colors text-left"
+              className="flex items-start gap-2 hover:text-turbo-green transition-colors text-left"
               type="button"
             >
-              <Zap className="w-5 h-5 text-fg-muted" />
-              <span className="font-bold text-fg-muted">Recent Deployments</span>
-              <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
+              <Zap className="w-5 h-5 text-fg-muted flex-shrink-0 mt-0.5" />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                <span className="font-bold text-fg-muted">Recent Deployments</span>
+                <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
+              </div>
               {showDeployResults ? (
-                <ChevronUp className="w-4 h-4 text-link" />
+                <ChevronUp className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
+                <ChevronDown className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
               )}
             </button>
             
@@ -1594,7 +1640,7 @@ export default function DeploySitePanel() {
                                       ) : (
                                         <>
                                           <Copy className="w-4 h-4" />
-                                          Copy Manifest ID
+                                          Copy Deployment ID
                                         </>
                                       )}
                                     </button>
@@ -1657,7 +1703,7 @@ export default function DeploySitePanel() {
                       {/* Files Section - Integrated into same card */}
                       {group.files && group.files.files && (
                         <details className="border-t border-default/30 pt-3">
-                          <summary className="cursor-pointer font-medium text-fg-muted flex items-center gap-2 hover:text-turbo-red transition-colors">
+                          <summary className="cursor-pointer text-sm text-fg-muted flex items-center gap-2 hover:text-turbo-red transition-colors">
                             <Folder className="w-4 h-4" />
                             Files ({group.files.files.length})
                             <ChevronDown className="w-3 h-3 text-link ml-auto" />
@@ -1888,7 +1934,6 @@ export default function DeploySitePanel() {
             (r.type === 'files' && r.files?.find(f => f.id === showReceiptModal))
           )}
           uploadId={showReceiptModal}
-          initialStatus={uploadStatuses[showReceiptModal]}
         />
       )}
 

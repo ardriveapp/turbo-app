@@ -273,7 +273,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
               id="newsletter"
               checked={keepMeUpdated}
               onChange={(e) => setKeepMeUpdated(e.target.checked)}
-              className="mt-1"
+              className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors mt-1"
             />
             <label htmlFor="newsletter" className="text-sm text-link">
               Keep me updated on Turbo features and improvements

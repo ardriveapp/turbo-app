@@ -381,7 +381,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
               <input
                 disabled={!email}
                 type="checkbox"
-                className="mr-2"
+                className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors mr-2"
                 id="keepMeUpdatedCheckbox"
                 checked={keepMeUpdated}
                 onChange={(e) => setKeepMeUpdated(e.target.checked)}

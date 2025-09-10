@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, Receipt, FileText, Clock, RefreshCw, Activity, CheckCircle, Archive, XCircle, HelpCircle } from 'lucide-react';
+import { X, ExternalLink, Receipt, FileText, Clock, RefreshCw, CheckCircle, Archive, XCircle, HelpCircle, Code, Download } from 'lucide-react';
 import BaseModal from './BaseModal';
 import CopyButton from '../CopyButton';
 import { useUploadStatus, UploadStatus } from '../../hooks/useUploadStatus';
@@ -12,7 +12,7 @@ interface ReceiptModalProps {
 }
 
 const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModalProps) => {
-  const [activeTab, setActiveTab] = useState<'summary' | 'receipt' | 'status'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'details'>('summary');
   const { 
     checkUploadStatus, 
     statusChecking, 
@@ -44,25 +44,42 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
   const renderStatusIcon = (iconType: string, colorClass: string) => {
     switch (iconType) {
       case 'check-circle':
-        return <CheckCircle className={`w-4 h-4 ${colorClass}`} />;
+        return <CheckCircle className={`w-5 h-5 ${colorClass}`} />;
       case 'clock':
-        return <Clock className={`w-4 h-4 ${colorClass}`} />;
+        return <Clock className={`w-5 h-5 ${colorClass}`} />;
       case 'archive':
-        return <Archive className={`w-4 h-4 ${colorClass}`} />;
+        return <Archive className={`w-5 h-5 ${colorClass}`} />;
       case 'x-circle':
-        return <XCircle className={`w-4 h-4 ${colorClass}`} />;
+        return <XCircle className={`w-5 h-5 ${colorClass}`} />;
       case 'help-circle':
-        return <HelpCircle className={`w-4 h-4 ${colorClass}`} />;
+        return <HelpCircle className={`w-5 h-5 ${colorClass}`} />;
       default:
-        return <Clock className={`w-4 h-4 ${colorClass}`} />;
+        return <Clock className={`w-5 h-5 ${colorClass}`} />;
     }
   };
 
-  // formatFileSize and formatWinc are imported from useUploadStatus hook
+  // Helper to download receipt as JSON
+  const downloadReceipt = () => {
+    const data = {
+      uploadId,
+      receipt,
+      status: currentStatus,
+      timestamp: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `turbo-receipt-${uploadId.substring(0, 8)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <BaseModal onClose={onClose} showCloseButton={false}>
-      <div className="w-full max-w-sm sm:max-w-2xl max-h-[90vh] sm:max-h-[80vh] flex flex-col text-fg-muted">
+      <div className="w-[90vw] sm:w-[672px] h-[85vh] sm:h-[75vh] flex flex-col text-fg-muted max-w-[90vw]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-default/30">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -71,7 +88,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg sm:text-xl font-bold">Upload Receipt</h3>
-              <p className="text-xs sm:text-sm text-link">Transaction details and metadata</p>
+              <p className="text-xs sm:text-sm text-link">Transaction status and details</p>
             </div>
           </div>
           <button
@@ -82,233 +99,206 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
           </button>
         </div>
 
-        {/* Tabs - Mobile responsive with consistent styling */}
-        <div className="flex border-b border-default/30 overflow-x-auto">
-          {[
-            { id: 'summary', icon: FileText, label: 'Summary' },
-            { id: 'receipt', icon: Receipt, label: 'Receipt' },
-            { id: 'status', icon: Activity, label: 'Status' }
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id as any)}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-                activeTab === id
-                  ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
-                  : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
-              }`}
-            >
-              <Icon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-              {label}
-            </button>
-          ))}
+        {/* Simplified Tabs */}
+        <div className="flex border-b border-default/30">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'summary'
+                ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
+                : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            Summary
+          </button>
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === 'details'
+                ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
+                : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
+            }`}
+          >
+            <Code className="w-4 h-4 inline mr-2" />
+            Details
+          </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-auto">
           {activeTab === 'summary' ? (
-            /* Summary Tab - Quick overview and key actions */
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              {/* Success Card - Option A: Simple & Clean */}
-              <div className="bg-gradient-to-r from-turbo-green/10 to-turbo-green/5 rounded-lg p-4 border border-turbo-green/20">
-                
-                {/* Data Item ID */}
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center gap-1 text-xs text-link mb-2">
-                      <FileText className="w-3 h-3" />
-                      Data Item ID:
+            /* Enhanced Summary Tab - User-friendly overview */
+            <div className="p-4 sm:p-6 space-y-6">
+              {/* Status Section - Clean status display */}
+              {currentStatus && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      {renderStatusIcon(getStatusIcon(currentStatus.status, currentStatus.info), getStatusColor(currentStatus.status, currentStatus.info))}
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <span className="font-mono text-xs sm:text-sm text-link break-all flex-1">{uploadId}</span>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <CopyButton textToCopy={uploadId} />
-                        <a
-                          href={`https://arweave.net/${uploadId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2 py-1 text-xs bg-turbo-green/10 text-turbo-green rounded hover:bg-turbo-green/20 transition-colors"
-                          title="View on Arweave"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span className="hidden sm:inline">View</span>
-                        </a>
+                    <div>
+                      <div className={`text-lg font-semibold ${getStatusColor(currentStatus.status, currentStatus.info)}`}>
+                        {currentStatus.status === 'FINALIZED' ? 'Permanently Stored' :
+                         currentStatus.status === 'CONFIRMED' ? 'Processing' :
+                         currentStatus.status === 'FAILED' ? 'Upload Failed' :
+                         'Checking Status'}
                       </div>
+                      <p className="text-sm text-link">
+                        {getStatusDescription(currentStatus.status, currentStatus.info)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => checkUploadStatus(uploadId, true)}
+                    disabled={isLoadingStatus}
+                    className="p-2 hover:bg-surface rounded transition-colors disabled:opacity-50"
+                    title="Refresh status"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-link ${isLoadingStatus ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              )}
+
+              {/* File Information */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-fg-muted flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-turbo-red" />
+                  File Information
+                </h4>
+                
+                <div className="bg-surface rounded-lg p-4 space-y-3">
+                  {/* File Size & Type */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentStatus?.rawContentLength && (
+                      <div>
+                        <div className="text-xs text-link mb-1">Size</div>
+                        <div className="text-sm text-fg-muted">
+                          {formatFileSize(currentStatus.rawContentLength)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {currentStatus?.payloadContentType && (
+                      <div>
+                        <div className="text-xs text-link mb-1">Type</div>
+                        <div className="text-sm text-fg-muted">
+                          {currentStatus.payloadContentType.split('/').pop()?.toUpperCase() || 'File'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload Cost */}
+                  {(currentStatus?.winc || receipt?.winc) && (
+                    <div>
+                      <div className="text-xs text-link mb-1">Upload Cost</div>
+                      <div className="text-sm font-medium text-fg-muted">
+                        {formatWinc(currentStatus?.winc || receipt?.winc)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Time */}
+                  {receipt?.timestamp && (
+                    <div>
+                      <div className="text-xs text-link mb-1">Uploaded</div>
+                      <div className="text-sm text-fg-muted">
+                        {formatTimestamp(receipt.timestamp)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Transaction IDs - Collapsible for cleaner look */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-fg-muted flex items-center gap-2">
+                  <Archive className="w-4 h-4 text-turbo-red" />
+                  Transaction Details
+                </h4>
+                
+                <div className="space-y-3">
+                  {/* Data Item ID */}
+                  <div className="bg-surface rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-link">Data Item ID</span>
+                      <div className="flex items-center gap-1">
+                        <CopyButton textToCopy={uploadId} />
+                      </div>
+                    </div>
+                    <div className="font-mono text-xs text-fg-muted break-all">
+                      {uploadId}
                     </div>
                   </div>
 
-                  {/* Bundle ID */}
+                  {/* Parent Bundle ID */}
                   {currentStatus?.bundleId && (
-                    <div>
-                      <div className="flex items-center gap-1 text-xs text-link mb-2">
-                        <Archive className="w-3 h-3" />
-                        Parent Bundle ID:
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="font-mono text-xs text-link break-all flex-1">{currentStatus.bundleId}</span>
+                    <div className="bg-surface rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-link">Parent Bundle ID</span>
                         <CopyButton textToCopy={currentStatus.bundleId} />
                       </div>
-                    </div>
-                  )}
-
-                  {/* Status - Just visual cue */}
-                  {currentStatus && (
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-link">Status:</div>
-                      <div className="flex items-center">
-                        {renderStatusIcon(getStatusIcon(currentStatus.status, currentStatus.info), getStatusColor(currentStatus.status, currentStatus.info))}
+                      <div className="font-mono text-xs text-fg-muted break-all">
+                        {currentStatus.bundleId}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Upload Information */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-fg-muted">Upload Information</h4>
-                
-                {(currentStatus?.winc || receipt?.winc) && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">Upload Cost:</span>
-                    <span className="text-sm font-bold text-fg-muted">
-                      {formatWinc(currentStatus?.winc || receipt?.winc)}
-                    </span>
-                  </div>
-                )}
-
-                {currentStatus?.rawContentLength && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">File Size:</span>
-                    <span className="text-sm font-bold text-fg-muted">
-                      {formatFileSize(currentStatus.rawContentLength)}
-                    </span>
-                  </div>
-                )}
-                
-                {receipt?.timestamp && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">Upload Time:</span>
-                    <span className="text-sm text-fg-muted">{formatTimestamp(receipt.timestamp)}</span>
-                  </div>
-                )}
-                
-                {currentStatus?.payloadContentType && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">File Type:</span>
-                    <span className="text-sm text-fg-muted font-mono">{currentStatus.payloadContentType}</span>
-                  </div>
-                )}
-
-                {receipt?.data?.owner && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-link">Owner:</span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-mono text-xs text-link">
-                        {receipt.data.owner.substring(0, 8)}...{receipt.data.owner.substring(receipt.data.owner.length - 6)}
-                      </span>
-                      <CopyButton textToCopy={receipt.data.owner} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : activeTab === 'receipt' ? (
-            /* Receipt Details Tab - Raw JSON data only */
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h3 className="text-lg font-semibold">Complete Receipt JSON</h3>
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-link">From Turbo SDK</div>
-                  <CopyButton textToCopy={JSON.stringify(receipt, null, 2)} />
-                </div>
-              </div>
-
-              <div className="bg-canvas rounded-lg p-2 sm:p-4 border border-default">
-                <div className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 sm:max-h-96">
-                  <pre className="whitespace-pre-wrap break-words leading-tight">{JSON.stringify(receipt, null, 2)}</pre>
-                </div>
+              {/* Quick Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={downloadReceipt}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-default rounded-lg text-sm text-link hover:text-fg-muted hover:border-turbo-red/50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Receipt
+                </button>
+                <a
+                  href={`https://arweave.net/${uploadId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg text-sm hover:bg-turbo-red/90 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View on Arweave
+                </a>
               </div>
             </div>
           ) : (
-            /* Status Details Tab - Processing status and raw JSON only */
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h3 className="text-lg font-semibold">Processing Status</h3>
-                <button
-                  onClick={() => checkUploadStatus(uploadId)}
-                  disabled={isLoadingStatus}
-                  className="flex items-center gap-2 px-3 py-1 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isLoadingStatus ? 'animate-spin' : ''}`} />
-                  Refresh Status
-                </button>
+            /* Technical Details Tab - Combined JSON data */
+            <div className="p-4 sm:p-6 space-y-6">
+              {/* Receipt JSON */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-fg-muted">Upload Receipt</h4>
+                  <CopyButton textToCopy={JSON.stringify(receipt, null, 2)} />
+                </div>
+                <div className="bg-canvas rounded-lg p-3 border border-default">
+                  <pre className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                    {JSON.stringify(receipt, null, 2)}
+                  </pre>
+                </div>
               </div>
 
-              {currentStatus ? (
-                <div className="space-y-4">
-                  {/* Current Status Summary */}
-                  <div className="bg-surface rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">
-                        {renderStatusIcon(getStatusIcon(currentStatus.status, currentStatus.info), getStatusColor(currentStatus.status, currentStatus.info))}
-                      </div>
-                      <div>
-                        <div className={`text-lg font-medium ${getStatusColor(currentStatus.status, currentStatus.info)}`}>
-                          {currentStatus.status}
-                          {currentStatus.info && (
-                            <span className="ml-2 text-sm text-link">• {currentStatus.info}</span>
-                          )}
-                        </div>
-                        <div className="text-sm text-link">
-                          {getStatusDescription(currentStatus.status, currentStatus.info)}
-                        </div>
-                      </div>
-                    </div>
+              {/* Status Response JSON */}
+              {currentStatus && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-fg-muted">Status Response</h4>
+                    <CopyButton textToCopy={JSON.stringify(currentStatus, null, 2)} />
                   </div>
-
-                  {/* Complete Status Response */}
-                  <div className="bg-canvas rounded-lg p-2 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3">
-                      <h4 className="text-sm font-medium">Complete Status Response</h4>
-                      <CopyButton textToCopy={JSON.stringify(currentStatus, null, 2)} />
-                    </div>
-                    <div className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-32 sm:max-h-64">
-                      <pre className="whitespace-pre-wrap break-words leading-tight">{JSON.stringify(currentStatus, null, 2)}</pre>
-                    </div>
+                  <div className="bg-canvas rounded-lg p-3 border border-default">
+                    <pre className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                      {JSON.stringify(currentStatus, null, 2)}
+                    </pre>
                   </div>
-                </div>
-              ) : (
-                <div className="bg-surface rounded-lg p-8 text-center">
-                  <div className="text-link mb-4">
-                    {isLoadingStatus ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Loading status...
-                      </div>
-                    ) : (
-                      "Status information not available"
-                    )}
-                  </div>
-                  {!isLoadingStatus && (
-                    <button
-                      onClick={() => checkUploadStatus(uploadId)}
-                      className="px-4 py-2 bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors"
-                    >
-                      Check Status
-                    </button>
-                  )}
                 </div>
               )}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 sm:p-4 border-t border-default/30 bg-surface/50">
-          <div className="text-xs text-link">
-            This receipt contains all the details about your upload transaction including data cache locations, 
-            fast finality indexes, and transaction metadata.
-          </div>
         </div>
       </div>
     </BaseModal>

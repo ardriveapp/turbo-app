@@ -17,7 +17,8 @@ export default function RecentDeploymentsPage() {
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const { 
     checkUploadStatus, 
-    checkMultipleStatuses, 
+    checkMultipleStatuses,
+    initializeFromCache, 
     statusChecking, 
     uploadStatuses, 
     getStatusIcon
@@ -228,19 +229,22 @@ export default function RecentDeploymentsPage() {
   // Auto-check status for all deployments when the page loads - same pattern as DeploySitePanel
   useEffect(() => {
     if (deployHistory.length > 0) {
-      // Check status for all deployments automatically on page load
+      // Get all IDs that need status checking
       const allIds = deployHistory.flatMap(result => {
         if (result.type === 'manifest') return result.id ? [result.id] : [];
         if (result.type === 'files') return result.files?.map(f => f.id) || [];
         return [];
       });
       
-      // Small delay to avoid overwhelming the API
+      // Immediately initialize from cache for instant UI feedback
+      initializeFromCache(allIds);
+      
+      // Then check for updates with a small delay to avoid overwhelming the API
       setTimeout(() => {
         checkMultipleStatuses(allIds);
       }, 1000);
     }
-  }, [deployHistory, checkMultipleStatuses]);
+  }, [deployHistory, checkMultipleStatuses, initializeFromCache]);
 
   if (Object.keys(deploymentGroups).length === 0) {
     return (
@@ -480,7 +484,7 @@ export default function RecentDeploymentsPage() {
                                     ) : (
                                       <>
                                         <Copy className="w-4 h-4" />
-                                        Copy Manifest ID
+                                        Copy Deployment ID
                                       </>
                                     )}
                                   </button>

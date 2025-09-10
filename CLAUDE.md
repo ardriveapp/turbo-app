@@ -48,11 +48,6 @@ This project currently has **no test framework configured**. No test scripts exi
 
 ### Command Validation
 Commands that can be run without user approval:
-- `npm run type-check` - Type checking (safe to run automatically)
-- `npm run type-check:*` - Any type-check variant
-
-### Required Commands for Development
-Always run these commands after making code changes:
 - `npm run type-check` - TypeScript type checking
 - `npm run lint` - ESLint validation
 
@@ -77,7 +72,7 @@ This is a unified Turbo Gateway application consolidating three separate applica
 const routes = [
   '/', '/topup', '/upload', '/deploy', '/share', '/gift', '/account',
   '/domains', '/calculator', '/services-calculator', 
-  '/balances', '/redeem', '/developer', '/gateway-info'
+  '/balances', '/redeem', '/developer', '/gateway-info', '/deployments'
 ];
 ```
 
@@ -103,7 +98,7 @@ The app supports three wallet ecosystems with different capabilities:
 Uses Zustand with selective persistence:
 ```typescript
 // Persistent state (survives page refresh)
-address, walletType, arnsNamesCache, uploadHistory
+address, walletType, arnsNamesCache, uploadHistory, deployHistory
 
 // Ephemeral state (cleared on refresh)
 creditBalance, paymentState, UI state
@@ -126,7 +121,7 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - **Gift Payment Flow**: Multi-step payment process with confirmation panels
 - **Fiat Payments**: Complete fiat payment panels (PaymentDetailsPanel, PaymentConfirmationPanel, PaymentSuccessPanel)
 - **Gift Fiat Flow**: Dedicated gift payment panels (GiftPaymentDetailsPanel, GiftPaymentConfirmationPanel, GiftPaymentSuccessPanel)
-- **Crypto Payments**: UI ready with crypto-to-credits conversion, backend integration pending
+- **Crypto Payments**: Solana and Ethereum crypto payments with conversion calculations
 - **Real-time Conversion**: USD/crypto to credits with debouncing (500ms)
 - **Balance Refresh**: Custom events trigger balance updates
 
@@ -137,14 +132,21 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - **Receipt System**: Transaction IDs with Arweave explorer links
 - **Batch Upload**: Drag & drop with visual feedback
 
+#### Site Deployment
+- **Deploy Site Panel**: Complete site deployment with data export functionality
+- **ArNS Association**: Associate deployments with owned ArNS names
+- **Recent Deployments**: Track and manage deployed sites
+- **TTL Configuration**: Default 600 seconds (10 minutes) for all ArNS records
+
 #### ArNS Integration
-- **Primary Name Resolution**: AR.IO SDK with 1-hour cache
+- **Primary Name Resolution**: AR.IO SDK with 24-hour cache
 - **Name Display**: Throughout UI with loading states
 - **Search Functionality**: Name availability checking
 - **Domain Management**: Purchase UI ready (not connected)
-- **Owned Names Management**: Fetch, cache, and update ArNS names owned by connected wallet
+- **Owned Names Management**: Fetch, cache (6 hours), and update ArNS names owned by connected wallet
 - **ANT Updates**: Update ArNS names to point to new manifests (base name and undernames)
 - **Site Association**: ArNSAssociationPanel for associating deployments with owned names
+- **TTL Settings**: Unified 600-second TTL for all ArNS records (configurable in future)
 
 ### Navigation Structure
 
@@ -152,19 +154,20 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 **Services** (login required):
 - Buy Credits (`topup`)
 - Upload Files (`upload`) 
-- Deploy Site (`deploy`) - now available with site data export functionality
+- Deploy Site (`deploy`)
 - Share Credits (`share`)
 - Send Gift (`gift`)
-- Account (`account`) - new account management page
+- Account (`account`)
 
 **Tools**:
 - Search Domains (`domains`)
 - Developer Resources (`developer`)
 - Pricing Calculator (`calculator`)
-- Services Calculator (`services-calculator`) - combined storage + ArNS pricing
+- Services Calculator (`services-calculator`)
 - Check Balance (`balances`)
 - Redeem Gift (`redeem`)
 - Service Info (`gateway-info`)
+- Recent Deployments (`deployments`)
 
 #### URL Parameter Support
 - `?payment=success` - Payment success callback (handled by PaymentCallbackHandler)
@@ -202,13 +205,14 @@ All service panels follow consistent styling:
 #### Custom Hooks
 - `useWincForOneGiB`: Storage pricing calculations
 - `useCreditsForFiat`: USD to credits conversion with debouncing
-- `useCreditsForCrypto`: Crypto to credits conversion calculations (newly implemented)
+- `useCreditsForCrypto`: Crypto to credits conversion calculations
+- `useCryptoForFiat`: Fiat to crypto conversion for payment amounts
 - `useFileUpload`: Multi-chain upload logic with proper signers
 - `useFolderUpload`: Folder upload with drag & drop support
 - `usePrimaryArNSName`: Primary name fetching with cache management
-- `usePrimaryArNSNames`: Fetch and manage owned ArNS names with ANT state tracking
+- `useOwnedArNSNames`: Fetch and manage owned ArNS names with ANT state tracking
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
-- `useCountries`: Country data for payment forms (newly implemented)
+- `useCountries`: Country data for payment forms
 - `useDebounce`: Input debouncing (500ms default)
 - `useTurboConfig`: Centralized Turbo SDK configuration with environment-based settings
 - `useAddressState`: Address state management
@@ -297,7 +301,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
-- Crypto payments for Solana and Ethereum (improved UX and testing needed)
+- Crypto payments for Solana and Ethereum
 - File upload with progress tracking (Arweave wallets only)
 - Site deployment with data export functionality and ArNS association
 - Credit sharing between wallets (Wander wallet required for signing)
@@ -311,8 +315,10 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Pricing calculator with storage estimates
 - Services calculator with combined storage + ArNS pricing
 - Gateway information display
+- Recent deployments tracking
 - Improved mobile views and responsive design
 - Sticky top header navigation
+- Optimized TTL settings for ArNS records (600s default)
 
 ### ⚠️ Known Limitations
 - **Crypto Payments**: Solana and Ethereum crypto payments implemented but need improved UX and additional testing
@@ -341,19 +347,23 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Error handling includes per-file error states
 
 ### ArNS Development
-- Use `usePrimaryArNSNames` hook for fetching and managing owned ArNS names
+- Use `useOwnedArNSNames` hook for fetching and managing owned ArNS names
 - Only Arweave wallets can update ArNS records (requires ANT signing)
 - ArNSAssociationPanel provides UI for name selection and undername management
 - Updates require processId from owned names and ArconnectSigner for ANT operations
 - Cache owned names with automatic refresh and manual refresh options
 - Support both base name (@) and undername record updates
-
+- **TTL Configuration**: 600 seconds (10 minutes) default for all ArNS records
+  - Provides good balance between caching and update frequency
+  - Future enhancement: Allow users to configure TTL per deployment
 
 ### State Management
-- Persistent state: wallet info, ArNS cache, upload history
+- Persistent state: wallet info, ArNS cache, upload history, deploy history
 - Ephemeral state: balances, payment flows, UI state
 - Custom events for cross-component communication (`refresh-balance`)
-- 1-hour cache for ArNS name resolution
+- Cache durations:
+  - Primary ArNS name: 24 hours
+  - Owned ArNS names: 6 hours
 
 ### React Router Patterns
 - Use `useNavigate()` hook for programmatic navigation

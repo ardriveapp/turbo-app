@@ -364,6 +364,13 @@ export function useFolderUpload() {
 
   const updateDeployStage = useCallback((stage: 'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete') => {
     setDeployStage(stage);
+    
+    // Keep deploying true during ArNS updates, only set false on complete
+    if (stage === 'complete') {
+      setDeploying(false);
+    } else if (stage !== 'idle') {
+      setDeploying(true);
+    }
   }, []);
 
   return {
