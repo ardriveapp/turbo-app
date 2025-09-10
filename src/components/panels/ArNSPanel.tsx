@@ -25,7 +25,6 @@ export default function ArNSPanel() {
       
       // If we get a record back, the domain is taken
       if (record) {
-        console.log('Domain is taken:', record);
         setAvailability(false);
       }
     } catch (error) {

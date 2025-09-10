@@ -56,8 +56,8 @@ interface UploadResult {
 }
 
 interface DeployResult {
-  type: 'manifest' | 'files';
-  id?: string; // Manifest ID
+  type: 'manifest' | 'files' | 'arns-update';
+  id?: string; // Manifest ID or ArNS transaction ID
   manifestId?: string;
   files?: Array<{
     id: string;
@@ -67,6 +67,12 @@ interface DeployResult {
   }>;
   timestamp?: number;
   receipt?: any; // Store receipt for manifest
+  // ArNS-specific fields
+  arnsName?: string;      // ArNS name updated
+  undername?: string;     // Undername if used
+  targetId?: string;      // Transaction ID the name now points to
+  arnsStatus?: 'success' | 'failed' | 'pending';
+  arnsError?: string;     // Error message if failed
 }
 
 export interface PaymentInformation {
@@ -92,7 +98,8 @@ interface StoreState {
   creditBalance: number;
   
   // ArNS state
-  arnsNamesCache: Record<string, { name: string; timestamp: number }>;
+  arnsNamesCache: Record<string, { name: string; logo?: string; timestamp: number }>;
+  ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}>; timestamp: number }>;
   
   // Upload history state
   uploadHistory: UploadResult[];
@@ -130,8 +137,10 @@ interface StoreState {
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
   setCreditBalance: (balance: number) => void;
-  setArNSName: (address: string, name: string) => void;
-  getArNSName: (address: string) => string | null;
+  setArNSName: (address: string, name: string, logo?: string) => void;
+  getArNSName: (address: string) => { name: string; logo?: string } | null;
+  setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}>) => void;
+  getOwnedArNSNames: (address: string) => Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}> | null;
   addUploadResults: (results: UploadResult[]) => void;
   clearUploadHistory: () => void;
   addDeployResults: (results: DeployResult[]) => void;
@@ -169,6 +178,7 @@ export const useStore = create<StoreState>()(
       walletType: null,
       creditBalance: 0,
       arnsNamesCache: {},
+      ownedArnsCache: {},
       uploadHistory: [],
       deployHistory: [],
       uploadStatusCache: {},
@@ -192,23 +202,41 @@ export const useStore = create<StoreState>()(
       
       // Actions
       setAddress: (address, type) => set({ address, walletType: type }),
-      clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {} }),
+      clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {}, ownedArnsCache: {} }),
       setCreditBalance: (balance) => set({ creditBalance: balance }),
-      setArNSName: (address, name) => {
+      setArNSName: (address, name, logo) => {
         const cache = get().arnsNamesCache;
         set({ 
           arnsNamesCache: { 
             ...cache, 
-            [address]: { name, timestamp: Date.now() }
+            [address]: { name, logo, timestamp: Date.now() }
           }
         });
       },
       getArNSName: (address) => {
         const cache = get().arnsNamesCache;
         const entry = cache[address];
-        // Cache for 1 hour
-        if (entry && Date.now() - entry.timestamp < 3600000) {
-          return entry.name;
+        // Cache for 24 hours to match reference implementation
+        if (entry && Date.now() - entry.timestamp < 24 * 60 * 60 * 1000) {
+          return { name: entry.name, logo: entry.logo };
+        }
+        return null;
+      },
+      setOwnedArNSNames: (address, names) => {
+        const cache = get().ownedArnsCache;
+        set({
+          ownedArnsCache: {
+            ...cache,
+            [address]: { names, timestamp: Date.now() }
+          }
+        });
+      },
+      getOwnedArNSNames: (address) => {
+        const cache = get().ownedArnsCache;
+        const entry = cache[address];
+        // Cache for 6 hours
+        if (entry && Date.now() - entry.timestamp < 21600000) {
+          return entry.names;
         }
         return null;
       },
@@ -325,6 +353,7 @@ export const useStore = create<StoreState>()(
         address: state.address,
         walletType: state.walletType, 
         arnsNamesCache: state.arnsNamesCache,
+        ownedArnsCache: state.ownedArnsCache,
         uploadHistory: state.uploadHistory,
         deployHistory: state.deployHistory,
         uploadStatusCache: state.uploadStatusCache,

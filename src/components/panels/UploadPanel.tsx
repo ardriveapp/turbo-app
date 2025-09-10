@@ -3,7 +3,7 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -17,6 +17,7 @@ export default function UploadPanel() {
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [showStatusGuide, setShowStatusGuide] = useState(false);
+  const [showUploadResults, setShowUploadResults] = useState(true);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const wincForOneGiB = useWincForOneGiB();
   const { uploadMultipleFiles, uploading, uploadProgress, errors, reset: resetFileUpload } = useFileUpload();
@@ -215,22 +216,6 @@ export default function UploadPanel() {
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
-        {/* Current Balance */}
-        {address && (
-          <div className="bg-surface rounded-lg p-4 mb-4 sm:mb-6">
-            <div className="flex justify-between items-center">
-              <span className="text-link">Available Credits:</span>
-              <div className="text-right">
-                <span className="font-bold text-fg-muted">{creditBalance.toFixed(4)} Credits</span>
-                {wincForOneGiB && (
-                  <div className="text-xs text-link">
-                    ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Connection Warning */}
         {!address && (
@@ -459,95 +444,116 @@ export default function UploadPanel() {
       )}
       </div>
 
-      {/* Upload Results - Enhanced with Status Checking */}
+      {/* Upload Results - Modernized to Match Deployment Results */}
       {uploadHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface rounded-lg p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <h4 className="font-bold text-fg-muted flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-turbo-green" />
-              Upload Results ({uploadHistory.length})
-            </h4>
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <button
-                onClick={exportToCSV}
-                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-green/20 text-turbo-green rounded hover:bg-turbo-green/30 transition-colors"
-                title="Export upload history to CSV"
-              >
-                <Archive className="w-3 h-3" />
-                <span className="hidden xs:inline">Export CSV</span>
-                <span className="xs:hidden">CSV</span>
-              </button>
-              <button
-                onClick={() => checkMultipleStatuses(uploadHistory.map(r => r.id))}
-                disabled={Object.values(statusChecking).some(checking => checking)}
-                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
-                title="Check status for all uploaded files"
-              >
-                <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
-                <span className="hidden xs:inline">Check Status</span>
-                <span className="xs:hidden">Status</span>
-              </button>
-              <button
-                onClick={() => {
-                  clearUploadHistory();
-                  resetFileUpload();
-                }}
-                className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
-                title="Clear all upload history"
-              >
-                <XCircle className="w-3 h-3" />
-                <span className="hidden xs:inline">Clear History</span>
-                <span className="xs:hidden">Clear</span>
-              </button>
-            </div>
+        <div className="mt-4 sm:mt-6 bg-surface rounded-lg">
+          {/* Collapsible Header with Actions */}
+          <div className={`flex items-center justify-between p-4 ${showUploadResults ? 'pb-0 mb-4' : 'pb-4'}`}>
+            <button
+              onClick={() => setShowUploadResults(!showUploadResults)}
+              className="flex items-center gap-2 hover:text-turbo-green transition-colors text-left"
+              type="button"
+            >
+              <Upload className="w-5 h-5 text-fg-muted" />
+              <span className="font-bold text-fg-muted">Recent Uploads</span>
+              <span className="text-xs text-link">({uploadHistory.length})</span>
+              {showUploadResults ? (
+                <ChevronUp className="w-4 h-4 text-link" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-link" />
+              )}
+            </button>
+            
+            {/* Actions only show when expanded */}
+            {showUploadResults && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportToCSV}
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors"
+                  title="Export upload history to CSV"
+                >
+                  <Archive className="w-3 h-3" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </button>
+                <button
+                  onClick={() => checkMultipleStatuses(uploadHistory.map(r => r.id), true)}
+                  disabled={Object.values(statusChecking).some(checking => checking)}
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors disabled:opacity-50"
+                  title="Check status for all uploaded files"
+                >
+                  <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Check Status</span>
+                </button>
+                <button
+                  onClick={() => {
+                    clearUploadHistory();
+                    resetFileUpload();
+                  }}
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-red-400 border border-default/30 rounded hover:border-red-400/50 transition-colors"
+                  title="Clear all upload history"
+                >
+                  <XCircle className="w-3 h-3" />
+                  <span className="hidden sm:inline">Clear History</span>
+                </button>
+              </div>
+            )}
           </div>
           
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {uploadHistory.map((result, index) => {
-              const status = uploadStatuses[result.id];
-              const isChecking = statusChecking[result.id];
-              
-              return (
-                <div key={index} className="bg-canvas rounded-lg p-3 sm:p-4 border border-default/30 overflow-hidden">
-                  <div className="space-y-2">
-                    {/* Row 1: Status Icon + Shortened TxID + Actions */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {/* Status Icon (no text) */}
-                        {status ? (() => {
-                          const iconType = getStatusIcon(status.status, status.info);
-                          const iconColor = getStatusColor(status.status, status.info);
-                          switch (iconType) {
-                            case 'check-circle':
-                              return <CheckCircle className={`w-4 h-4 ${iconColor}`} />;
-                            case 'clock':
-                              return <Clock className={`w-4 h-4 ${iconColor}`} />;
-                            case 'archive':
-                              return <Archive className={`w-4 h-4 ${iconColor}`} />;
-                            case 'x-circle':
-                              return <XCircle className={`w-4 h-4 ${iconColor}`} />;
-                            case 'help-circle':
-                              return <HelpCircle className={`w-4 h-4 ${iconColor}`} />;
-                            default:
-                              return <Clock className={`w-4 h-4 text-yellow-500`} />;
-                          }
-                        })() : <Clock className="w-4 h-4 text-yellow-500" />}
-                        
-                        {/* Shortened Transaction ID */}
-                        <div className="font-mono text-sm text-fg-muted">
-                          {result.id.substring(0, 5)}...
-                        </div>
-                        {/* File Name (if available) */}
-                        {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
-                          <div className="text-sm text-fg-muted">
-                            {result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}
+          {showUploadResults && (
+            <>
+              <div className="space-y-4 max-h-[700px] overflow-y-auto px-4">
+                {uploadHistory.map((result, index) => {
+                  const status = uploadStatuses[result.id];
+                  const isChecking = statusChecking[result.id];
+                  
+                  // Create a unified status icon renderer to match deployment results
+                  const renderStatusIcon = (iconName: string) => {
+                    switch (iconName) {
+                      case 'check-circle':
+                        return <CheckCircle className="w-4 h-4 text-turbo-green" />;
+                      case 'clock':
+                        return <Clock className="w-4 h-4 text-yellow-500" />;
+                      case 'archive':
+                        return <Archive className="w-4 h-4 text-turbo-blue" />;
+                      case 'x-circle':
+                        return <XCircle className="w-4 h-4 text-red-400" />;
+                      case 'help-circle':
+                        return <HelpCircle className="w-4 h-4 text-link" />;
+                      default:
+                        return <Clock className="w-4 h-4 text-yellow-500" />;
+                    }
+                  };
+                  
+                  return (
+                    <div key={index} className="border border-default rounded-lg p-4 bg-surface/50">
+                      <div className="space-y-2">
+                        {/* Row 1: Transaction ID + Filename + Actions */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            {/* Shortened Transaction ID */}
+                            <div className="font-mono text-sm text-fg-muted">
+                              {result.id.substring(0, 6)}...
+                            </div>
+                            {/* File Name (if available) */}
+                            {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
+                              <div className="text-sm text-fg-muted truncate" title={result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}>
+                                {result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
                       
-                      {/* Desktop: Show all actions */}
-                      <div className="hidden sm:flex items-center gap-1">
-                        <CopyButton textToCopy={result.id} />
+                          {/* Desktop: Show all actions */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            {/* Status Icon as part of actions - only show if we have real status */}
+                            {status && (
+                              <div className="p-1.5" title={`Status: ${status.status}`}>
+                                {(() => {
+                                  const iconType = getStatusIcon(status.status, status.info);
+                                  return renderStatusIcon(iconType);
+                                })()}
+                              </div>
+                            )}
+                            <CopyButton textToCopy={result.id} />
                         <button
                           onClick={() => setShowReceiptModal(result.id)}
                           className="p-1.5 text-link hover:text-turbo-red transition-colors"
@@ -574,17 +580,26 @@ export default function UploadPanel() {
                         </a>
                       </div>
 
-                      {/* Mobile: 3-dot menu */}
-                      <div className="sm:hidden">
-                        <Popover className="relative">
-                          <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
-                            <MoreVertical className="w-4 h-4" />
-                          </PopoverButton>
-                          <PopoverPanel 
-                            anchor="bottom end"
-                            className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[200] py-1 mt-1"
-                          >
-                            {({ close }) => (
+                          {/* Mobile: Status icon + 3-dot menu */}
+                          <div className="sm:hidden flex items-center gap-1">
+                            {/* Status Icon for mobile */}
+                            {status && (
+                              <div className="p-1.5" title={`Status: ${status.status}`}>
+                                {(() => {
+                                  const iconType = getStatusIcon(status.status, status.info);
+                                  return renderStatusIcon(iconType);
+                                })()}
+                              </div>
+                            )}
+                            <Popover className="relative">
+                              <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                                <MoreVertical className="w-4 h-4" />
+                              </PopoverButton>
+                              <PopoverPanel 
+                                anchor="bottom end"
+                                className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[200] py-1 mt-1"
+                              >
+                                {({ close }) => (
                               <>
                                 <button
                                   onClick={() => {
@@ -612,7 +627,7 @@ export default function UploadPanel() {
                                     </>
                                   ) : (
                                     <>
-                                      <Receipt className="w-4 h-4" />
+                                      <Copy className="w-4 h-4" />
                                       Copy Tx ID
                                     </>
                                   )}
@@ -648,11 +663,11 @@ export default function UploadPanel() {
                                   <ExternalLink className="w-4 h-4" />
                                   View File
                                 </a>
-                              </>
-                            )}
-                          </PopoverPanel>
-                        </Popover>
-                      </div>
+                                  </>
+                                )}
+                              </PopoverPanel>
+                            </Popover>
+                          </div>
                     </div>
 
                     {/* Row 2: Content Type + File Size */}
@@ -692,54 +707,29 @@ export default function UploadPanel() {
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
           
-          {/* Collapsible Status Guide */}
-          <div className="mt-4">
-            <button
-              onClick={() => setShowStatusGuide(!showStatusGuide)}
-              className="w-full flex items-center justify-between p-3 bg-canvas rounded-lg border border-default/30 hover:border-default/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-turbo-red" />
-                <span className="text-sm font-medium text-fg-muted">Status Guide</span>
+          {/* View All Button at Bottom - only show when expanded and there are uploads */}
+          {showUploadResults && uploadHistory.length > 0 && (
+            <div className="border-t border-default mt-4">
+              <div className="p-4">
+                <button
+                  onClick={() => {
+                    // For now, just scroll to top of current page - could link to dedicated uploads page later
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+                >
+                  View All Uploads <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
-              <ChevronDown className={`w-4 h-4 text-link transition-transform ${showStatusGuide ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {showStatusGuide && (
-              <div className="mt-2 p-4 bg-surface/50 rounded-lg border border-default/30">
-                <div className="text-xs text-link space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">CONFIRMED/pending</strong> - File bundled, waiting for Arweave mining (most common)
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">FINALIZED/permanent</strong> - File is permanently stored on Arweave
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Archive className="w-4 h-4 text-turbo-blue flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">CONFIRMED/new</strong> - File bundling processing started
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <HelpCircle className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">NOT_FOUND</strong> - File not yet indexed (try again in a few minutes)
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+          
         </div>
       )}
 

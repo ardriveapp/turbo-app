@@ -1,12 +1,12 @@
 import { Wallet, ExternalLink } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { formatWalletAddress } from '../../utils';
-import { useArNSName } from '../../hooks/useArNSName';
+import { usePrimaryArNSName } from '../../hooks/usePrimaryArNSName';
 import CopyButton from '../CopyButton';
 
 export default function WalletOverviewCard() {
   const { address, walletType } = useStore();
-  const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
+  const { arnsName, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
 
   if (!address || !walletType) {
     return null;
@@ -48,14 +48,25 @@ export default function WalletOverviewCard() {
         {(arnsName || loadingArNS) && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-link">ArNS Name:</span>
-            <span className="font-medium text-turbo-red">
-              {loadingArNS ? 'Loading...' : arnsName || 'None'}
-            </span>
+            {loadingArNS ? (
+              <span className="font-medium text-fg-muted">Loading...</span>
+            ) : arnsName ? (
+              <a 
+                href={`https://${arnsName}.ar.io`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-fg-muted hover:text-turbo-red transition-colors cursor-pointer"
+              >
+                {arnsName}
+              </a>
+            ) : (
+              <span className="font-medium text-fg-muted">None</span>
+            )}
           </div>
         )}
         <div className="flex items-center justify-between text-sm">
           <span className="text-link">Address:</span>
-          <span className="font-mono text-xs">{formatWalletAddress(address, 12)}</span>
+          <span className="font-mono text-xs break-all">{address}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-link">Wallet Type:</span>

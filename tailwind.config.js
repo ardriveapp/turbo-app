@@ -23,6 +23,7 @@ export default {
           red: '#FE0230',
           blue: '#3142C4',
           green: '#18A957',
+          yellow: '#FFBB38', // ArNS brand color
         }
       },
     },

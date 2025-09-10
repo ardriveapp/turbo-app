@@ -173,7 +173,7 @@ app/
 │   │   ├── useCreditsForFiat.ts
 │   │   ├── useDebounce.ts
 │   │   ├── useFileUpload.ts
-│   │   └── useArNSName.ts
+│   │   └── usePrimaryArNSName.ts
 │   ├── pages/               # Main pages
 │   │   ├── LandingPage.tsx
 │   │   ├── Dashboard.tsx

@@ -8,7 +8,7 @@ import { useStore } from '../store/useStore';
 import { formatWalletAddress } from '../utils';
 import TurboLogo from './TurboLogo';
 import WalletSelectionModal from './modals/WalletSelectionModal';
-import { useArNSName } from '../hooks/useArNSName';
+import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
 import { useNavigate } from 'react-router-dom';
 import { useTurboConfig } from '../hooks/useTurboConfig';
 
@@ -37,7 +37,7 @@ const Header = () => {
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode } = useStore();
   const turboConfig = useTurboConfig();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
-  const { arnsName, loading: loadingArNS } = useArNSName(walletType !== 'solana' ? address : null);
+  const { arnsName, profile, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
   
   const [credits, setCredits] = useState<string>('0');
   const [loadingBalance, setLoadingBalance] = useState(false);
@@ -165,7 +165,7 @@ const Header = () => {
             <Grid3x3 className="w-6 h-6" />
           </PopoverButton>
           
-          <PopoverPanel className="absolute right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
             {({ close }) => (
               <>
                 {/* Services (only if logged in) */}
@@ -228,12 +228,41 @@ const Header = () => {
       {address && (
         <Popover className="relative">
           <PopoverButton className="flex items-center gap-3 rounded border border-default px-3 py-2 font-semibold hover:bg-surface/50 transition-colors">
-            <div className={`size-2 rounded-full ${
-              walletType === 'arweave' ? 'bg-white' :
-              walletType === 'ethereum' ? 'bg-blue-400' :
-              walletType === 'solana' ? 'bg-purple-400' :
-              'bg-green-500'
-            }`} />
+            {/* Profile Image or Wallet Type Indicator */}
+            {profile.logo ? (
+              <div className="size-10 rounded-full overflow-hidden bg-surface border border-default/50 flex items-center justify-center">
+                <img 
+                  src={profile.logo} 
+                  alt={`${profile.name} logo`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Hide the image and show the fallback
+                    const target = e.target as HTMLImageElement;
+                    const container = target.parentElement;
+                    if (container) {
+                      target.style.display = 'none';
+                      const fallback = container.querySelector('.fallback-indicator') as HTMLElement;
+                      if (fallback) {
+                        fallback.style.display = 'block';
+                      }
+                    }
+                  }}
+                />
+                <div className={`fallback-indicator hidden size-2 rounded-full ${
+                  walletType === 'arweave' ? 'bg-white' :
+                  walletType === 'ethereum' ? 'bg-blue-400' :
+                  walletType === 'solana' ? 'bg-purple-400' :
+                  'bg-green-500'
+                }`} />
+              </div>
+            ) : (
+              <div className={`size-2 rounded-full ${
+                walletType === 'arweave' ? 'bg-white' :
+                walletType === 'ethereum' ? 'bg-blue-400' :
+                walletType === 'solana' ? 'bg-purple-400' :
+                'bg-green-500'
+              }`} />
+            )}
             <div className="text-fg-muted">
               {loadingArNS ? (
                 <span className="text-link">Loading...</span>
@@ -245,18 +274,19 @@ const Header = () => {
             </div>
           </PopoverButton>
 
-          <PopoverPanel className="absolute right-0 mt-4 flex flex-col rounded-lg bg-surface text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-4 flex flex-col rounded-lg bg-surface text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
             {({ close }) => (
               <>
             {/* Account Info Section */}
             <div className="px-6 py-4 border-b border-default">
-              <div className="text-xs text-link mb-1">Account</div>
-              {arnsName && (
-                <div className="font-bold text-base mb-1 text-turbo-red">{arnsName}</div>
-              )}
+              <div className="text-xs text-link mb-2">
+                {walletType === 'arweave' && 'Arweave Account'}
+                {walletType === 'ethereum' && 'Ethereum Account'}
+                {walletType === 'solana' && 'Solana Account'}
+              </div>
               <div className="flex items-center justify-between">
-                <div className={arnsName ? "text-sm text-link" : "font-bold text-base"}>
-                  {formatWalletAddress(address, 8)}
+                <div className="font-bold text-base">
+                  {formatWalletAddress(address, 6)}
                 </div>
                 <CopyButton textToCopy={address} />
               </div>
@@ -303,7 +333,6 @@ const Header = () => {
             <button
               className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
               onClick={() => {
-                console.log('Explorer click - walletType:', walletType, 'address:', address);
                 let explorerUrl = '';
                 
                 if (walletType === 'ethereum') {
@@ -315,7 +344,6 @@ const Header = () => {
                   explorerUrl = `https://viewblock.io/arweave/address/${address}`;
                 }
                 
-                console.log('Using explorer URL:', explorerUrl);
                 window.open(explorerUrl, '_blank');
               }}
             >

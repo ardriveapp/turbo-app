@@ -73,10 +73,10 @@ export default function RecentDeploymentsSection() {
             </button>
           )}
           <button
-            onClick={() => navigate('/deploy')}
+            onClick={() => navigate('/deployments')}
             className="text-xs text-turbo-red hover:text-turbo-red/80 transition-colors"
           >
-            View Full Page →
+            View All Deployments →
           </button>
         </div>
       </div>

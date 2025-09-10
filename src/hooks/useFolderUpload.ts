@@ -32,7 +32,7 @@ export function useFolderUpload() {
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
   const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
-  const [deployStage, setDeployStage] = useState<'idle' | 'uploading' | 'manifest' | 'complete'>('idle');
+  const [deployStage, setDeployStage] = useState<'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete'>('idle');
   const [currentFile, setCurrentFile] = useState<string>('');
   const [deployResults, setDeployResults] = useState<DeployResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -362,6 +362,10 @@ export function useFolderUpload() {
     setDeployResults([]);
   }, []);
 
+  const updateDeployStage = useCallback((stage: 'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete') => {
+    setDeployStage(stage);
+  }, []);
+
   return {
     deployFolder,
     deploying,
@@ -373,5 +377,6 @@ export function useFolderUpload() {
     errors,
     reset,
     clearResults,
+    updateDeployStage,
   };
 }

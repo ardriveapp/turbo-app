@@ -174,7 +174,6 @@ export default function CreditSharingSection() {
     
     try {
       const turbo = await createTurboClient();
-      console.log('Revoking credits for revoked address:', revokedAddress);
       
       const revokedApprovals = await turbo.revokeCredits({
         revokedAddress: revokedAddress,

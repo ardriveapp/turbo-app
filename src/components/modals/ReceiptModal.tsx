@@ -111,10 +111,6 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Success Card - Option A: Simple & Clean */}
               <div className="bg-gradient-to-r from-turbo-green/10 to-turbo-green/5 rounded-lg p-4 border border-turbo-green/20">
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle className="w-5 h-5 text-turbo-green" />
-                  <span className="font-medium text-fg-muted">Upload Successful!</span>
-                </div>
                 
                 {/* Data Item ID */}
                 <div className="space-y-3">
@@ -146,7 +142,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                     <div>
                       <div className="flex items-center gap-1 text-xs text-link mb-2">
                         <Archive className="w-3 h-3" />
-                        Bundle ID:
+                        Parent Bundle ID:
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <span className="font-mono text-xs text-link break-all flex-1">{currentStatus.bundleId}</span>
@@ -214,17 +210,6 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* What's Next */}
-              <div className="bg-canvas rounded-lg p-4 border border-default">
-                <h4 className="text-sm font-medium text-fg-muted mb-3">What's Next?</h4>
-                <div className="space-y-2 text-sm text-link">
-                  <div>• Your file is now permanently stored on Arweave</div>
-                  <div>• Access it anytime using the transaction ID above</div>
-                  <div>• Share the link with others for instant access</div>
-                  <div>• Check the Status tab to monitor processing</div>
-                </div>
               </div>
             </div>
           ) : activeTab === 'receipt' ? (

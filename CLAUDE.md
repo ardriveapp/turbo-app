@@ -142,6 +142,9 @@ const turboConfig: TurboUnauthenticatedConfiguration = {
 - **Name Display**: Throughout UI with loading states
 - **Search Functionality**: Name availability checking
 - **Domain Management**: Purchase UI ready (not connected)
+- **Owned Names Management**: Fetch, cache, and update ArNS names owned by connected wallet
+- **ANT Updates**: Update ArNS names to point to new manifests (base name and undernames)
+- **Site Association**: ArNSAssociationPanel for associating deployments with owned names
 
 ### Navigation Structure
 
@@ -202,7 +205,8 @@ All service panels follow consistent styling:
 - `useCreditsForCrypto`: Crypto to credits conversion calculations (newly implemented)
 - `useFileUpload`: Multi-chain upload logic with proper signers
 - `useFolderUpload`: Folder upload with drag & drop support
-- `useArNSName`: Primary name fetching with cache management
+- `usePrimaryArNSName`: Primary name fetching with cache management
+- `usePrimaryArNSNames`: Fetch and manage owned ArNS names with ANT state tracking
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
 - `useCountries`: Country data for payment forms (newly implemented)
 - `useDebounce`: Input debouncing (500ms default)
@@ -295,11 +299,12 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - Crypto payments for Solana and Ethereum (improved UX and testing needed)
 - File upload with progress tracking (Arweave wallets only)
-- Site deployment with data export functionality
+- Site deployment with data export functionality and ArNS association
 - Credit sharing between wallets (Wander wallet required for signing)
 - Credit revocation system
 - Gift credit system (send/redeem)
 - ArNS name display with caching
+- ArNS owned names management with ANT state tracking and updates
 - Balance checking for any wallet with credits shared in tracking
 - Account management page
 - Developer resources with API documentation
@@ -314,6 +319,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **Share Credits**: Requires Wander wallet for transaction signing
 - **ArNS Purchase**: Search UI ready, purchase not connected
 - **Upload Restrictions**: Limited to Arweave wallets only
+- **ArNS Updates**: Requires Arweave wallet for ANT operations and signing
 
 ### 🔄 Wallet Capability Matrix
 | Feature | Arweave | Ethereum | Solana |
@@ -324,6 +330,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 | Deploy Sites | ✅ | ❌ | ❌ |
 | Share Credits | ✅ | ❌ | ❌ |
 | ArNS Names | ✅ | ✅ | ❌ |
+| Update ArNS Records | ✅ | ❌ | ❌ |
 
 ## Development Best Practices
 
@@ -332,6 +339,14 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Use `useFileUpload` hook for proper multi-chain signer creation
 - Progress tracking includes both signing and upload phases
 - Error handling includes per-file error states
+
+### ArNS Development
+- Use `usePrimaryArNSNames` hook for fetching and managing owned ArNS names
+- Only Arweave wallets can update ArNS records (requires ANT signing)
+- ArNSAssociationPanel provides UI for name selection and undername management
+- Updates require processId from owned names and ArconnectSigner for ANT operations
+- Cache owned names with automatic refresh and manual refresh options
+- Support both base name (@) and undername record updates
 
 
 ### State Management

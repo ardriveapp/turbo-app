@@ -1,27 +1,175 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, Shield, RefreshCw, Info, Receipt, ChevronDown, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical } from 'lucide-react';
+import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
+import { useOwnedArNSNames } from '../../hooks/useOwnedArNSNames';
+import { useNavigate } from 'react-router-dom';
 import ReceiptModal from '../modals/ReceiptModal';
+import ArNSAssociationPanel from '../ArNSAssociationPanel';
+import BaseModal from '../modals/BaseModal';
+
+// Enhanced Deploy Confirmation Modal for original deploy page
+interface DeployConfirmationModalProps {
+  onClose: () => void;
+  onConfirm: () => void;
+  folderName: string;
+  fileCount: number;
+  totalSize: number;
+  totalCost: number;
+  indexFile: string;
+  fallbackFile: string;
+  // ArNS specific props
+  arnsEnabled: boolean;
+  arnsName: string;
+  undername: string;
+}
+
+function DeployConfirmationModal({
+  onClose,
+  onConfirm,
+  folderName,
+  fileCount,
+  totalSize,
+  totalCost,
+  indexFile,
+  fallbackFile,
+  arnsEnabled,
+  arnsName,
+  undername
+}: DeployConfirmationModalProps) {
+  return (
+    <BaseModal onClose={onClose}>
+      <div className="p-6 w-full max-w-2xl">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Zap className="w-6 h-6 text-turbo-red" />
+          </div>
+          <div className="text-left">
+            <h3 className="text-xl font-bold text-fg-muted">Ready to Deploy</h3>
+            <p className="text-sm text-link">Confirm your deployment details</p>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <div className="bg-surface rounded-lg p-4">
+            {/* Main deployment stats */}
+            <div className="space-y-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-link">Folder:</span>
+                <span className="font-medium text-fg-muted">{folderName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-link">Files:</span>
+                <span className="font-medium text-fg-muted">{fileCount} files</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-link">Size:</span>
+                <span className="font-medium text-fg-muted">
+                  {(totalSize / 1024 / 1024).toFixed(2)} MB
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-link">Cost:</span>
+                <span className="font-medium text-fg-muted">
+                  {totalCost === 0 ? (
+                    <span className="text-turbo-green font-bold">FREE</span>
+                  ) : (
+                    `${totalCost.toFixed(6)} Credits`
+                  )}
+                </span>
+              </div>
+            </div>
+            
+            {/* Auto-detected files */}
+            {(indexFile || fallbackFile) && (
+              <div className="border-t border-default/30 pt-3">
+                <div className="text-xs text-link mb-2">Configurations:</div>
+                <div className="flex items-center gap-4 text-xs">
+                  {indexFile && (
+                    <div className="flex items-center gap-1.5">
+                      <Home className="w-3 h-3 text-turbo-green" />
+                      <span className="text-fg-muted">Homepage: {indexFile}</span>
+                    </div>
+                  )}
+                  {fallbackFile && (
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 text-amber-500" />
+                      <span className="text-fg-muted">Error page: {fallbackFile}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ArNS Configuration Display */}
+            {arnsEnabled && arnsName && (
+              <div className="border-t border-default/30 pt-3 mt-3">
+                <div className="text-xs text-link mb-2">Domain Configuration:</div>
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3 h-3 text-turbo-yellow" />
+                  <span className="text-sm font-medium text-turbo-yellow">
+                    {undername ? undername + '_' : ''}{arnsName}.ar.io
+                  </span>
+                </div>
+                <div className="text-xs text-link mt-1">
+                  Your site will be accessible at this url
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors"
+          >
+            Deploy Now
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}
 
 export default function DeploySitePanel() {
-  const { address, creditBalance, deployHistory, addDeployResults, clearDeployHistory } = useStore();
+  const navigate = useNavigate();
+  const { address, walletType, creditBalance, deployHistory, addDeployResults, clearDeployHistory } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
-  const [showStatusGuide, setShowStatusGuide] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [showFolderContents, setShowFolderContents] = useState(false);
   const [indexFile, setIndexFile] = useState<string>('');
   const [fallbackFile, setFallbackFile] = useState<string>('');
+  // ArNS state
+  const [arnsEnabled, setArnsEnabled] = useState(false);
+  const [selectedArnsName, setSelectedArnsName] = useState('');
+  const [selectedUndername, setSelectedUndername] = useState('');
+  const [arnsUpdateCancelled, setArnsUpdateCancelled] = useState(false);
+  const [showDeployResults, setShowDeployResults] = useState(true);
+  const [deploySuccessInfo, setDeploySuccessInfo] = useState<{manifestId: string; arnsConfigured: boolean; arnsName?: string; undername?: string} | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [postDeployArNSName, setPostDeployArNSName] = useState('');
+  const [postDeployUndername, setPostDeployUndername] = useState('');
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
+  const [postDeployArNSUpdating, setPostDeployArNSUpdating] = useState(false);
+  // Post-deployment ArNS enabled state (disabled by default, user can enable)
+  const [postDeployArNSEnabled, setPostDeployArNSEnabled] = useState(false);
   const wincForOneGiB = useWincForOneGiB();
-  const { deployFolder, deploying, deployProgress, fileProgress, deployStage, currentFile } = useFolderUpload();
+  const { deployFolder, deploying, deployProgress, fileProgress, deployStage, currentFile, updateDeployStage } = useFolderUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
@@ -29,6 +177,42 @@ export default function DeploySitePanel() {
     uploadStatuses, 
     getStatusIcon
   } = useUploadStatus();
+  const { updateArNSRecord, names: arnsNames, loading: arnsLoading } = useOwnedArNSNames();
+
+  // Memoize deployment grouping to prevent lag
+  const deploymentGroups = useMemo(() => {
+    const groups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
+    
+    deployHistory.forEach(result => {
+      const manifestId = result.manifestId || result.id;
+      if (!manifestId) return;
+      
+      if (!groups[manifestId]) {
+        groups[manifestId] = {};
+      }
+      
+      if (result.type === 'manifest') {
+        groups[manifestId].manifest = result;
+      } else if (result.type === 'files') {
+        groups[manifestId].files = result;
+      }
+    });
+    
+    return groups;
+  }, [deployHistory]);
+
+  // Limit recent deployments to 5 for this page  
+  const recentDeploymentEntries = useMemo(() => {
+    return Object.entries(deploymentGroups).slice(0, 5);
+  }, [deploymentGroups]);
+
+  // Helper to find ArNS association for a manifest
+  const getArNSAssociation = useCallback((manifestId: string) => {
+    return deployHistory.find(record => 
+      record.type === 'arns-update' && 
+      record.manifestId === manifestId
+    );
+  }, [deployHistory]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -111,7 +295,6 @@ export default function DeploySitePanel() {
       });
       
       if (hasBuildArtifacts) {
-        console.log('🔍 SPA detected - suggesting index.html as fallback for client-side routing');
         detectedFallback = detectedIndex; // Suggest same as index for SPA routing
       }
     }
@@ -119,11 +302,6 @@ export default function DeploySitePanel() {
     setIndexFile(detectedIndex);
     setFallbackFile(detectedFallback);
     
-    console.log('Auto-detected manifest files:', { 
-      index: detectedIndex, 
-      fallback: detectedFallback,
-      availableHtmlFiles: htmlFiles.map(f => f.webkitRelativePath || f.name)
-    });
   };
 
   const calculateTotalSize = (): number => {
@@ -389,25 +567,28 @@ export default function DeploySitePanel() {
     document.body.removeChild(link);
   };
 
-  // Auto-check status for recent deployments when page loads (same as Upload Results)
+  // Auto-check status for recent deployments only when results are visible
   useEffect(() => {
-    if (deployHistory.length > 0) {
-      // Check status for recent deployments automatically
-      const recentDeployments = deployHistory.slice(0, 10);
-      const allIds = recentDeployments.flatMap(result => {
-        if (result.type === 'manifest') return result.id ? [result.id] : [];
-        if (result.type === 'files') return result.files?.map(f => f.id) || [];
-        return [];
+    if (deployHistory.length > 0 && showDeployResults) {
+      // Check status for the EXACT deployments being displayed (recentDeploymentEntries)
+      const allIds = recentDeploymentEntries.flatMap(([manifestId, group]) => {
+        const ids = [];
+        if (manifestId) ids.push(manifestId); // Add the manifest ID
+        if (group.files?.files) ids.push(...group.files.files.map((f: any) => f.id));
+        return ids;
       });
+      
+      console.log('Auto-checking status for displayed recent deployments:', allIds);
       
       // Small delay to avoid overwhelming the API
       setTimeout(() => {
         checkMultipleStatuses(allIds);
       }, 1000);
     }
-  }, [deployHistory, checkMultipleStatuses]);
+  }, [deployHistory, showDeployResults, recentDeploymentEntries, checkMultipleStatuses]);
 
-  const handleDeploy = async () => {
+  const handleConfirmDeploy = async () => {
+    setShowConfirmModal(false);
     if (!selectedFolder || selectedFolder.length === 0) {
       setDeployMessage({ type: 'error', text: 'Please select a folder to deploy' });
       return;
@@ -418,8 +599,16 @@ export default function DeploySitePanel() {
       return;
     }
 
+    // Validate ArNS configuration if enabled
+    if (arnsEnabled && !selectedArnsName) {
+      setDeployMessage({ type: 'error', text: 'Please select an ArNS name or disable ArNS association' });
+      return;
+    }
+
     try {
       setDeployMessage(null);
+      setDeploySuccessInfo(null); // Clear any previous success info
+      setArnsUpdateCancelled(false); // Reset cancel state for new deployment
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
         fallbackFile: fallbackFile || undefined
@@ -429,16 +618,89 @@ export default function DeploySitePanel() {
         // Add results to store for persistence
         addDeployResults(result.results || []);
         
+        // Handle ArNS update if enabled and not cancelled
+        if (arnsEnabled && selectedArnsName && !arnsUpdateCancelled) {
+          try {
+            // Update progress stage to show ArNS update
+            updateDeployStage('updating-arns');
+            console.log('Updating ArNS record:', { name: selectedArnsName, manifestId: result.manifestId, undername: selectedUndername });
+            
+            const arnsResult = await updateArNSRecord(
+              selectedArnsName,
+              result.manifestId,
+              selectedUndername || undefined
+            );
+            
+            // Add ArNS update to deploy history
+            const arnsUpdateRecord = {
+              type: 'arns-update' as const,
+              id: arnsResult.transactionId || '',
+              manifestId: result.manifestId,
+              arnsName: selectedArnsName,
+              undername: selectedUndername || undefined,
+              targetId: result.manifestId,
+              timestamp: Date.now(),
+              arnsStatus: arnsResult.success ? 'success' as const : 'failed' as const,
+              arnsError: arnsResult.error
+            };
+            
+            addDeployResults([arnsUpdateRecord]);
+            
+            if (arnsResult.success) {
+              // Store success info for rich display
+              setDeploySuccessInfo({
+                manifestId: result.manifestId,
+                arnsConfigured: true,
+                arnsName: selectedArnsName,
+                undername: selectedUndername || undefined
+              });
+            } else {
+              // Site deployed successfully but ArNS failed - still show success with error info
+              setDeploySuccessInfo({
+                manifestId: result.manifestId,
+                arnsConfigured: false // Failed ArNS = show enhancement option
+              });
+              setDeployMessage({
+                type: 'error',
+                text: `ArNS update failed: ${arnsResult.error}. Site is deployed successfully.`
+              });
+            }
+          } catch (arnsError) {
+            console.error('ArNS update failed:', arnsError);
+            // Still show success since site deployed, just note ArNS failed
+            setDeploySuccessInfo({
+              manifestId: result.manifestId,
+              arnsConfigured: false
+            });
+            setDeployMessage({
+              type: 'error',
+              text: 'ArNS update failed. Site is deployed successfully.'
+            });
+          }
+        } else {
+          // No ArNS update - store success info for rich display
+          setDeploySuccessInfo({
+            manifestId: result.manifestId,
+            arnsConfigured: false
+          });
+        }
+        
         // Clear the folder selection since deployment is complete
         setSelectedFolder(null);
         setShowFolderContents(false);
         setIndexFile('');
         setFallbackFile('');
+        // Clear ArNS state
+        setArnsEnabled(false);
+        setSelectedArnsName('');
+        setSelectedUndername('');
+        // Reset post-deploy ArNS state for fresh start
+        setPostDeployArNSName('');
+        setPostDeployUndername('');
+        setPostDeployArNSEnabled(false);
         
         // Trigger balance refresh after successful deployment
         window.dispatchEvent(new CustomEvent('refresh-balance'));
-        
-        // Success message is redundant - results show everything
       }
     } catch (error) {
       console.error('Deploy failed:', error);
@@ -464,77 +726,89 @@ export default function DeploySitePanel() {
 
   return (
     <div>
-      {/* Inline Header with Description */}
-      <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Globe className="w-5 h-5 text-turbo-red" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Deploy Site</h3>
-          <p className="text-sm text-link">
-            Deploy static sites and web apps to the permanent web with automatic manifest generation
-          </p>
-        </div>
-      </div>
-
-      {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-
-        {/* Current Balance */}
-        <div className="bg-surface rounded-lg p-4 mb-6">
-          <div className="flex justify-between items-center">
-            <span className="text-link">Available Credits:</span>
-            <div className="text-right">
-              <span className="font-bold text-fg-muted">{creditBalance.toFixed(4)} Credits</span>
-              {wincForOneGiB && (
-                <div className="text-xs text-link">
-                  ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
-                </div>
-              )}
-            </div>
+      {/* Success-focused header when deployment is complete */}
+      {deploySuccessInfo ? (
+        <div className="flex items-start gap-3 mb-6">
+          <div className="w-10 h-10 bg-turbo-green/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+            <CheckCircle className="w-5 h-5 text-turbo-green" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-fg-muted mb-1">
+              {deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
+                'Site Deployed with Domain' : 
+                'Site Deployed'
+              }
+            </h3>
+            <p className="text-sm text-link">
+              Success! Your site is live on the permanent web.
+            </p>
           </div>
         </div>
-
-        {/* Folder Drop Zone */}
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging
-              ? 'border-turbo-red bg-turbo-red/5'
-              : 'border-link/30 hover:border-turbo-red/50'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <Globe className="w-12 h-12 text-turbo-red mx-auto mb-2" />
-          <p className="text-lg font-medium mb-2">
-            Drop site folder here or click to browse
-          </p>
-          <p className="text-sm text-link mb-4">
-            Select your site folder (HTML, CSS, JS, assets) for permanent deployment
-          </p>
-          <input
-            type="file"
-            {...({ webkitdirectory: 'true', directory: 'true' } as any)}
-            multiple
-            onChange={handleFolderSelect}
-            className="hidden"
-            id="folder-upload"
-          />
-          <label
-            htmlFor="folder-upload"
-            className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
-          >
-            Select Site Folder
-          </label>
+      ) : (
+        /* Normal deploy header when not showing success */
+        <div className="flex items-start gap-3 mb-6">
+          <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+            <Zap className="w-5 h-5 text-turbo-red" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-fg-muted mb-1">Deploy Site</h3>
+            <p className="text-sm text-link">
+              Deploy static sites and web apps to the permanent web with automatic manifest generation
+            </p>
+          </div>
         </div>
+      )}
 
-        {/* Folder Preview with Expandable Tree */}
-        {selectedFolder && selectedFolder.length > 0 && (
-          <div className="mt-4 sm:mt-6">
-            <div className="bg-surface rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-link uppercase tracking-wider">Selected Folder</span>
+      {/* Main Content Container with Gradient - Hide during success */}
+      {!deploySuccessInfo && (
+        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+
+        {/* Dynamic Zone: Drop Zone OR Selected Folder */}
+        {!selectedFolder || selectedFolder.length === 0 ? (
+          /* Drop Zone when no folder selected */
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              isDragging
+                ? 'border-turbo-red bg-turbo-red/5'
+                : 'border-link/30 hover:border-turbo-red/50'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Zap className="w-12 h-12 text-turbo-red mx-auto mb-2" />
+            <p className="text-lg font-medium mb-2">
+              Drop site folder here or click to browse
+            </p>
+            <p className="text-sm text-link mb-4">
+              Select your site folder (HTML, CSS, JS, assets) for permanent deployment
+            </p>
+            <input
+              type="file"
+              {...({ webkitdirectory: 'true', directory: 'true' } as any)}
+              multiple
+              onChange={handleFolderSelect}
+              className="hidden"
+              id="folder-upload"
+            />
+            <label
+              htmlFor="folder-upload"
+              className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+            >
+              Select Site Folder
+            </label>
+          </div>
+        ) : (
+          /* Selected Folder Card - replaces drop zone */
+          <div className="bg-surface rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Folder className="w-5 h-5 text-fg-muted" />
+                  <div>
+                    <h4 className="font-medium text-fg-muted">{folderName}</h4>
+                    <p className="text-xs text-link">{selectedFolder?.length} files</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => {
                     setSelectedFolder(null);
@@ -548,25 +822,21 @@ export default function DeploySitePanel() {
                       fileInput.value = '';
                     }
                   }}
-                  className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
+                  className="text-link hover:text-red-400 transition-colors"
+                  title="Clear folder selection"
                 >
-                  <XCircle className="w-4 h-4" />
-                  Clear
+                  <XCircle className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Expandable File Tree - Single folder display */}
-                <button
-                  onClick={() => setShowFolderContents(!showFolderContents)}
-                  className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-turbo-red" />
-                    <span className="text-sm font-medium text-fg-muted">{folderName}</span>
-                    <span className="text-xs text-link">({selectedFolder?.length} files)</span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-link transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
-                </button>
+              {/* Expandable File Tree */}
+              <button
+                onClick={() => setShowFolderContents(!showFolderContents)}
+                className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors mb-2"
+              >
+                <span className="text-sm text-fg-muted">View folder contents</span>
+                <ChevronDown className={`w-4 h-4 text-link transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
+              </button>
                 
                 {showFolderContents && (
                   <div className="mt-3 p-3 bg-canvas rounded border border-default/30 max-h-60 overflow-y-auto">
@@ -579,8 +849,8 @@ export default function DeploySitePanel() {
                           <div key={folderPath}>
                             {/* Folder Header */}
                             {folderPath !== 'root' && (
-                              <div className="flex items-center gap-2 text-turbo-red font-medium mb-1">
-                                <Folder className="w-3 h-3" />
+                              <div className="flex items-center gap-2 text-fg-muted font-medium mb-1">
+                                <Folder className="w-3 h-3 text-fg-muted" />
                                 <span>{folderPath}/</span>
                               </div>
                             )}
@@ -684,27 +954,39 @@ export default function DeploySitePanel() {
                     </div>
                   </div>
                 )}
-            </div>
-            
+
             {/* Fallback Info for SPA routing */}
-            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <div className="mt-4 p-3 bg-turbo-red/10 border border-turbo-red/20 rounded-lg">
               <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-blue-400">
-                  <strong>SPA Routing Support:</strong> For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
-                  <code className="px-1 py-0.5 bg-blue-500/20 rounded text-blue-300 font-mono text-xs">index.html</code>
+                <Info className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-link">
+                  <strong className="text-fg-muted">SPA Routing Support:</strong> For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
+                  <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">index.html</code>
                   ) to enable client-side routing. This ensures URLs like{' '}
-                  <code className="px-1 py-0.5 bg-blue-500/20 rounded text-blue-300 font-mono text-xs">/topup</code>
+                  <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">/topup</code>
                   {' '}work correctly instead of showing 404 errors.
                 </div>
               </div>
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
         
-      {/* Summary Panel - Matching Upload Files */}
-      {selectedFolder && selectedFolder.length > 0 && (
+      {/* ArNS Association Panel - Only show when folder is selected and using Arweave wallet AND not showing success */}
+      {selectedFolder && selectedFolder.length > 0 && walletType === 'arweave' && !deploySuccessInfo && (
+        <ArNSAssociationPanel
+          enabled={arnsEnabled}
+          onEnabledChange={setArnsEnabled}
+          selectedName={selectedArnsName}
+          onNameChange={setSelectedArnsName}
+          selectedUndername={selectedUndername}
+          onUndernameChange={setSelectedUndername}
+        />
+      )}
+
+      {/* Summary Panel - After ArNS configuration, hide during success */}
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
         <div className="mt-4 p-4 bg-surface rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
@@ -738,8 +1020,8 @@ export default function DeploySitePanel() {
           </div>
       )}
 
-      {/* Terms - Outside conditional, always show when folder selected */}
-      {selectedFolder && selectedFolder.length > 0 && (
+      {/* Terms - Right above deploy button, hide during success */}
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
         <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
           <p className="text-xs text-link">
             By continuing, you agree to our{' '}
@@ -764,10 +1046,10 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* Deploy Button - Outside conditional, always show when folder selected */}
-      {selectedFolder && selectedFolder.length > 0 && (
+      {/* Deploy Button - Hide during success display */}
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
         <button
-          onClick={handleDeploy}
+          onClick={() => setShowConfirmModal(true)}
           disabled={deploying || totalCost > creditBalance}
           className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
@@ -796,12 +1078,14 @@ export default function DeploySitePanel() {
                 <span className="font-medium text-fg-muted">
                   {deployStage === 'uploading' && 'Uploading Files'}
                   {deployStage === 'manifest' && 'Creating Manifest'}
+                  {deployStage === 'updating-arns' && 'Updating ArNS Name'}
                   {deployStage === 'complete' && 'Complete'}
                 </span>
               </div>
               <span className="text-sm text-link">
                 {deployStage === 'uploading' && `${Object.keys(fileProgress).filter(key => fileProgress[key] === 100).length} / ${selectedFolder.length} files`}
                 {deployStage === 'manifest' && 'Finalizing deployment...'}
+                {deployStage === 'updating-arns' && `Updating ${selectedUndername ? selectedUndername + '_' : ''}${selectedArnsName}.ar.io`}
                 {deployStage === 'complete' && 'Deployment complete!'}
               </span>
             </div>
@@ -815,7 +1099,7 @@ export default function DeploySitePanel() {
             </div>
 
             {/* Current File/Stage Info */}
-            {currentFile && (
+            {(currentFile || deployStage === 'updating-arns') && (
               <div className="flex items-center gap-2 text-sm text-link">
                 {deployStage === 'uploading' && (
                   <>
@@ -829,6 +1113,31 @@ export default function DeploySitePanel() {
                     <span>{currentFile}</span>
                   </>
                 )}
+                {deployStage === 'updating-arns' && (
+                  <>
+                    <div className="w-2 h-2 bg-turbo-yellow rounded-full animate-pulse" />
+                    <span>Connecting {selectedUndername ? selectedUndername + '_' : ''}{selectedArnsName}.ar.io to your site...</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Cancel ArNS Update Button */}
+            {deployStage === 'updating-arns' && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    setArnsUpdateCancelled(true);
+                    updateDeployStage('complete');
+                    setDeployMessage({
+                      type: 'info',
+                      text: 'Site deployed successfully! ArNS update was cancelled.'
+                    });
+                  }}
+                  className="px-4 py-2 text-sm bg-surface border border-default rounded-lg text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+                >
+                  Skip ArNS Update
+                </button>
               </div>
             )}
 
@@ -898,6 +1207,167 @@ export default function DeploySitePanel() {
         </div>
       )}
 
+      {/* Rich Success Display */}
+      {deploySuccessInfo && (
+        <div className="border border-turbo-green rounded-xl p-6 bg-surface">
+
+
+          {/* Site Details */}
+          <div className="bg-surface rounded-lg p-4 mb-4 space-y-3">
+            <div>
+              <div className="text-sm text-link mb-2">Your site URL:</div>
+              <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
+                <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+                  {deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
+                    `https://${deploySuccessInfo.undername ? deploySuccessInfo.undername + '_' : ''}${deploySuccessInfo.arnsName}.ar.io` :
+                    `https://arweave.net/${deploySuccessInfo.manifestId}`
+                  }
+                </span>
+                <CopyButton textToCopy={
+                  deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
+                    `https://${deploySuccessInfo.undername ? deploySuccessInfo.undername + '_' : ''}${deploySuccessInfo.arnsName}.ar.io` :
+                    `https://arweave.net/${deploySuccessInfo.manifestId}`
+                } />
+              </div>
+            </div>
+
+            {/* Permanent ID */}
+            <div>
+              <div className="text-sm text-link mb-2">Deployment Transaction ID:</div>
+              <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
+                <File className="w-4 h-4 text-link" />
+                <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+                  {deploySuccessInfo.manifestId}
+                </span>
+                <CopyButton textToCopy={deploySuccessInfo.manifestId} />
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Actions */}
+          <div className="flex gap-3 mb-4">
+            <button
+              onClick={() => window.open(
+                deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
+                  `https://${deploySuccessInfo.undername ? deploySuccessInfo.undername + '_' : ''}${deploySuccessInfo.arnsName}.ar.io` :
+                  `https://arweave.net/${deploySuccessInfo.manifestId}`,
+                '_blank'
+              )}
+              className="flex-1 py-3 px-4 bg-turbo-green text-white rounded-lg font-medium hover:bg-turbo-green/90 transition-colors"
+            >
+              Visit Your Site
+            </button>
+            <button
+              onClick={() => {
+                setDeploySuccessInfo(null);
+                setDeployMessage(null);
+                // Reset post-deploy ArNS state
+                setPostDeployArNSName('');
+                setPostDeployUndername('');
+                setPostDeployArNSEnabled(false);
+              }}
+              className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-surface/80 transition-colors"
+            >
+              Deploy Another Site
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* Post-Deploy ArNS Enhancement - Show ArNS panel directly when not configured */}
+      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && walletType === 'arweave' && (
+        <div className="mt-6">
+          <ArNSAssociationPanel
+            enabled={postDeployArNSEnabled}
+            onEnabledChange={setPostDeployArNSEnabled}
+            selectedName={postDeployArNSName}
+            onNameChange={setPostDeployArNSName}
+            selectedUndername={postDeployUndername}
+            onUndernameChange={setPostDeployUndername}
+          />
+          
+          {/* Connect Domain Action - Only show when enabled and name selected */}
+          {postDeployArNSEnabled && postDeployArNSName && (
+            <div className="mt-4">
+              <button
+                onClick={async () => {
+                  if (!postDeployArNSName || !deploySuccessInfo?.manifestId) return;
+                  
+                  setPostDeployArNSUpdating(true);
+                  try {
+                    console.log('Starting post-deployment ArNS update:', { 
+                      arnsName: postDeployArNSName, 
+                      manifestId: deploySuccessInfo.manifestId, 
+                      undername: postDeployUndername 
+                    });
+                    
+                    const result = await updateArNSRecord(postDeployArNSName, deploySuccessInfo.manifestId, postDeployUndername || undefined);
+                    console.log('Post-deployment ArNS update result:', result);
+                    
+                    if (result.success) {
+                      // Add ArNS update to deploy history for Recent Deployments to show
+                      const arnsUpdateRecord = {
+                        type: 'arns-update' as const,
+                        id: result.transactionId || '',
+                        manifestId: deploySuccessInfo.manifestId,
+                        arnsName: postDeployArNSName,
+                        undername: postDeployUndername || undefined,
+                        targetId: deploySuccessInfo.manifestId,
+                        timestamp: Date.now(),
+                        arnsStatus: 'success' as const,
+                        arnsError: undefined
+                      };
+                      
+                      addDeployResults([arnsUpdateRecord]);
+                      
+                      // Update success info to show ArNS was configured
+                      setDeploySuccessInfo(prev => prev ? {
+                        ...prev,
+                        arnsConfigured: true,
+                        arnsName: postDeployArNSName,
+                        undername: postDeployUndername || undefined
+                      } : prev);
+                      
+                      // Reset ArNS panel state
+                      setPostDeployArNSName('');
+                      setPostDeployUndername('');
+                      setPostDeployArNSEnabled(false);
+                      
+                      // Clear any existing messages since the success card will show the domain
+                      setDeployMessage(null);
+                    } else {
+                      setDeployMessage({
+                        type: 'error',
+                        text: `Domain update failed: ${result.error}`
+                      });
+                    }
+                  } catch (error) {
+                    console.error('Post-deployment ArNS update error:', error);
+                    setDeployMessage({
+                      type: 'error',
+                      text: `Domain update failed: ${error instanceof Error ? error.message : 'Please try again.'}`
+                    });
+                  }
+                  setPostDeployArNSUpdating(false);
+                }}
+                disabled={!postDeployArNSName || postDeployArNSUpdating}
+                className="w-full py-3 px-4 bg-turbo-yellow text-black rounded-lg hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+              >
+                {postDeployArNSUpdating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Connecting Domain...
+                  </>
+                ) : (
+                  'Connect Domain'
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Insufficient Credits Warning */}
       {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
         <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
@@ -921,483 +1391,494 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* Deploy Results - Unified with Upload Results */}
+      {/* Deploy Results - Unified Design with Recent Deployments Page */}
       {deployHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface rounded-lg p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <h4 className="font-bold text-fg-muted flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-turbo-green" />
-              Site Deployment Results
-            </h4>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={exportDeployToCSV}
-                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-green/20 text-turbo-green rounded hover:bg-turbo-green/30 transition-colors"
-                title="Export deployment history to CSV"
-              >
-                <Archive className="w-3 h-3" />
-                <span className="hidden xs:inline">Export CSV</span>
-                <span className="xs:hidden">CSV</span>
-              </button>
-              <button
-                onClick={() => {
-                  // Check status for all deployed items (manifest + files)
-                  const allIds = deployHistory.flatMap(result => {
-                    if (result.type === 'manifest') return result.id ? [result.id] : [];
-                    if (result.type === 'files') return result.files?.map(f => f.id) || [];
-                    return [];
-                  });
-                  checkMultipleStatuses(allIds);
-                }}
-                disabled={Object.values(statusChecking).some(checking => checking)}
-                className="flex items-center gap-1 px-3 py-2 text-xs bg-turbo-red/20 text-turbo-red rounded hover:bg-turbo-red/30 transition-colors disabled:opacity-50"
-                title="Check status for all deployed files"
-              >
-                <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
-                <span className="hidden xs:inline">Check Status</span>
-                <span className="xs:hidden">Status</span>
-              </button>
-              <button
-                onClick={clearDeployHistory}
-                className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-fg-muted border border-default/30 rounded hover:border-default/50 transition-colors"
-                title="Clear all deployment history"
-              >
-                <XCircle className="w-3 h-3" />
-                <span className="hidden xs:inline">Clear History</span>
-                <span className="xs:hidden">Clear</span>
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-4 max-h-[700px] overflow-y-auto">
-            {(() => {
-              // Group deploy results by manifest ID to show complete deployments
-              const deploymentGroups: { [manifestId: string]: { manifest?: any, files?: any } } = {};
-              
-              deployHistory.forEach(result => {
-                const manifestId = result.manifestId || result.id;
-                if (!manifestId) return;
-                
-                if (!deploymentGroups[manifestId]) {
-                  deploymentGroups[manifestId] = {};
-                }
-                
-                if (result.type === 'manifest') {
-                  deploymentGroups[manifestId].manifest = result;
-                } else if (result.type === 'files') {
-                  deploymentGroups[manifestId].files = result;
-                }
-              });
-
-              return Object.entries(deploymentGroups).map(([manifestId, group]) => {
-                
-                return (
-                <div key={manifestId} className="border border-default/30 rounded-lg p-4 bg-canvas/50">
-                  {/* Single Consolidated Header - Manifest as Primary */}
-                  {group.manifest && (
-                    <div className="bg-surface rounded-lg p-3 border border-turbo-green/30 mb-3">
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Main Info Row */}
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {/* Status Icon */}
-                          {uploadStatuses[manifestId] ? (() => {
-                            const iconType = getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
-                            return renderStatusIcon(iconType);
-                          })() : <Clock className="w-4 h-4 text-yellow-500" />}
-                          
-                          {/* Globe Icon - Indicates site manifest */}
-                          <Globe className="w-4 h-4 text-turbo-green" />
-                          
-                          {/* Shortened Transaction ID */}
-                          <div className="font-mono text-sm text-fg-muted">
-                            {manifestId.substring(0, 5)}...
-                          </div>
-                          
-                          {/* Timestamp - Desktop only */}
-                          {group.manifest.timestamp && (
-                            <span className="text-xs text-link hidden sm:inline">
-                              {new Date(group.manifest.timestamp).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Desktop: Show all actions */}
-                        <div className="hidden sm:flex items-center gap-1">
-                          <CopyButton textToCopy={manifestId} />
-                          <button
-                            onClick={() => setShowReceiptModal(manifestId)}
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                            title="View Receipt"
-                          >
-                            <Receipt className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => checkUploadStatus(manifestId)}
-                            disabled={!!statusChecking[manifestId]}
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
-                            title="Check Status"
-                          >
-                            <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
-                          </button>
-                          <a
-                            href={getArweaveRawUrl(manifestId)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                            title="View Raw Manifest JSON"
-                          >
-                            <Code className="w-4 h-4" />
-                          </a>
-                          <a
-                            href={getArweaveUrl(manifestId)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                            title="Visit Deployed Site"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-
-                        {/* Mobile: 3-dot menu */}
-                        <div className="sm:hidden">
-                          <Popover className="relative">
-                            <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
-                              <MoreVertical className="w-4 h-4" />
-                            </PopoverButton>
-                            <PopoverPanel className="absolute right-0 mt-2 w-48 bg-surface border border-default rounded-lg shadow-lg z-[100] py-1">
-                              {({ close }) => (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(manifestId);
-                                      close();
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                  >
-                                    <Receipt className="w-4 h-4" />
-                                    Copy Manifest ID
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setShowReceiptModal(manifestId);
-                                      close();
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                  >
-                                    <Receipt className="w-4 h-4" />
-                                    View Receipt
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      checkUploadStatus(manifestId);
-                                      close();
-                                    }}
-                                    disabled={!!statusChecking[manifestId]}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
-                                  >
-                                    <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
-                                    Check Status
-                                  </button>
-                                  <a
-                                    href={getArweaveRawUrl(manifestId)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() => close()}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                  >
-                                    <Code className="w-4 h-4" />
-                                    View Raw JSON
-                                  </a>
-                                  <a
-                                    href={getArweaveUrl(manifestId)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() => close()}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Visit Deployed Site
-                                  </a>
-                                </>
-                              )}
-                            </PopoverPanel>
-                          </Popover>
-                        </div>
-                      </div>
-                      
-                      {/* Mobile Timestamp Row */}
-                      {group.manifest.timestamp && (
-                        <div className="text-xs text-link sm:hidden mt-2">
-                          {new Date(group.manifest.timestamp).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Files Section */}
-                  {group.files && group.files.files && (
-                    <details className="bg-surface rounded-lg border border-default/30">
-                      <summary className="cursor-pointer p-3 font-medium text-fg-muted flex items-center gap-2">
-                        <Folder className="w-4 h-4" />
-                        Files ({group.files.files.length})
-                        <ChevronDown className="w-3 h-3 text-link ml-auto" />
-                      </summary>
-                        <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
-                          {group.files.files.map((file: any, fileIndex: number) => {
-                            const status = uploadStatuses[file.id];
-                            const isChecking = statusChecking[file.id];
-                            
-                            return (
-                              <div key={fileIndex} className="bg-canvas rounded-lg p-3 border border-default/30">
-                                <div className="space-y-2">
-                                  {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                      {/* Status Icon (no text) */}
-                                      {status ? (() => {
-                                        const iconType = getStatusIcon(status.status, status.info);
-                                        return renderStatusIcon(iconType);
-                                      })() : <Clock className="w-4 h-4 text-yellow-500" />}
-                                      
-                                      {/* Shortened Transaction ID */}
-                                      <div className="font-mono text-sm text-fg-muted">
-                                        {file.id.substring(0, 5)}...
-                                      </div>
-                                      
-                                      {/* File Path */}
-                                      <div className="text-sm text-fg-muted truncate" title={file.path}>
-                                        {file.path.split('/').pop() || file.path}
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Desktop: Show all actions */}
-                                    <div className="hidden sm:flex items-center gap-1">
-                                      <CopyButton textToCopy={file.id} />
-                                      <button
-                                        onClick={() => setShowReceiptModal(file.id)}
-                                        className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                                        title="View Receipt"
-                                      >
-                                        <Receipt className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => checkUploadStatus(file.id)}
-                                        disabled={isChecking}
-                                        className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
-                                        title="Check Status"
-                                      >
-                                        <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-                                      </button>
-                                      <a
-                                        href={getArweaveUrl(file.id)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-1.5 text-link hover:text-turbo-red transition-colors"
-                                        title="View File"
-                                      >
-                                        <ExternalLink className="w-4 h-4" />
-                                      </a>
-                                    </div>
-
-                                    {/* Mobile: 3-dot menu */}
-                                    <div className="sm:hidden">
-                                      <Popover className="relative">
-                                        <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
-                                          <MoreVertical className="w-4 h-4" />
-                                        </PopoverButton>
-                                        <PopoverPanel className="absolute right-0 mt-2 w-40 bg-surface border border-default rounded-lg shadow-lg z-[100] py-1">
-                                          {({ close }) => (
-                                            <>
-                                              <button
-                                                onClick={() => {
-                                                  navigator.clipboard.writeText(file.id);
-                                                  close();
-                                                }}
-                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                              >
-                                                <Receipt className="w-4 h-4" />
-                                                Copy File ID
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  setShowReceiptModal(file.id);
-                                                  close();
-                                                }}
-                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                              >
-                                                <Receipt className="w-4 h-4" />
-                                                View Receipt
-                                              </button>
-                                              <button
-                                                onClick={() => {
-                                                  checkUploadStatus(file.id);
-                                                  close();
-                                                }}
-                                                disabled={isChecking}
-                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
-                                              >
-                                                <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
-                                                Check Status
-                                              </button>
-                                              <a
-                                                href={getArweaveUrl(file.id)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                onClick={() => close()}
-                                                className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
-                                              >
-                                                <ExternalLink className="w-4 h-4" />
-                                                View File
-                                              </a>
-                                            </>
-                                          )}
-                                        </PopoverPanel>
-                                      </Popover>
-                                    </div>
-                                  </div>
-
-                                  {/* Row 2: Content Type + File Size */}
-                                  <div className="flex items-center gap-2 text-sm text-link">
-                                    <span>
-                                      {getDisplayContentType(
-                                        file.path,
-                                        file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value
-                                      )}
-                                    </span>
-                                    <span>•</span>
-                                    <span>
-                                      {file.size < 1024 
-                                        ? `${file.size}B` 
-                                        : file.size < 1024 * 1024 
-                                        ? `${(file.size / 1024).toFixed(2)} KB`
-                                        : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
-                                    </span>
-                                  </div>
-
-                                  {/* Row 3: Cost + Deploy Timestamp */}
-                                  <div className="flex items-center gap-2 text-sm text-link">
-                                    <span>
-                                      {file.size < 100 * 1024 ? (
-                                        <span className="text-turbo-green">FREE</span>
-                                      ) : wincForOneGiB ? (
-                                        `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
-                                      ) : (
-                                        'Unknown Cost'
-                                      )}
-                                    </span>
-                                    <span>•</span>
-                                    <span>
-                                      {group.files.timestamp 
-                                        ? new Date(group.files.timestamp).toLocaleString()
-                                        : 'Unknown Time'
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </details>
-                    )}
-                </div>
-                );
-              });
-            })()}
-          </div>
-
-          {/* Collapsible Status Guide */}
-          <div className="mt-4">
+        <div className="mt-4 sm:mt-6 bg-surface rounded-lg">
+          {/* Collapsible Header with Actions on Same Row */}
+          <div className={`flex items-center justify-between p-4 ${showDeployResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
-              onClick={() => setShowStatusGuide(!showStatusGuide)}
-              className="w-full flex items-center justify-between p-3 bg-canvas rounded-lg border border-default/30 hover:border-default/50 transition-colors"
+              onClick={() => setShowDeployResults(!showDeployResults)}
+              className="flex items-center gap-2 hover:text-turbo-green transition-colors text-left"
+              type="button"
             >
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-turbo-red" />
-                <span className="text-sm font-medium text-fg-muted">Status Guide</span>
-              </div>
-              <ChevronDown className={`w-4 h-4 text-link transition-transform ${showStatusGuide ? 'rotate-180' : ''}`} />
+              <Zap className="w-5 h-5 text-fg-muted" />
+              <span className="font-bold text-fg-muted">Recent Deployments</span>
+              <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
+              {showDeployResults ? (
+                <ChevronUp className="w-4 h-4 text-link" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-link" />
+              )}
             </button>
             
-            {showStatusGuide && (
-              <div className="mt-2 p-4 bg-surface/50 rounded-lg border border-default/30">
-                <div className="text-xs text-link space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">CONFIRMED/pending</strong> - File bundled, waiting for Arweave mining (most common)
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">FINALIZED/permanent</strong> - File is permanently stored on Arweave
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Archive className="w-4 h-4 text-turbo-blue flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">CONFIRMED/new</strong> - File bundling processing started
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <HelpCircle className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="text-fg-muted">NOT_FOUND</strong> - File not yet indexed (try again in a few minutes)
-                    </div>
-                  </div>
-                </div>
+            {/* Actions only show when expanded */}
+            {showDeployResults && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportDeployToCSV}
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors"
+                  title="Export deployment history to CSV"
+                >
+                  <Archive className="w-3 h-3" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </button>
+                <button
+                  onClick={() => {
+                    // Check status for recent deployed items (manifest + files)
+                    const allIds = recentDeploymentEntries.flatMap(([, group]) => {
+                      const ids = [];
+                      if (group.manifest?.id) ids.push(group.manifest.id);
+                      if (group.files?.files) ids.push(...group.files.files.map((f: any) => f.id));
+                      return ids;
+                    });
+                    checkMultipleStatuses(allIds, true);
+                  }}
+                  disabled={Object.values(statusChecking).some(checking => checking)}
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors disabled:opacity-50"
+                  title="Check status for recent deployed files"
+                >
+                  <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Check Status</span>
+                </button>
+                <button
+                  onClick={clearDeployHistory}
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-red-400 border border-default/30 rounded hover:border-red-400/50 transition-colors"
+                  title="Clear all deployment history"
+                >
+                  <XCircle className="w-3 h-3" />
+                  <span className="hidden sm:inline">Clear History</span>
+                </button>
               </div>
             )}
           </div>
+          
+          {showDeployResults && (
+            <>              
+              {/* Option 3: Single unified cards */}
+              <div className="space-y-4 max-h-[700px] overflow-y-auto px-4">
+                {recentDeploymentEntries.map(([manifestId, group]) => {
+                  const arnsAssociation = getArNSAssociation(manifestId);
+                  
+                  return (
+                    <div key={manifestId} className="border border-default rounded-lg p-4 bg-surface/50">
+                      {/* Unified Header Row - Manifest Info + Actions */}
+                      {group.manifest && (
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          {/* Main Info Row */}
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {/* Globe Icon - Indicates site manifest */}
+                            <Globe className="w-4 h-4 text-fg-muted" />
+                            
+                            {/* ArNS Name or Shortened Transaction ID */}
+                            {arnsAssociation && arnsAssociation.arnsName ? (
+                              <div className="flex items-center gap-2">
+                                <a 
+                                  href={`https://${arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}${arnsAssociation.arnsName}.ar.io`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-fg-muted hover:text-turbo-green hover:underline transition-colors"
+                                >
+                                  {arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}{arnsAssociation.arnsName}
+                                </a>
+                                {arnsAssociation.arnsStatus === 'failed' && (
+                                  <span className="text-xs text-red-400">(failed)</span>
+                                )}
+                                {arnsAssociation.arnsStatus === 'pending' && (
+                                  <span className="text-xs text-yellow-400">(updating...)</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="font-mono text-sm text-fg-muted">
+                                {manifestId.substring(0, 6)}...
+                              </div>
+                            )}
+                            
+                            {/* Timestamp - Desktop only */}
+                            {group.manifest.timestamp && (
+                              <span className="text-xs text-link hidden sm:inline">
+                                {new Date(group.manifest.timestamp).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Desktop: Show all actions */}
+                          <div className="hidden sm:flex items-center gap-1">
+                            {/* Status Icon as part of actions - only show if we have real status */}
+                            {uploadStatuses[manifestId] && (
+                              <div className="p-1.5" title={`Status: ${uploadStatuses[manifestId].status}`}>
+                                {(() => {
+                                  const iconType = getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
+                                  return renderStatusIcon(iconType);
+                                })()}
+                              </div>
+                            )}
+                            <CopyButton textToCopy={manifestId} />
+                            <button
+                              onClick={() => setShowReceiptModal(manifestId)}
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              title="View Receipt"
+                            >
+                              <Receipt className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => checkUploadStatus(manifestId, true)}
+                              disabled={!!statusChecking[manifestId]}
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                              title="Check Status"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
+                            </button>
+                            <a
+                              href={getArweaveRawUrl(manifestId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              title="View Raw Manifest JSON"
+                            >
+                              <Code className="w-4 h-4" />
+                            </a>
+                            <a
+                              href={getArweaveUrl(manifestId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              title="Visit Deployed Site"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+
+                          {/* Mobile: Status + 3-dot menu */}
+                          <div className="sm:hidden flex items-center gap-1">
+                            {/* Status Icon - visible on mobile, only show if we have real status */}
+                            {uploadStatuses[manifestId] && (
+                              <div className="p-1.5" title={`Status: ${uploadStatuses[manifestId].status}`}>
+                                {(() => {
+                                  const iconType = getStatusIcon(uploadStatuses[manifestId].status, uploadStatuses[manifestId].info);
+                                  return renderStatusIcon(iconType);
+                                })()}
+                              </div>
+                            )}
+                            
+                            <Popover className="relative">
+                              <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                                <MoreVertical className="w-4 h-4" />
+                              </PopoverButton>
+                              <PopoverPanel anchor="bottom end" className="w-48 bg-surface border border-default rounded-lg shadow-lg z-[9999] py-1 mt-1">
+                                {({ close }) => (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(manifestId);
+                                        setCopiedItems(prev => new Set([...prev, manifestId]));
+                                        // Show feedback for 1 second before closing menu
+                                        setTimeout(() => {
+                                          close();
+                                          // Clear copied state after menu closes
+                                          setTimeout(() => {
+                                            setCopiedItems(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.delete(manifestId);
+                                              return newSet;
+                                            });
+                                          }, 500);
+                                        }, 1000);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                    >
+                                      {copiedItems.has(manifestId) ? (
+                                        <>
+                                          <CheckCircle className="w-4 h-4 text-green-500" />
+                                          Copied!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy className="w-4 h-4" />
+                                          Copy Manifest ID
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setShowReceiptModal(manifestId);
+                                        close();
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                    >
+                                      <Receipt className="w-4 h-4" />
+                                      View Receipt
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        checkUploadStatus(manifestId, true);
+                                        close();
+                                      }}
+                                      disabled={!!statusChecking[manifestId]}
+                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                      <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
+                                      Check Status
+                                    </button>
+                                    <a
+                                      href={getArweaveRawUrl(manifestId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={() => close()}
+                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                    >
+                                      <Code className="w-4 h-4" />
+                                      View Raw JSON
+                                    </a>
+                                    <a
+                                      href={getArweaveUrl(manifestId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={() => close()}
+                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                      Visit Deployed Site
+                                    </a>
+                                  </>
+                                )}
+                              </PopoverPanel>
+                            </Popover>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Mobile Timestamp Row */}
+                      {group.manifest && group.manifest.timestamp && (
+                        <div className="text-xs text-link sm:hidden mb-3">
+                          {new Date(group.manifest.timestamp).toLocaleString()}
+                        </div>
+                      )}
+
+                      {/* Files Section - Integrated into same card */}
+                      {group.files && group.files.files && (
+                        <details className="border-t border-default/30 pt-3">
+                          <summary className="cursor-pointer font-medium text-fg-muted flex items-center gap-2 hover:text-turbo-red transition-colors">
+                            <Folder className="w-4 h-4" />
+                            Files ({group.files.files.length})
+                            <ChevronDown className="w-3 h-3 text-link ml-auto" />
+                          </summary>
+                          <div className="pt-3 space-y-2 max-h-60 overflow-y-auto pl-1">
+                            {group.files.files.map((file: any, fileIndex: number) => {
+                              const status = uploadStatuses[file.id];
+                              const isChecking = statusChecking[file.id];
+                              
+                              return (
+                                <div key={fileIndex} className="border border-default/30 rounded p-3 bg-canvas/30">
+                                  <div className="space-y-2">
+                                    {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        {/* Shortened Transaction ID */}
+                                        <div className="font-mono text-sm text-fg-muted">
+                                          {file.id.substring(0, 6)}...
+                                        </div>
+                                        
+                                        {/* File Path */}
+                                        <div className="text-sm text-fg-muted truncate" title={file.path}>
+                                          {file.path.split('/').pop() || file.path}
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Desktop: Show all actions */}
+                                      <div className="hidden sm:flex items-center gap-1">
+                                        {/* Status Icon as part of actions - only show if we have real status */}
+                                        {status && (
+                                          <div className="p-1.5" title={`Status: ${status.status}`}>
+                                            {(() => {
+                                              const iconType = getStatusIcon(status.status, status.info);
+                                              return renderStatusIcon(iconType);
+                                            })()}
+                                          </div>
+                                        )}
+                                        <CopyButton textToCopy={file.id} />
+                                        <button
+                                          onClick={() => setShowReceiptModal(file.id)}
+                                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                          title="View Receipt"
+                                        >
+                                          <Receipt className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => checkUploadStatus(file.id, true)}
+                                          disabled={isChecking}
+                                          className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                                          title="Check Status"
+                                        >
+                                          <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                        </button>
+                                        <a
+                                          href={getArweaveUrl(file.id)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                          title="View File"
+                                        >
+                                          <ExternalLink className="w-4 h-4" />
+                                        </a>
+                                      </div>
+
+                                      {/* Mobile: Status icon + 3-dot menu */}
+                                      <div className="sm:hidden flex items-center gap-1">
+                                        {/* Status Icon for mobile */}
+                                        {status && (
+                                          <div className="p-1.5" title={`Status: ${status.status}`}>
+                                            {(() => {
+                                              const iconType = getStatusIcon(status.status, status.info);
+                                              return renderStatusIcon(iconType);
+                                            })()}
+                                          </div>
+                                        )}
+                                        <Popover className="relative">
+                                          <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                                            <MoreVertical className="w-4 h-4" />
+                                          </PopoverButton>
+                                          <PopoverPanel anchor="bottom end" className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[9999] py-1 mt-1">
+                                            {({ close }) => (
+                                              <>
+                                                <button
+                                                  onClick={() => {
+                                                    navigator.clipboard.writeText(file.id);
+                                                    setCopiedItems(prev => new Set([...prev, file.id]));
+                                                    // Show feedback for 1 second before closing menu
+                                                    setTimeout(() => {
+                                                      close();
+                                                      // Clear copied state after menu closes
+                                                      setTimeout(() => {
+                                                        setCopiedItems(prev => {
+                                                          const newSet = new Set(prev);
+                                                          newSet.delete(file.id);
+                                                          return newSet;
+                                                        });
+                                                      }, 500);
+                                                    }, 1000);
+                                                  }}
+                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                >
+                                                  {copiedItems.has(file.id) ? (
+                                                    <>
+                                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                                      Copied!
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Copy className="w-4 h-4" />
+                                                      Copy File ID
+                                                    </>
+                                                  )}
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    setShowReceiptModal(file.id);
+                                                    close();
+                                                  }}
+                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                >
+                                                  <Receipt className="w-4 h-4" />
+                                                  View Receipt
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    checkUploadStatus(file.id, true);
+                                                    close();
+                                                  }}
+                                                  disabled={isChecking}
+                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                >
+                                                  <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
+                                                  Check Status
+                                                </button>
+                                                <a
+                                                  href={getArweaveUrl(file.id)}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  onClick={() => close()}
+                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                >
+                                                  <ExternalLink className="w-4 h-4" />
+                                                  View File
+                                                </a>
+                                              </>
+                                            )}
+                                          </PopoverPanel>
+                                        </Popover>
+                                      </div>
+                                    </div>
+
+                                    {/* Row 2: Content Type + File Size */}
+                                    <div className="flex items-center gap-2 text-sm text-link">
+                                      <span>
+                                        {getDisplayContentType(
+                                          file.path,
+                                          file.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value
+                                        )}
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        {file.size < 1024 
+                                          ? `${file.size} B` 
+                                          : file.size < 1024 * 1024 
+                                          ? `${(file.size / 1024).toFixed(2)} KB`
+                                          : `${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                                      </span>
+                                    </div>
+
+                                    {/* Row 3: Cost + Deploy Timestamp */}
+                                    <div className="flex items-center gap-2 text-sm text-link">
+                                      <span>
+                                        {file.size < 100 * 1024 ? (
+                                          <span className="text-turbo-green">FREE</span>
+                                        ) : wincForOneGiB ? (
+                                          `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
+                                        ) : (
+                                          'Unknown Cost'
+                                        )}
+                                      </span>
+                                      <span>•</span>
+                                      <span>
+                                        {group.files.timestamp 
+                                          ? new Date(group.files.timestamp).toLocaleString()
+                                          : 'Unknown Time'
+                                        }
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          
+          {/* View All Button at Bottom - only show when expanded and there are deployments */}
+          {showDeployResults && Object.keys(deploymentGroups).length > 0 && (
+            <div className="border-t border-default mt-4">
+              <div className="p-4">
+                <button
+                  onClick={() => {
+                    navigate('/deployments');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+                >
+                  View All Deployments <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Technical Features */}
-      <div className="grid md:grid-cols-3 gap-4 mt-4 sm:mt-6">
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Globe className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Permanent Deployment</h4>
-              <p className="text-xs text-link">
-                Sites are permanently stored on Arweave - no expiration dates or hosting fees.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Immutable Content</h4>
-              <p className="text-xs text-link">
-                Deployed sites cannot be censored, taken down, or modified - guaranteed permanence.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-lg p-4 border border-default">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Folder className="w-5 h-5 text-turbo-red" />
-            </div>
-            <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Folder Structure Preserved</h4>
-              <p className="text-xs text-link">
-                Relative paths and folder hierarchy maintained for proper site navigation.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
       {/* Receipt Modal */}
       {showReceiptModal && (
         <ReceiptModal
@@ -1408,6 +1889,23 @@ export default function DeploySitePanel() {
           )}
           uploadId={showReceiptModal}
           initialStatus={uploadStatuses[showReceiptModal]}
+        />
+      )}
+
+      {/* Deploy Confirmation Modal */}
+      {showConfirmModal && selectedFolder && (
+        <DeployConfirmationModal
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={handleConfirmDeploy}
+          folderName={folderName}
+          fileCount={selectedFolder.length}
+          totalSize={totalSize}
+          totalCost={totalCost}
+          indexFile={indexFile}
+          fallbackFile={fallbackFile}
+          arnsEnabled={arnsEnabled}
+          arnsName={selectedArnsName}
+          undername={selectedUndername}
         />
       )}
     </div>

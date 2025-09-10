@@ -134,3 +134,43 @@ export const getArweaveRawUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
   return `${gatewayBase}/raw/${txId}`;
 };
+
+// Capitalize first letter of a string
+export const capitalizeFirstLetter = (str: string): string => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+// Create possessive form of a name (e.g., "John" -> "John's", "Vilenarios" -> "Vilenarios'")
+export const makePossessive = (name: string): string => {
+  if (!name) return name;
+  const capitalizedName = capitalizeFirstLetter(name);
+  return capitalizedName.endsWith('s') ? `${capitalizedName}'` : `${capitalizedName}'s`;
+};
+
+// Helper to decode punycode ArNS names for better display
+export const decodePunycode = (name: string): string => {
+  try {
+    // Modern browsers have punycode built into URL/domain APIs
+    if (name.startsWith('xn--')) {
+      // Use the native browser API to decode punycode
+      const url = new URL(`https://${name}.example.com`);
+      const decoded = url.hostname.split('.')[0];
+      return decoded !== name ? decoded : name;
+    }
+    return name;
+  } catch (error) {
+    // If decoding fails, return original name
+    console.warn('Failed to decode punycode name:', name, error);
+    return name;
+  }
+};
+
+// Get display-friendly ArNS name (handles punycode)
+export const getDisplayArNSName = (name: string, showOriginal = false): string => {
+  const decoded = decodePunycode(name);
+  if (showOriginal && decoded !== name) {
+    return `${decoded} (${name})`;
+  }
+  return decoded;
+};

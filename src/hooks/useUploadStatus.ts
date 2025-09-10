@@ -21,16 +21,18 @@ export function useUploadStatus() {
   const setUploadStatus = useStore((state) => state.setUploadStatus);
   const getUploadStatus = useStore((state) => state.getUploadStatus);
 
-  const checkUploadStatus = useCallback(async (txId: string): Promise<UploadStatus> => {
-    // Check cache first
-    const cachedStatus = getUploadStatus(txId);
-    if (cachedStatus) {
-      const status: UploadStatus = cachedStatus as UploadStatus;
-      setUploadStatuses(prev => ({ ...prev, [txId]: status }));
-      
-      // If already finalized, don't check again
-      if (status.status === 'FINALIZED') {
-        return status;
+  const checkUploadStatus = useCallback(async (txId: string, force: boolean = false): Promise<UploadStatus> => {
+    // Check cache first (unless forced refresh)
+    if (!force) {
+      const cachedStatus = getUploadStatus(txId);
+      if (cachedStatus) {
+        const status: UploadStatus = cachedStatus as UploadStatus;
+        setUploadStatuses(prev => ({ ...prev, [txId]: status }));
+        
+        // If already finalized, don't check again
+        if (status.status === 'FINALIZED') {
+          return status;
+        }
       }
     }
     
@@ -77,10 +79,27 @@ export function useUploadStatus() {
     }
   }, [getCurrentConfig, getUploadStatus, setUploadStatus]);
 
-  const checkMultipleStatuses = useCallback(async (txIds: string[]) => {
-    const promises = txIds.map(txId => checkUploadStatus(txId));
+  const checkMultipleStatuses = useCallback(async (txIds: string[], force: boolean = false) => {
+    if (force) {
+      // Force refresh all items
+      const promises = txIds.map(txId => checkUploadStatus(txId, true));
+      return Promise.all(promises);
+    }
+    
+    // Filter out already finalized items to improve efficiency (for auto-checks only)
+    const idsToCheck = txIds.filter(txId => {
+      const cachedStatus = getUploadStatus(txId);
+      return !cachedStatus || cachedStatus.status !== 'FINALIZED';
+    });
+    
+    // If no items need checking, return early
+    if (idsToCheck.length === 0) {
+      return [];
+    }
+    
+    const promises = idsToCheck.map(txId => checkUploadStatus(txId));
     return Promise.all(promises);
-  }, [checkUploadStatus]);
+  }, [checkUploadStatus, getUploadStatus]);
 
   const formatFileSize = useCallback((bytes: number) => {
     if (bytes < 1024) return bytes + ' B';

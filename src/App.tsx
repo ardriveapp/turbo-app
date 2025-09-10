@@ -14,6 +14,7 @@ import RedeemPage from './pages/RedeemPage';
 import { DeveloperPage } from './pages/DeveloperPage';
 import GatewayInfoPage from './pages/GatewayInfoPage';
 import DeploySitePage from './pages/DeploySitePage';
+import RecentDeploymentsPage from './pages/RecentDeploymentsPage';
 import AccountPage from './pages/AccountPage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
@@ -54,6 +55,7 @@ function AppRoutes() {
           <Route path="topup" element={<TopUpPage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="deploy" element={<DeploySitePage />} />
+          <Route path="deployments" element={<RecentDeploymentsPage />} />
           <Route path="share" element={<ShareCreditsPage />} />
           <Route path="gift" element={<GiftPage />} />
           <Route path="domains" element={<DomainsPage />} />

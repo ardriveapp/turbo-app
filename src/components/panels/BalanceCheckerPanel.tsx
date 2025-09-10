@@ -8,7 +8,7 @@ import { useStore } from '../../store/useStore';
 import { Search, Wallet, ExternalLink, Info, Coins, HardDrive, Share2, Users, ArrowDown, ArrowUp, ChevronDown, X, Check } from 'lucide-react';
 import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
-import { useArNSName } from '../../hooks/useArNSName';
+import { usePrimaryArNSName } from '../../hooks/usePrimaryArNSName';
 import CopyButton from '../CopyButton';
 
 interface BalanceResult {
@@ -55,7 +55,7 @@ export default function BalanceCheckerPanel() {
   const wincForOneGiB = useWincForOneGiB();
   
   // Get ArNS name for the searched address
-  const { arnsName, loading: loadingArNS } = useArNSName(balanceResult?.address || null);
+  const { arnsName, loading: loadingArNS } = usePrimaryArNSName(balanceResult?.address || null);
 
   // Create Turbo client with proper wallet support (exact same pattern as file upload)
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
@@ -179,11 +179,8 @@ export default function BalanceCheckerPanel() {
       const turbo = TurboFactory.unauthenticated(turboConfig);
       
       // Fetch balance (includes all shared credits data like reference app)
-      console.log('Fetching balance for:', targetAddress);
       const balance = await turbo.getBalance(targetAddress);
-      
-      console.log('Balance API result (full response):', balance);
-      
+            
       // Process balance data using reference app pattern
       const {
         winc,
@@ -198,29 +195,16 @@ export default function BalanceCheckerPanel() {
       if (wincForOneGiB) {
         gibStorage = Number(winc) / Number(wincForOneGiB);
       }
-      
-      console.log('Processing shared credits with balance data:', { givenApprovals, receivedApprovals });
-      
+            
       // Calculate shared credits using reference app formulas
-      const spendPower = Number(winc) / wincPerCredit;
       const sharedCreditsOut = controlledWinc ? (Number(controlledWinc) - Number(winc)) / wincPerCredit : 0;
       const receivedCreditsTotal = effectiveBalance ? (Number(effectiveBalance) - Number(winc)) / wincPerCredit : 0;
-      
-      console.log('Reference app calculations:', {
-        spendPower,
-        sharedCreditsOut,
-        receivedCreditsTotal,
-        winc,
-        controlledWinc,
-        effectiveBalance
-      });
       
       // Process shared credits using balance data (like reference app)
       const sharedCredits = {
         received: {
           totalCredits: receivedCreditsTotal, // Use reference app calculation
           approvals: receivedApprovals ? receivedApprovals.map((approval: any) => {
-            console.log('Processing received approval:', approval);
             return {
               approvalId: approval.approvalDataItemId || approval.id || 'unknown',
               granterAddress: approval.granterAddress || approval.payingAddress || approval.fromAddress || 'Invalid Address',
