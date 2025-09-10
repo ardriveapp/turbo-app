@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ARIO, ANT } from '@ar.io/sdk';
 import { useStore } from '../store/useStore';
+import { getARIO, getANT } from '../utils';
 
 // Check if address is valid Arweave transaction ID
 function checkValidAddress(address: string): boolean {
@@ -55,7 +55,7 @@ export function usePrimaryArNSName(address: string | null) {
       setLoading(true);
       try {
         // Get primary name with longer timeout
-        const ario = ARIO.mainnet();
+        const ario = getARIO();
         console.log('Fetching primary name for address:', address);
         
         // Create a more generous timeout promise
@@ -101,7 +101,7 @@ export function usePrimaryArNSName(address: string | null) {
                 if (record && record.processId) {
                   console.log('Initializing ANT client with processId:', record.processId);
                   // Initialize ANT client and get logo
-                  const ant = ANT.init({ processId: record.processId });
+                  const ant = getANT(record.processId);
                   const logo = await ant.getLogo();
                   console.log('ANT logo result:', logo);
                   

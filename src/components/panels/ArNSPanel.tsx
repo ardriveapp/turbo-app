@@ -2,7 +2,7 @@ import { useState } from 'react';
 import useDebounce from '../../hooks/useDebounce';
 import { Globe, Search, CheckCircle, XCircle, Clock, Shield, Zap, ExternalLink, AlertCircle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { ARIO } from '@ar.io/sdk';
+import { getARIO } from '../../utils';
 
 export default function ArNSPanel() {
   const { walletType } = useStore();
@@ -17,7 +17,7 @@ export default function ArNSPanel() {
     
     setChecking(true);
     try {
-      const ario = ARIO.mainnet();
+      const ario = getARIO();
       
       // Try to resolve the name - if it exists, it's taken
       const record = await ario.resolveArNSName({ name: debouncedSearch });

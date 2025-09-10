@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ARIO, mARIOToken } from '@ar.io/sdk';
+import { mARIOToken } from '@ar.io/sdk';
 import { useCreditsForFiat } from './useCreditsForFiat';
+import { getARIO } from '../utils';
 
 interface ArNSPricingTier {
   characterLength: number;
@@ -122,7 +123,7 @@ export function useArNSPricing(): UseArNSPricingReturn {
 
   const getPriceForName = async (name: string, type: 'lease' | 'permabuy', years: number = 1): Promise<{ ario: number; usd: number; credits: number } | null> => {
     try {
-      const ario = ARIO.mainnet();
+      const ario = getARIO();
       
       // Get the token cost for buying this name
       const cost = await ario.getTokenCost({
@@ -235,7 +236,7 @@ export function useArNSPricing(): UseArNSPricingReturn {
         }
 
         console.log('Fetching fresh ArNS pricing data');
-        const ario = ARIO.mainnet();
+        const ario = getARIO();
         
         // Get the current demand factor once
         const currentDemandFactor = await ario.getDemandFactor();

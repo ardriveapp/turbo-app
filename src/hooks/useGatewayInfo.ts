@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ARIO, type AoGateway } from '@ar.io/sdk';
+import { type AoGateway } from '@ar.io/sdk';
 import { TurboFactory, USD } from '@ardrive/turbo-sdk/web';
 import { useTurboConfig } from './useTurboConfig';
 import { useStore } from '../store/useStore';
@@ -132,7 +132,8 @@ export function useGatewayInfo() {
         // Fetch AR.IO gateway info using SDK (if we have gateway wallet address)
         if (gatewayData?.wallet) {
           try {
-            const io = ARIO.init();
+            const { getARIO } = await import('../utils');
+            const io = getARIO();
             arIOData = await io.getGateway({ address: gatewayData.wallet });
             setArIOGatewayInfo(arIOData);
           } catch (err) {
@@ -296,7 +297,8 @@ export function useGatewayInfo() {
       // Fetch AR.IO gateway info (if we have gateway wallet address)
       if (gatewayData?.wallet) {
         try {
-          const io = ARIO.init();
+          const { getARIO } = await import('../utils');
+          const io = getARIO();
           arIOData = await io.getGateway({ address: gatewayData.wallet });
           setArIOGatewayInfo(arIOData);
         } catch (err) {

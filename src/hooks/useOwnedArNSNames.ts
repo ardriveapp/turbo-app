@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
-import { ARIO, ANT, ArconnectSigner } from '@ar.io/sdk/web';
+import { ArconnectSigner } from '@ar.io/sdk/web';
 import { useStore } from '../store/useStore';
+import { getARIO, getANT } from '../utils';
 
 // Helper to decode punycode names for better display
 const decodePunycode = (name: string): string => {
@@ -23,9 +24,9 @@ interface ArNSName {
   name: string;           // e.g., "my-blog" or "xn--gmq235b10p"
   displayName: string;    // Decoded punycode name for UI
   processId: string;      // ANT process ID
-  currentTarget?: string; // Current transaction ID
+  currentTarget?: string; // Current transaction ID (fetched on-demand)
   lastUpdated?: Date;
-  undernames?: string[];  // Available undernames
+  undernames?: string[];  // Available undernames (fetched on-demand)
 }
 
 interface ArNSUpdateResult {
@@ -39,6 +40,7 @@ export function useOwnedArNSNames() {
   const [names, setNames] = useState<ArNSName[]>([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
+  const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
 
   // Fetch names owned by current address
   const fetchOwnedNames = useCallback(async (forceRefresh: boolean = false): Promise<ArNSName[]> => {
@@ -66,8 +68,8 @@ export function useOwnedArNSNames() {
     try {
       console.log('Fetching ArNS records for address:', address);
       
-      // Use AR.IO SDK to get owned names
-      const ario = ARIO.mainnet();
+      // Use AR.IO SDK to get owned names with custom CU
+      const ario = getARIO();
       const records = await ario.getArNSRecordsForAddress({
         address: address,
         limit: 100, // Get up to 100 names
@@ -77,68 +79,40 @@ export function useOwnedArNSNames() {
       
       console.log('Fetched ArNS records:', records);
       
-      const processedNames: ArNSName[] = [];
-      const cacheData: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}> = [];
+      // Process names WITHOUT fetching ANT details (lazy loading approach)
+      const processedNames: ArNSName[] = (records.items || []).map(record => ({
+        name: record.name,
+        displayName: decodePunycode(record.name),
+        processId: record.processId,
+        currentTarget: undefined, // Will be fetched on-demand
+        lastUpdated: record.startTimestamp ? new Date(record.startTimestamp) : undefined,
+        undernames: undefined // Will be fetched on-demand
+      }));
       
-      // Process each record and get current state from ANT
-      for (const record of records.items || []) {
-        try {
-          console.log('Processing ArNS record:', record);
-          
-          // Get ANT state to find current target
-          const ant = ANT.init({ processId: record.processId });
-          const state = await ant.getState();
-          
-          console.log('ANT state for', record.name, ':', state);
-          
-          const currentTarget = state.Records?.['@']?.transactionId;
-          const undernames = Object.keys(state.Records || {}).filter(key => key !== '@');
-          
-          const processedName = {
-            name: record.name,
-            displayName: decodePunycode(record.name),
-            processId: record.processId,
-            currentTarget,
-            lastUpdated: record.startTimestamp ? new Date(record.startTimestamp) : undefined,
-            undernames
-          };
-          
-          processedNames.push(processedName);
-          
-          // Prepare cache data - include undernames!
-          cacheData.push({
-            name: record.name,
-            processId: record.processId,
-            currentTarget,
-            undernames
-          });
-          
-        } catch (antError) {
-          console.warn(`Failed to get ANT state for ${record.name}:`, antError);
-          
-          // Still include the name even if we can't get ANT state
-          const fallbackName = {
-            name: record.name,
-            displayName: decodePunycode(record.name),
-            processId: record.processId,
-            currentTarget: undefined,
-            lastUpdated: record.startTimestamp ? new Date(record.startTimestamp) : undefined,
-            undernames: []
-          };
-          
-          processedNames.push(fallbackName);
-          
-          cacheData.push({
-            name: record.name,
-            processId: record.processId,
-            currentTarget: undefined,
-            undernames: [] // Empty array when ANT state fails
-          });
-        }
+      // Check if we have cached ANT details for any of these names
+      const cached = getOwnedArNSNames(address);
+      if (cached) {
+        // Merge cached ANT details with fresh name list
+        processedNames.forEach(name => {
+          const cachedName = cached.find(c => c.name === name.name);
+          if (cachedName) {
+            name.currentTarget = cachedName.currentTarget;
+            name.undernames = cachedName.undernames || [];
+          }
+        });
+        console.log('Merged cached ANT details for known names');
       }
       
-      console.log('Processed ArNS names:', processedNames);
-      console.log('Caching ArNS data:', cacheData);
+      // Prepare cache data (only basic info, ANT details added on-demand)
+      const cacheData = processedNames.map(name => ({
+        name: name.name,
+        processId: name.processId,
+        currentTarget: name.currentTarget,
+        undernames: name.undernames
+      }));
+      
+      console.log('Processed ArNS names (without ANT state):', processedNames);
+      console.log('Caching basic ArNS data:', cacheData);
       
       // Cache the results
       setOwnedArNSNames(address, cacheData);
@@ -191,11 +165,11 @@ export function useOwnedArNSNames() {
     try {
       console.log('Updating ArNS record:', { name, manifestId, undername, processId: nameRecord.processId });
       
-      // Initialize ANT with signer for write operations
-      const ant = ANT.init({
-        processId: nameRecord.processId,
-        signer: new ArconnectSigner(window.arweaveWallet)
-      });
+      // Initialize ANT with signer for write operations and custom CU
+      const ant = getANT(
+        nameRecord.processId,
+        new ArconnectSigner(window.arweaveWallet)
+      ) as any; // Cast to any to access write methods
 
       let result;
       if (undername) {
@@ -225,7 +199,7 @@ export function useOwnedArNSNames() {
             // Get fresh ANT state for just this name
             const nameRecord = names.find(n => n.name === name);
             if (nameRecord) {
-              const ant = ANT.init({ processId: nameRecord.processId });
+              const ant = getANT(nameRecord.processId);
               const freshState = await ant.getState();
               
               const updatedTarget = freshState.Records?.['@']?.transactionId;
@@ -290,6 +264,91 @@ export function useOwnedArNSNames() {
     }
   }, [names, address, fetchOwnedNames, getOwnedArNSNames, setOwnedArNSNames]);
 
+  // Fetch ANT details for a specific name (on-demand)
+  const fetchNameDetails = useCallback(async (name: string): Promise<ArNSName | null> => {
+    const nameRecord = names.find(n => n.name === name);
+    if (!nameRecord) return null;
+    
+    // Check if we already have complete details (both currentTarget and undernames defined)
+    if (nameRecord.currentTarget !== undefined && nameRecord.undernames !== undefined) {
+      console.log('Already have complete ANT details for:', name);
+      return nameRecord;
+    }
+    
+    setLoadingDetails(prev => ({ ...prev, [name]: true }));
+    
+    try {
+      console.log('Fetching ANT details on-demand for:', name);
+      const ant = getANT(nameRecord.processId);
+      const state = await ant.getState();
+      
+      const currentTarget = state.Records?.['@']?.transactionId;
+      const undernames = Object.keys(state.Records || {}).filter(key => key !== '@');
+      
+      const updatedName: ArNSName = {
+        ...nameRecord,
+        currentTarget: currentTarget || undefined,
+        undernames
+      };
+      
+      // Update local state
+      setNames(prevNames => prevNames.map(n => 
+        n.name === name ? updatedName : n
+      ));
+      
+      // Update cache with the new details
+      if (address) {
+        const cachedNames = getOwnedArNSNames(address) || [];
+        let updatedCache;
+        
+        // Check if this name is already in cache
+        const existingIndex = cachedNames.findIndex(c => c.name === name);
+        if (existingIndex >= 0) {
+          // Update existing cache entry
+          updatedCache = [...cachedNames];
+          updatedCache[existingIndex] = {
+            name: nameRecord.name,
+            processId: nameRecord.processId,
+            currentTarget: currentTarget || undefined,
+            undernames
+          };
+        } else {
+          // Add new cache entry
+          updatedCache = [...cachedNames, {
+            name: nameRecord.name,
+            processId: nameRecord.processId,
+            currentTarget: currentTarget || undefined,
+            undernames
+          }];
+        }
+        
+        setOwnedArNSNames(address, updatedCache);
+        console.log('Updated cache with ANT details for:', name);
+      }
+      
+      console.log('Fetched ANT details for', name, ':', { currentTarget, undernames });
+      return updatedName;
+      
+    } catch (error) {
+      console.error('Failed to fetch ANT details for', name, ':', error);
+      
+      // Even on error, mark as attempted by setting empty values
+      const failedName: ArNSName = {
+        ...nameRecord,
+        currentTarget: undefined,
+        undernames: []
+      };
+      
+      setNames(prevNames => prevNames.map(n => 
+        n.name === name ? failedName : n
+      ));
+      
+      return failedName;
+    } finally {
+      setLoadingDetails(prev => ({ ...prev, [name]: false }));
+    }
+  }, [names, address, getOwnedArNSNames, setOwnedArNSNames]);
+
   // Refresh a specific ArNS name's state
   const refreshSpecificName = useCallback(async (name: string): Promise<boolean> => {
     if (!address) return false;
@@ -303,7 +362,7 @@ export function useOwnedArNSNames() {
     }
     
     try {
-      const ant = ANT.init({ processId: nameRecord.processId });
+      const ant = getANT(nameRecord.processId);
       const freshState = await ant.getState();
       
       const updatedTarget = freshState.Records?.['@']?.transactionId;
@@ -362,7 +421,9 @@ export function useOwnedArNSNames() {
     names,
     loading,
     updating,
+    loadingDetails,
     fetchOwnedNames,
+    fetchNameDetails,
     updateArNSRecord,
     refreshSpecificName
   };

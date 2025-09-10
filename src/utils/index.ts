@@ -174,3 +174,6 @@ export const getDisplayArNSName = (name: string, showOriginal = false): string =
   }
   return decoded;
 };
+
+// Export AR.IO configuration helpers
+export { getARIO, getANT } from './arIOConfig';

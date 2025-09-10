@@ -1,6 +1,6 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, ExternalLink, AlertCircle, Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
-import { Listbox, Transition } from '@headlessui/react';
+import { Listbox } from '@headlessui/react';
 import { useOwnedArNSNames } from '../hooks/useOwnedArNSNames';
 
 interface ArNSAssociationPanelProps {
@@ -20,7 +20,7 @@ export default function ArNSAssociationPanel({
   selectedUndername,
   onUndernameChange
 }: ArNSAssociationPanelProps) {
-  const { names, loading, fetchOwnedNames } = useOwnedArNSNames();
+  const { names, loading, loadingDetails, fetchOwnedNames, fetchNameDetails } = useOwnedArNSNames();
   const [showUndername, setShowUndername] = useState(false);
 
   const selectedNameRecord = names.find(name => name.name === selectedName);
@@ -126,7 +126,13 @@ export default function ArNSAssociationPanel({
                 </div>
                 <Listbox 
                   value={selectedName} 
-                  onChange={onNameChange}
+                  onChange={async (name) => {
+                    onNameChange(name);
+                    // Fetch ANT details on-demand when name is selected
+                    if (name) {
+                      await fetchNameDetails(name);
+                    }
+                  }}
                   disabled={loading}
                 >
                   <div className="relative">
@@ -141,16 +147,14 @@ export default function ArNSAssociationPanel({
                         )}
                       </span>
                       <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                        <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                        {loadingDetails[selectedName] ? (
+                          <Loader2 className="h-4 w-4 text-link animate-spin" aria-hidden="true" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                        )}
                       </span>
                     </Listbox.Button>
-                    <Transition
-                      as={Fragment}
-                      leave="transition ease-in duration-100"
-                      leaveFrom="opacity-100"
-                      leaveTo="opacity-0"
-                    >
-                      <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                      <Listbox.Options className="absolute z-[100] mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                         <Listbox.Option
                           value=""
                           className={({ active }) =>
@@ -188,7 +192,6 @@ export default function ArNSAssociationPanel({
                           </Listbox.Option>
                         ))}
                       </Listbox.Options>
-                    </Transition>
                   </div>
                 </Listbox>
               </div>
