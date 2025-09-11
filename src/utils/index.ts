@@ -176,4 +176,4 @@ export const getDisplayArNSName = (name: string, showOriginal = false): string =
 };
 
 // Export AR.IO configuration helpers
-export { getARIO, getANT } from './arIOConfig';
+export { getARIO, getANT, WRITE_OPTIONS, createContractSigner } from './arIOConfig';

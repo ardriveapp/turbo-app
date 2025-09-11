@@ -103,7 +103,7 @@ export const tokenProcessingTimes: Record<SupportedTokenType, {
     description: 'Arweave network confirmations take time for security'
   },
   ario: { 
-    time: '1-5 minutes', 
+    time: 'near instant-3 minutes', 
     speed: 'fast',
     description: 'ARIO transfers on AO are typically fast'
   },
@@ -113,7 +113,7 @@ export const tokenProcessingTimes: Record<SupportedTokenType, {
     description: 'Ethereum L1 requires multiple confirmations'
   },
   'base-eth': { 
-    time: '1-3 minutes', 
+    time: 'near instant-3 minutes', 
     speed: 'fast',
     description: 'Base L2 offers faster confirmation times'
   },

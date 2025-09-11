@@ -51,7 +51,7 @@ export default function ArNSPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Name Search */}
       <div className="mb-6">
@@ -89,7 +89,7 @@ export default function ArNSPanel() {
           <button
             onClick={checkAvailability}
             disabled={!nameSearch || checking}
-            className="px-6 py-3 rounded-lg bg-turbo-yellow text-white font-bold hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 rounded-lg bg-turbo-yellow text-black font-bold hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Search className="w-4 h-4" />
             {checking ? 'Checking...' : 'Check'}
@@ -116,7 +116,7 @@ export default function ArNSPanel() {
                   href={`https://arns.ar.io/#/register/${nameSearch}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-turbo-yellow text-white font-bold rounded-lg hover:bg-turbo-yellow/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-turbo-yellow text-black font-bold rounded-lg hover:bg-turbo-yellow/90 transition-colors"
                 >
                   <Globe className="w-5 h-5" />
                   Register on ArNS App
@@ -221,7 +221,7 @@ export default function ArNSPanel() {
                 href="https://arns.ar.io"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-turbo-yellow text-white font-medium rounded-lg hover:bg-turbo-yellow/90 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-turbo-yellow text-black font-medium rounded-lg hover:bg-turbo-yellow/90 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 Open ArNS App

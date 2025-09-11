@@ -55,7 +55,7 @@ export default function ArNSAssociationPanel({
     }
   }, [selectedName, onUndernameChange]);
   return (
-    <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-default p-6 mb-6">
+    <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6 mb-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Globe className="w-5 h-5 text-turbo-yellow" />
@@ -95,11 +95,11 @@ export default function ArNSAssociationPanel({
                     No ArNS names found
                   </div>
                   <div className="text-sm text-link mb-3">
-                    You need to own an ArNS name first. You can purchase names from the AR.IO network.
+                    You need to own an ArNS name first. You can purchase names from the AR.IO Network.
                   </div>
                   <button
-                    onClick={() => window.open('https://ar.io/', '_blank')}
-                    className="px-3 py-1.5 bg-turbo-yellow text-white rounded text-xs hover:bg-turbo-yellow/90 transition-colors"
+                    onClick={() => window.open('https://ar.io/arns', '_blank')}
+                    className="px-3 py-1.5 bg-turbo-yellow text-black rounded text-xs hover:bg-turbo-yellow/90 transition-colors"
                   >
                     Learn More About ArNS
                   </button>
@@ -154,7 +154,7 @@ export default function ArNSAssociationPanel({
                         )}
                       </span>
                     </Listbox.Button>
-                      <Listbox.Options className="absolute z-[100] mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                      <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                         <Listbox.Option
                           value=""
                           className={({ active }) =>
@@ -230,7 +230,7 @@ export default function ArNSAssociationPanel({
                                 onClick={() => onUndernameChange(undername)}
                                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
                                   selectedUndername === undername
-                                    ? 'bg-turbo-yellow text-white border-turbo-yellow'
+                                    ? 'bg-turbo-yellow text-black border-turbo-yellow'
                                     : 'bg-surface border-default text-fg-muted hover:border-turbo-yellow/50 hover:text-turbo-yellow'
                                 }`}
                               >

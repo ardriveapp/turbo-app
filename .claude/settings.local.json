@@ -23,7 +23,22 @@
       "WebSearch",
       "WebSearch",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npm run lint)",
+      "Read(/mnt/c/source/turbo-gateway/Code/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-app/src/pages/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-app/src/pages/**)",
+      "Read(/mnt/c/source/turbo-gateway/**)",
+      "Read(/mnt/c/source/turbo-gateway/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-sdk/src/common/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/hooks/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/hooks/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/**)",
+      "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/**)",
+      "Read(//mnt/c/source/turbo-gateway/Code/**)",
+      "Read(//mnt/c/source/turbo-gateway/Code/turbo-app/src/pages/**)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

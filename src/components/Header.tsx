@@ -384,14 +384,25 @@ const Header = () => {
                   // Disconnect from the actual wallet extension based on wallet type
                   if (walletType === 'arweave' && window.arweaveWallet) {
                     await window.arweaveWallet.disconnect();
-                    // Disconnected from Wander wallet
-                  } else if (walletType === 'ethereum' && window.ethereum) {
-                    // Ethereum wallet cleared from app state
-                  } else if (walletType === 'solana') {
-                    // Solana wallet cleared from app state
+                    console.log('Disconnected from Wander wallet');
+                  } else if (walletType === 'ethereum') {
+                    // For Ethereum wallets, we should clear the connection
+                    // Note: MetaMask doesn't have a direct disconnect method
+                    // The connection is managed by wagmi
+                    console.log('Clearing Ethereum wallet connection');
+                  } else if (walletType === 'solana' && window.solana) {
+                    // Properly disconnect Solana wallet to prevent conflicts
+                    try {
+                      if (window.solana.isConnected) {
+                        await window.solana.disconnect();
+                        console.log('Disconnected from Solana wallet');
+                      }
+                    } catch (solanaError) {
+                      console.log('Solana wallet disconnect failed:', solanaError);
+                    }
                   }
-                } catch {
-                  // Error disconnecting from wallet extension
+                } catch (disconnectError) {
+                  console.log('Error disconnecting from wallet extension:', disconnectError);
                 }
                 
                 // Always clear our app state

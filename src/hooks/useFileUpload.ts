@@ -29,11 +29,36 @@ export function useFileUpload() {
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Create Turbo client with proper walletAdapter based on wallet type
-  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+  // Validate wallet state to prevent cross-wallet conflicts
+  const validateWalletState = useCallback((): void => {
     if (!address || !walletType) {
       throw new Error('Wallet not connected');
     }
+
+    // WALLET ISOLATION: Verify correct wallet is available and connected
+    switch (walletType) {
+      case 'arweave':
+        if (!window.arweaveWallet) {
+          throw new Error('Wander wallet not available. Please reconnect your Arweave wallet.');
+        }
+        break;
+      case 'ethereum':
+        if (!window.ethereum) {
+          throw new Error('MetaMask not available. Please reconnect your Ethereum wallet.');
+        }
+        break;
+      case 'solana':
+        if (!window.solana || !window.solana.isConnected) {
+          throw new Error('Solana wallet not connected. Please reconnect your Solana wallet.');
+        }
+        break;
+    }
+  }, [address, walletType]);
+
+  // Create Turbo client with proper walletAdapter based on wallet type
+  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+    // Validate wallet state first
+    validateWalletState();
     
     switch (walletType) {
       case 'arweave':
@@ -65,17 +90,34 @@ export function useFileUpload() {
         });
         
       case 'solana':
+        // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
+        if (walletType !== 'solana') {
+          throw new Error('Internal error: Attempting Solana operations with non-Solana wallet');
+        }
+        
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
+        
+        // Verify this is an intentional Solana connection
+        if (!window.solana.isConnected) {
+          throw new Error('Solana wallet not connected. Please connect your Solana wallet first.');
+        }
+        
         // Creating Solana walletAdapter
         const provider = window.solana;
-        const publicKey = new PublicKey((await provider.connect()).publicKey);
+        
+        // Use existing connection instead of calling connect() again
+        const existingPublicKey = provider.publicKey;
+        if (!existingPublicKey) {
+          throw new Error('Solana wallet connection lost. Please reconnect your Solana wallet.');
+        }
+        
+        const publicKey = new PublicKey(existingPublicKey);
 
         const walletAdapter: SolanaWalletAdapter = {
           publicKey,
           signMessage: async (message: Uint8Array) => {
-            // Call Phantom's signMessage method
             const { signature } = await provider.signMessage(message);
             return signature;
           },
@@ -90,7 +132,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, turboConfig]);
+  }, [address, walletType, turboConfig, validateWalletState]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!address) {
@@ -154,6 +196,9 @@ export function useFileUpload() {
   }, [address, createTurboClient]);
 
   const uploadMultipleFiles = useCallback(async (files: File[]) => {
+    // Validate wallet state before any operations
+    validateWalletState();
+    
     setUploading(true);
     setErrors({});
     setUploadResults([]);

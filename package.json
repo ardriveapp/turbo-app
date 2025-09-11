@@ -15,11 +15,11 @@
     "type-check": "cross-env NODE_OPTIONS=--max-old-space-size=2048 tsc --noEmit"
   },
   "dependencies": {
-    "@ar.io/sdk": "^3.19.0-alpha.8",
+    "@ar.io/sdk": "^3.19.0-alpha.10",
     "@ardrive/turbo-sdk": "^1.31.0",
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
-    "@permaweb/aoconnect": "^0.0.90",
+    "@permaweb/aoconnect": "^0.0.69",
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@solana/wallet-adapter-base": "^0.9.23",

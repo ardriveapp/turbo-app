@@ -39,9 +39,10 @@ export default function CryptoConfirmationPanel({
 
 
   // Determine if user can pay directly or needs manual payment
+  // Base ETH now supported via local SDK patch
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) || // Both ETH types now work
     (walletType === 'solana' && tokenType === 'solana')
   );
 
@@ -85,11 +86,48 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else if (walletType === 'ethereum' && window.ethereum && (tokenType === 'ethereum' || tokenType === 'base-eth')) {
-          // ETH/Base ETH direct payment via Ethereum wallet
+          // ETH L1/Base ETH direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const signer = await provider.getSigner();
+          let provider = new ethers.BrowserProvider(window.ethereum);
+          let signer = await provider.getSigner();
           
+          // Network validation and auto-switching
+          const network = await provider.getNetwork();
+          const expectedChainId = tokenType === 'ethereum' ? 1 : 8453; // Mainnet vs Base
+          
+          console.log('Connected to network:', network.name, 'Chain ID:', Number(network.chainId));
+          console.log('Expected chain for', tokenType, ':', expectedChainId);
+          
+          // Auto-switch network if needed
+          if (Number(network.chainId) !== expectedChainId) {
+            if (tokenType === 'base-eth') {
+              try {
+                console.log('Auto-switching to Base network...');
+                await window.ethereum.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: '0x2105' }], // Hex for 8453 (Base)
+                });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Create fresh provider after switch
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                console.log('Successfully switched to Base network');
+              } catch {
+                throw new Error(`Please switch to Base Network in MetaMask for Base ETH payments.`);
+              }
+            } else {
+              throw new Error(`Please switch to Ethereum Mainnet in your wallet for ETH L1 payments.`);
+            }
+          }
+          
+          // Log balance info for debugging
+          const balance = await provider.getBalance(await signer.getAddress());
+          console.log('Wallet balance:', ethers.formatEther(balance), 'ETH');
+          console.log('Trying to send:', cryptoAmount, tokenLabels[tokenType]);
+          
+          // ETH L1/Base ETH direct payment using walletAdapter (patched SDK)
+          console.log('Creating authenticated client for', tokenType, 'using walletAdapter pattern');
           const turbo = TurboFactory.authenticated({
             token: tokenType,
             walletAdapter: {
@@ -101,6 +139,7 @@ export default function CryptoConfirmationPanel({
           });
 
           const tokenAmount = ETHToTokenAmount(cryptoAmount); // Convert to wei
+          console.log('Token amount (wei):', tokenAmount.toString());
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
@@ -158,7 +197,36 @@ export default function CryptoConfirmationPanel({
       }
     } catch (error) {
       console.error('Payment error:', error);
-      setPaymentError('Payment failed. Please try again.');
+      
+      // Handle SDK compatibility issues for Base ETH
+      if (error instanceof Error && error.message.includes('EthereumSigner') && tokenType === 'base-eth') {
+        console.log('Base ETH direct payment failed, falling back to manual payment');
+        // Fall back to manual payment for Base ETH
+        onPaymentComplete({ 
+          requiresManualPayment: true, 
+          quote,
+          tokenType,
+          turboWalletAddress
+        });
+        return;
+      }
+      
+      // Provide specific error messages based on error type
+      if (error instanceof Error) {
+        if (error.message.includes('insufficient funds') || (error as any).code === 'INSUFFICIENT_FUNDS') {
+          setPaymentError(`Insufficient ${tokenLabels[tokenType]} balance. You need enough to cover both the payment amount and gas fees. Current transaction requires approximately ${cryptoAmount} ${tokenLabels[tokenType]} + gas fees.`);
+        } else if (error.message.includes('user rejected') || error.message.includes('denied')) {
+          setPaymentError('Transaction was cancelled. Please try again if you want to proceed.');
+        } else if (error.message.includes('network') || error.message.includes('connection')) {
+          setPaymentError('Network connection issue. Please check your connection and try again.');
+        } else if (error.message.includes('gas')) {
+          setPaymentError('Transaction gas estimation failed. Please try again or check your wallet settings.');
+        } else {
+          setPaymentError(`Payment failed: ${error.message}`);
+        }
+      } else {
+        setPaymentError('Payment failed. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { getARIO, getANT } from '../utils';
 
-// Check if address is valid Arweave transaction ID
+// Check if address is valid for ArNS operations (Arweave or Ethereum)
 function checkValidAddress(address: string): boolean {
-  return /^[a-zA-Z0-9_-]{43}$/.test(address);
+  // Arweave addresses: 43 characters, base64-like
+  const arweavePattern = /^[a-zA-Z0-9_-]{43}$/;
+  // Ethereum addresses: 42 characters, starts with 0x
+  const ethereumPattern = /^0x[a-fA-F0-9]{40}$/;
+  
+  return arweavePattern.test(address) || ethereumPattern.test(address);
 }
 
 // Helper to decode punycode names for better display

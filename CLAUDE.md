@@ -41,7 +41,7 @@ npm run clean:all
 All scripts use `cross-env NODE_OPTIONS=--max-old-space-size` with varying memory allocations (2GB-8GB) due to the complex multi-chain wallet integration and large dependency tree.
 
 ### Package Manager
-This project uses **yarn** as the package manager (configured via packageManager field in package.json). All commands can be run with npm or yarn.
+This project uses **yarn** as the package manager (configured via packageManager field in package.json: yarn@1.22.22). All commands can be run with npm or yarn.
 
 ### Testing
 This project currently has **no test framework configured**. No test scripts exist in package.json.
@@ -280,11 +280,11 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ## Key Dependencies
 
 ### Core Integration
-- `@ardrive/turbo-sdk`: Turbo services integration
-- `@ar.io/sdk`: ArNS name resolution and domain management
-- `wagmi`: Ethereum wallet integration and Web3 functionality
+- `@ardrive/turbo-sdk`: v1.31.0 - Turbo services integration
+- `@ar.io/sdk`: v3.19.0-alpha.10 - ArNS name resolution and domain management
+- `wagmi`: v2.12.5 - Ethereum wallet integration and Web3 functionality
 - `@solana/wallet-adapter-*`: Solana wallet ecosystem
-- `zustand`: Global state management with persistence
+- `zustand`: v4.5.5 - Global state management with persistence
 
 ### UI & Data
 - `@tanstack/react-query`: Server state management and caching

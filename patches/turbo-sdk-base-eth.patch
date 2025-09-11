@@ -1,0 +1,11 @@
+--- a/node_modules/@ardrive/turbo-sdk/lib/esm/common/factory.js
++++ b/node_modules/@ardrive/turbo-sdk/lib/esm/common/factory.js
+@@ -122,7 +122,7 @@ export class TurboBaseFactory {
+             }
+             return new HexInjectedSolanaSigner(walletAdapter);
+         }
+-        if (token === 'ethereum') {
++        if (token === 'ethereum' || token === 'base-eth') {
+             if (!isEthereumWalletAdapter(walletAdapter)) {
+                 throw new Error('Unsupported wallet adapter -- must implement getSigner');
+             }

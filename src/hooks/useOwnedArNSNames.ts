@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
-import { ArconnectSigner } from '@ar.io/sdk/web';
 import { useStore } from '../store/useStore';
-import { getARIO, getANT } from '../utils';
+import { getARIO, getANT, WRITE_OPTIONS, createContractSigner } from '../utils';
+import { createAoSigner } from '@ar.io/sdk/web';
 
 // Helper to decode punycode names for better display
 const decodePunycode = (name: string): string => {
@@ -44,7 +44,7 @@ export function useOwnedArNSNames() {
 
   // Fetch names owned by current address
   const fetchOwnedNames = useCallback(async (forceRefresh: boolean = false): Promise<ArNSName[]> => {
-    if (!address || walletType !== 'arweave') return []; // ArNS updates require Arweave wallet for signing
+    if (!address || (walletType !== 'arweave' && walletType !== 'ethereum')) return []; // Fetch names for Arweave and Ethereum wallets
     
     // Check cache first (unless forcing refresh)
     if (!forceRefresh) {
@@ -151,42 +151,40 @@ export function useOwnedArNSNames() {
     manifestId: string,
     undername?: string
   ): Promise<ArNSUpdateResult> => {
+    const { walletType } = useStore.getState();
+    
     const nameRecord = names.find(n => n.name === name);
     if (!nameRecord) {
       return { success: false, error: 'ArNS name not found in your owned names' };
     }
 
-    if (!window.arweaveWallet) {
-      return { success: false, error: 'Arweave wallet not connected' };
-    }
-
     setUpdating(prev => ({ ...prev, [name]: true }));
     
     try {
-      console.log('Updating ArNS record:', { name, manifestId, undername, processId: nameRecord.processId });
+      // Create wallet-specific contract signer (async for Ethereum setup)
+      const contractSigner = await createContractSigner(walletType);
       
-      // Initialize ANT with signer for write operations and custom CU
-      const ant = getANT(
-        nameRecord.processId,
-        new ArconnectSigner(window.arweaveWallet)
-      ) as any; // Cast to any to access write methods
+      // Create AO signer using SDK helper (like reference app)
+      const aoSigner = createAoSigner(contractSigner);
+      
+      // Initialize ANT with custom CU URL and proper signer
+      const ant = getANT(nameRecord.processId, aoSigner) as any;
 
       let result;
       if (undername) {
         // Update undername record
-        console.log('Updating undername record:', undername);
-        result = await ant.setUndernameRecord({
+        result = await ant.setRecord({
           undername,
           transactionId: manifestId,
-          ttlSeconds: 600 // 10 minutes TTL (default for all records)
-        });
+          ttlSeconds: 600
+        }, WRITE_OPTIONS);
       } else {
-        // Update base name record (@ record)
-        console.log('Updating base name record');
-        result = await ant.setBaseNameRecord({
+        // Update base name record (@)
+        result = await ant.setRecord({
+          undername: '@',
           transactionId: manifestId,
-          ttlSeconds: 600 // 10 minutes TTL (default for all records)
-        });
+          ttlSeconds: 600
+        }, WRITE_OPTIONS);
       }
       
       console.log('ArNS update result:', result);
@@ -412,7 +410,7 @@ export function useOwnedArNSNames() {
 
   // Auto-fetch on address change
   useEffect(() => {
-    if (address && walletType === 'arweave') {
+    if (address && (walletType === 'arweave' || walletType === 'ethereum')) {
       fetchOwnedNames();
     }
   }, [address, walletType, fetchOwnedNames]);

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
@@ -45,7 +45,7 @@ function DeployConfirmationModal({
 }: DeployConfirmationModalProps) {
   return (
     <BaseModal onClose={onClose}>
-      <div className="p-6 w-full max-w-2xl">
+      <div className="p-4 sm:p-6 w-full max-w-4xl mx-auto min-w-[90vw] sm:min-w-[600px]">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
             <Zap className="w-6 h-6 text-turbo-red" />
@@ -90,16 +90,16 @@ function DeployConfirmationModal({
             {(indexFile || fallbackFile) && (
               <div className="border-t border-default/30 pt-3">
                 <div className="text-xs text-link mb-2">Configurations:</div>
-                <div className="flex items-center gap-4 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
                   {indexFile && (
-                    <div className="flex items-center gap-1.5">
-                      <Home className="w-3 h-3 text-turbo-green" />
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-turbo-green" />
                       <span className="text-fg-muted">Homepage: {indexFile}</span>
                     </div>
                   )}
                   {fallbackFile && (
-                    <div className="flex items-center gap-1.5">
-                      <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500" />
                       <span className="text-fg-muted">Error page: {fallbackFile}</span>
                     </div>
                   )}
@@ -125,7 +125,22 @@ function DeployConfirmationModal({
           </div>
         </div>
 
-        <div className="flex gap-3">
+        {/* Terms and Conditions */}
+        <div className="bg-surface/30 rounded-lg p-3 mb-6">
+          <p className="text-xs text-link text-center">
+            By deploying, you agree to our{' '}
+            <a 
+              href="https://ardrive.io/tos-and-privacy/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
+            >
+              Terms of Service
+            </a>
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onClose}
             className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
@@ -176,7 +191,8 @@ export default function DeploySitePanel() {
     checkMultipleStatuses, 
     statusChecking, 
     uploadStatuses, 
-    getStatusIcon
+    getStatusIcon,
+    initializeFromCache
   } = useUploadStatus();
   const { updateArNSRecord, refreshSpecificName } = useOwnedArNSNames();
 
@@ -568,23 +584,20 @@ export default function DeploySitePanel() {
     document.body.removeChild(link);
   };
 
-  // Auto-check status for recent deployments only when results are visible
+  // Initialize status from cache (no API calls) when component loads
   useEffect(() => {
-    if (deployHistory.length > 0 && showDeployResults) {
-      // Check status for the EXACT deployments being displayed (recentDeploymentEntries)
+    if (deployHistory.length > 0) {
       const allIds = recentDeploymentEntries.flatMap(([manifestId, group]) => {
         const ids = [];
-        if (manifestId) ids.push(manifestId); // Add the manifest ID
+        if (manifestId) ids.push(manifestId);
         if (group.files?.files) ids.push(...group.files.files.map((f: any) => f.id));
         return ids;
       });
-            
-      // Small delay to avoid overwhelming the API
-      setTimeout(() => {
-        checkMultipleStatuses(allIds);
-      }, 1000);
+      
+      // Initialize from cache only (no API calls)
+      initializeFromCache(allIds);
     }
-  }, [deployHistory, showDeployResults, recentDeploymentEntries, checkMultipleStatuses]);
+  }, [deployHistory, recentDeploymentEntries, initializeFromCache]);
 
   const handleConfirmDeploy = async () => {
     setShowConfirmModal(false);
@@ -598,11 +611,6 @@ export default function DeploySitePanel() {
       return;
     }
 
-    // Validate ArNS configuration if enabled
-    if (arnsEnabled && !selectedArnsName) {
-      setDeployMessage({ type: 'error', text: 'Please select an ArNS name or disable ArNS association' });
-      return;
-    }
 
     try {
       setDeployMessage(null);
@@ -773,8 +781,8 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* Main Content Container with Gradient - Hide during success */}
-      {!deploySuccessInfo && (
+      {/* Main Content Container with Gradient - Hide during success and deployment */}
+      {!deploySuccessInfo && !deploying && (
         <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Dynamic Zone: Drop Zone OR Selected Folder */}
@@ -994,8 +1002,8 @@ export default function DeploySitePanel() {
         </div>
       )}
         
-      {/* ArNS Association Panel - Only show when folder is selected and using Arweave wallet AND not showing success */}
-      {selectedFolder && selectedFolder.length > 0 && walletType === 'arweave' && !deploySuccessInfo && (
+      {/* ArNS Association Panel - Show for all users, but only Arweave wallets can actually update records */}
+      {selectedFolder && selectedFolder.length > 0 && (walletType === 'arweave' || walletType === 'ethereum') && !deploySuccessInfo && !deploying && (
         <ArNSAssociationPanel
           enabled={arnsEnabled}
           onEnabledChange={setArnsEnabled}
@@ -1006,8 +1014,8 @@ export default function DeploySitePanel() {
         />
       )}
 
-      {/* Summary Panel - After ArNS configuration, hide during success */}
-      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
+      {/* Summary Panel - After ArNS configuration, hide during success and deployment */}
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
         <div className="mt-4 p-4 bg-surface rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
@@ -1038,40 +1046,26 @@ export default function DeploySitePanel() {
                 )}
               </div>
             </div>
+
+            {/* Insufficient Credits Warning */}
+            {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
+                </div>
+              </div>
+            )}
+
           </div>
       )}
 
-      {/* Terms - Right above deploy button, hide during success */}
-      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
-        <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
-          <p className="text-xs text-link">
-            By continuing, you agree to our{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-            >
-              Terms of Service
-            </a>
-            {' '}and{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-            >
-              Privacy Policy
-            </a>
-          </p>
-        </div>
-      )}
 
-      {/* Deploy Button - Hide during success display */}
-      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && (
+      {/* Deploy Button - Hide during success display and deployment */}
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && creditBalance >= totalCost && (
         <button
           onClick={() => setShowConfirmModal(true)}
-          disabled={deploying || totalCost > creditBalance}
+          disabled={deploying || totalCost > creditBalance || (arnsEnabled && !selectedArnsName)}
           className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {deploying ? (
@@ -1082,7 +1076,7 @@ export default function DeploySitePanel() {
           ) : (
             <>
               <Globe className="w-5 h-5" />
-              Deploy to Permanent Web
+              Confirm Deployment
             </>
           )}
         </button>
@@ -1313,6 +1307,67 @@ export default function DeploySitePanel() {
         </div>
       )}
 
+      {/* ArNS Discovery Section - For users without ArNS names */}
+      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && (
+        <div className="mt-6">
+          <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <Globe className="w-5 h-5 text-turbo-yellow" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-fg-muted mb-1">Want a Friendly Domain Name?</h4>
+                <p className="text-sm text-link">
+                  Your site is live, but you can make it even better with an ArNS domain name
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-3 mb-4 text-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-3 h-3 text-turbo-green" />
+                <span className="text-link">Human-readable URLs</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-3 h-3 text-turbo-green" />
+                <span className="text-link">Lease or Permanently own</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-3 h-3 text-turbo-green" />
+                <span className="text-link">Global propagation across the AR.IO Network</span>
+              </div>
+            </div>
+            
+            <div className="bg-surface/50 rounded-lg p-4 mb-4">
+              <div className="text-sm text-link mb-2">Instead of:</div>
+              <div className="font-mono text-xs text-fg-muted/60 mb-3 break-all">
+                https://arweave.net/{deploySuccessInfo.manifestId}
+              </div>
+              
+              <div className="text-sm text-link mb-2">Get something like:</div>
+              <div className="font-mono text-sm text-turbo-yellow font-medium">
+                https://mysite.ar.io
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => window.location.href = '/domains'}
+                className="flex-1 py-3 px-4 bg-turbo-yellow text-black rounded-lg font-medium hover:bg-turbo-yellow/90 transition-colors"
+              >
+                Search for Your Name
+              </button>
+              <button
+                onClick={() => window.open('https://docs.ar.io/arns', '_blank')}
+                className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas transition-colors"
+              >
+                Learn More
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Post-Deploy ArNS Enhancement - Show ArNS panel directly when not configured */}
       {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && walletType === 'arweave' && (
         <div className="mt-6">
@@ -1412,16 +1467,6 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* Insufficient Credits Warning */}
-      {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
-        <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4" />
-            <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
-          </div>
-        </div>
-      )}
-
       {/* Deploy Message */}
       {deployMessage && (
         <div className={`mt-4 p-3 rounded-lg ${
@@ -1447,7 +1492,7 @@ export default function DeploySitePanel() {
             >
               <Zap className="w-5 h-5 text-fg-muted flex-shrink-0 mt-0.5" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                <span className="font-bold text-fg-muted">Recent Deployments</span>
+                <span className="font-bold text-fg-muted">Recent</span>
                 <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
               </div>
               {showDeployResults ? (
