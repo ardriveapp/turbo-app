@@ -23,18 +23,18 @@ export default function GatewayInfoPanel() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="w-8 h-8 border-2 border-turbo-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <div className="w-8 h-8 border-2 border-turbo-purple border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
         <p className="text-link">Loading gateway information...</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-4 sm:mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Server className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-turbo-purple/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Server className="w-5 h-5 text-turbo-purple" />
         </div>
         <div className="flex-1">
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Service Info</h3>
@@ -45,10 +45,10 @@ export default function GatewayInfoPanel() {
         <button
           onClick={refresh}
           disabled={refreshing || loading}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-default text-link hover:text-fg-muted hover:border-turbo-red/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-default text-link hover:text-fg-muted hover:border-turbo-purple/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title={refreshing ? 'Refreshing...' : 'Refresh gateway data'}
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-turbo-red' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-turbo-purple' : ''}`} />
         </button>
       </div>
 
@@ -62,20 +62,20 @@ export default function GatewayInfoPanel() {
       )}
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-purple/5 to-turbo-purple/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Service Overview */}
         {uploadServiceInfo && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Globe className="w-5 h-5 text-turbo-red" />
+              <Globe className="w-5 h-5 text-turbo-purple" />
               <h4 className="text-lg font-bold text-fg-muted">Service Overview</h4>
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Version</div>
-                <div className="text-lg font-bold text-turbo-red">{uploadServiceInfo.version}</div>
+                <div className="text-lg font-bold text-turbo-purple">{uploadServiceInfo.version}</div>
               </div>
               
               <div className="bg-surface rounded-lg p-4">
@@ -122,7 +122,7 @@ export default function GatewayInfoPanel() {
         {pricingInfo && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Coins className="w-5 h-5 text-turbo-red" />
+              <Coins className="w-5 h-5 text-turbo-purple" />
               <h4 className="text-lg font-bold text-fg-muted">Upload Fees & Pricing</h4>
             </div>
             
@@ -137,7 +137,7 @@ export default function GatewayInfoPanel() {
               
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Turbo Rate</div>
-                <div className="text-lg font-bold text-turbo-red">
+                <div className="text-lg font-bold text-turbo-purple">
                   ${pricingInfo.usdPerGiB.toFixed(4)}
                 </div>
                 <div className="text-xs text-link mt-1">Per GiB via Turbo</div>
@@ -158,7 +158,7 @@ export default function GatewayInfoPanel() {
               
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Turbo Premium</div>
-                <div className="text-lg font-bold text-turbo-red">
+                <div className="text-lg font-bold text-turbo-purple">
                   {pricingInfo.turboFeePercentage 
                     ? `+${pricingInfo.turboFeePercentage.toFixed(1)}%` 
                     : pricingInfo.baseGatewayPrice === 0 
@@ -178,7 +178,7 @@ export default function GatewayInfoPanel() {
         {arIOGatewayInfo && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-turbo-red" />
+              <TrendingUp className="w-5 h-5 text-turbo-purple" />
               <h4 className="text-lg font-bold text-fg-muted">AR.IO Network Status</h4>
             </div>
             
@@ -186,8 +186,8 @@ export default function GatewayInfoPanel() {
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Status</div>
                 <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle className="w-4 h-4 text-turbo-red" />
-                  <span className="text-lg font-bold text-turbo-red capitalize">{arIOGatewayInfo.status}</span>
+                  <CheckCircle className="w-4 h-4 text-turbo-purple" />
+                  <span className="text-lg font-bold text-turbo-purple capitalize">{arIOGatewayInfo.status}</span>
                 </div>
                 <div className="text-xs text-link">
                   Since {new Date(arIOGatewayInfo.startTimestamp).toLocaleDateString()}
@@ -223,14 +223,14 @@ export default function GatewayInfoPanel() {
         {arweaveNodeInfo && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Database className="w-5 h-5 text-turbo-red" />
+              <Database className="w-5 h-5 text-turbo-purple" />
               <h4 className="text-lg font-bold text-fg-muted">Arweave Network Status</h4>
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Block Height</div>
-                <div className="text-lg font-bold text-turbo-red">
+                <div className="text-lg font-bold text-turbo-purple">
                   {arweaveNodeInfo.height.toLocaleString()}
                 </div>
               </div>

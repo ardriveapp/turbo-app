@@ -8,7 +8,7 @@ const faqData = [
   },
   {
     question: "How are fees calculated?",
-    answer: "The file size determines the fee to upload data to the network. The larger the file, the higher the price will be. Files under 100KB are FREE. All file sizes are represented using binary units of measurement (i.e. 1 MB = 1024 KB)."
+    answer: "The file size determines the fee to upload data to the network. The larger the file, the higher the price will be. Files under 100KiB are FREE. All file sizes are represented using binary units of measurement (i.e. 1 MB = 1024 KB)."
   },
   {
     question: "What are Credits?",

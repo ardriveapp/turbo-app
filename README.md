@@ -35,7 +35,7 @@ The result is a feature-complete application that provides seamless access to al
 - **Drag & Drop Upload** - Visual feedback and batch support
 - **Upload Progress** - Real-time progress bars for each file
 - **Cost Calculator** - Real-time pricing display with GiB estimates
-- **FREE Tier** - Files under 100KB highlighted
+- **FREE Tier** - Files under 100KiB highlighted
 - **Turbo SDK Integration** - Direct upload with proper signer support
 - **Upload Receipts** - Transaction IDs with Arweave explorer links
 - **Multi-wallet Support** - Arweave wallets for uploads, others for credits

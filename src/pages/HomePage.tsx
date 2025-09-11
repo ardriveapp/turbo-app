@@ -16,20 +16,20 @@ export function HomePage() {
   const { address } = useStore();
   
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-4 sm:px-0">
       {/* Hero Section */}
       <section className="text-center py-12">
         <h1 className="text-5xl font-bold mb-4">
-          <span className="text-gradient">Turbo Gateway</span>
+          <span className="bg-gradient-to-r from-turbo-red to-turbo-yellow bg-clip-text text-transparent">Turbo Gateway</span>
         </h1>
-        <p className="text-xl text-muted max-w-2xl mx-auto">
+        <p className="text-xl text-link max-w-2xl mx-auto">
           The fastest way to upload, download, and pay for Arweave storage. 
           Built for developers, powered by AR.IO.
         </p>
         
         {!address && (
           <div className="mt-8">
-            <Link to="/top-up" className="btn-primary text-lg px-8 py-3">
+            <Link to="/topup" className="inline-flex items-center gap-2 bg-fg-muted text-black font-bold text-lg px-8 py-3 rounded-lg hover:bg-fg-muted/90 transition-colors">
               Get Started <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
           </div>
@@ -71,95 +71,95 @@ export function HomePage() {
 
       {/* Feature Cards */}
       <section className="grid md:grid-cols-3 gap-6">
-        <Link to="/top-up" className="card hover:border-primary/50 transition-colors group">
-          <CreditCard className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Top Up Credits</h3>
-          <p className="text-muted mb-4">
+        <Link to="/topup" className="bg-surface border border-default rounded-lg p-6 hover:border-fg-muted/50 transition-colors group">
+          <CreditCard className="w-8 h-8 text-fg-muted mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Top Up Credits</h3>
+          <p className="text-link mb-4">
             Add credits with fiat or crypto. Instant processing with multiple payment methods.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-fg-muted flex items-center gap-1 group-hover:gap-2 transition-all">
             Top up now <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
 
-        <Link to="/upload" className="card hover:border-primary/50 transition-colors group">
-          <Upload className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Upload Files</h3>
-          <p className="text-muted mb-4">
-            Drag & drop uploads with instant confirmation. Files under 100KB are free.
+        <Link to="/upload" className="bg-surface border border-default rounded-lg p-6 hover:border-turbo-red/50 transition-colors group">
+          <Upload className="w-8 h-8 text-turbo-red mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Upload Files</h3>
+          <p className="text-link mb-4">
+            Drag & drop uploads with instant confirmation. Files under 100KiB are free.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-turbo-red flex items-center gap-1 group-hover:gap-2 transition-all">
             Start uploading <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
 
         <Link 
           to="/domains"
-          className="card hover:border-primary/50 transition-colors group"
+          className="bg-surface border border-default rounded-lg p-6 hover:border-turbo-yellow/50 transition-colors group"
         >
-          <Globe className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Search Domains</h3>
-          <p className="text-muted mb-4">
+          <Globe className="w-8 h-8 text-turbo-yellow mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Search Domains</h3>
+          <p className="text-link mb-4">
             Search available ArNS domain names and check registration costs. No login required.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-turbo-yellow flex items-center gap-1 group-hover:gap-2 transition-all">
             Search domains <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
 
-        <Link to="/gift" className="card hover:border-primary/50 transition-colors group">
-          <Gift className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Gift Credits</h3>
-          <p className="text-muted mb-4">
+        <Link to="/gift" className="bg-surface border border-default rounded-lg p-6 hover:border-fg-muted/50 transition-colors group">
+          <Gift className="w-8 h-8 text-fg-muted mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Gift Credits</h3>
+          <p className="text-link mb-4">
             Send Turbo Credits as gifts via email. Perfect for onboarding new users.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-fg-muted flex items-center gap-1 group-hover:gap-2 transition-all">
             Send gift <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
 
-        <Link to="/share" className="card hover:border-primary/50 transition-colors group">
-          <Users className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Share Credits</h3>
-          <p className="text-muted mb-4">
+        <Link to="/share" className="bg-surface border border-default rounded-lg p-6 hover:border-fg-muted/50 transition-colors group">
+          <Users className="w-8 h-8 text-fg-muted mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Share Credits</h3>
+          <p className="text-link mb-4">
             Transfer credits between wallets with granular permissions and limits.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-fg-muted flex items-center gap-1 group-hover:gap-2 transition-all">
             Share now <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
 
-        <Link to="/developer" className="card hover:border-primary/50 transition-colors group">
-          <Code2 className="w-8 h-8 text-primary mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Developer Tools</h3>
-          <p className="text-muted mb-4">
+        <Link to="/developer" className="bg-surface border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors group">
+          <Code2 className="w-8 h-8 text-turbo-purple mb-4" />
+          <h3 className="text-lg font-semibold mb-2 text-fg-muted">Developer Tools</h3>
+          <p className="text-link mb-4">
             SDKs, APIs, and documentation to integrate Turbo into your applications.
           </p>
-          <div className="text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+          <div className="text-turbo-purple flex items-center gap-1 group-hover:gap-2 transition-all">
             View docs <ArrowRight className="w-4 h-4" />
           </div>
         </Link>
       </section>
 
       {/* Quick Start for Developers */}
-      <section className="card bg-gradient-to-r from-card to-card/50">
+      <section className="bg-surface border border-default rounded-lg p-6 bg-gradient-to-r from-turbo-purple/5 to-turbo-purple/3">
         <div className="flex items-start gap-4">
-          <Terminal className="w-8 h-8 text-primary mt-1" />
+          <Terminal className="w-8 h-8 text-turbo-purple mt-1" />
           <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-2">Quick Start for Developers</h3>
-            <div className="code-block">
-              <div className="text-muted text-xs mb-2"># Install the SDK</div>
-              <div className="font-mono">npm install @ardrive/turbo-sdk</div>
+            <h3 className="text-lg font-semibold mb-2 text-fg-muted">Quick Start for Developers</h3>
+            <div className="bg-canvas rounded p-3 border border-default">
+              <div className="text-link text-xs mb-2"># Install the SDK</div>
+              <div className="font-mono text-fg-muted">npm install @ardrive/turbo-sdk</div>
             </div>
             <div className="mt-4 flex gap-4">
-              <Link to="/developer" className="text-primary hover:underline">
+              <Link to="/developer" className="text-turbo-purple hover:underline">
                 View documentation →
               </Link>
               <a 
                 href="https://github.com/ardriveapp/turbo-sdk" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-primary hover:underline"
+                className="text-turbo-purple hover:underline"
               >
                 GitHub →
               </a>

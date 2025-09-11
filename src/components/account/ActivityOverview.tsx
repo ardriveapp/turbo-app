@@ -73,7 +73,7 @@ export default function ActivityOverview() {
                       href={getArweaveUrl(upload.id)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1 text-link hover:text-turbo-red transition-colors"
+                      className="p-1 text-link hover:text-fg-muted transition-colors"
                       title="View File"
                     >
                       <ExternalLink className="w-3 h-3" />
@@ -102,7 +102,7 @@ export default function ActivityOverview() {
           <div className="px-4 py-3 border-t border-default">
             <button
               onClick={() => navigate('/upload')}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
             >
               View All Uploads <ArrowRight className="w-4 h-4" />
             </button>
@@ -165,7 +165,7 @@ export default function ActivityOverview() {
                         href={getArweaveUrl(manifestId)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1 text-link hover:text-turbo-red transition-colors"
+                        className="p-1 text-link hover:text-fg-muted transition-colors"
                         title="Visit Site"
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -198,7 +198,7 @@ export default function ActivityOverview() {
                 navigate('/deployments');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
             >
               View All Deployments <ArrowRight className="w-4 h-4" />
             </button>

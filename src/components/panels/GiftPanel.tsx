@@ -125,11 +125,11 @@ export default function GiftPanel() {
   }
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Gift className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Gift className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Send Gift</h3>
@@ -140,7 +140,7 @@ export default function GiftPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Amount Selection */}
       <div className="mb-6">
@@ -151,7 +151,7 @@ export default function GiftPanel() {
             type="number"
             value={usdAmount}
             onChange={handleAmountChange}
-            className="w-full p-3 pl-8 rounded-lg border border-default bg-canvas text-fg-muted font-medium text-lg focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 pl-8 rounded-lg border border-default bg-canvas text-fg-muted font-medium text-lg focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="10.00"
             min={minUSDAmount}
             max={maxUSDAmount}
@@ -173,7 +173,7 @@ export default function GiftPanel() {
             type="email"
             value={recipientEmail}
             onChange={(e) => setRecipientEmail(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="recipient@example.com"
           />
         </div>
@@ -187,7 +187,7 @@ export default function GiftPanel() {
           <textarea
             value={giftMessage}
             onChange={(e) => setGiftMessage(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted min-h-[100px] focus:border-turbo-red focus:outline-none transition-colors resize-none"
+            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted min-h-[100px] focus:border-fg-muted focus:outline-none transition-colors resize-none"
             placeholder="Add a personal message..."
             maxLength={500}
           />
@@ -205,7 +205,7 @@ export default function GiftPanel() {
       {/* Send Button */}
       <button
         onClick={handleSendGift}
-        className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         disabled={!canSubmit || isProcessing}
       >
         {isProcessing ? (
@@ -232,8 +232,8 @@ export default function GiftPanel() {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Mail className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Mail className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Email Delivery</h4>
@@ -246,8 +246,8 @@ export default function GiftPanel() {
 
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Never Expires</h4>
@@ -260,8 +260,8 @@ export default function GiftPanel() {
 
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Heart className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Heart className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Personal Touch</h4>

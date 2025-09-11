@@ -24,6 +24,7 @@ export default {
           blue: '#3142C4',
           green: '#18A957',
           yellow: '#FFBB38', // ArNS brand color
+          purple: '#8B5CF6', // Developer/Info services color (purple-500)
         }
       },
     },

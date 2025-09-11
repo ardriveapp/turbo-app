@@ -188,21 +188,21 @@ export default function RedeemPanel() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href="/upload"
-                className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                className="inline-flex items-center justify-center gap-2 bg-fg-muted text-black px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 Upload Files
               </a>
               <a
                 href="/domains"
-                className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                className="inline-flex items-center justify-center gap-2 bg-fg-muted text-black px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
               >
                 <Globe className="w-4 h-4" />
                 Search Domains
               </a>
               <a
                 href="/topup"
-                className="inline-flex items-center justify-center gap-2 border border-default text-link hover:text-fg-muted hover:border-turbo-red/50 px-6 py-3 rounded-lg font-medium transition-colors"
+                className="inline-flex items-center justify-center gap-2 border border-default text-link hover:text-fg-muted hover:border-fg-muted/50 px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 <ArrowRight className="w-4 h-4" />
                 Add More Credits
@@ -215,11 +215,11 @@ export default function RedeemPanel() {
   }
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Ticket className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Ticket className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Redeem Gift Code</h3>
@@ -230,7 +230,7 @@ export default function RedeemPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Wallet Address */}
       <div className="mb-6">
@@ -241,7 +241,7 @@ export default function RedeemPanel() {
             type="text"
             value={destinationAddress}
             onChange={(e) => setDestinationAddress(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="Your wallet address"
           />
         </div>
@@ -264,7 +264,7 @@ export default function RedeemPanel() {
             type="text"
             value={redemptionCode}
             onChange={(e) => setRedemptionCode(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted font-mono focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted font-mono focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="XXXX-XXXX-XXXX"
           />
         </div>
@@ -279,7 +279,7 @@ export default function RedeemPanel() {
             type="email"
             value={recipientEmail}
             onChange={(e) => setRecipientEmail(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="Confirm your email address"
           />
         </div>
@@ -298,7 +298,7 @@ export default function RedeemPanel() {
       {/* Redeem Button */}
       <button
         onClick={handleRedeem}
-        className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         disabled={!canSubmit}
       >
         {loading ? (
@@ -319,8 +319,8 @@ export default function RedeemPanel() {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Ticket className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Ticket className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Gift Code Required</h4>
@@ -333,8 +333,8 @@ export default function RedeemPanel() {
 
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Shield className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Secure Verification</h4>
@@ -347,8 +347,8 @@ export default function RedeemPanel() {
 
         <div className="bg-surface rounded-lg p-4 border border-default">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-turbo-red/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-turbo-red" />
+            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-fg-muted" />
             </div>
             <div>
               <h4 className="font-bold text-fg-muted mb-1 text-sm">Instant Credit</h4>

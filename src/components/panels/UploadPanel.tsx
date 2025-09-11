@@ -142,7 +142,7 @@ export default function UploadPanel() {
 
 
   const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier: files under 100KB
+    if (bytes < 100 * 1024) return 0; // Free tier: Files under 100KiB
     if (!wincForOneGiB) return null;
     
     const gibSize = bytes / (1024 * 1024 * 1024);
@@ -199,7 +199,7 @@ export default function UploadPanel() {
   };
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-4 sm:mb-6">
         <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -267,7 +267,7 @@ export default function UploadPanel() {
             Drop files here or click to browse
           </p>
           <p className="text-sm text-link">
-            Files under 100KB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GB per file
+            Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GB per file
           </p>
         </div>
         <input
@@ -312,7 +312,7 @@ export default function UploadPanel() {
               const isComplete = progress === 100;
               
               return (
-                <div key={index} className="bg-surface rounded p-3">
+                <div key={index} className="bg-surface/50 rounded p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
                       <div className="font-medium truncate">{file.name}</div>
@@ -360,7 +360,7 @@ export default function UploadPanel() {
           </div>
 
           {/* Summary */}
-          <div className="mt-4 p-4 bg-surface rounded-lg">
+          <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
               <span className="font-medium">{formatFileSize(totalSize)}</span>
@@ -444,7 +444,7 @@ export default function UploadPanel() {
 
       {/* Upload Results - Modernized to Match Deployment Results */}
       {uploadHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface rounded-lg">
+        <div className="mt-4 sm:mt-6 bg-surface/50 rounded-lg">
           {/* Collapsible Header with Actions */}
           <div className={`flex items-center justify-between p-4 ${showUploadResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
@@ -453,7 +453,7 @@ export default function UploadPanel() {
               type="button"
             >
               <Upload className="w-5 h-5 text-fg-muted" />
-              <span className="font-bold text-fg-muted">Recent Uploads</span>
+              <span className="font-bold text-fg-muted">Recent</span>
               <span className="text-xs text-link">({uploadHistory.length})</span>
               {showUploadResults ? (
                 <ChevronUp className="w-4 h-4 text-link" />
@@ -720,7 +720,7 @@ export default function UploadPanel() {
                     // For now, just scroll to top of current page - could link to dedicated uploads page later
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
                 >
                   View All Uploads <ArrowRight className="w-4 h-4" />
                 </button>

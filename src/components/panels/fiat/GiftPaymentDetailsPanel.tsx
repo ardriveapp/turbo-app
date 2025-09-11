@@ -154,7 +154,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Gift Summary */}
         <div className="bg-surface rounded-lg p-4 mb-6">

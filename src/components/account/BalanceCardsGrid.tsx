@@ -65,15 +65,15 @@ export default function BalanceCardsGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Credits Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 border border-turbo-red/20">
+      <div className="p-4 rounded-lg bg-gradient-to-br from-fg-muted/10 to-fg-muted/5 border border-fg-muted/20">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Coins className="w-5 h-5 text-turbo-red" />
+            <Coins className="w-5 h-5 text-fg-muted" />
             <span className="font-medium text-fg-muted">Credits</span>
           </div>
           <button
             onClick={() => navigate('/topup')}
-            className="px-3 py-1.5 bg-turbo-red/20 hover:bg-turbo-red/30 text-turbo-red rounded-md transition-colors flex items-center gap-1 text-sm font-medium"
+            className="px-3 py-1.5 bg-fg-muted/20 hover:bg-fg-muted/30 text-fg-muted rounded-md transition-colors flex items-center gap-1 text-sm font-medium"
           >
             <Plus className="w-3 h-3" />
             Top Up

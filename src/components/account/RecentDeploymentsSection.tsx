@@ -47,7 +47,7 @@ export default function RecentDeploymentsSection() {
         <p className="text-sm text-link mb-4">Deploy your first site to get started</p>
         <button
           onClick={() => navigate('/deploy')}
-          className="px-4 py-2 bg-turbo-red text-white rounded-lg hover:bg-turbo-red/90 transition-colors"
+          className="px-4 py-2 bg-fg-muted text-black rounded-lg hover:bg-fg-muted/90 transition-colors"
         >
           Deploy Site
         </button>
@@ -60,7 +60,7 @@ export default function RecentDeploymentsSection() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-default">
         <h3 className="font-bold text-fg-muted flex items-center gap-2">
-          <Globe className="w-5 h-5 text-turbo-red" />
+          <Globe className="w-5 h-5 text-fg-muted" />
           Recent Deployments ({deployments.length})
         </h3>
         <div className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export default function RecentDeploymentsSection() {
           )}
           <button
             onClick={() => navigate('/deployments')}
-            className="text-xs text-turbo-red hover:text-turbo-red/80 transition-colors"
+            className="text-xs text-fg-muted hover:text-fg-muted/80 transition-colors"
           >
             View All Deployments →
           </button>
@@ -126,14 +126,14 @@ export default function RecentDeploymentsSection() {
                   href={getArweaveUrl(manifestId)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-link hover:text-turbo-red transition-colors"
+                  className="p-1 text-link hover:text-fg-muted transition-colors"
                   title="View Manifest"
                 >
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 <button
                   onClick={() => setShowReceiptModal(manifestId)}
-                  className="p-1 text-link hover:text-turbo-red transition-colors"
+                  className="p-1 text-link hover:text-fg-muted transition-colors"
                   title="View Receipt"
                 >
                   <Receipt className="w-3 h-3" />

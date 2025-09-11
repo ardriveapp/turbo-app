@@ -21,7 +21,7 @@ export default function CopyButton({ textToCopy }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 text-link hover:text-turbo-red transition-colors"
+      className="p-1.5 text-link hover:text-fg-muted transition-colors"
       title={copied ? 'Copied!' : 'Copy to clipboard'}
     >
       {copied ? (

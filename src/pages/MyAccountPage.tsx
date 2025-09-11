@@ -20,7 +20,7 @@ export default function MyAccountPage() {
   }
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Page Header */}
       <div className="flex items-start gap-4 mb-6">
         {/* Profile Image or User Icon */}
@@ -43,18 +43,18 @@ export default function MyAccountPage() {
                 }
               }}
             />
-            <div className="fallback-icon hidden w-full h-full bg-turbo-red/20 rounded-lg items-center justify-center">
-              <User className="w-6 h-6 text-turbo-red" />
+            <div className="fallback-icon hidden w-full h-full bg-fg-muted/20 rounded-lg items-center justify-center">
+              <User className="w-6 h-6 text-fg-muted" />
             </div>
           </div>
         ) : (
-          <div className="w-12 h-12 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-            <User className="w-6 h-6 text-turbo-red" />
+          <div className="w-12 h-12 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+            <User className="w-6 h-6 text-fg-muted" />
           </div>
         )}
         
         <div>
-          <h1 className="text-3xl font-bold text-fg-muted mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-fg-muted mb-1">
             {loadingArNS ? (
               'Loading...'
             ) : arnsName ? (

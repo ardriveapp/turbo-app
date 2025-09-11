@@ -88,11 +88,11 @@ export default function PricingCalculatorPanel() {
   const isLoading = wincLoading || creditsLoading;
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Calculator className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Calculator className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Storage Pricing Calculator</h3>
@@ -103,11 +103,11 @@ export default function PricingCalculatorPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Free Tier Notice */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-turbo-red/10 text-turbo-red px-4 py-2 rounded-lg text-sm font-medium">
+          <div className="inline-flex items-center gap-2 bg-fg-muted/10 text-fg-muted px-4 py-2 rounded-lg text-sm font-medium">
             <Zap className="w-4 h-4" />
             Files under 100 KiB are FREE!
           </div>
@@ -119,7 +119,7 @@ export default function PricingCalculatorPanel() {
             <button
               className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 inputType === 'storage'
-                  ? 'bg-turbo-red text-white'
+                  ? 'bg-fg-muted text-black'
                   : 'text-link hover:text-fg-muted'
               }`}
               onClick={() => setInputType('storage')}
@@ -131,7 +131,7 @@ export default function PricingCalculatorPanel() {
             <button
               className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 inputType === 'dollars'
-                  ? 'bg-turbo-red text-white'
+                  ? 'bg-fg-muted text-black'
                   : 'text-link hover:text-fg-muted'
               }`}
               onClick={() => setInputType('dollars')}
@@ -165,7 +165,7 @@ export default function PricingCalculatorPanel() {
                         step="0.01"
                         value={storageAmount}
                         onChange={(e) => setStorageAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <Listbox 
@@ -173,7 +173,7 @@ export default function PricingCalculatorPanel() {
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
-                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
                               <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
@@ -202,7 +202,7 @@ export default function PricingCalculatorPanel() {
                                         {unit.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
                                           <Check className="h-5 w-5" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -256,7 +256,7 @@ export default function PricingCalculatorPanel() {
                         step="0.01"
                         value={dollarAmount}
                         onChange={(e) => setDollarAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        className="flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <span className="text-link text-lg">USD</span>
@@ -289,9 +289,9 @@ export default function PricingCalculatorPanel() {
               {inputType === 'storage' ? (
                 <div className="space-y-4">
                   {/* Primary Result */}
-                  <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
+                  <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
                     <div className="text-sm text-link mb-1">Total Cost</div>
-                    <div className="text-4xl font-bold text-turbo-red">
+                    <div className="text-4xl font-bold text-fg-muted">
                       ${formatNumber(calculateStorageCost())}
                     </div>
                     <div className="text-sm text-link mt-2">USD</div>
@@ -316,9 +316,9 @@ export default function PricingCalculatorPanel() {
               ) : (
                 <div className="space-y-4">
                   {/* Primary Result */}
-                  <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
+                  <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
                     <div className="text-sm text-link mb-1">Storage You Get</div>
-                    <div className="text-4xl font-bold text-turbo-red">
+                    <div className="text-4xl font-bold text-fg-muted">
                       {formatNumber(calculateStorageForDollars())} GiB
                     </div>
                     <div className="text-sm text-link mt-2">
@@ -348,7 +348,7 @@ export default function PricingCalculatorPanel() {
         )}
         
         {/* CTA Section */}
-        <div className="mt-8 text-center bg-turbo-red/10 rounded-lg border border-turbo-red/20 p-6">
+        <div className="mt-8 text-center bg-canvas rounded-lg border border-fg-muted/20 p-6">
           {!address ? (
             // Not logged in - show connect wallet CTA
             <>
@@ -356,7 +356,7 @@ export default function PricingCalculatorPanel() {
               <p className="text-link mb-4">Connect your wallet to top up credits and start uploading.</p>
               <button
                 onClick={() => setShowWalletModal(true)}
-                className="inline-flex items-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                className="inline-flex items-center gap-2 bg-fg-muted text-black px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
               >
                 Connect Wallet <ArrowRight className="w-4 h-4" />
               </button>
@@ -376,7 +376,7 @@ export default function PricingCalculatorPanel() {
                 </Link>
                 <Link
                   to="/domains"
-                  className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 bg-turbo-yellow text-black px-4 py-3 rounded-lg font-bold hover:bg-turbo-yellow/90 transition-colors"
                 >
                   <Globe className="w-4 h-4" />
                   Search for a Domain
@@ -390,7 +390,7 @@ export default function PricingCalculatorPanel() {
               <p className="text-link mb-4">Top up your account with credits to start uploading files or registering ArNS names.</p>
               <Link
                 to="/topup"
-                className="inline-flex items-center gap-2 bg-turbo-red text-white px-6 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                className="inline-flex items-center gap-2 bg-fg-muted text-black px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
               >
                 <CreditCard className="w-4 h-4" />
                 Top Up Credits

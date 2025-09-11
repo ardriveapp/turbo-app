@@ -80,7 +80,7 @@ export default function PricingCalculator() {
         <h2 className="text-2xl font-bold text-fg-muted mb-2">Pricing Calculator</h2>
         <p className="text-link text-sm max-w-2xl mx-auto">
           Calculate storage costs or see how much storage your budget gets you. 
-          Files under 100KB are always FREE!
+          Files under 100KiB are always FREE!
         </p>
       </div>
 
@@ -281,7 +281,7 @@ export default function PricingCalculator() {
                 <ul className="space-y-1">
                   <li className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
-                    <span>Files under 100KB are completely FREE</span>
+                    <span>Files under 100KiB are completely FREE</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />

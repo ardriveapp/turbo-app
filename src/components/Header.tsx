@@ -31,6 +31,38 @@ const utilityServices = [
   { name: 'Service Info', page: 'gateway-info' as const, icon: Info },
 ];
 
+// Service theme color mapping
+const getServiceActiveColor = (page: string): string => {
+  switch (page) {
+    // Credit services -> Black/White theme
+    case 'topup':
+    case 'share':
+    case 'gift':
+    case 'balances':
+    case 'redeem':
+    case 'calculator':
+      return 'text-fg-muted';
+    
+    // Upload/Deployment services -> Red theme
+    case 'upload':
+    case 'deploy':
+      return 'text-turbo-red';
+    
+    // ArNS services -> Yellow theme
+    case 'domains':
+      return 'text-turbo-yellow';
+    
+    // Developer/Info services -> Purple theme
+    case 'developer':
+    case 'gateway-info':
+      return 'text-turbo-purple';
+    
+    // Default fallback
+    default:
+      return 'text-turbo-red';
+  }
+};
+
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -166,7 +198,7 @@ const Header = () => {
             <Grid3x3 className="w-6 h-6" />
           </PopoverButton>
           
-          <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-surface border border-default shadow-lg z-50 py-1">
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-canvas border border-default shadow-lg z-50 py-1">
             {({ close }) => (
               <>
                 {/* Services - Always show, but require login */}
@@ -214,7 +246,7 @@ const Header = () => {
                       }`}
                     >
                       <service.icon className={`w-4 h-4 ${
-                        isActive ? 'text-turbo-red' : 'text-link'
+                        isActive ? getServiceActiveColor(service.page) : 'text-link'
                       }`} />
                       {service.name}
                     </Link>
@@ -238,7 +270,7 @@ const Header = () => {
                       }`}
                     >
                       <service.icon className={`w-4 h-4 ${
-                        isActive ? 'text-turbo-red' : 'text-link'
+                        isActive ? getServiceActiveColor(service.page) : 'text-link'
                       }`} />
                       {service.name}
                     </Link>
@@ -253,10 +285,10 @@ const Header = () => {
       {/* Profile Dropdown - only for logged in users */}
       {address && (
         <Popover className="relative">
-          <PopoverButton className="flex items-center gap-3 rounded border border-default px-3 py-2 font-semibold hover:bg-surface/50 transition-colors">
+          <PopoverButton className="flex items-center gap-3 rounded border border-default px-3 py-2 font-semibold hover:bg-canvas hover:border-fg-muted/50 transition-colors">
             {/* Profile Image or Wallet Type Indicator */}
             {profile.logo ? (
-              <div className="size-10 rounded-full overflow-hidden bg-surface border border-default/50 flex items-center justify-center">
+              <div className="size-10 rounded-full overflow-hidden bg-canvas border border-default/50 flex items-center justify-center">
                 <img 
                   src={profile.logo} 
                   alt={`${profile.name} logo`}
@@ -300,7 +332,7 @@ const Header = () => {
             </div>
           </PopoverButton>
 
-          <PopoverPanel className="absolute right-1 sm:right-0 mt-4 flex flex-col rounded-lg bg-surface text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-4 flex flex-col rounded-lg bg-canvas text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
             {({ close }) => (
               <>
             {/* Account Info Section */}
@@ -335,7 +367,7 @@ const Header = () => {
                       handleRefresh();
                     }}
                     disabled={isRefreshing || loadingBalance}
-                    className="p-1 rounded hover:bg-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1 rounded hover:bg-canvas transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title={isRefreshing ? 'Refreshing...' : 'Refresh balance'}
                   >
                     <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-turbo-red animate-spin' : 'text-link hover:text-fg-muted'}`} />
@@ -378,7 +410,7 @@ const Header = () => {
             </button>
             
             <button
-              className="px-6 py-3 font-semibold text-red-400 hover:bg-canvas border-t border-default transition-colors"
+              className="px-6 py-3 font-semibold text-red-400 hover:bg-canvas hover:text-red-300 border-t border-default transition-colors"
               onClick={async () => {
                 try {
                   // Disconnect from the actual wallet extension based on wallet type

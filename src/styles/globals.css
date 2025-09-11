@@ -38,4 +38,13 @@
   .carousel-wrapper:hover .carousel-container {
     animation-play-state: paused;
   }
+
+  /* Hide scrollbar but keep scrolling functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -397,11 +397,11 @@ export default function TopUpPanel() {
   }
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <CreditCard className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <CreditCard className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Buy Credits</h3>
@@ -410,7 +410,7 @@ export default function TopUpPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-blue/5 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Input Mode Toggle - Universal for all payment methods */}
         <div className="mb-6">
@@ -419,7 +419,7 @@ export default function TopUpPanel() {
               <button
                 className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                   inputType === 'storage'
-                    ? 'bg-turbo-red text-white'
+                    ? 'bg-fg-muted text-black'
                     : 'text-link hover:text-fg-muted'
                 }`}
                 onClick={() => {
@@ -434,7 +434,7 @@ export default function TopUpPanel() {
               <button
                 className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                   inputType === 'dollars'
-                    ? 'bg-turbo-red text-white'
+                    ? 'bg-fg-muted text-black'
                     : 'text-link hover:text-fg-muted'
                 }`}
                 onClick={() => {
@@ -461,7 +461,7 @@ export default function TopUpPanel() {
               }}
               className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 paymentMethod === 'fiat'
-                  ? 'bg-turbo-red text-white'
+                  ? 'bg-fg-muted text-black'
                   : 'text-link hover:text-fg-muted'
               }`}
             >
@@ -475,7 +475,7 @@ export default function TopUpPanel() {
               }}
               className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 paymentMethod === 'crypto'
-                  ? 'bg-turbo-red text-white'
+                  ? 'bg-fg-muted text-black'
                   : 'text-link hover:text-fg-muted'
               }`}
             >
@@ -531,7 +531,7 @@ export default function TopUpPanel() {
                     }}
                     className={`p-4 rounded-lg border transition-all text-left ${
                       selectedTokenType === tokenType
-                        ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                        ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                         : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                     }`}
                   >
@@ -585,7 +585,7 @@ export default function TopUpPanel() {
                         }}
                         className={`py-3 px-3 rounded-lg border transition-all font-medium ${
                           usdAmount === amount
-                            ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                             : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                         }`}
                       >
@@ -613,7 +613,7 @@ export default function TopUpPanel() {
                         className={`flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors ${
                           usdAmount > maxUSDAmount || (usdAmount < minUSDAmount && usdAmount > 0)
                             ? 'border-red-500 focus:border-red-500' 
-                            : 'border-default focus:border-turbo-red'
+                            : 'border-default focus:border-fg-muted'
                         }`}
                         placeholder="Enter amount"
                         inputMode="decimal"
@@ -642,7 +642,7 @@ export default function TopUpPanel() {
                           setStorageAmount(value);
                           setErrorMessage('');
                         }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <Listbox 
@@ -650,7 +650,7 @@ export default function TopUpPanel() {
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
-                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
                               <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
@@ -679,7 +679,7 @@ export default function TopUpPanel() {
                                         {unit.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
                                           <Check className="h-5 w-5" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -721,10 +721,10 @@ export default function TopUpPanel() {
                   
                   {/* Cost Display for Storage Mode */}
                   {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-turbo-red rounded-lg p-4 mb-4">
+                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
                       <div className="text-center">
                         <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-2xl font-bold text-turbo-red">
+                        <div className="text-2xl font-bold text-fg-muted">
                           ${formatNumber(calculateStorageCost())} USD
                         </div>
                         <div className="text-sm text-link mt-2">
@@ -760,7 +760,7 @@ export default function TopUpPanel() {
                           setStorageAmount(value);
                           setErrorMessage('');
                         }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none"
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <Listbox 
@@ -768,7 +768,7 @@ export default function TopUpPanel() {
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
-                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-turbo-red focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
                               <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
@@ -797,7 +797,7 @@ export default function TopUpPanel() {
                                         {unit.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-turbo-red">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
                                           <Check className="h-5 w-5" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -839,10 +839,10 @@ export default function TopUpPanel() {
                   
                   {/* Crypto Cost Display for Storage Mode */}
                   {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-turbo-red rounded-lg p-4 mb-4">
+                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
                       <div className="text-center">
                         <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-xl font-bold text-turbo-red mb-2">
+                        <div className="text-xl font-bold text-fg-muted mb-2">
                           ${formatNumber(calculateStorageCost())} USD
                         </div>
                         <div className="text-sm text-link">
@@ -869,7 +869,7 @@ export default function TopUpPanel() {
                         }}
                         className={`py-3 px-2 rounded-lg border transition-all font-medium text-sm ${
                           cryptoAmount === amount
-                            ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                             : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                         }`}
                       >
@@ -894,7 +894,7 @@ export default function TopUpPanel() {
                             setCryptoAmountInput(String(cryptoAmount));
                           }
                         }}
-                        className="flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors border-default focus:border-turbo-red"
+                        className="flex-1 p-3 rounded-lg border bg-canvas text-fg-muted font-medium text-lg focus:outline-none transition-colors border-default focus:border-fg-muted"
                         placeholder={`Enter ${tokenLabels[selectedTokenType]} amount`}
                         inputMode="decimal"
                       />
@@ -933,9 +933,9 @@ export default function TopUpPanel() {
         {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && !tokenPricingError && ((inputType === 'dollars' && cryptoCredits && cryptoCredits > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0)))) && (
           <div className="space-y-4 mb-6">
             {/* Purchase Summary */}
-            <div className="bg-canvas border-2 border-turbo-red rounded-lg p-6">
+            <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
               <div className="text-sm text-link mb-1">You'll Receive</div>
-              <div className="text-4xl font-bold text-turbo-red mb-1">
+              <div className="text-4xl font-bold text-fg-muted mb-1">
                 {paymentMethod === 'fiat' 
                   ? (inputType === 'storage' 
                       ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
@@ -1023,7 +1023,7 @@ export default function TopUpPanel() {
         {/* Checkout Button */}
         <button
           onClick={handleCheckout}
-          className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
             (paymentMethod === 'fiat' && (
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||

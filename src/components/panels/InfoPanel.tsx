@@ -68,7 +68,7 @@ export default function InfoPanel() {
 
         <div className="bg-surface rounded-lg p-4">
           <div className="text-sm text-link mb-1">Free Tier</div>
-          <div className="font-semibold">Files under 100KB</div>
+          <div className="font-semibold">Files under 100KiB</div>
         </div>
       </div>
 

@@ -6,16 +6,16 @@ export default function Footer() {
   return (
     <footer className="mt-auto border-t border-default bg-surface/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-            <div className="text-xs text-link">
-              © {currentYear} Permanent Data Solutions Inc. Powered by AR.IO.
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-xs text-link truncate">
+              © {currentYear} PDS Inc.
             </div>
             <a 
               href="https://github.com/ardriveapp/turbo-gateway-app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-link/60 hover:text-link transition-colors cursor-pointer" 
+              className="text-xs text-link/60 hover:text-link transition-colors cursor-pointer flex-shrink-0" 
               title={`Built: ${import.meta.env.BUILD_TIME || 'Unknown'} • Click to view source code`}
             >
               v{import.meta.env.PACKAGE_VERSION || '0.2.0'}
@@ -23,7 +23,7 @@ export default function Footer() {
           </div>
           
           {/* Social Icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <a
               href="https://twitter.com/ardriveapp"
               target="_blank"

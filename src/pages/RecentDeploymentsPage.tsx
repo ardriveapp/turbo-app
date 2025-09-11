@@ -248,9 +248,7 @@ export default function RecentDeploymentsPage() {
 
   if (Object.keys(deploymentGroups).length === 0) {
     return (
-      <div>
-        <div className="rounded-lg border border-default bg-canvas">
-          <div className="p-3 sm:p-8">
+      <div className="px-4 sm:px-6">
             {/* Header */}
             <div className="flex items-start gap-3 mb-6">
               <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -263,7 +261,7 @@ export default function RecentDeploymentsPage() {
             </div>
 
             {/* Empty State */}
-            <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+            <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6 mb-6">
               <div className="bg-surface/50 rounded-lg p-6 text-center border border-default">
                 <Globe className="w-12 h-12 text-link mx-auto mb-4" />
                 <h3 className="font-medium text-fg-muted mb-2">No Deployments Yet</h3>
@@ -276,16 +274,12 @@ export default function RecentDeploymentsPage() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="rounded-lg border border-default bg-canvas">
-        <div className="p-3 sm:p-8">
+    <div className="px-4 sm:px-6">
           {/* Header */}
           <div className="flex items-start gap-3 mb-6">
             <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -298,7 +292,7 @@ export default function RecentDeploymentsPage() {
           </div>
 
           {/* Option A Header + Option 3 Cards */}
-          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6 mb-6">
             {/* Move actions here, remove redundant "All Deployments" */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -750,8 +744,6 @@ export default function RecentDeploymentsPage() {
                 );
               })}
             </div>
-          </div>
-        </div>
       </div>
 
       {/* Receipt Modal */}

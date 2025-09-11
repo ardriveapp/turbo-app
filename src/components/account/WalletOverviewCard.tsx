@@ -54,7 +54,7 @@ export default function WalletOverviewCard() {
                 href={`https://${arnsName}.ar.io`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-fg-muted hover:text-turbo-red transition-colors cursor-pointer"
+                className="font-medium text-fg-muted hover:text-fg-muted transition-colors cursor-pointer"
               >
                 {arnsName}
               </a>

@@ -25,7 +25,7 @@ export default function RecentUploadsSection() {
         <p className="text-sm text-link mb-4">Upload your first files to get started</p>
         <button
           onClick={() => navigate('/upload')}
-          className="px-4 py-2 bg-turbo-red text-white rounded-lg hover:bg-turbo-red/90 transition-colors"
+          className="px-4 py-2 bg-fg-muted text-black rounded-lg hover:bg-fg-muted/90 transition-colors"
         >
           Upload Files
         </button>
@@ -38,7 +38,7 @@ export default function RecentUploadsSection() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-default">
         <h3 className="font-bold text-fg-muted flex items-center gap-2">
-          <Upload className="w-5 h-5 text-turbo-red" />
+          <Upload className="w-5 h-5 text-fg-muted" />
           Recent Uploads ({uploadHistory.length})
         </h3>
         <div className="flex items-center gap-2">
@@ -52,7 +52,7 @@ export default function RecentUploadsSection() {
           )}
           <button
             onClick={() => navigate('/upload')}
-            className="text-xs text-turbo-red hover:text-turbo-red/80 transition-colors"
+            className="text-xs text-fg-muted hover:text-fg-muted/80 transition-colors"
           >
             View Full Page →
           </button>
@@ -98,7 +98,7 @@ export default function RecentUploadsSection() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setShowReceiptModal(upload.id)}
-                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                    className="p-1.5 text-link hover:text-fg-muted transition-colors"
                     title="View Receipt"
                   >
                     <Receipt className="w-4 h-4" />
@@ -107,7 +107,7 @@ export default function RecentUploadsSection() {
                     href={getArweaveUrl(upload.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                    className="p-1.5 text-link hover:text-fg-muted transition-colors"
                     title="View File"
                   >
                     <ExternalLink className="w-4 h-4" />

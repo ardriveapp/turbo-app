@@ -101,7 +101,7 @@ export default function CryptoManualPaymentPanel({
       </div>
 
       {/* Amount Summary in your gradient container style */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6">
+      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6">
         <div className="text-center">
           <div className="text-2xl font-bold text-turbo-red mb-1">
             {Number(cryptoTopupValue).toFixed(6)} {tokenLabels[tokenType]}

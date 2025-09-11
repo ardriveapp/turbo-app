@@ -351,7 +351,7 @@ export default function CreditSharingSection() {
           {sharedCredits.given.approvals.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <ArrowUp className="w-4 h-4 text-turbo-red" />
+                <ArrowUp className="w-4 h-4 text-fg-muted" />
                 <span className="text-sm font-medium text-fg-muted">
                   Credits This Wallet Shared Out ({isNaN(sharedCredits.given.totalCredits) ? '0.00' : sharedCredits.given.totalCredits.toFixed(2)} total)
                 </span>
@@ -368,7 +368,7 @@ export default function CreditSharingSection() {
                         <CopyButton textToCopy={approval.recipientAddress} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="text-turbo-red font-medium">
+                        <div className="text-fg-muted font-medium">
                           -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
                         </div>
                         {/* Revoke Button - only show for your own wallet */}

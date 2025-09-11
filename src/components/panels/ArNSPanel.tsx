@@ -36,7 +36,7 @@ export default function ArNSPanel() {
   };
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
         <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -75,7 +75,10 @@ export default function ArNSPanel() {
                 type="text"
                 value={nameSearch}
                 onChange={(e) => {
-                  setNameSearch(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                  let cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                  // Remove leading and trailing dashes
+                  cleaned = cleaned.replace(/^-+|-+$/g, '');
+                  setNameSearch(cleaned);
                   setAvailability(null);
                 }}
                 className="flex-1 p-3 bg-transparent text-fg-muted font-mono focus:outline-none"
@@ -226,10 +229,6 @@ export default function ArNSPanel() {
                 <ExternalLink className="w-4 h-4" />
                 Open ArNS App
               </a>
-              <div className="flex items-center gap-2 text-xs text-link">
-                <Clock className="w-3 h-3" />
-                <span>Direct Turbo Credit purchases coming soon to this page</span>
-              </div>
             </div>
           </div>
         </div>

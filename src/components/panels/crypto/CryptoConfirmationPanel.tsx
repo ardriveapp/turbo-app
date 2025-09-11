@@ -247,7 +247,7 @@ export default function CryptoConfirmationPanel({
       </div>
 
       {/* Quote Display */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6">
+      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6">
         {pricingLoading ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 border-4 border-turbo-red border-t-transparent rounded-full animate-spin mx-auto mb-4" />

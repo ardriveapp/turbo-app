@@ -187,11 +187,11 @@ export default function ShareCreditsPanel() {
   const givenApprovals: Approval[] = [];
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Share2 className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Share2 className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Share Credits</h3>
@@ -202,7 +202,7 @@ export default function ShareCreditsPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
       
       {/* Current Balance */}
       {balance && (
@@ -257,7 +257,7 @@ export default function ShareCreditsPanel() {
                 setCreditAmount(finalAmount);
                 setCreditAmountInput(String(finalAmount));
               }}
-              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-turbo-red focus:outline-none transition-colors"
+              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
               placeholder="Minimum 0.01 credits"
               inputMode="decimal"
             />
@@ -284,7 +284,7 @@ export default function ShareCreditsPanel() {
               type="text"
               value={approvedAddress}
               onChange={(e) => setApprovedAddress(e.target.value)}
-              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-turbo-red focus:outline-none transition-colors"
+              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
               placeholder="Arweave, Ethereum, or Solana address"
             />
             <div className="mt-2 text-xs text-link">
@@ -300,7 +300,7 @@ export default function ShareCreditsPanel() {
               onClick={() => setExpiresBySeconds(3600)}
               className={`py-2 px-3 rounded-lg border text-sm transition-all ${
                 expiresBySeconds === 3600
-                  ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                   : 'border-default text-link hover:bg-surface hover:text-fg-muted'
               }`}
             >
@@ -310,7 +310,7 @@ export default function ShareCreditsPanel() {
               onClick={() => setExpiresBySeconds(86400)}
               className={`py-2 px-3 rounded-lg border text-sm transition-all ${
                 expiresBySeconds === 86400
-                  ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                   : 'border-default text-link hover:bg-surface hover:text-fg-muted'
               }`}
             >
@@ -320,7 +320,7 @@ export default function ShareCreditsPanel() {
               onClick={() => setExpiresBySeconds(604800)}
               className={`py-2 px-3 rounded-lg border text-sm transition-all ${
                 expiresBySeconds === 604800
-                  ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                   : 'border-default text-link hover:bg-surface hover:text-fg-muted'
               }`}
             >
@@ -330,7 +330,7 @@ export default function ShareCreditsPanel() {
               onClick={() => setExpiresBySeconds(0)}
               className={`py-2 px-3 rounded-lg border text-sm transition-all ${
                 expiresBySeconds === 0
-                  ? 'border-turbo-red bg-turbo-red/10 text-turbo-red'
+                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
                   : 'border-default text-link hover:bg-surface hover:text-fg-muted'
               }`}
             >
@@ -341,7 +341,7 @@ export default function ShareCreditsPanel() {
             type="number"
             value={expiresBySeconds}
             onChange={(e) => setExpiresBySeconds(Number(e.target.value))}
-            className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-turbo-red focus:outline-none transition-colors"
+            className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
             placeholder="Custom time in seconds (0 = no expiration)"
             min="0"
           />
@@ -378,7 +378,7 @@ export default function ShareCreditsPanel() {
         <button
           onClick={handleShare}
           disabled={sending || !address || creditAmount < 0.01 || creditAmount > creditBalance || !approvedAddress}
-          className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {sending ? (
             <>
@@ -450,7 +450,7 @@ export default function ShareCreditsPanel() {
       )}
 
       {/* Resource Links */}
-      <div className="mt-8 pt-8 border-t border-default">
+      <div className="mt-8">
         <h4 className="font-semibold mb-4">Learn More</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Documentation */}
@@ -461,7 +461,7 @@ export default function ShareCreditsPanel() {
             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Book className="w-5 h-5 text-turbo-red" />
+              <Book className="w-5 h-5 text-fg-muted" />
               <span className="font-medium">Documentation</span>
             </div>
             <p className="text-xs text-link">
@@ -481,7 +481,7 @@ export default function ShareCreditsPanel() {
             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Lightbulb className="w-5 h-5 text-turbo-red" />
+              <Lightbulb className="w-5 h-5 text-fg-muted" />
               <span className="font-medium">Use Cases</span>
             </div>
             <p className="text-xs text-link">
@@ -501,7 +501,7 @@ export default function ShareCreditsPanel() {
             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Code className="w-5 h-5 text-turbo-red" />
+              <Code className="w-5 h-5 text-fg-muted" />
               <span className="font-medium">SDK Reference</span>
             </div>
             <p className="text-xs text-link">

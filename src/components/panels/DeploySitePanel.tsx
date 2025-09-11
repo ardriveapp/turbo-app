@@ -327,7 +327,7 @@ export default function DeploySitePanel() {
   };
 
   const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier: files under 100KB
+    if (bytes < 100 * 1024) return 0; // Free tier: Files under 100KiB
     if (!wincForOneGiB) return null;
     
     const gibSize = bytes / (1024 * 1024 * 1024);
@@ -747,7 +747,7 @@ export default function DeploySitePanel() {
   const folderName = selectedFolder?.[0]?.webkitRelativePath?.split('/')[0] || '';
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Success-focused header when deployment is complete */}
       {deploySuccessInfo ? (
         <div className="flex items-start gap-3 mb-6">
@@ -822,7 +822,7 @@ export default function DeploySitePanel() {
           </div>
         ) : (
           /* Selected Folder Card - replaces drop zone */
-          <div className="bg-surface rounded-lg p-4">
+          <div className="bg-surface/0 rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Folder className="w-5 h-5 text-fg-muted" />
@@ -864,7 +864,7 @@ export default function DeploySitePanel() {
               </button>
                 
                 {showFolderContents && (
-                  <div className="mt-3 p-3 bg-canvas rounded border border-default/30 max-h-60 overflow-y-auto">
+                  <div className="mt-3 p-3 bg-surface/50 rounded border border-default/30 max-h-60 overflow-y-auto">
                     <div className="space-y-1 text-xs font-mono">
                       {(() => {
                         const structure = organizeFolderStructure();
@@ -1016,7 +1016,7 @@ export default function DeploySitePanel() {
 
       {/* Summary Panel - After ArNS configuration, hide during success and deployment */}
       {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
-        <div className="mt-4 p-4 bg-surface rounded-lg">
+        <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
               <span className="font-medium">{(totalSize / 1024 / 1024).toFixed(2)} MB</span>
@@ -1298,7 +1298,7 @@ export default function DeploySitePanel() {
                 setPostDeployUndername('');
                 setPostDeployArNSEnabled(false);
               }}
-              className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-surface/80 transition-colors"
+              className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas hover:border-turbo-red/50 transition-colors"
             >
               Deploy Another Site
             </button>
@@ -1482,7 +1482,7 @@ export default function DeploySitePanel() {
 
       {/* Deploy Results - Unified Design with Recent Deployments Page */}
       {deployHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface rounded-lg">
+        <div className="mt-4 sm:mt-6 bg-surface/50 rounded-lg">
           {/* Collapsible Header with Actions on Same Row */}
           <div className={`flex items-center justify-between p-4 ${showDeployResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
@@ -1960,7 +1960,7 @@ export default function DeploySitePanel() {
                     navigate('/deployments');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
                 >
                   View All Deployments <ArrowRight className="w-4 h-4" />
                 </button>

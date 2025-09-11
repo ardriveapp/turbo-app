@@ -329,11 +329,11 @@ export default function BalanceCheckerPanel() {
   };
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Search className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Search className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Check Balance</h3>
@@ -344,12 +344,11 @@ export default function BalanceCheckerPanel() {
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Search Input */}
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Wallet Address</label>
-        <div className="bg-surface rounded-lg p-4">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fg-disabled" />
@@ -359,20 +358,19 @@ export default function BalanceCheckerPanel() {
                 onChange={(e) => setWalletAddress(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Paste wallet address here..."
-                className="w-full pl-11 pr-4 py-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-turbo-red focus:outline-none transition-colors"
+                className="w-full pl-11 pr-4 py-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
                 disabled={loading}
               />
             </div>
             <button
               onClick={() => handleCheckBalance()}
               disabled={loading || !walletAddress.trim()}
-              className="px-6 py-3 rounded-lg bg-turbo-red text-white font-bold hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-3 rounded-lg bg-fg-muted text-black font-bold hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Search className="w-4 h-4" />
               {loading ? 'Checking...' : 'Check'}
             </button>
           </div>
-        </div>
       </div>
 
       {/* Quick Actions */}
@@ -468,7 +466,7 @@ export default function BalanceCheckerPanel() {
               {(arnsName || loadingArNS) && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-link">ArNS Name:</span>
-                  <span className="font-medium text-turbo-red">
+                  <span className="font-medium text-fg-muted">
                     {loadingArNS ? 'Loading...' : arnsName || 'None'}
                   </span>
                 </div>
@@ -483,9 +481,9 @@ export default function BalanceCheckerPanel() {
           {/* Balance Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Credits Card */}
-            <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 border border-turbo-red/20">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 border border-fg-muted/20">
               <div className="flex items-center gap-2 mb-3">
-                <Coins className="w-5 h-5 text-turbo-red" />
+                <Coins className="w-5 h-5 text-fg-muted" />
                 <span className="font-medium text-fg-muted">Credits</span>
               </div>
               
@@ -669,7 +667,7 @@ export default function BalanceCheckerPanel() {
                   {balanceResult.sharedCredits.given.approvals.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <ArrowUp className="w-4 h-4 text-turbo-red" />
+                        <ArrowUp className="w-4 h-4 text-fg-muted" />
                         <span className="text-sm font-medium text-fg-muted">
                           Credits Shared Out ({isNaN(balanceResult.sharedCredits.given.totalCredits) ? '0.00' : balanceResult.sharedCredits.given.totalCredits.toFixed(2)} total)
                         </span>
@@ -686,7 +684,7 @@ export default function BalanceCheckerPanel() {
                                 <CopyButton textToCopy={approval.recipientAddress} />
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="text-turbo-red font-medium">
+                                <div className="text-fg-muted font-medium">
                                   -{isNaN(approval.credits) ? '0.00' : approval.credits.toFixed(2)} Credits
                                 </div>
                                 {/* Revoke Button - only show if viewing your own connected wallet */}
