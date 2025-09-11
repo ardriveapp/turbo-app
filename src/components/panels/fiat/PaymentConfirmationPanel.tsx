@@ -129,7 +129,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Order Summary */}
         <div className="bg-canvas p-6 rounded-lg mb-6">

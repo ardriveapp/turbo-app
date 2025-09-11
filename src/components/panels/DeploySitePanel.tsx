@@ -197,7 +197,7 @@ export default function DeploySitePanel() {
     getStatusIcon,
     initializeFromCache
   } = useUploadStatus();
-  const { updateArNSRecord, refreshSpecificName, names: userArnsNames, fetchOwnedNames } = useOwnedArNSNames();
+  const { updateArNSRecord, refreshSpecificName, names: userArnsNames } = useOwnedArNSNames();
 
   // Handle successful domain assignment from modal
   const handleAssignDomainSuccess = (manifestId: string, arnsName: string, undername?: string, transactionId?: string) => {
@@ -820,7 +820,7 @@ export default function DeploySitePanel() {
 
       {/* Main Content Container with Gradient - Hide during success and deployment */}
       {!deploySuccessInfo && !deploying && (
-        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Dynamic Zone: Drop Zone OR Selected Folder */}
         {!selectedFolder || selectedFolder.length === 0 ? (
@@ -1530,7 +1530,7 @@ export default function DeploySitePanel() {
 
       {/* Deploy Results - Unified Design with Recent Deployments Page */}
       {deployHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface/50 rounded-lg">
+        <div className="mt-4 sm:mt-6 bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 border border-turbo-red/20 rounded-xl">
           {/* Collapsible Header with Actions on Same Row */}
           <div className={`flex items-center justify-between p-4 ${showDeployResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
@@ -1599,7 +1599,7 @@ export default function DeploySitePanel() {
                   const arnsAssociation = getArNSAssociation(manifestId);
                   
                   return (
-                    <div key={manifestId} className="border border-default rounded-lg p-4 bg-surface/50">
+                    <div key={manifestId} className="bg-black border border-turbo-red/20 rounded-lg p-4">
                       {/* Unified Header Row - Manifest Info + Actions */}
                       {group.manifest && (
                         <div className="flex items-center justify-between gap-2 mb-3">
@@ -1830,7 +1830,7 @@ export default function DeploySitePanel() {
                               const isChecking = statusChecking[file.id];
                               
                               return (
-                                <div key={fileIndex} className="border border-default/30 rounded p-3 bg-canvas/30">
+                                <div key={fileIndex} className="bg-canvas border border-default/20 rounded p-3">
                                   <div className="space-y-2">
                                     {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
                                     <div className="flex items-center justify-between gap-2">

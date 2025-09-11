@@ -62,122 +62,79 @@ export default function BalanceCardsGrid() {
     return null;
   }
 
+  const formatCredits = (credits: number): string => {
+    if (credits >= 1) {
+      return credits.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+    } else if (credits > 0) {
+      return credits.toLocaleString('en-US', {
+        minimumFractionDigits: 6,
+        maximumFractionDigits: 8
+      });
+    } else {
+      return '0';
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Credits Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-fg-muted/10 to-fg-muted/5 border border-fg-muted/20">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+    <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center">
             <Coins className="w-5 h-5 text-fg-muted" />
-            <span className="font-medium text-fg-muted">Credits</span>
           </div>
-          <button
-            onClick={() => navigate('/topup')}
-            className="px-3 py-1.5 bg-fg-muted/20 hover:bg-fg-muted/30 text-fg-muted rounded-md transition-colors flex items-center gap-1 text-sm font-medium"
-          >
-            <Plus className="w-3 h-3" />
-            Top Up
-          </button>
-        </div>
-        
-        <div className="text-2xl font-bold text-fg-muted mb-1">
-          {loading ? '...' : balanceData ? (() => {
-            const credits = balanceData.credits;
-            if (credits >= 1) {
-              return credits.toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2
-              });
-            } else if (credits > 0) {
-              return credits.toLocaleString('en-US', {
-                minimumFractionDigits: 6,
-                maximumFractionDigits: 8
-              });
-            } else {
-              return '0';
-            }
-          })() : '0'}
-        </div>
-        
-        <div className="text-xs text-link">
-          {balanceData && balanceData.credits < 1 && balanceData.credits > 0 
-            ? 'Very small amount - needs top-up'
-            : 'Your spendable balance'
-          }
+          <div>
+            <h3 className="text-lg font-bold text-fg-muted">Account Balance</h3>
+            <p className="text-sm text-link">Credits and storage overview</p>
+          </div>
         </div>
       </div>
 
-      {/* Storage Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-turbo-blue/10 to-turbo-blue/5 border border-turbo-blue/20">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <HardDrive className="w-5 h-5 text-turbo-blue" />
-            <span className="font-medium text-fg-muted">Storage</span>
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="text-link">Loading account balance...</div>
+        </div>
+      ) : balanceData ? (
+        <>
+          {/* Primary Balance Display */}
+          <div className="bg-surface/50 rounded-lg p-4 mb-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold text-fg-muted mb-1">
+                {formatCredits(balanceData.credits)} Credits
+              </div>
+              <div className="text-sm text-turbo-green">
+                ≈ {balanceData.gibStorage.toFixed(2)} GiB storage capacity
+              </div>
+            </div>
           </div>
-          <button
-            onClick={() => navigate('/upload')}
-            className="px-3 py-1.5 bg-turbo-blue/20 hover:bg-turbo-blue/30 text-turbo-blue rounded-md transition-colors flex items-center gap-1 text-sm font-medium"
-          >
-            <Plus className="w-3 h-3" />
-            Upload
-          </button>
-        </div>
-        
-        <div className="text-2xl font-bold text-fg-muted mb-1">
-          {loading ? '...' : balanceData ? balanceData.gibStorage.toFixed(2) : '0'} GiB
-        </div>
-        
-        <div className="text-xs text-link">
-          Available storage capacity
-        </div>
-      </div>
 
-      {/* Shared Out Credits Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Share2 className="w-5 h-5 text-purple-500" />
-            <span className="font-medium text-fg-muted">Credits Shared</span>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => navigate('/topup')}
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-fg-muted text-black rounded-lg font-medium hover:bg-fg-muted/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Top Up Credits
+            </button>
+            <button
+              onClick={() => navigate('/share')}
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              Share Credits
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/share')}
-            className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-md transition-colors flex items-center gap-1 text-sm font-medium"
-          >
-            <Plus className="w-3 h-3" />
-            Share
-          </button>
+        </>
+      ) : (
+        <div className="text-center py-8 text-link">
+          Unable to load balance data
         </div>
-        
-        <div className="text-2xl font-bold text-fg-muted mb-1">
-          {loading ? '...' : balanceData ? balanceData.sharedOut.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-          }) : '0'}
-        </div>
-        
-        <div className="text-xs text-link">
-          Credits you've shared with others
-        </div>
-      </div>
-
-      {/* Credits Available from Others Card */}
-      <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20">
-        <div className="flex items-center gap-2 mb-3">
-          <ArrowDown className="w-5 h-5 text-green-500" />
-          <span className="font-medium text-fg-muted">Credits Available</span>
-        </div>
-        
-        <div className="text-2xl font-bold text-fg-muted mb-1">
-          {loading ? '...' : balanceData ? balanceData.available.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-          }) : '0'}
-        </div>
-        
-        <div className="text-xs text-link">
-          Shared by others for your use
-        </div>
-      </div>
+      )}
     </div>
   );
 }

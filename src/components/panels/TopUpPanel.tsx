@@ -96,6 +96,21 @@ export default function TopUpPanel() {
       maximumFractionDigits: decimals,
     }).format(num);
   };
+
+  // Smart storage display - show in appropriate units
+  const formatStorage = (gigabytes: number): string => {
+    if (gigabytes >= 1) {
+      return `${formatNumber(gigabytes, 2)} GiB`;
+    } else if (gigabytes >= 0.001) {
+      const mebibytes = gigabytes * 1024;
+      return `${formatNumber(mebibytes, 1)} MiB`;
+    } else if (gigabytes > 0) {
+      const kibibytes = gigabytes * 1024 * 1024;
+      return `${formatNumber(kibibytes, 0)} KiB`;
+    } else {
+      return '0 storage';
+    }
+  };
   
   
   // Helper function to get token amount for USD amount
@@ -386,6 +401,7 @@ export default function TopUpPanel() {
             cryptoAmount={cryptoAmount}
             tokenType={selectedTokenType}
             transactionId={cryptoPaymentResult?.transactionId || cryptoPaymentResult?.id}
+            creditsReceived={cryptoPaymentResult?.quote?.credits}
             onComplete={() => {
               setCryptoFlowStep('selection');
               setCryptoPaymentResult(null);
@@ -951,14 +967,14 @@ export default function TopUpPanel() {
                 <div className="text-sm text-link">
                   = ~{paymentMethod === 'fiat' 
                     ? (inputType === 'storage' 
-                        ? formatNumber(getStorageInGiB(), 2)
-                        : credits ? ((credits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                        ? formatStorage(getStorageInGiB())
+                        : credits ? formatStorage((credits * wincPerCredit) / Number(wincForOneGiB)) : '...'
                       )
                     : (inputType === 'storage'
-                        ? formatNumber(getStorageInGiB(), 2)
-                        : cryptoCredits ? ((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                        ? formatStorage(getStorageInGiB())
+                        : cryptoCredits ? formatStorage((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)) : '...'
                       )
-                  } GiB storage power
+                  }
                 </div>
               )}
             </div>
@@ -997,14 +1013,14 @@ export default function TopUpPanel() {
                     <div className="text-xs text-turbo-green">
                       ~{paymentMethod === 'fiat'
                         ? (inputType === 'storage' 
-                            ? (((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)
-                            : credits ? (((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : credits ? formatStorage(((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
                         : (inputType === 'storage'
-                            ? (((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)
-                            : cryptoCredits ? (((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2) : '...'
+                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : cryptoCredits ? formatStorage(((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
-                      } GiB storage power
+                      }
                     </div>
                   )}
                 </div>

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
-import { useWincForAnyToken } from '../../../hooks/useWincForOneGiB';
+import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 
 interface CryptoConfirmationPanelProps {
@@ -26,20 +26,36 @@ export default function CryptoConfirmationPanel({
   // Use comprehensive hook for all token types
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
   const { data: turboWallets } = useTurboWallets();
+  const wincForOneGiB = useWincForOneGiB();
   
   const quote = wincForToken ? {
     tokenAmount: cryptoAmount,
     credits: Number(wincForToken) / wincPerCredit,
-    gigabytes: (Number(wincForToken) / wincPerCredit) * 0.000268,
+    // Calculate storage correctly using actual GiB rate
+    gigabytes: wincForOneGiB ? Number(wincForToken) / Number(wincForOneGiB) : 0,
   } : null;
   
   // Get the turbo wallet address for manual payments
   const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
 
+  // Smart storage display - show in appropriate units
+  const formatStorage = (gigabytes: number): string => {
+    if (gigabytes >= 1) {
+      return `${gigabytes.toFixed(2)} GiB`;
+    } else if (gigabytes >= 0.001) {
+      const mebibytes = gigabytes * 1024;
+      return `${mebibytes.toFixed(1)} MiB`;
+    } else if (gigabytes > 0) {
+      const kibibytes = gigabytes * 1024 * 1024;
+      return `${kibibytes.toFixed(0)} KiB`;
+    } else {
+      return '0 storage';
+    }
+  };
+
 
 
   // Determine if user can pay directly or needs manual payment
-  // Base ETH now supported via local SDK patch
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
     (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) || // Both ETH types now work
@@ -116,8 +132,22 @@ export default function CryptoConfirmationPanel({
               } catch {
                 throw new Error(`Please switch to Base Network in MetaMask for Base ETH payments.`);
               }
-            } else {
-              throw new Error(`Please switch to Ethereum Mainnet in your wallet for ETH L1 payments.`);
+            } else if (tokenType === 'ethereum') {
+              try {
+                console.log('Auto-switching to Ethereum Mainnet...');
+                await window.ethereum.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: '0x1' }], // Hex for 1 (Ethereum Mainnet)
+                });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Create fresh provider after switch
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                console.log('Successfully switched to Ethereum Mainnet');
+              } catch {
+                throw new Error(`Please switch to Ethereum Mainnet in MetaMask for ETH L1 payments.`);
+              }
             }
           }
           
@@ -126,7 +156,7 @@ export default function CryptoConfirmationPanel({
           console.log('Wallet balance:', ethers.formatEther(balance), 'ETH');
           console.log('Trying to send:', cryptoAmount, tokenLabels[tokenType]);
           
-          // ETH L1/Base ETH direct payment using walletAdapter (patched SDK)
+          // ETH L1/Base ETH direct payment using walletAdapter (native SDK support)
           console.log('Creating authenticated client for', tokenType, 'using walletAdapter pattern');
           const turbo = TurboFactory.authenticated({
             token: tokenType,
@@ -234,7 +264,7 @@ export default function CryptoConfirmationPanel({
 
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
@@ -281,16 +311,16 @@ export default function CryptoConfirmationPanel({
                 {quote.credits.toFixed(4)} Credits
               </div>
               <div className="text-sm text-link">
-                ≈ {quote.gigabytes.toFixed(2)} GiB storage power
+                ≈ {formatStorage(quote.gigabytes)} storage power
               </div>
             </div>
 
-            {/* Processing Time Info */}
-            <div className="flex items-center justify-center bg-surface/50 rounded-lg p-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-link" />
-                <span className="text-sm text-link">
-                  Expected processing: {tokenProcessingTimes[tokenType]?.time || '5-15 minutes'}
+            {/* Do Not Close Warning */}
+            <div className="flex items-center justify-center bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 text-center">
+                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span className="text-sm text-amber-200">
+                  Do not close this page during payment processing
                 </span>
               </div>
             </div>

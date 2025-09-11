@@ -1,4 +1,4 @@
-import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock } from 'lucide-react';
+import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock, Mail } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { tokenLabels, SupportedTokenType } from '../../../constants';
 import { useNavigate } from 'react-router-dom';
@@ -9,16 +9,44 @@ interface PaymentSuccessPanelProps {
   cryptoAmount?: number;
   tokenType?: SupportedTokenType;
   transactionId?: string;
+  creditsReceived?: number;
 }
 
 const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({ 
   onComplete, 
   cryptoAmount, 
   tokenType, 
-  transactionId 
+  transactionId,
+  creditsReceived
 }) => {
   const { paymentIntentResult, creditBalance } = useStore();
   const navigate = useNavigate();
+
+  // Get appropriate blockchain explorer URL
+  const getExplorerUrl = (txId: string, tokenType?: SupportedTokenType): string | null => {
+    if (!tokenType) return null;
+    
+    switch (tokenType) {
+      case 'ethereum':
+        return `https://etherscan.io/tx/${txId}`;
+      case 'base-eth':
+        return `https://basescan.org/tx/${txId}`;
+      case 'arweave':
+        return `https://viewblock.io/arweave/tx/${txId}`;
+      case 'ario':
+        return `https://www.ao.link/#/message/${txId}`;
+      case 'solana':
+        return `https://solscan.io/tx/${txId}`;
+      default:
+        return null;
+    }
+  };
+
+  // Format transaction ID for display (mobile-friendly)
+  const formatTxId = (txId: string, mobile: boolean = false): string => {
+    if (!mobile || txId.length <= 20) return txId;
+    return `${txId.substring(0, 10)}...${txId.substring(txId.length - 10)}`;
+  };
 
   // Determine if this is a crypto or fiat payment
   const isCryptoPayment = cryptoAmount && tokenType;
@@ -36,17 +64,6 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
 
   return (
     <div>
-      {/* Inline Header with Description */}
-      <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-green/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <CheckCircle className="w-5 h-5 text-turbo-green" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Payment Successful!</h3>
-          <p className="text-sm text-link">Your credits have been added to your account</p>
-        </div>
-      </div>
-
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
@@ -56,7 +73,12 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
             <CheckCircle className="w-8 h-8 text-turbo-green" />
           </div>
           <h4 className="text-2xl font-bold text-turbo-green mb-2">Payment Complete!</h4>
-          <p className="text-link">Your credits are now available in your account.</p>
+          <p className="text-link">
+            {isCryptoPayment && tokenType === 'arweave' 
+              ? 'Your account will be credited in 15-30 minutes.'
+              : 'Your credits are now available in your account.'
+            }
+          </p>
         </div>
 
         {/* Payment Summary */}
@@ -72,6 +94,15 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
               </span>
             </div>
             
+            {creditsReceived && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-link">Credits Received:</span>
+                <span className="font-bold text-turbo-green text-lg">
+                  +{creditsReceived.toFixed(4)} Credits
+                </span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center">
               <span className="text-sm text-link">Current Balance:</span>
               <span className="font-bold text-turbo-green text-lg">
@@ -85,9 +116,23 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                   <span className="text-xs text-link">
                     {isCryptoPayment ? 'Transaction ID:' : 'Payment ID:'}
                   </span>
-                  <span className="font-mono text-xs text-fg-muted break-all">
-                    {paymentId}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-fg-muted">
+                      <span className="hidden sm:inline">{paymentId}</span>
+                      <span className="sm:hidden">{formatTxId(paymentId, true)}</span>
+                    </span>
+                    {isCryptoPayment && getExplorerUrl(paymentId, tokenType) && (
+                      <a
+                        href={getExplorerUrl(paymentId, tokenType)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-link hover:text-fg-muted transition-colors"
+                        title="View on blockchain explorer"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -135,10 +180,10 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                 onComplete();
                 navigate('/domains');
               }}
-              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-turbo-red/30 text-left"
+              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-turbo-yellow/30 text-left"
             >
-              <div className="w-8 h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Globe className="w-4 h-4 text-turbo-red" />
+              <div className="w-8 h-8 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Globe className="w-4 h-4 text-turbo-yellow" />
               </div>
               <div>
                 <div className="text-sm font-medium text-fg-muted">Register Domain</div>
@@ -146,18 +191,21 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
               </div>
             </button>
 
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-lg border border-default opacity-60 text-left">
-              <div className="w-8 h-8 bg-surface rounded-lg flex items-center justify-center flex-shrink-0">
-                <Share2 className="w-4 h-4 text-link" />
+            <button
+              onClick={() => {
+                onComplete();
+                navigate('/share');
+              }}
+              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-fg-muted/30 text-left w-full"
+            >
+              <div className="w-8 h-8 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Share2 className="w-4 h-4 text-fg-muted" />
               </div>
               <div>
-                <div className="text-sm font-medium text-link">Share Credits</div>
-                <div className="text-xs text-link flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Coming Soon
-                </div>
+                <div className="text-sm font-medium text-fg-muted">Share Credits</div>
+                <div className="text-xs text-link">Transfer credits to other wallets</div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -168,12 +216,12 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
           </p>
           <a
             href="mailto:support@ardrive.io"
-            className="text-xs text-turbo-red hover:text-turbo-red/80 transition-colors inline-flex items-center gap-1"
+            className="text-xs text-fg-muted hover:text-fg-muted/80 transition-colors inline-flex items-center gap-1"
             target="_blank"
             rel="noopener noreferrer"
           >
             support@ardrive.io
-            <ExternalLink className="w-3 h-3" />
+            <Mail className="w-3 h-3" />
           </a>
         </div>
       </div>

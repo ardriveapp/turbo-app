@@ -192,7 +192,7 @@ All service panels follow consistent styling:
 </div>
 
 // Gradient Container
-<div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6 mb-6">
+<div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
   {/* Main service content */}
 </div>
 ```

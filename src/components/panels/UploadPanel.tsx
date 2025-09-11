@@ -202,7 +202,7 @@ export default function UploadPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-4 sm:mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+        <div className="w-10 h-10 from-turbo-red/5 to-turbo-red/3 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Upload className="w-5 h-5 text-turbo-red" />
         </div>
         <div>
@@ -212,7 +212,7 @@ export default function UploadPanel() {
       </div>
       
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
         
 
         {/* Connection Warning */}
@@ -433,9 +433,9 @@ export default function UploadPanel() {
       )}
       </div>
 
-      {/* Upload Results - Modernized to Match Deployment Results */}
+      {/* Upload Results - Activity theme */}
       {uploadHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-surface/50 rounded-lg">
+        <div className="mt-4 sm:mt-6 bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20">
           {/* Collapsible Header with Actions */}
           <div className={`flex items-center justify-between p-4 ${showUploadResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button

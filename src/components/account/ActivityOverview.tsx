@@ -40,10 +40,10 @@ export default function ActivityOverview() {
   return (
     <div className="grid md:grid-cols-2 gap-6">
       {/* Recent Uploads Summary */}
-      <div className="bg-surface rounded-lg border border-default">
-        <div className="p-4 border-b border-default">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20">
+        <div className="p-4 border-b border-turbo-red/20">
           <h3 className="font-medium text-fg-muted flex items-center gap-2">
-            <Upload className="w-4 h-4 text-fg-muted" />
+            <Upload className="w-4 h-4 text-turbo-red" />
             Recent Uploads
           </h3>
         </div>
@@ -99,10 +99,10 @@ export default function ActivityOverview() {
         
         {/* View All Button at Bottom */}
         {uploadHistory.length > 0 && (
-          <div className="px-4 py-3 border-t border-default">
+          <div className="px-4 py-3 border-t border-turbo-red/20">
             <button
               onClick={() => navigate('/upload')}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
             >
               View All Uploads <ArrowRight className="w-4 h-4" />
             </button>
@@ -111,10 +111,10 @@ export default function ActivityOverview() {
       </div>
 
       {/* Recent Deployments Summary */}
-      <div className="bg-surface rounded-lg border border-default">
-        <div className="p-4 border-b border-default">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20">
+        <div className="p-4 border-b border-turbo-red/20">
           <h3 className="font-medium text-fg-muted flex items-center gap-2">
-            <Zap className="w-4 h-4 text-fg-muted" />
+            <Zap className="w-4 h-4 text-turbo-red" />
             Recent Deployments
           </h3>
         </div>
@@ -192,13 +192,13 @@ export default function ActivityOverview() {
         
         {/* View All Button at Bottom */}
         {deployments.length > 0 && (
-          <div className="px-4 py-3 border-t border-default">
+          <div className="px-4 py-3 border-t border-turbo-red/20">
             <button
               onClick={() => {
                 navigate('/deployments');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
             >
               View All Deployments <ArrowRight className="w-4 h-4" />
             </button>

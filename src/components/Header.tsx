@@ -457,7 +457,7 @@ const Header = () => {
             setWalletModalMessage('');
             setShowWalletModal(true);
           }}
-          className="flex items-center gap-2 bg-turbo-red text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-turbo-red/90 transition-colors mr-2 sm:mr-0"
+          className="flex items-center gap-2 bg-fg-muted text-black px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-fg-muted/90 transition-colors mr-2 sm:mr-0"
         >
           <Wallet className="w-4 h-4" />
           Connect

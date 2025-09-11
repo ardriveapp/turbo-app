@@ -253,18 +253,24 @@ export default function CreditSharingSection() {
   );
 
   return (
-    <div className="bg-surface rounded-lg border border-default">
+    <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default">
       {/* Header */}
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="w-full p-4 text-left hover:bg-canvas/50 transition-colors flex items-center justify-between"
+        className="w-full p-4 sm:p-6 text-left hover:bg-surface/30 transition-colors flex items-center justify-between"
       >
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-link" />
-          <h3 className="font-bold text-fg-muted">Credit Sharing Details</h3>
-          {loading && <span className="text-xs text-link">(Loading...)</span>}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center">
+            <Users className="w-5 h-5 text-fg-muted" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-fg-muted">Credit Sharing Details</h3>
+            <p className="text-sm text-link">
+              {loading ? 'Loading...' : hasSharedCredits ? 'View your sharing activity' : 'No sharing activity yet'}
+            </p>
+          </div>
         </div>
-        <ChevronDown className={`w-5 h-5 text-link transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-5 h-5 text-fg-muted transition-transform ${showDetails ? 'rotate-180' : ''}`} />
       </button>
       
       {/* Error Message */}

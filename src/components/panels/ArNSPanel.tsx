@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useDebounce from '../../hooks/useDebounce';
-import { Globe, Search, CheckCircle, XCircle, Clock, Shield, Zap, ExternalLink, AlertCircle } from 'lucide-react';
+import { Globe, Search, CheckCircle, XCircle, Shield, Zap, ExternalLink, AlertCircle } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getARIO } from '../../utils';
 

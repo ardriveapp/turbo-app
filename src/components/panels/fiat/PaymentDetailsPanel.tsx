@@ -180,7 +180,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Credits Summary */}
         <div className="grid grid-cols-2 mb-8">

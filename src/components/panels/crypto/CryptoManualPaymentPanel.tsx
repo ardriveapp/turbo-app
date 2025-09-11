@@ -88,7 +88,7 @@ export default function CryptoManualPaymentPanel({
 
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-6 space-y-6">
       {/* Header matching your design system */}
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">

@@ -4,7 +4,6 @@ import { User, Globe, ExternalLink, RefreshCw, Calendar, ArrowRight } from 'luci
 import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
 import { useOwnedArNSNames } from '../hooks/useOwnedArNSNames';
 import { makePossessive } from '../utils';
-import WalletOverviewCard from '../components/account/WalletOverviewCard';
 import BalanceCardsGrid from '../components/account/BalanceCardsGrid';
 import CreditSharingSection from '../components/account/CreditSharingSection';
 import ActivityOverview from '../components/account/ActivityOverview';
@@ -75,7 +74,6 @@ export default function MyAccountPage() {
       <div className="mb-8">
         <h2 className="text-xl font-bold text-fg-muted mb-4">Overview</h2>
         <div className="space-y-4">
-          <WalletOverviewCard />
           <BalanceCardsGrid />
           <CreditSharingSection />
         </div>

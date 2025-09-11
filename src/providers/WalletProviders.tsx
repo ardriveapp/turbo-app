@@ -47,7 +47,7 @@ export function WalletProviders({ children }: WalletProvidersProps) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <ConnectionProvider endpoint={import.meta.env.VITE_SOLANA_RPC || 'https://api.mainnet-beta.solana.com'}>
+        <ConnectionProvider endpoint={import.meta.env.VITE_SOLANA_RPC || 'https://rpc.ankr.com/solana'}>
           <WalletProvider wallets={solanaWallets} autoConnect={false}>
             <WalletModalProvider>
               <Elements stripe={STRIPE_PROMISE}>

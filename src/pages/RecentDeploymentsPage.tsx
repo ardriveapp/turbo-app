@@ -261,7 +261,7 @@ export default function RecentDeploymentsPage() {
             </div>
 
             {/* Empty State */}
-            <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6 mb-6">
+            <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-turbo-red/20 p-6 mb-6">
               <div className="bg-surface/50 rounded-lg p-6 text-center border border-default">
                 <Globe className="w-12 h-12 text-link mx-auto mb-4" />
                 <h3 className="font-medium text-fg-muted mb-2">No Deployments Yet</h3>
@@ -292,13 +292,14 @@ export default function RecentDeploymentsPage() {
           </div>
 
           {/* Option A Header + Option 3 Cards */}
-          <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6 mb-6">
-            {/* Move actions here, remove redundant "All Deployments" */}
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-6 mb-6">
+            {/* Header with better description */}
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-fg-muted">
-                  {Object.keys(deploymentGroups).length} deployments
-                </span>
+              <div>
+                <h3 className="text-lg font-bold text-fg-muted">Your Site Deployments</h3>
+                <p className="text-sm text-link">
+                  {Object.keys(deploymentGroups).length} site{Object.keys(deploymentGroups).length !== 1 ? 's' : ''} deployed
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -343,7 +344,7 @@ export default function RecentDeploymentsPage() {
                 const arnsAssociation = getArNSAssociation(manifestId);
                 
                 return (
-                  <div key={manifestId} className="border border-default rounded-lg p-4 bg-surface/50">
+                  <div key={manifestId} className="bg-black border border-turbo-red/20 rounded-lg p-4">
                     {/* Unified Header Row - Manifest Info + Actions */}
                     {group.manifest && (
                       <div className="flex items-center justify-between gap-2 mb-3">
@@ -552,7 +553,7 @@ export default function RecentDeploymentsPage() {
                             const isChecking = statusChecking[file.id];
                             
                             return (
-                              <div key={fileIndex} className="border border-default/30 rounded p-3 bg-canvas/30">
+                              <div key={fileIndex} className="bg-canvas border border-default/20 rounded p-3">
                                 <div className="space-y-2">
                                   {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
                                   <div className="flex items-center justify-between gap-2">
