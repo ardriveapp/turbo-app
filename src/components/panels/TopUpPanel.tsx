@@ -521,7 +521,7 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {getAvailableTokens().map((tokenType) => (
                   <button 
                     key={tokenType}

@@ -143,15 +143,6 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
             >
               Terms of Service
             </a>
-            {' '}and{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-            >
-              Privacy Policy
-            </a>
           </p>
         </div>
 

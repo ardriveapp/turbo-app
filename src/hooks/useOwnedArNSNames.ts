@@ -50,7 +50,6 @@ export function useOwnedArNSNames() {
     if (!forceRefresh) {
       const cached = getOwnedArNSNames(address);
       if (cached) {
-        console.log('Using cached ArNS names for address:', address);
         const arnsNames: ArNSName[] = cached.map(cached => ({
           name: cached.name,
           displayName: decodePunycode(cached.name),
@@ -66,8 +65,6 @@ export function useOwnedArNSNames() {
     
     setLoading(true);
     try {
-      console.log('Fetching ArNS records for address:', address);
-      
       // Use AR.IO SDK to get owned names with custom CU
       const ario = getARIO();
       const records = await ario.getArNSRecordsForAddress({
@@ -77,7 +74,6 @@ export function useOwnedArNSNames() {
         sortOrder: 'desc' // Most recent first
       });
       
-      console.log('Fetched ArNS records:', records);
       
       // Process names WITHOUT fetching ANT details (lazy loading approach)
       const processedNames: ArNSName[] = (records.items || []).map(record => ({
@@ -100,7 +96,6 @@ export function useOwnedArNSNames() {
             name.undernames = cachedName.undernames || [];
           }
         });
-        console.log('Merged cached ANT details for known names');
       }
       
       // Prepare cache data (only basic info, ANT details added on-demand)
@@ -111,13 +106,10 @@ export function useOwnedArNSNames() {
         undernames: name.undernames
       }));
       
-      console.log('Processed ArNS names (without ANT state):', processedNames);
-      console.log('Caching basic ArNS data:', cacheData);
       
       // Cache the results
       setOwnedArNSNames(address, cacheData);
       setNames(processedNames);
-      console.log('ArNS fetch completed successfully');
       return processedNames;
       
     } catch (error) {
@@ -126,7 +118,6 @@ export function useOwnedArNSNames() {
       // If fetch fails, still try to use any cached data
       const cached = getOwnedArNSNames(address);
       if (cached) {
-        console.log('Using cached data after fetch failure');
         const fallbackNames: ArNSName[] = cached.map(cached => ({
           name: cached.name,
           displayName: decodePunycode(cached.name),
@@ -187,7 +178,6 @@ export function useOwnedArNSNames() {
         }, WRITE_OPTIONS);
       }
       
-      console.log('ArNS update result:', result);
 
       // Refresh only the updated name's state for efficiency
       if (address) {
@@ -408,9 +398,10 @@ export function useOwnedArNSNames() {
     }
   }, [names, address, getOwnedArNSNames, setOwnedArNSNames]);
 
-  // Auto-fetch on address change
+  // Auto-fetch on address/wallet change - proactive loading for better UX
   useEffect(() => {
     if (address && (walletType === 'arweave' || walletType === 'ethereum')) {
+      // Fetch names immediately when user connects
       fetchOwnedNames();
     }
   }, [address, walletType, fetchOwnedNames]);

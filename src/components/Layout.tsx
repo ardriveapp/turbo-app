@@ -15,7 +15,7 @@ export function Layout() {
       {/* Main Content with proper spacing */}
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 w-full">
-          <div className="py-3 sm:py-4 mb-6 sm:mb-8">
+          <div className="pt-6 sm:pt-8 pb-3 sm:pb-4 mb-6 sm:mb-8">
             <Outlet />
           </div>
         </div>

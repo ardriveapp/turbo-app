@@ -408,15 +408,6 @@ export default function UploadPanel() {
               >
                 Terms of Service
               </a>
-              {' '}and{' '}
-              <a 
-                href="https://ardrive.io/tos-and-privacy/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-              >
-                Privacy Policy
-              </a>
             </p>
           </div>
 
@@ -452,7 +443,7 @@ export default function UploadPanel() {
               className="flex items-center gap-2 hover:text-turbo-green transition-colors text-left"
               type="button"
             >
-              <Upload className="w-5 h-5 text-fg-muted" />
+              <Upload className="w-5 h-5 text-turbo-red" />
               <span className="font-bold text-fg-muted">Recent</span>
               <span className="text-xs text-link">({uploadHistory.length})</span>
               {showUploadResults ? (

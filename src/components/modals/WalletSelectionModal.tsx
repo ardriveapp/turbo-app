@@ -27,7 +27,6 @@ const WalletSelectionModal = ({
           
           // We'll get the native address by creating a temporary authenticated client
           // This ensures we get the properly converted address for Turbo APIs
-          console.log('Setting Ethereum address:', rawAddress);
           setAddress(rawAddress, 'ethereum');
           onClose();
         } catch {
@@ -54,7 +53,6 @@ const WalletSelectionModal = ({
       // Solana wallet connected
       const rawAddress = publicKey.toString();
       // For now, use raw address - will be converted by Turbo SDK internally
-      console.log('Setting Solana address:', rawAddress);
       setAddress(rawAddress, 'solana');
       onClose();
       setIntentionalSolanaConnect(false); // Reset flag
@@ -75,8 +73,7 @@ const WalletSelectionModal = ({
       if (publicKey) {
         // Already connected to Solana wallet
         const rawAddress = publicKey.toString();
-        console.log('Setting Solana address:', rawAddress);
-      setAddress(rawAddress, 'solana');
+        setAddress(rawAddress, 'solana');
         onClose();
         setIntentionalSolanaConnect(false);
         return;
@@ -135,7 +132,6 @@ const WalletSelectionModal = ({
       
       const addr = await window.arweaveWallet.getActiveAddress();
       // For Arweave, raw address = native address
-      console.log('Setting Arweave address:', addr);
       setAddress(addr, 'arweave');
       onClose();
     } catch {
@@ -146,7 +142,18 @@ const WalletSelectionModal = ({
   };
 
   const connectMetaMask = async () => {
-    const metamask = connectors.find((c) => c.id === 'injected' || c.name === 'MetaMask');
+    // Be more specific about MetaMask detection to avoid Phantom conflicts
+    const metamask = connectors.find((c) => {
+      // First try to find by name
+      if (c.name === 'MetaMask') return true;
+      // Then check if it's injected and specifically MetaMask
+      if (c.id === 'injected') {
+        // Check if window.ethereum is MetaMask (not Phantom)
+        return (window.ethereum as any)?.isMetaMask === true;
+      }
+      return false;
+    });
+    
     if (metamask) {
       setConnectingWallet('Connecting to MetaMask...');
       try {
@@ -177,7 +184,35 @@ const WalletSelectionModal = ({
         setConnectingWallet(undefined);
       }
     } else {
-      window.open('https://metamask.io/', '_blank');
+      // If no MetaMask connector found, try direct connection with provider detection
+      setConnectingWallet('Connecting to MetaMask...');
+      try {
+        // Find the MetaMask provider in the providers array (handles multiple wallets)
+        const metaMaskProvider = (window.ethereum as any)?.providers?.find(
+          (provider: any) => provider.isMetaMask,
+        );
+        
+        const targetProvider = metaMaskProvider ?? window.ethereum;
+        
+        if (!(targetProvider as any)?.isMetaMask && !metaMaskProvider) {
+          // MetaMask not found
+          window.open('https://metamask.io/', '_blank');
+          return;
+        }
+        
+        // Connect directly to MetaMask provider
+        await targetProvider.request({ method: 'eth_requestAccounts' });
+        const accounts = await targetProvider.request({ method: 'eth_accounts' });
+        
+        if (accounts && accounts.length > 0) {
+          setAddress(accounts[0], 'ethereum');
+          onClose();
+        }
+      } catch (error) {
+        console.error('MetaMask connection failed:', error);
+      } finally {
+        setConnectingWallet(undefined);
+      }
     }
   };
 

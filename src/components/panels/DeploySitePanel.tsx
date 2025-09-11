@@ -3,7 +3,7 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy } from 'lucide-react';
+import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
@@ -12,6 +12,7 @@ import { useOwnedArNSNames } from '../../hooks/useOwnedArNSNames';
 import { useNavigate } from 'react-router-dom';
 import ReceiptModal from '../modals/ReceiptModal';
 import ArNSAssociationPanel from '../ArNSAssociationPanel';
+import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 
 // Enhanced Deploy Confirmation Modal for original deploy page
@@ -184,6 +185,8 @@ export default function DeploySitePanel() {
   const [postDeployArNSUpdating, setPostDeployArNSUpdating] = useState(false);
   // Post-deployment ArNS enabled state (disabled by default, user can enable)
   const [postDeployArNSEnabled, setPostDeployArNSEnabled] = useState(false);
+  // Domain assignment modal state
+  const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
   const wincForOneGiB = useWincForOneGiB();
   const { deployFolder, deploying, deployProgress, fileProgress, deployStage, currentFile, updateDeployStage } = useFolderUpload();
   const { 
@@ -194,7 +197,39 @@ export default function DeploySitePanel() {
     getStatusIcon,
     initializeFromCache
   } = useUploadStatus();
-  const { updateArNSRecord, refreshSpecificName } = useOwnedArNSNames();
+  const { updateArNSRecord, refreshSpecificName, names: userArnsNames, fetchOwnedNames } = useOwnedArNSNames();
+
+  // Handle successful domain assignment from modal
+  const handleAssignDomainSuccess = (manifestId: string, arnsName: string, undername?: string, transactionId?: string) => {
+    // Add ArNS update to deploy history
+    const arnsUpdateRecord = {
+      type: 'arns-update' as const,
+      id: transactionId || '',
+      manifestId: manifestId,
+      arnsName: arnsName,
+      undername: undername,
+      targetId: manifestId,
+      timestamp: Date.now(),
+      arnsStatus: 'success' as const,
+      arnsError: undefined
+    };
+    
+    addDeployResults([arnsUpdateRecord]);
+    
+    // Refresh the specific ArNS name state
+    setTimeout(() => {
+      refreshSpecificName(arnsName);
+    }, 3000);
+    
+    // Close modal and show success message
+    setShowAssignDomainModal(null);
+    const existingAssociation = getArNSAssociation(manifestId);
+    const isUpdate = existingAssociation && existingAssociation.arnsName;
+    setDeployMessage({
+      type: 'success',
+      text: `Domain ${undername ? undername + '_' : ''}${arnsName}.ar.io ${isUpdate ? 'updated' : 'assigned'} successfully!`
+    });
+  };
 
   // Memoize deployment grouping to prevent lag
   const deploymentGroups = useMemo(() => {
@@ -598,6 +633,8 @@ export default function DeploySitePanel() {
       initializeFromCache(allIds);
     }
   }, [deployHistory, recentDeploymentEntries, initializeFromCache]);
+
+  // ArNS names are fetched automatically when user connects (in useOwnedArNSNames hook)
 
   const handleConfirmDeploy = async () => {
     setShowConfirmModal(false);
@@ -1307,8 +1344,9 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* ArNS Discovery Section - For users without ArNS names */}
-      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && (
+      {/* ArNS Discovery Section - Only for users without ArNS names */}
+      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && 
+       ((walletType !== 'arweave' && walletType !== 'ethereum') || userArnsNames.length === 0) && (
         <div className="mt-6">
           <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6">
             <div className="flex items-start gap-3 mb-4">
@@ -1368,8 +1406,9 @@ export default function DeploySitePanel() {
         </div>
       )}
 
-      {/* Post-Deploy ArNS Enhancement - Show ArNS panel directly when not configured */}
-      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && walletType === 'arweave' && (
+      {/* Post-Deploy ArNS Enhancement - Show ArNS panel for users who have ArNS names */}
+      {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && 
+       (walletType === 'arweave' || walletType === 'ethereum') && userArnsNames.length > 0 && (
         <div className="mt-6">
           <ArNSAssociationPanel
             enabled={postDeployArNSEnabled}
@@ -1476,7 +1515,16 @@ export default function DeploySitePanel() {
             ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
             : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
         }`}>
-          {deployMessage.text}
+          <div className="flex items-center justify-between">
+            <span>{deployMessage.text}</span>
+            <button
+              onClick={() => setDeployMessage(null)}
+              className="ml-4 p-1 hover:opacity-70 transition-opacity flex-shrink-0"
+              title="Close message"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1490,7 +1538,7 @@ export default function DeploySitePanel() {
               className="flex items-start gap-2 hover:text-turbo-green transition-colors text-left"
               type="button"
             >
-              <Zap className="w-5 h-5 text-fg-muted flex-shrink-0 mt-0.5" />
+              <Zap className="w-5 h-5 text-turbo-red flex-shrink-0 mt-0.5" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                 <span className="font-bold text-fg-muted">Recent</span>
                 <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
@@ -1606,7 +1654,7 @@ export default function DeploySitePanel() {
                             <CopyButton textToCopy={manifestId} />
                             <button
                               onClick={() => setShowReceiptModal(manifestId)}
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
                               title="View Receipt"
                             >
                               <Receipt className="w-4 h-4" />
@@ -1614,7 +1662,7 @@ export default function DeploySitePanel() {
                             <button
                               onClick={() => checkUploadStatus(manifestId, true)}
                               disabled={!!statusChecking[manifestId]}
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                              className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
                               title="Check Status"
                             >
                               <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
@@ -1623,7 +1671,7 @@ export default function DeploySitePanel() {
                               href={getArweaveRawUrl(manifestId)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
                               title="View Raw Manifest JSON"
                             >
                               <Code className="w-4 h-4" />
@@ -1632,11 +1680,21 @@ export default function DeploySitePanel() {
                               href={getArweaveUrl(manifestId)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
                               title="Visit Deployed Site"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </a>
+                            {/* Assign Domain Button - Always show for compatible wallets */}
+                            {(walletType === 'arweave' || walletType === 'ethereum') && (
+                              <button
+                                onClick={() => setShowAssignDomainModal(manifestId)}
+                                className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                                title={arnsAssociation ? "Change Domain" : "Assign Domain"}
+                              >
+                                <Globe className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
 
                           {/* Mobile: Status + 3-dot menu */}
@@ -1730,6 +1788,19 @@ export default function DeploySitePanel() {
                                       <ExternalLink className="w-4 h-4" />
                                       Visit Deployed Site
                                     </a>
+                                    {/* Assign/Change Domain - Mobile Menu */}
+                                    {(walletType === 'arweave' || walletType === 'ethereum') && (
+                                      <button
+                                        onClick={() => {
+                                          setShowAssignDomainModal(manifestId);
+                                          close();
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                      >
+                                        <Globe className="w-4 h-4" />
+                                        {arnsAssociation ? "Change Domain" : "Assign Domain"}
+                                      </button>
+                                    )}
                                   </>
                                 )}
                               </PopoverPanel>
@@ -1748,7 +1819,7 @@ export default function DeploySitePanel() {
                       {/* Files Section - Integrated into same card */}
                       {group.files && group.files.files && (
                         <details className="border-t border-default/30 pt-3">
-                          <summary className="cursor-pointer text-sm text-fg-muted flex items-center gap-2 hover:text-turbo-red transition-colors">
+                          <summary className="cursor-pointer text-sm text-fg-muted flex items-center gap-2 hover:text-white transition-colors">
                             <Folder className="w-4 h-4" />
                             Files ({group.files.files.length})
                             <ChevronDown className="w-3 h-3 text-link ml-auto" />
@@ -1789,7 +1860,7 @@ export default function DeploySitePanel() {
                                         <CopyButton textToCopy={file.id} />
                                         <button
                                           onClick={() => setShowReceiptModal(file.id)}
-                                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
                                           title="View Receipt"
                                         >
                                           <Receipt className="w-4 h-4" />
@@ -1797,7 +1868,7 @@ export default function DeploySitePanel() {
                                         <button
                                           onClick={() => checkUploadStatus(file.id, true)}
                                           disabled={isChecking}
-                                          className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                                          className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
                                           title="Check Status"
                                         >
                                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
@@ -1806,7 +1877,7 @@ export default function DeploySitePanel() {
                                           href={getArweaveUrl(file.id)}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
                                           title="View File"
                                         >
                                           <ExternalLink className="w-4 h-4" />
@@ -1996,6 +2067,19 @@ export default function DeploySitePanel() {
           arnsEnabled={arnsEnabled}
           arnsName={selectedArnsName}
           undername={selectedUndername}
+        />
+      )}
+
+      {/* Assign Domain Modal */}
+      {showAssignDomainModal && (
+        <AssignDomainModal
+          onClose={() => setShowAssignDomainModal(null)}
+          manifestId={showAssignDomainModal}
+          existingArnsName={getArNSAssociation(showAssignDomainModal)?.arnsName}
+          existingUndername={getArNSAssociation(showAssignDomainModal)?.undername}
+          onSuccess={(arnsName, undername, transactionId) => 
+            handleAssignDomainSuccess(showAssignDomainModal, arnsName, undername, transactionId)
+          }
         />
       )}
     </div>

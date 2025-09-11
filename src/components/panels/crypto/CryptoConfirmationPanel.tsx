@@ -237,8 +237,8 @@ export default function CryptoConfirmationPanel({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Wallet className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Wallet className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Review Payment</h3>
@@ -247,10 +247,10 @@ export default function CryptoConfirmationPanel({
       </div>
 
       {/* Quote Display */}
-      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6">
+      <div className="bg-gradient-to-br from-fg-muted/10 to-fg-muted/5 rounded-xl border border-default p-6">
         {pricingLoading ? (
           <div className="text-center py-8">
-            <div className="w-12 h-12 border-4 border-turbo-red border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-12 h-12 border-4 border-fg-muted border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-fg-muted mb-2">Getting Live Pricing</p>
             <p className="text-sm text-link">
               Fetching current {tokenLabels[tokenType]} rates...
@@ -263,7 +263,7 @@ export default function CryptoConfirmationPanel({
             <p className="text-sm text-link mb-4">{pricingError}</p>
             <button
               onClick={onBack}
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+              className="text-fg-muted hover:text-fg-muted/80 transition-colors"
             >
               Go Back and Try Different Token
             </button>
@@ -271,7 +271,7 @@ export default function CryptoConfirmationPanel({
         ) : quote ? (
           <>
             <div className="text-center mb-4 sm:mb-6">
-              <div className="text-4xl font-bold text-turbo-red mb-2">
+              <div className="text-4xl font-bold text-fg-muted mb-2">
                 {quote.tokenAmount.toFixed(tokenType === 'ethereum' || tokenType === 'base-eth' ? 6 : tokenType === 'solana' ? 4 : 8)} {tokenLabels[tokenType]}
               </div>
               <div className="text-sm text-link mb-2">
@@ -302,7 +302,7 @@ export default function CryptoConfirmationPanel({
             <p className="text-sm text-link mb-4">
               Unable to generate pricing for {tokenLabels[tokenType]}
             </p>
-            <button onClick={onBack} className="text-turbo-red hover:text-turbo-red/80">
+            <button onClick={onBack} className="text-fg-muted hover:text-fg-muted/80">
               Go Back
             </button>
           </div>
@@ -357,18 +357,9 @@ export default function CryptoConfirmationPanel({
             href="https://ardrive.io/tos-and-privacy/" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+            className="text-fg-muted hover:text-fg-muted/80 transition-colors"
           >
             Terms of Service
-          </a>
-          {' '}and{' '}
-          <a 
-            href="https://ardrive.io/tos-and-privacy/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-turbo-red hover:text-turbo-red/80 transition-colors"
-          >
-            Privacy Policy
           </a>
         </p>
       </div>
@@ -395,7 +386,7 @@ export default function CryptoConfirmationPanel({
         <button
           onClick={handlePayment}
           disabled={!quote || isProcessing}
-          className="px-6 py-3 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-3 rounded-lg bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isProcessing ? (
             <>

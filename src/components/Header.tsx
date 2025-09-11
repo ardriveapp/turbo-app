@@ -174,7 +174,7 @@ const Header = () => {
   };
 
   return (
-    <div className="flex items-center py-3 sm:py-4">
+    <div className="flex items-center py-2 sm:py-3">
       <Link to="/" className="cursor-pointer ml-2 sm:ml-0">
         <TurboLogo />
       </Link>
@@ -285,10 +285,10 @@ const Header = () => {
       {/* Profile Dropdown - only for logged in users */}
       {address && (
         <Popover className="relative">
-          <PopoverButton className="flex items-center gap-3 rounded border border-default px-3 py-2 font-semibold hover:bg-canvas hover:border-fg-muted/50 transition-colors">
+          <PopoverButton className="flex items-center gap-2 rounded border border-default px-2 py-1.5 font-semibold hover:bg-canvas hover:border-fg-muted/50 transition-colors">
             {/* Profile Image or Wallet Type Indicator */}
             {profile.logo ? (
-              <div className="size-10 rounded-full overflow-hidden bg-canvas border border-default/50 flex items-center justify-center">
+              <div className="size-8 rounded-full overflow-hidden bg-canvas border border-default/50 flex items-center justify-center">
                 <img 
                   src={profile.logo} 
                   alt={`${profile.name} logo`}
