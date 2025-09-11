@@ -3,21 +3,24 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
+import AssignDomainModal from '../modals/AssignDomainModal';
 import { getArweaveUrl } from '../../utils';
 
 export default function UploadPanel() {
-  const { address, creditBalance, uploadHistory, addUploadResults, clearUploadHistory } = useStore();
+  const { address, walletType, creditBalance, uploadHistory, addUploadResults, updateUploadWithArNS, clearUploadHistory } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
+  const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
   const [showUploadResults, setShowUploadResults] = useState(true);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
+  const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
   const wincForOneGiB = useWincForOneGiB();
   const { uploadMultipleFiles, uploading, uploadProgress, errors, reset: resetFileUpload } = useFileUpload();
   const { 
@@ -26,7 +29,8 @@ export default function UploadPanel() {
     statusChecking, 
     uploadStatuses, 
     formatFileSize,
-    getStatusIcon
+    getStatusIcon,
+    initializeFromCache
   } = useUploadStatus();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -57,19 +61,14 @@ export default function UploadPanel() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Auto-check status for recent uploads when page loads
+  // Initialize status from cache only (no API calls) when page loads
   useEffect(() => {
     if (uploadHistory.length > 0) {
-      // Check status for recent uploads (last 10) automatically
-      const recentUploads = uploadHistory.slice(0, 10);
-      const uploadIds = recentUploads.map(upload => upload.id);
-      
-      // Small delay to avoid overwhelming the API
-      setTimeout(() => {
-        checkMultipleStatuses(uploadIds);
-      }, 1000);
+      const uploadIds = uploadHistory.slice(0, uploadsToShow).map(upload => upload.id);
+      // Initialize from cache only (no API calls)
+      initializeFromCache(uploadIds);
     }
-  }, [uploadHistory, checkMultipleStatuses]);
+  }, [uploadHistory, uploadsToShow, initializeFromCache]);
 
   const exportToCSV = () => {
     if (uploadHistory.length === 0) return;
@@ -169,10 +168,11 @@ export default function UploadPanel() {
         // Add to persistent upload history
         addUploadResults(results);
         
-        // Remove successfully uploaded files (those that completed without errors)
-        setFiles(prev => prev.filter(f => 
-          !(uploadProgress[f.name] === 100 && !errors[f.name])
-        ));
+        // Clear successfully uploaded files from selection
+        // Clear all files if upload was successful (simpler approach)
+        if (failedFiles.length === 0) {
+          setFiles([]);
+        }
         
         // Upload successful
         
@@ -359,8 +359,9 @@ export default function UploadPanel() {
             })}
           </div>
 
-          {/* Summary */}
-          <div className="mt-4 p-4 bg-surface/50 rounded-lg">
+          {/* Summary - Hide during upload */}
+          {!uploading && (
+            <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
               <span className="font-medium">{formatFileSize(totalSize)}</span>
@@ -395,40 +396,36 @@ export default function UploadPanel() {
               </div>
             )}
           </div>
+          )}
 
-          {/* Terms */}
-          <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
+          {/* Terms - Hide during upload */}
+          {!uploading && (
+            <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
             <p className="text-xs text-link">
               By continuing, you agree to our{' '}
               <a 
                 href="https://ardrive.io/tos-and-privacy/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+                className="text-turbo-red hover:text-fg-muted/80 transition-colors"
               >
                 Terms of Service
               </a>
             </p>
-          </div>
+            </div>
+          )}
 
-          {/* Upload Button */}
-          <button
-            onClick={handleUpload}
-            disabled={uploading || files.length === 0}
-            className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="w-5 h-5" />
-                Upload {files.length} File{files.length !== 1 ? 's' : ''}
-              </>
-            )}
-          </button>
+          {/* Upload Button - Hide during upload */}
+          {!uploading && (
+            <button
+              onClick={handleUpload}
+              disabled={uploading || files.length === 0}
+              className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Upload className="w-5 h-5" />
+              Upload {files.length} File{files.length !== 1 ? 's' : ''}
+            </button>
+          )}
         </div>
       )}
       </div>
@@ -490,8 +487,8 @@ export default function UploadPanel() {
           
           {showUploadResults && (
             <>
-              <div className="space-y-4 max-h-[700px] overflow-y-auto px-4">
-                {uploadHistory.map((result, index) => {
+              <div className="space-y-4 max-h-[700px] overflow-y-auto px-4 pb-4">
+                {uploadHistory.slice(0, uploadsToShow).map((result, index) => {
                   const status = uploadStatuses[result.id];
                   const isChecking = statusChecking[result.id];
                   
@@ -514,19 +511,27 @@ export default function UploadPanel() {
                   };
                   
                   return (
-                    <div key={index} className="border border-default rounded-lg p-4 bg-surface/50">
+                    <div key={index} className="bg-black border border-turbo-red/20 rounded-lg p-4">
                       <div className="space-y-2">
-                        {/* Row 1: Transaction ID + Filename + Actions */}
+                        {/* Row 1: ArNS Name/Transaction ID + Actions */}
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            {/* Shortened Transaction ID */}
-                            <div className="font-mono text-sm text-fg-muted">
-                              {result.id.substring(0, 6)}...
-                            </div>
-                            {/* File Name (if available) */}
-                            {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
-                              <div className="text-sm text-fg-muted truncate" title={result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}>
-                                {result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {/* ArNS Name or Shortened Transaction ID */}
+                            {result.arnsName ? (
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Globe className="w-4 h-4 text-fg-muted flex-shrink-0" />
+                                <a 
+                                  href={`https://${result.undername ? result.undername + '_' : ''}${result.arnsName}.ar.io`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-medium text-fg-muted hover:text-fg-muted/80 hover:underline transition-colors truncate"
+                                >
+                                  {result.undername ? result.undername + '_' : ''}{result.arnsName}
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="font-mono text-sm text-fg-muted">
+                                {result.id.substring(0, 6)}...
                               </div>
                             )}
                           </div>
@@ -545,7 +550,7 @@ export default function UploadPanel() {
                             <CopyButton textToCopy={result.id} />
                         <button
                           onClick={() => setShowReceiptModal(result.id)}
-                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
                           title="View Receipt"
                         >
                           <Receipt className="w-4 h-4" />
@@ -553,16 +558,26 @@ export default function UploadPanel() {
                         <button
                           onClick={() => checkUploadStatus(result.id)}
                           disabled={isChecking}
-                          className="p-1.5 text-link hover:text-turbo-red transition-colors disabled:opacity-50"
+                          className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
                           title="Check Status"
                         >
                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                         </button>
+                        {/* Only show Assign Domain for Arweave and Ethereum wallets */}
+                        {(walletType === 'arweave' || walletType === 'ethereum') && (
+                          <button
+                            onClick={() => setShowAssignDomainModal(result.id)}
+                            className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                            title="Assign Domain"
+                          >
+                            <Globe className="w-4 h-4" />
+                          </button>
+                        )}
                         <a
                           href={getArweaveUrl(result.id)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 text-link hover:text-turbo-red transition-colors"
+                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
                           title="View File"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -642,6 +657,19 @@ export default function UploadPanel() {
                                   <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                                   Check Status
                                 </button>
+                                {/* Only show Assign Domain for Arweave and Ethereum wallets */}
+                                {(walletType === 'arweave' || walletType === 'ethereum') && (
+                                  <button
+                                    onClick={() => {
+                                      setShowAssignDomainModal(result.id);
+                                      close();
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  >
+                                    <Globe className="w-4 h-4" />
+                                    Assign Domain
+                                  </button>
+                                )}
                                 <a
                                   href={getArweaveUrl(result.id)}
                                   target="_blank"
@@ -659,7 +687,14 @@ export default function UploadPanel() {
                           </div>
                     </div>
 
-                    {/* Row 2: Content Type + File Size */}
+                    {/* Row 2: File Name (if available) */}
+                    {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
+                      <div className="text-sm text-fg-muted truncate" title={result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}>
+                        📄 {result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}
+                      </div>
+                    )}
+
+                    {/* Row 3: Content Type + File Size */}
                     <div className="flex items-center gap-2 text-sm text-link">
                       <span>
                         {result.contentType || 
@@ -702,18 +737,15 @@ export default function UploadPanel() {
             </>
           )}
           
-          {/* View All Button at Bottom - only show when expanded and there are uploads */}
-          {showUploadResults && uploadHistory.length > 0 && (
+          {/* View More Button - only show when there are more uploads to load */}
+          {showUploadResults && uploadHistory.length > uploadsToShow && (
             <div className="border-t border-default mt-4">
               <div className="p-4">
                 <button
-                  onClick={() => {
-                    // For now, just scroll to top of current page - could link to dedicated uploads page later
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  onClick={() => setUploadsToShow(prev => prev + 20)}
                   className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
                 >
-                  View All Uploads <ArrowRight className="w-4 h-4" />
+                  View More Uploads <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -729,6 +761,26 @@ export default function UploadPanel() {
           receipt={uploadHistory.find(r => r.id === showReceiptModal)?.receipt}
           uploadId={showReceiptModal}
           initialStatus={uploadStatuses[showReceiptModal]}
+        />
+      )}
+
+      {/* Assign Domain Modal */}
+      {showAssignDomainModal && (
+        <AssignDomainModal
+          onClose={() => setShowAssignDomainModal(null)}
+          manifestId={showAssignDomainModal}
+          onSuccess={(arnsName: string, undername?: string, transactionId?: string) => {
+            // Update the upload item with ArNS assignment
+            updateUploadWithArNS(showAssignDomainModal, arnsName, undername, transactionId);
+            
+            setShowAssignDomainModal(null);
+            
+            // Show success message
+            setUploadMessage({
+              type: 'success',
+              text: `Successfully assigned ${undername ? undername + '_' : ''}${arnsName}.ar.io to your file!`
+            });
+          }}
         />
       )}
 

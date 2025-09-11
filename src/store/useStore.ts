@@ -53,6 +53,10 @@ interface UploadResult {
   fileSize?: number; // Original file size in bytes
   contentType?: string; // Original file MIME type
   receipt?: any; // Store the full receipt response
+  // ArNS assignment fields
+  arnsName?: string; // ArNS name assigned to this file
+  undername?: string; // Undername if used
+  arnsTransactionId?: string; // ArNS update transaction ID
 }
 
 interface DeployResult {
@@ -149,6 +153,7 @@ interface StoreState {
   setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}>) => void;
   getOwnedArNSNames: (address: string) => Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}> | null;
   addUploadResults: (results: UploadResult[]) => void;
+  updateUploadWithArNS: (uploadId: string, arnsName: string, undername?: string, arnsTransactionId?: string) => void;
   clearUploadHistory: () => void;
   addDeployResults: (results: DeployResult[]) => void;
   clearDeployHistory: () => void;
@@ -271,6 +276,15 @@ export const useStore = create<StoreState>()(
         const currentHistory = get().uploadHistory;
         // Add new results to the beginning of the history (most recent first)
         set({ uploadHistory: [...results, ...currentHistory] });
+      },
+      updateUploadWithArNS: (uploadId, arnsName, undername, arnsTransactionId) => {
+        const currentHistory = get().uploadHistory;
+        const updatedHistory = currentHistory.map(upload => 
+          upload.id === uploadId 
+            ? { ...upload, arnsName, undername, arnsTransactionId }
+            : upload
+        );
+        set({ uploadHistory: updatedHistory });
       },
       clearUploadHistory: () => set({ uploadHistory: [] }),
       addDeployResults: (results) => {

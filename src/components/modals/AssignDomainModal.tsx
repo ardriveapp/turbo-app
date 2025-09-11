@@ -83,7 +83,7 @@ export default function AssignDomainModal({
 
   return (
     <BaseModal onClose={onClose} showCloseButton={false}>
-      <div className="w-[90vw] sm:w-[600px] max-w-[90vw] max-h-[85vh] sm:max-h-[85vh] flex flex-col text-fg-muted mx-auto">
+      <div className="w-[90vw] sm:w-[600px] max-w-[90vw] h-[85vh] sm:h-[600px] max-h-[90vh] flex flex-col text-fg-muted mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-default/30">
           <div className="flex items-center gap-3">
@@ -196,7 +196,7 @@ export default function AssignDomainModal({
                           )}
                         </span>
                       </Listbox.Button>
-                      <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                      <Listbox.Options className="absolute z-[9999] mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                         <Listbox.Option
                           value=""
                           className={({ active }) =>
@@ -238,8 +238,9 @@ export default function AssignDomainModal({
                   </Listbox>
                 </div>
 
-                {/* Compact Undername Selection */}
-                <div>
+                {/* Compact Undername Selection - Only show after ArNS name is selected */}
+                {selectedArnsName && (
+                  <div>
                   <label className="block text-sm font-medium text-fg-muted mb-2">
                     Undername:
                   </label>
@@ -312,7 +313,8 @@ export default function AssignDomainModal({
                       />
                     </div>
                   )}
-                </div>
+                  </div>
+                )}
 
                 {/* Preview */}
                 {selectedArnsName && (

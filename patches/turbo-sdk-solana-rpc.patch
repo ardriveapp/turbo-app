@@ -1,0 +1,22 @@
+--- a/node_modules/@ardrive/turbo-sdk/lib/esm/utils/common.js
++++ b/node_modules/@ardrive/turbo-sdk/lib/esm/utils/common.js
+@@ -46,7 +46,7 @@ export const tokenToDevGatewayMap = {
+ export const defaultProdGatewayUrls = {
+     arweave: 'https://arweave.net',
+     ario: 'https://arweave.net',
+-    solana: 'https://api.mainnet-beta.solana.com',
++    solana: 'https://rpc.ankr.com/solana',
+     ethereum: 'https://cloudflare-eth.com/',
+     'base-eth': 'https://mainnet.base.org',
+     kyve: 'https://api.kyve.network/',
+--- a/node_modules/@ardrive/turbo-sdk/lib/cjs/utils/common.js
++++ b/node_modules/@ardrive/turbo-sdk/lib/cjs/utils/common.js
+@@ -51,7 +51,7 @@ exports.tokenToDevGatewayMap = {
+ exports.defaultProdGatewayUrls = {
+     arweave: 'https://arweave.net',
+     ario: 'https://arweave.net',
+-    solana: 'https://api.mainnet-beta.solana.com',
++    solana: 'https://rpc.ankr.com/solana',
+     ethereum: 'https://cloudflare-eth.com/',
+     'base-eth': 'https://mainnet.base.org',
+     kyve: 'https://api.kyve.network/',
