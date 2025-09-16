@@ -68,8 +68,8 @@ export default function ArNSPanel() {
           </a>
         </div>
         
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
             <div className="flex items-center border border-default rounded-lg bg-canvas focus-within:border-turbo-yellow transition-colors">
               <input
                 type="text"
@@ -81,10 +81,10 @@ export default function ArNSPanel() {
                   setNameSearch(cleaned);
                   setAvailability(null);
                 }}
-                className="flex-1 p-3 bg-transparent text-fg-muted font-mono focus:outline-none"
+                className="flex-1 p-3 bg-transparent text-fg-muted font-mono focus:outline-none min-w-0"
                 placeholder="my-awesome-app"
               />
-              <div className="px-3 text-sm text-link font-mono border-l border-default/30">
+              <div className="px-3 text-sm text-link font-mono border-l border-default/30 flex-shrink-0">
                 .ar.io
               </div>
             </div>
@@ -92,7 +92,7 @@ export default function ArNSPanel() {
           <button
             onClick={checkAvailability}
             disabled={!nameSearch || checking}
-            className="px-6 py-3 rounded-lg bg-turbo-yellow text-black font-bold hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="w-full sm:w-auto px-6 py-3 rounded-lg bg-turbo-yellow text-black font-bold hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Search className="w-4 h-4" />
             {checking ? 'Checking...' : 'Check'}

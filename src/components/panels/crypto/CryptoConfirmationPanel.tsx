@@ -1,10 +1,11 @@
-import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, ArconnectSigner, SolanaWalletAdapter, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import useTurboWallets from '../../../hooks/useTurboWallets';
+import TurboLogo from '../../TurboLogo';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -53,13 +54,12 @@ export default function CryptoConfirmationPanel({
     }
   };
 
-
-
   // Determine if user can pay directly or needs manual payment
+  // Base ETH now supported via local SDK patch
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) || // Both ETH types now work
-    (walletType === 'solana' && tokenType === 'solana')
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) || // Both ETH types work
+    (walletType === 'solana' && tokenType === 'solana') // Keep trying direct payment
   );
 
   const handlePayment = async () => {
@@ -182,36 +182,70 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else if (walletType === 'solana' && window.solana && tokenType === 'solana') {
-          // SOL direct payment via Solana wallet
-          const { PublicKey } = await import('@solana/web3.js');
+          // SOL direct payment using manual transaction approach to bypass SDK bug
+          const { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } = await import('@solana/web3.js');
           const provider = window.solana;
-          const { publicKey } = await provider.connect();
           
-          const turbo = TurboFactory.authenticated({
-            token: tokenType,
-            walletAdapter: {
-              publicKey: new PublicKey(publicKey),
-              signMessage: async (message: Uint8Array) => {
-                const { signature } = await provider.signMessage(message);
-                return signature;
-              },
-            },
+          if (!provider.isConnected) {
+            await provider.connect();
+          }
+          
+          const publicKey = new PublicKey(provider.publicKey);
+          console.log('Creating manual Solana transaction...');
+          
+          // Get Turbo wallet address for Solana
+          if (!turboWallets) {
+            throw new Error('Turbo wallet addresses not available');
+          }
+          const turboSolanaAddress = turboWallets.solana;
+          
+          if (!turboSolanaAddress) {
+            throw new Error('Turbo Solana wallet address not found');
+          }
+          
+          // Create connection using our QuickNode RPC
+          const connection = new Connection('https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/');
+          
+          // Create transaction manually
+          const transaction = new Transaction();
+          const solAmount = cryptoAmount * LAMPORTS_PER_SOL;
+          
+          transaction.add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: new PublicKey(turboSolanaAddress),
+              lamports: Math.floor(solAmount),
+            })
+          );
+          
+          // Get recent blockhash
+          const { blockhash } = await connection.getLatestBlockhash();
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = publicKey;
+          
+          // Sign and send transaction
+          const signedTransaction = await provider.signTransaction(transaction);
+          const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+          
+          console.log('Manual Solana transaction sent:', signature);
+          
+          // Submit the transaction ID to Turbo for credit processing
+          const turboUnauthenticated = TurboFactory.unauthenticated({ 
+            token: 'solana',
             paymentServiceConfig: {
               url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
             },
           });
-
-          const tokenAmount = SOLToTokenAmount(cryptoAmount); // Convert to lamports
-
-          const result = await turbo.topUpWithTokens({
-            tokenAmount,
+          
+          const result = await turboUnauthenticated.submitFundTransaction({ 
+            txId: signature 
           });
-
+          
           onPaymentComplete({
             ...result,
             quote,
             tokenType,
-            transactionId: result.id,
+            transactionId: signature,
           });
         } else {
           throw new Error('Wallet not available for direct payment');
@@ -276,8 +310,8 @@ export default function CryptoConfirmationPanel({
         </div>
       </div>
 
-      {/* Quote Display */}
-      <div className="bg-gradient-to-br from-fg-muted/10 to-fg-muted/5 rounded-xl border border-default p-6">
+      {/* Single Main Container - All elements inside like Stripe */}
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-6">
         {pricingLoading ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 border-4 border-fg-muted border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -300,29 +334,135 @@ export default function CryptoConfirmationPanel({
           </div>
         ) : quote ? (
           <>
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="text-4xl font-bold text-fg-muted mb-2">
-                {quote.tokenAmount.toFixed(tokenType === 'ethereum' || tokenType === 'base-eth' ? 6 : tokenType === 'solana' ? 4 : 8)} {tokenLabels[tokenType]}
+            {/* Order Summary */}
+            <div className="bg-canvas p-6 rounded-lg mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <TurboLogo />
               </div>
-              <div className="text-sm text-link mb-2">
-                on {tokenNetworkLabels[tokenType]}
+              
+              <div className="flex flex-col items-center py-4 mb-4">
+                <div className="text-4xl font-bold text-fg-muted mb-1">
+                  {quote.credits.toFixed(4)}
+                </div>
+                <div className="text-sm text-link">Credits</div>
+                {quote.gigabytes > 0 && (
+                  <div className="text-xs text-link mt-1">
+                    ≈ {formatStorage(quote.gigabytes)} storage power
+                  </div>
+                )}
               </div>
-              <div className="text-lg text-fg-muted">
-                {quote.credits.toFixed(4)} Credits
+
+              {/* Token Amount Breakdown */}
+              <div className="flex justify-between py-2 text-sm text-link border-t border-default">
+                <div>Token Amount:</div>
+                <div>{quote.tokenAmount.toFixed(tokenType === 'ethereum' || tokenType === 'base-eth' ? 6 : tokenType === 'solana' ? 4 : 8)} {tokenLabels[tokenType]}</div>
               </div>
-              <div className="text-sm text-link">
-                ≈ {formatStorage(quote.gigabytes)} storage power
+              <div className="flex justify-between py-2 text-sm text-link">
+                <div>Network:</div>
+                <div>{tokenNetworkLabels[tokenType]}</div>
               </div>
             </div>
 
-            {/* Do Not Close Warning */}
-            <div className="flex items-center justify-center bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-4 sm:mb-6">
-              <div className="flex items-center gap-2 text-center">
-                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <span className="text-sm text-amber-200">
-                  Do not close this page during payment processing
-                </span>
+            {/* Payment Method Info */}
+            <div className="bg-surface rounded-lg p-4 border border-default mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-fg-muted mb-1">Payment Method</h4>
+                  <p className="text-sm text-link">
+                    {canPayDirectly 
+                      ? `Direct payment using your ${tokenLabels[tokenType]} balance on ${tokenNetworkLabels[tokenType]}`
+                      : `Manual transfer of ${tokenLabels[tokenType]} on ${tokenNetworkLabels[tokenType]} required`
+                    }
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Clock className={`w-3 h-3 ${
+                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
+                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
+                      'text-orange-400'
+                    }`} />
+                    <p className={`text-xs ${
+                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
+                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
+                      'text-orange-400'
+                    }`}>
+                      Expected processing: {tokenProcessingTimes[tokenType].time}
+                    </p>
+                  </div>
+                  <p className="text-xs text-link mt-1">
+                    {tokenProcessingTimes[tokenType].description}
+                  </p>
+                  {!canPayDirectly && (
+                    <p className="text-xs text-link mt-1">
+                      You'll be guided through the manual payment process
+                    </p>
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Terms */}
+            <div className="text-center bg-surface/30 rounded-lg p-4 mb-6">
+              <p className="text-xs text-link">
+                By continuing, you agree to our{' '}
+                <a 
+                  href="https://ardrive.io/tos-and-privacy/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-fg-muted hover:text-fg-muted/80 transition-colors"
+                >
+                  Terms of Service
+                </a>
+                {' '}and{' '}
+                <a 
+                  href="https://ardrive.io/tos-and-privacy/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-fg-muted hover:text-fg-muted/80 transition-colors"
+                >
+                  Privacy Policy
+                </a>
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {paymentError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-red-400 text-sm">{paymentError}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center pt-6 border-t border-default">
+              <button
+                onClick={onBack}
+                className="text-sm text-link hover:text-fg-muted"
+              >
+                Back
+              </button>
+              
+              <button
+                onClick={handlePayment}
+                disabled={!quote || isProcessing}
+                className="px-6 py-3 rounded-lg bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="w-4 h-4" />
+                    {canPayDirectly ? 'Pay Now' : 'Continue'}
+                  </>
+                )}
+              </button>
             </div>
           </>
         ) : (
@@ -337,99 +477,6 @@ export default function CryptoConfirmationPanel({
             </button>
           </div>
         )}
-      </div>
-
-      {/* Payment Method Info */}
-      <div className="bg-surface rounded-lg p-4 border border-default">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <CheckCircle className="w-4 h-4 text-blue-400" />
-          </div>
-          <div>
-            <h4 className="font-medium text-fg-muted mb-1">Payment Method</h4>
-            <p className="text-sm text-link">
-              {canPayDirectly 
-                ? `Direct payment using your ${tokenLabels[tokenType]} balance on ${tokenNetworkLabels[tokenType]}`
-                : `Manual transfer of ${tokenLabels[tokenType]} on ${tokenNetworkLabels[tokenType]} required`
-              }
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <Clock className={`w-3 h-3 ${
-                tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
-                tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
-                'text-orange-400'
-              }`} />
-              <p className={`text-xs ${
-                tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
-                tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
-                'text-orange-400'
-              }`}>
-                Expected processing: {tokenProcessingTimes[tokenType].time}
-              </p>
-            </div>
-            <p className="text-xs text-link mt-1">
-              {tokenProcessingTimes[tokenType].description}
-            </p>
-            {!canPayDirectly && (
-              <p className="text-xs text-link mt-1">
-                You'll be guided through the manual payment process
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Terms */}
-      <div className="text-center bg-surface/30 rounded-lg p-4">
-        <p className="text-xs text-link">
-          By continuing, you agree to our{' '}
-          <a 
-            href="https://ardrive.io/tos-and-privacy/" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-fg-muted hover:text-fg-muted/80 transition-colors"
-          >
-            Terms of Service
-          </a>
-        </p>
-      </div>
-
-      {/* Error Message */}
-      {paymentError && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="text-red-400 text-sm">{paymentError}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center pt-6 border-t border-default">
-        <button
-          onClick={onBack}
-          className="text-sm text-link hover:text-fg-muted"
-        >
-          Back
-        </button>
-        
-        <button
-          onClick={handlePayment}
-          disabled={!quote || isProcessing}
-          className="px-6 py-3 rounded-lg bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isProcessing ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Wallet className="w-4 h-4" />
-              {canPayDirectly ? 'Pay Now' : 'Continue'}
-            </>
-          )}
-        </button>
       </div>
     </div>
   );

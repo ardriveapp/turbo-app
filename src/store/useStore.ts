@@ -17,7 +17,7 @@ const PRESET_CONFIGS = {
       ario: 'https://arweave.net',
       ethereum: 'https://api.mainnet.ethereumpow.org',
       'base-eth': 'https://base.gateway.fm',
-      solana: 'https://rpc.ankr.com/solana',
+      solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
       kyve: 'https://api.kyve.network',
       matic: 'https://polygon-bor-rpc.publicnode.com',
       pol: 'https://polygon-bor-rpc.publicnode.com',

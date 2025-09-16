@@ -130,7 +130,7 @@ export default function GatewayInfoPanel() {
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Free Tier</div>
                 <div className="text-lg font-bold text-turbo-green">
-                  {uploadServiceInfo ? `${Math.round(uploadServiceInfo.freeUploadLimitBytes / 1024)} KB` : '105 KB'}
+                  {uploadServiceInfo ? `${Math.round(uploadServiceInfo.freeUploadLimitBytes / 1024)} KiB` : '105 KiB'}
                 </div>
                 <div className="text-xs text-link mt-1">No cost for small files</div>
               </div>
@@ -204,7 +204,7 @@ export default function GatewayInfoPanel() {
               <div className="bg-surface rounded-lg p-4">
                 <div className="text-xs text-link uppercase tracking-wider mb-1">Operator Stake</div>
                 <div className="text-lg font-bold text-fg-muted">
-                  {(arIOGatewayInfo.operatorStake / 1e6).toLocaleString()} AR
+                  {(arIOGatewayInfo.operatorStake / 1e6).toLocaleString()} ARIO
                 </div>
               </div>
               

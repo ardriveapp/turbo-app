@@ -226,7 +226,7 @@ export default function RecentDeploymentsPage() {
     document.body.removeChild(link);
   };
 
-  // Auto-check status for all deployments when the page loads - same pattern as DeploySitePanel
+  // Initialize status from cache only (no API calls) when page loads
   useEffect(() => {
     if (deployHistory.length > 0) {
       // Get all IDs that need status checking
@@ -236,15 +236,10 @@ export default function RecentDeploymentsPage() {
         return [];
       });
       
-      // Immediately initialize from cache for instant UI feedback
+      // Initialize from cache only (no API calls)
       initializeFromCache(allIds);
-      
-      // Then check for updates with a small delay to avoid overwhelming the API
-      setTimeout(() => {
-        checkMultipleStatuses(allIds);
-      }, 1000);
     }
-  }, [deployHistory, checkMultipleStatuses, initializeFromCache]);
+  }, [deployHistory, initializeFromCache]);
 
   if (Object.keys(deploymentGroups).length === 0) {
     return (
@@ -344,7 +339,7 @@ export default function RecentDeploymentsPage() {
                 const arnsAssociation = getArNSAssociation(manifestId);
                 
                 return (
-                  <div key={manifestId} className="bg-black border border-turbo-red/20 rounded-lg p-4">
+                  <div key={manifestId} className="bg-[#090909] border border-turbo-red/20 rounded-lg p-4">
                     {/* Unified Header Row - Manifest Info + Actions */}
                     {group.manifest && (
                       <div className="flex items-center justify-between gap-2 mb-3">

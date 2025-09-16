@@ -1143,7 +1143,7 @@ export default function DeploySitePanel() {
             </div>
 
             {/* Overall Progress Bar */}
-            <div className="w-full bg-canvas rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-[#090909] rounded-full h-2 overflow-hidden">
               <div 
                 className="bg-turbo-red h-full transition-all duration-300"
                 style={{ width: `${deployProgress}%` }}
@@ -1215,7 +1215,7 @@ export default function DeploySitePanel() {
                     const isFree = file.size < 100 * 1024;
                     
                     return (
-                      <div key={index} className="bg-canvas rounded p-2">
+                      <div key={index} className="bg-[#090909] rounded p-2">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex-1 min-w-0">
                             <span className="text-xs font-medium truncate">{file.name}</span>
@@ -1599,7 +1599,7 @@ export default function DeploySitePanel() {
                   const arnsAssociation = getArNSAssociation(manifestId);
                   
                   return (
-                    <div key={manifestId} className="bg-black border border-turbo-red/20 rounded-lg p-4">
+                    <div key={manifestId} className="bg-bg-[#090909] border border-turbo-red/20 rounded-lg p-4">
                       {/* Unified Header Row - Manifest Info + Actions */}
                       {group.manifest && (
                         <div className="flex items-center justify-between gap-2 mb-3">
@@ -1830,7 +1830,7 @@ export default function DeploySitePanel() {
                               const isChecking = statusChecking[file.id];
                               
                               return (
-                                <div key={fileIndex} className="bg-canvas border border-default/20 rounded p-3">
+                                <div key={fileIndex} className="bg-[#090909] border border-default/20 rounded p-3">
                                   <div className="space-y-2">
                                     {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
                                     <div className="flex items-center justify-between gap-2">

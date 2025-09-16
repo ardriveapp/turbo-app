@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { getWincForFiat } from '../../../services/paymentService';
+import { useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import TurboLogo from '../../TurboLogo';
 import { wincPerCredit } from '../../../constants';
 
@@ -19,6 +20,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
   onSuccess 
 }) => {
   const stripe = useStripe();
+  const wincForOneGiB = useWincForOneGiB();
   const { 
     address, 
     paymentIntent, 
@@ -115,21 +117,40 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
     ? ((Number(estimatedCredits.winc) || 0) / wincPerCredit)
     : 0;
 
+  // Smart storage display - show in appropriate units
+  const formatStorage = (gigabytes: number): string => {
+    if (gigabytes >= 1) {
+      return `${gigabytes.toFixed(2)} GiB`;
+    } else if (gigabytes >= 0.001) {
+      const mebibytes = gigabytes * 1024;
+      return `${mebibytes.toFixed(1)} MiB`;
+    } else if (gigabytes > 0) {
+      const kibibytes = gigabytes * 1024 * 1024;
+      return `${kibibytes.toFixed(0)} KiB`;
+    } else {
+      return '0 storage';
+    }
+  };
+
+  const storageAmount = estimatedCredits && wincForOneGiB 
+    ? (Number(estimatedCredits.winc) / Number(wincForOneGiB))
+    : 0;
+
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <CheckCircle className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <CheckCircle className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Review Order</h3>
-          <p className="text-sm text-link">Review your purchase before completing payment</p>
+          <h3 className="text-2xl font-bold text-fg-muted mb-1">Review Payment</h3>
+          <p className="text-sm text-link">Confirm your credit card payment details</p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Order Summary */}
         <div className="bg-canvas p-6 rounded-lg mb-6">
@@ -144,6 +165,11 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
                   {credits.toFixed(4)}
                 </div>
                 <div className="text-sm text-link">Credits</div>
+                {storageAmount > 0 && (
+                  <div className="text-xs text-link mt-1">
+                    ≈ {formatStorage(storageAmount)} storage power
+                  </div>
+                )}
               </div>
               
               {/* Pricing Breakdown */}
@@ -181,7 +207,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
             <span className="text-fg-muted">{formatCountdown(countdown)}</span>
           </div>
           <button
-            className="flex items-center gap-1 text-turbo-red hover:text-turbo-red/80 transition-colors"
+            className="flex items-center gap-1 text-fg-muted hover:text-fg-muted/80 transition-colors"
             onClick={() => {
               setCountdown(5 * 60);
               updateEstimatedCredits();
@@ -199,7 +225,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
               href="https://ardrive.io/tos-and-privacy/" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+              className="text-fg-muted hover:text-fg-muted/80 transition-colors"
             >
               Terms of Service
             </a>
@@ -224,7 +250,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
           </button>
           <button
             disabled={sendingPayment || !estimatedCredits}
-            className="px-8 py-3 rounded-lg bg-turbo-red text-white font-bold hover:bg-turbo-red/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-8 py-3 rounded-lg bg-fg-muted text-black font-bold hover:bg-fg-muted/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             onClick={submitPayment}
           >
             {sendingPayment ? (

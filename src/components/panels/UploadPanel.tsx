@@ -267,7 +267,7 @@ export default function UploadPanel() {
             Drop files here or click to browse
           </p>
           <p className="text-sm text-link">
-            Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GB per file
+            Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
           </p>
         </div>
         <input
@@ -511,7 +511,7 @@ export default function UploadPanel() {
                   };
                   
                   return (
-                    <div key={index} className="bg-black border border-turbo-red/20 rounded-lg p-4">
+                    <div key={index} className="bg-[#090909] border border-turbo-red/20 rounded-lg p-4">
                       <div className="space-y-2">
                         {/* Row 1: ArNS Name/Transaction ID + Actions */}
                         <div className="flex items-center justify-between gap-2">

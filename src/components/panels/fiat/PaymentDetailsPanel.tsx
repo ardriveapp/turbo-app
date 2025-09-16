@@ -6,6 +6,7 @@ import { isEmail } from 'validator';
 import { CircleX, RefreshCw, CreditCard } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import useCountries from '../../../hooks/useCountries';
+import { useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import { getPaymentIntent, getWincForFiat } from '../../../services/paymentService';
 import FormEntry from '../../FormEntry';
 import { wincPerCredit } from '../../../constants';
@@ -35,6 +36,7 @@ const isValidPromoCode = async (
 
 const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, onNext }) => {
   const countries = useCountries();
+  const wincForOneGiB = useWincForOneGiB();
   const { address, walletType } = useStore();
 
   const {
@@ -131,6 +133,25 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
     ? (estimatedCredits.actualPaymentAmount / 100).toFixed(2)
     : '0';
 
+  // Smart storage display - show in appropriate units
+  const formatStorage = (gigabytes: number): string => {
+    if (gigabytes >= 1) {
+      return `${gigabytes.toFixed(2)} GiB`;
+    } else if (gigabytes >= 0.001) {
+      const mebibytes = gigabytes * 1024;
+      return `${mebibytes.toFixed(1)} MiB`;
+    } else if (gigabytes > 0) {
+      const kibibytes = gigabytes * 1024 * 1024;
+      return `${kibibytes.toFixed(0)} KiB`;
+    } else {
+      return '0 storage';
+    }
+  };
+
+  const storageAmount = estimatedCredits && wincForOneGiB 
+    ? (Number(estimatedCredits.winc) / Number(wincForOneGiB))
+    : 0;
+
   const adjustment =
     estimatedCredits?.adjustments && estimatedCredits.adjustments.length > 0
       ? estimatedCredits.adjustments[0]
@@ -167,11 +188,11 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
   };
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <CreditCard className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <CreditCard className="w-5 h-5 text-fg-muted" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-fg-muted mb-1">Payment Details</h3>
@@ -180,7 +201,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Credits Summary */}
         <div className="grid grid-cols-2 mb-8">
@@ -195,6 +216,11 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                   <span className="text-link">{discountAmount}</span>
                 )}
               </div>
+              {storageAmount > 0 && (
+                <div className="text-xs text-link mt-1">
+                  ≈ {formatStorage(storageAmount)} storage power
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-base font-bold text-red-400">
@@ -209,7 +235,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
               </span>
             </div>
             <button
-              className="flex items-center gap-1 mt-1 text-turbo-red hover:text-turbo-red/80 transition-colors"
+              className="flex items-center gap-1 mt-1 text-fg-muted hover:text-fg-muted/80 transition-colors"
               onClick={() => {
                 setCountdown(5 * 60);
                 updateEstimatedCredits();
@@ -224,7 +250,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
         <div className="space-y-6">
           <FormEntry name="name" label="Name on Card *" errorText={nameError}>
             <input
-              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-turbo-red/50"
+              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
               type="text"
               name="name"
               value={name}
@@ -251,7 +277,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
 
           <FormEntry name="country" label="Country *" errorText={countryError}>
             <select
-              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-turbo-red/50"
+              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
               value={country}
               onChange={(e) => {
                 setCountry(e.target.value);
@@ -276,7 +302,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
               <div className="flex items-center gap-2 text-sm text-turbo-green">
                 Promo code successfully applied.
                 <button
-                  className="text-turbo-red hover:text-turbo-red/80"
+                  className="text-fg-muted hover:text-fg-muted/80"
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -324,7 +350,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                   }}
                 />
                 <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs text-turbo-red hover:text-turbo-red/80 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs text-fg-muted hover:text-fg-muted/80 transition-colors"
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -361,7 +387,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
           <FormEntry name="email" label="Email (optional - for receipt)" errorText={emailError}>
             <input
               type="email"
-              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-turbo-red/50"
+              className="w-full bg-canvas px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
               name="email"
               value={email}
               onChange={(e) => {
@@ -410,7 +436,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
           </button>
           <button
             disabled={!isValid}
-            className="px-6 py-2 rounded bg-turbo-red text-white font-medium hover:bg-turbo-red/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 rounded bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors"
             onClick={handleSubmit}
           >
             Next

@@ -56,7 +56,7 @@ export default function ActivityOverview() {
         ) : (
           <div className="p-4 space-y-2">
             {recentUploads.map((upload, index) => (
-              <div key={index} className="bg-canvas rounded p-3">
+              <div key={index} className="bg-[#090909] rounded p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="font-mono text-xs text-link">
@@ -102,7 +102,7 @@ export default function ActivityOverview() {
           <div className="px-4 py-3 border-t border-turbo-red/20">
             <button
               onClick={() => navigate('/upload')}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-white hover:text-turbo-red/80 transition-colors font-medium"
             >
               View All Uploads <ArrowRight className="w-4 h-4" />
             </button>
@@ -130,7 +130,7 @@ export default function ActivityOverview() {
               const arnsAssociation = getArNSAssociation(manifestId);
               
               return (
-                <div key={manifestId} className="bg-canvas rounded p-3">
+                <div key={manifestId} className="bg-[#090909] rounded p-3">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {/* ArNS Name or TXID */}
@@ -198,7 +198,7 @@ export default function ActivityOverview() {
                 navigate('/deployments');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-red hover:text-turbo-red/80 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-turbo-white hover:text-turbo-red/80 transition-colors font-medium"
             >
               View All Deployments <ArrowRight className="w-4 h-4" />
             </button>
