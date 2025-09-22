@@ -413,9 +413,6 @@ const WalletSelectionModal = ({
         </div>
 
         <div className="mt-6 sm:mt-8 text-center">
-          <div className="text-sm text-link mb-3 px-2">
-            {message || 'Connect your wallet to access all features'}
-          </div>
           <div className="text-xs text-link px-2">
             By connecting, you agree to our{' '}
             <a
