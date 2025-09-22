@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { 
-  TurboFactory, 
+import {
+  TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   SolanaWalletAdapter
@@ -10,6 +10,7 @@ import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { useTurboConfig } from './useTurboConfig';
+import { useWallets } from '@privy-io/react-auth';
 
 interface UploadResult {
   id: string;
@@ -24,6 +25,7 @@ interface UploadResult {
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const turboConfig = useTurboConfig();
+  const { wallets } = useWallets(); // Get Privy wallets
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -73,21 +75,40 @@ export function useFileUpload() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          // Creating Ethereum walletAdapter
+          // Create ethers provider and get the signer
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        // Creating Ethereum walletAdapter
-        // Create ethers provider and get the signer
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
@@ -132,7 +153,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, turboConfig, validateWalletState]);
+  }, [address, walletType, wallets, turboConfig, validateWalletState]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!address) {
@@ -226,7 +247,7 @@ export function useFileUpload() {
     setUploading(false);
     // Upload summary processed
     return { results, failedFiles };
-  }, [uploadFile]);
+  }, [uploadFile, validateWalletState]);
 
   const reset = useCallback(() => {
     setUploadProgress({});

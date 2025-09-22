@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useConnect, useDisconnect } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { usePrivy, useLogin, useWallets, useCreateWallet } from '@privy-io/react-auth';
 import BaseModal from './BaseModal';
 import BlockingMessageModal from './BlockingMessageModal';
 import { useStore } from '../../store/useStore';
+import { Mail } from 'lucide-react';
 
 const WalletSelectionModal = ({
   onClose,
@@ -16,6 +18,97 @@ const WalletSelectionModal = ({
   const { setAddress } = useStore();
   const [connectingWallet, setConnectingWallet] = useState<string>();
   const [intentionalSolanaConnect, setIntentionalSolanaConnect] = useState(false);
+  const [waitingForPrivyWallet, setWaitingForPrivyWallet] = useState(false);
+
+  // Privy hooks for email login
+  const { authenticated } = usePrivy();
+  const { wallets: privyWallets } = useWallets();
+  const { createWallet } = useCreateWallet();
+
+  const { login } = useLogin({
+    onComplete: async ({ user }) => {
+      // Check if user already has a wallet in linkedAccounts
+      const existingWallet = user?.linkedAccounts?.find(
+        account => account.type === 'wallet'
+      );
+
+      if (existingWallet) {
+        setAddress(existingWallet.address, 'ethereum');
+        setConnectingWallet(undefined);
+        onClose();
+      } else {
+        // No wallet exists, need to create one
+        setConnectingWallet('Creating your wallet...');
+
+        try {
+          // Create an embedded wallet for the user
+          const newWallet = await createWallet();
+
+          if (newWallet) {
+            setAddress(newWallet.address, 'ethereum');
+            setConnectingWallet(undefined);
+            onClose();
+          } else {
+            // If wallet creation didn't return immediately, wait for it
+            setWaitingForPrivyWallet(true);
+            setConnectingWallet('Setting up your wallet...');
+          }
+        } catch {
+          setConnectingWallet(undefined);
+          setWaitingForPrivyWallet(false);
+        }
+      }
+    },
+    onError: () => {
+      setConnectingWallet(undefined);
+      setWaitingForPrivyWallet(false);
+    }
+  });
+
+  // Watch for Privy wallet to become available after login
+  useEffect(() => {
+    if (waitingForPrivyWallet && privyWallets && privyWallets.length > 0) {
+      // Look for any embedded wallet, not just 'privy' type
+      const privyWallet = privyWallets.find(w =>
+        w.walletClientType === 'privy' ||
+        w.walletClientType === 'embedded' ||
+        w.imported === false // Non-imported wallets are embedded
+      );
+
+      if (privyWallet) {
+        setAddress(privyWallet.address, 'ethereum');
+        setConnectingWallet(undefined);
+        setWaitingForPrivyWallet(false);
+        onClose();
+      } else {
+        // If we have wallets but none match our criteria, use the first one
+        const firstWallet = privyWallets[0];
+        if (firstWallet) {
+          setAddress(firstWallet.address, 'ethereum');
+          setConnectingWallet(undefined);
+          setWaitingForPrivyWallet(false);
+          onClose();
+        }
+      }
+    }
+  }, [privyWallets, waitingForPrivyWallet, setAddress, onClose]);
+
+  // Check if user is already authenticated with Privy when modal opens
+  useEffect(() => {
+    // Only run this once when the modal first mounts and user is already authenticated
+    // Add a check to prevent re-running if address is already set
+    const { address: currentAddress } = useStore.getState();
+
+    if (authenticated && privyWallets && privyWallets.length > 0 && !currentAddress) {
+      const privyWallet = privyWallets.find(w => w.walletClientType === 'privy');
+
+      if (privyWallet && privyWallet.address !== currentAddress) {
+        setAddress(privyWallet.address, 'ethereum');
+        onClose();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated, privyWallets?.length]); // Only re-run if authentication state or wallet count changes
 
   // Wagmi hooks for Ethereum
   const { connectors, connect } = useConnect({
@@ -45,7 +138,7 @@ const WalletSelectionModal = ({
 
   // Solana wallet hooks
   const { setVisible: setSolanaModalVisible } = useWalletModal();
-  const { publicKey, connect: connectSolana, wallets, select, wallet, connected } = useWallet();
+  const { publicKey, connect: connectSolana, wallets, select, wallet } = useWallet();
 
   // Listen for Solana wallet connection - but only when intentionally connecting
   useEffect(() => {
@@ -103,10 +196,10 @@ const WalletSelectionModal = ({
             try {
               await connectSolana();
               break; // Success, exit loop
-            } catch (error) {
+            } catch {
               // If still getting WalletNotSelectedError, continue waiting
               if (attempts === maxAttempts - 1) {
-                console.log('Failed to connect after multiple attempts:', error);
+                // Failed to connect after multiple attempts
               }
             }
           }
@@ -125,6 +218,32 @@ const WalletSelectionModal = ({
       // Failed to connect Phantom wallet
       setIntentionalSolanaConnect(false); // Reset flag on error
     } finally {
+      setConnectingWallet(undefined);
+    }
+  };
+
+  const connectWithEmail = async () => {
+    // If already authenticated, just use the existing wallet
+    if (authenticated && privyWallets && privyWallets.length > 0) {
+      const privyWallet = privyWallets.find(w =>
+        w.walletClientType === 'privy' ||
+        w.walletClientType === 'embedded' ||
+        !w.imported
+      );
+
+      if (privyWallet) {
+        setAddress(privyWallet.address, 'ethereum');
+        // Close the modal immediately without waiting
+        setTimeout(() => onClose(), 0);
+        return;
+      }
+    }
+
+    setConnectingWallet('Continue with email...');
+    try {
+      // Open Privy's built-in login modal
+      login();
+    } catch {
       setConnectingWallet(undefined);
     }
   };
@@ -184,7 +303,7 @@ const WalletSelectionModal = ({
         await connect({ connector: metamask });
       } catch (error) {
         // Failed to connect MetaMask
-        
+
         // If we get "already connected" error, try disconnecting first then reconnecting
         if (error instanceof Error && error.message?.includes('already connected')) {
           try {
@@ -193,7 +312,7 @@ const WalletSelectionModal = ({
             await new Promise(resolve => setTimeout(resolve, 200));
             await connect({ connector: metamask });
           } catch {
-            // Retry failed
+            // Retry connection failed
           }
         }
       } finally {
@@ -224,8 +343,8 @@ const WalletSelectionModal = ({
           setAddress(accounts[0], 'ethereum');
           onClose();
         }
-      } catch (error) {
-        console.error('MetaMask connection failed:', error);
+      } catch {
+        // MetaMask connection failed
       } finally {
         setConnectingWallet(undefined);
       }
@@ -238,6 +357,27 @@ const WalletSelectionModal = ({
         <div className="mb-8 sm:mb-10 text-xl sm:text-2xl font-bold">Connect a Wallet</div>
 
         <div className="flex w-full flex-col gap-3 sm:gap-4">
+          {/* Email login option - prominently at the top */}
+          <button
+            className="w-full bg-gradient-to-r from-turbo-red/20 to-turbo-red/10 border border-turbo-red/30 p-3 sm:p-4 rounded hover:from-turbo-red/30 hover:to-turbo-red/20 transition-all text-left flex items-center gap-3"
+            onClick={connectWithEmail}
+          >
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-turbo-red" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold mb-1 text-sm sm:text-base text-fg-muted">Continue with Email</div>
+              <div className="text-xs text-turbo-red">Quick & easy sign in with Privy.io</div>
+            </div>
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-surface"></div>
+            <div className="text-xs text-link">or use a wallet</div>
+            <div className="flex-1 h-px bg-surface"></div>
+          </div>
+
           <button
             className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
             onClick={connectWander}

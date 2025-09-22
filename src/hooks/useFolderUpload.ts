@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { 
-  TurboFactory, 
+import {
+  TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   SolanaWalletAdapter
@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
 import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
+import { useWallets } from '@privy-io/react-auth';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -27,6 +28,7 @@ interface DeployResult {
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
+  const { wallets } = useWallets(); // Get Privy wallets
   
   // useFolderUpload store state logged
   const [deploying, setDeploying] = useState(false);
@@ -67,13 +69,10 @@ export function useFolderUpload() {
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
-    
-    console.log('Deploy hook wallet info:', { address, walletType });
-    
+
     // HOTFIX: Detect corrupted wallet type (contains address instead of type)
     let actualWalletType = walletType;
     if (walletType && walletType.length > 20) {
-      console.warn('🔧 HOTFIX: walletType contains address, detecting actual type...');
       // Detect wallet type based on address format
       if (address?.startsWith('0x')) {
         actualWalletType = 'ethereum';
@@ -84,7 +83,6 @@ export function useFolderUpload() {
       } else {
         actualWalletType = 'arweave'; // Default fallback for Arweave
       }
-      console.log('🔧 Detected wallet type:', actualWalletType);
     }
     
     switch (actualWalletType) {
@@ -100,20 +98,39 @@ export function useFolderUpload() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          // Creating Ethereum walletAdapter
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        // Creating Ethereum walletAdapter
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
@@ -158,7 +175,7 @@ export function useFolderUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, validateWalletState]);
+  }, [address, walletType, wallets, validateWalletState]);
 
   // Smart content type detection based on file extensions
   const getContentType = useCallback((file: File): string => {
@@ -388,7 +405,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [address, createTurboClient, getContentType, validateWalletState]);
+  }, [createTurboClient, getContentType, validateWalletState]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);
