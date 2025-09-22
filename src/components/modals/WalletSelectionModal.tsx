@@ -45,7 +45,7 @@ const WalletSelectionModal = ({
 
   // Solana wallet hooks
   const { setVisible: setSolanaModalVisible } = useWalletModal();
-  const { publicKey, connect: connectSolana, wallets, select } = useWallet();
+  const { publicKey, connect: connectSolana, wallets, select, wallet, connected } = useWallet();
 
   // Listen for Solana wallet connection - but only when intentionally connecting
   useEffect(() => {
@@ -65,10 +65,10 @@ const WalletSelectionModal = ({
   const connectPhantom = async () => {
     try {
       // Attempting to connect Phantom wallet
-      
+
       // Set the intentional connect flag
       setIntentionalSolanaConnect(true);
-      
+
       // If already connected, use it immediately
       if (publicKey) {
         // Already connected to Solana wallet
@@ -78,25 +78,41 @@ const WalletSelectionModal = ({
         setIntentionalSolanaConnect(false);
         return;
       }
-      
+
       // Try to find and directly select Phantom
-      const phantomWallet = wallets.find(wallet => 
+      const phantomWallet = wallets.find(wallet =>
         wallet.adapter.name === 'Phantom'
       );
-      
+
       if (phantomWallet) {
         // Found Phantom wallet, selecting and connecting
         setConnectingWallet('Connecting to Phantom...');
-        
+
         // Select the Phantom wallet first
         select(phantomWallet.adapter.name);
-        
-        // Small delay for selection to take effect
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Then connect
-        await connectSolana();
-        
+
+        // Wait for wallet to be selected and ready
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Check if wallet is now selected and ready
+          if (wallet?.adapter.name === 'Phantom') {
+            // Wallet is selected, try to connect
+            try {
+              await connectSolana();
+              break; // Success, exit loop
+            } catch (error) {
+              // If still getting WalletNotSelectedError, continue waiting
+              if (attempts === maxAttempts - 1) {
+                console.log('Failed to connect after multiple attempts:', error);
+              }
+            }
+          }
+          attempts++;
+        }
+
         // Phantom connection attempt completed
       } else {
         // Phantom wallet not found, opening Solana modal
@@ -104,7 +120,7 @@ const WalletSelectionModal = ({
         onClose();
         setSolanaModalVisible(true);
       }
-      
+
     } catch {
       // Failed to connect Phantom wallet
       setIntentionalSolanaConnect(false); // Reset flag on error
