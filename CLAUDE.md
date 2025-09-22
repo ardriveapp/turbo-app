@@ -76,20 +76,26 @@ const routes = [
 ];
 ```
 
-#### Multi-Chain Wallet Integration
-The app supports three wallet ecosystems with different capabilities:
+#### Authentication & Wallet Integration
+The app supports email authentication and three wallet ecosystems:
+
+**Email Authentication (Privy)**
+- Email-only sign-in via `@privy-io/react-auth`
+- Automatically creates embedded Ethereum wallet for email users
+- Configuration: `loginMethods: ['email']` (wallet connections disabled)
+- Embedded wallet accessed via `useWallets()` hook
 
 **Arweave (Wander)**
 - Uses `ArconnectSigner` from `@ardrive/turbo-sdk/web`
 - Required for file uploads and ArNS transactions
 - Direct `window.arweaveWallet` integration
 
-**Ethereum**
-- Uses Wagmi v2 with MetaMask and WalletConnect connectors
+**Ethereum (MetaMask)**
+- Direct connection via Wagmi v2 (not through Privy)
 - Supports mainnet via HTTP transport
 - Uses `ethers.BrowserProvider` for signing
 
-**Solana**
+**Solana (Phantom/Solflare)**
 - Uses `@solana/wallet-adapter` with Phantom and Solflare
 - Custom `SolanaWalletAdapter` implementation
 - Uses `window.solana` for direct provider access
@@ -261,8 +267,11 @@ onBlur={() => {
 # Node environment
 VITE_NODE_ENV=production
 
-# Wallet integrations  
-VITE_WALLETCONNECT_PROJECT_ID=your_project_id
+# Authentication
+VITE_PRIVY_APP_ID=your_privy_app_id  # Required for email authentication
+
+# Wallet integrations
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id  # Optional
 VITE_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
 # Service endpoints (have defaults)
@@ -282,6 +291,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ### Core Integration
 - `@ardrive/turbo-sdk`: v1.31.0 - Turbo services integration
 - `@ar.io/sdk`: v3.19.0-alpha.10 - ArNS name resolution and domain management
+- `@privy-io/react-auth`: Email authentication with embedded wallets
 - `wagmi`: v2.12.5 - Ethereum wallet integration and Web3 functionality
 - `@solana/wallet-adapter-*`: Solana wallet ecosystem
 - `zustand`: v4.5.5 - Global state management with persistence
@@ -345,6 +355,20 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Use `useFileUpload` hook for proper multi-chain signer creation
 - Progress tracking includes both signing and upload phases
 - Error handling includes per-file error states
+
+### Privy Wallet Support
+When creating Turbo clients, check for Privy embedded wallets first:
+```typescript
+const { wallets } = useWallets(); // Get Privy wallets
+const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+if (privyWallet) {
+  const provider = await privyWallet.getEthereumProvider();
+  const ethersProvider = new ethers.BrowserProvider(provider);
+  const ethersSigner = await ethersProvider.getSigner();
+  // Use ethersSigner for Turbo client
+}
+```
 
 ### ArNS Development
 - Use `useOwnedArNSNames` hook for fetching and managing owned ArNS names
