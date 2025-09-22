@@ -189,7 +189,11 @@ export default function CryptoConfirmationPanel({
           if (!provider.isConnected) {
             await provider.connect();
           }
-          
+
+          if (!provider.publicKey) {
+            throw new Error('Solana wallet public key not available');
+          }
+
           const publicKey = new PublicKey(provider.publicKey);
           console.log('Creating manual Solana transaction...');
           

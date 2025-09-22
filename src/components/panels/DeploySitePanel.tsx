@@ -774,7 +774,7 @@ export default function DeploySitePanel() {
     return (
       <div className="text-center py-12">
         <h3 className="text-xl font-bold mb-4">Connect Wallet Required</h3>
-        <p className="text-link">Connect your Arweave wallet to deploy sites</p>
+        <p className="text-link">Connect your wallet to deploy sites</p>
       </div>
     );
   }
