@@ -10,10 +10,8 @@ import { Mail } from 'lucide-react';
 
 const WalletSelectionModal = ({
   onClose,
-  message,
 }: {
   onClose: () => void;
-  message: string;
 }) => {
   const { setAddress } = useStore();
   const [connectingWallet, setConnectingWallet] = useState<string>();
@@ -366,8 +364,8 @@ const WalletSelectionModal = ({
               <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-turbo-red" />
             </div>
             <div className="min-w-0">
-              <div className="font-semibold mb-1 text-sm sm:text-base text-fg-muted">Continue with Email</div>
-              <div className="text-xs text-turbo-red">Quick & easy sign in with Privy.io</div>
+              <div className="font-semibold mb-1 text-sm sm:text-base text-fg-muted">Email Sign-in</div>
+              <div className="text-xs text-turbo-red">No wallet needed • Instant access</div>
             </div>
           </button>
 

@@ -8,6 +8,7 @@ import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { formatWalletAddress } from '../../utils';
 import { wincPerCredit } from '../../constants';
 import CopyButton from '../CopyButton';
+import { useWallets } from '@privy-io/react-auth';
 
 interface SharedCredits {
   received: {
@@ -39,6 +40,7 @@ interface SharedCredits {
 export default function CreditSharingSection() {
   const { address, walletType } = useStore();
   const turboConfig = useTurboConfig();
+  const { wallets } = useWallets(); // Get Privy wallets
   const [sharedCredits, setSharedCredits] = useState<SharedCredits | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -64,19 +66,38 @@ export default function CreditSharingSection() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found');
+          }
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         if (!window.solana) {
@@ -102,7 +123,7 @@ export default function CreditSharingSection() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, turboConfig]);
+  }, [address, walletType, turboConfig, wallets]);
 
   // Fetch shared credits data
   useEffect(() => {

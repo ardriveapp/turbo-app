@@ -403,7 +403,6 @@ export default function PricingCalculatorPanel() {
       {showWalletModal && (
         <WalletSelectionModal
           onClose={() => setShowWalletModal(false)}
-          message={''}
         />
       )}
     </div>

@@ -504,7 +504,6 @@ export default function ServicesCalculatorPanel() {
       {showWalletModal && (
         <WalletSelectionModal
           onClose={() => setShowWalletModal(false)}
-          message={''}
         />
       )}
     </div>

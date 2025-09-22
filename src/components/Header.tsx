@@ -79,7 +79,6 @@ const Header = () => {
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
-  const [walletModalMessage, setWalletModalMessage] = useState('');
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
@@ -225,7 +224,6 @@ const Header = () => {
                         key={service.page}
                         onClick={() => {
                           close();
-                          setWalletModalMessage(`Connect your wallet to ${service.name.toLowerCase()}`);
                           setShowWalletModal(true);
                         }}
                         className="w-full flex items-center gap-3 py-2 px-4 text-sm text-link/60 hover:bg-canvas hover:text-fg-muted transition-colors group"
@@ -481,7 +479,6 @@ const Header = () => {
       {!address && (
         <button
           onClick={() => {
-            setWalletModalMessage('');
             setShowWalletModal(true);
           }}
           className="flex items-center gap-2 bg-fg-muted text-black px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-fg-muted/90 transition-colors mr-2 sm:mr-0"
@@ -496,9 +493,7 @@ const Header = () => {
         <WalletSelectionModal
           onClose={() => {
             setShowWalletModal(false);
-            setWalletModalMessage('');
           }}
-          message={walletModalMessage}
         />
       )}
     </div>

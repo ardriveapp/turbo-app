@@ -56,7 +56,7 @@ export function WalletProviders({ children }: WalletProvidersProps) {
           // Disable wallet UIs to prevent signature prompts during file uploads
           showWalletUIs: false,
         },
-        loginMethods: ['email', 'wallet'],
+        loginMethods: ['email'], // Email-only, no wallet connections through Privy
         appearance: {
           theme: 'dark',
           accentColor: '#FE0230', // Turbo red

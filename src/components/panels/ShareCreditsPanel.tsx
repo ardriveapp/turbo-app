@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { 
-  TurboFactory, 
+import {
+  TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   SolanaWalletAdapter
@@ -12,6 +12,7 @@ import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
+import { useWallets } from '@privy-io/react-auth';
 
 interface Approval {
   approvedAddress: string;
@@ -21,6 +22,7 @@ interface Approval {
 
 export default function ShareCreditsPanel() {
   const { address, walletType, creditBalance } = useStore();
+  const { wallets } = useWallets(); // Get Privy wallets
   const wincForOneGiB = useWincForOneGiB();
   const turboConfig = useTurboConfig();
   
@@ -42,19 +44,38 @@ export default function ShareCreditsPanel() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         if (!window.solana) {
