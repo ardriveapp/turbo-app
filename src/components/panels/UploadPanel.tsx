@@ -10,6 +10,7 @@ import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 import AssignDomainModal from '../modals/AssignDomainModal';
 import { getArweaveUrl } from '../../utils';
+import UploadProgressSummary from '../UploadProgressSummary';
 
 export default function UploadPanel() {
   const { address, walletType, creditBalance, uploadHistory, addUploadResults, updateUploadWithArNS, clearUploadHistory } = useStore();
@@ -22,7 +23,22 @@ export default function UploadPanel() {
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
   const wincForOneGiB = useWincForOneGiB();
-  const { uploadMultipleFiles, uploading, uploadProgress, errors, reset: resetFileUpload } = useFileUpload();
+  const {
+    uploadMultipleFiles,
+    uploading,
+    uploadProgress,
+    errors,
+    reset: resetFileUpload,
+    uploadedCount,
+    totalFilesCount,
+    failedCount,
+    activeUploads,
+    recentFiles,
+    uploadErrors,
+    totalSize,
+    uploadedSize,
+    retryFailedFiles
+  } = useFileUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
@@ -150,8 +166,8 @@ export default function UploadPanel() {
     return creditCost;
   };
 
-  const totalSize = files.reduce((acc, file) => acc + file.size, 0);
-  const totalCost = calculateUploadCost(totalSize);
+  const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
+  const totalCost = calculateUploadCost(totalFileSize);
 
   const handleUpload = async () => {
     if (!address) {
@@ -337,13 +353,21 @@ export default function UploadPanel() {
                     )}
                   </div>
                   
-                  {/* Progress Bar */}
-                  {isUploading && (
+                  {/* Progress Bar - Only show for small uploads to prevent performance issues */}
+                  {isUploading && files.length <= 20 && (
                     <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
-                      <div 
+                      <div
                         className="bg-turbo-red h-full transition-all duration-300"
                         style={{ width: `${progress || 0}%` }}
                       />
+                    </div>
+                  )}
+
+                  {/* Status indicator for large uploads */}
+                  {isUploading && files.length > 20 && (
+                    <div className="flex items-center gap-2 text-sm text-link">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Uploading...</span>
                     </div>
                   )}
                   
@@ -364,7 +388,7 @@ export default function UploadPanel() {
             <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
-              <span className="font-medium">{formatFileSize(totalSize)}</span>
+              <span className="font-medium">{formatFileSize(totalFileSize)}</span>
             </div>
             <div className="flex justify-between mb-2">
               <span className="text-link">Estimated Cost:</span>
@@ -429,6 +453,24 @@ export default function UploadPanel() {
         </div>
       )}
       </div>
+
+      {/* Upload Progress Summary - Show during upload for large file counts */}
+      {uploading && totalFilesCount > 0 && (
+        <div className="mt-4">
+          <UploadProgressSummary
+            uploadedCount={uploadedCount}
+            totalCount={totalFilesCount}
+            failedCount={failedCount}
+            activeUploads={activeUploads}
+            recentFiles={recentFiles}
+            errors={uploadErrors}
+            totalSize={totalSize}
+            uploadedSize={uploadedSize}
+            onRetryFailed={retryFailedFiles}
+            compact={totalFilesCount <= 10} // Use compact mode for small uploads
+          />
+        </div>
+      )}
 
       {/* Upload Results - Activity theme */}
       {uploadHistory.length > 0 && (

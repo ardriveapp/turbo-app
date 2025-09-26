@@ -351,7 +351,7 @@ const WalletSelectionModal = ({
 
   return (
     <BaseModal onClose={onClose} showCloseButton={true}>
-      <div className="flex w-full max-w-sm sm:max-w-md flex-col items-center justify-center text-fg-muted p-4 sm:p-8">
+      <div className="flex flex-col items-center justify-center text-fg-muted p-6 sm:p-8" style={{ minWidth: 'min(85vw, 480px)', maxWidth: '95vw' }}>
         <div className="mb-8 sm:mb-10 text-xl sm:text-2xl font-bold">Connect a Wallet</div>
 
         <div className="flex w-full flex-col gap-3 sm:gap-4">
@@ -363,9 +363,9 @@ const WalletSelectionModal = ({
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-turbo-red" />
             </div>
-            <div className="min-w-0">
-              <div className="font-semibold mb-1 text-sm sm:text-base text-fg-muted">Email Sign-in</div>
-              <div className="text-xs text-turbo-red">No wallet needed • Instant access</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold mb-1 text-base text-fg-muted">Email Sign-in</div>
+              <div className="text-xs sm:text-sm text-turbo-red">No wallet needed • Instant access</div>
             </div>
           </button>
 
@@ -381,9 +381,9 @@ const WalletSelectionModal = ({
             onClick={connectWander}
           >
             <img src="/wander-logo.png" alt="Wander" className="w-7 h-7 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="font-semibold mb-1 text-sm sm:text-base">Wander</div>
-              <div className="text-xs text-link">Arweave native wallet</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold mb-1 text-base">Wander</div>
+              <div className="text-xs sm:text-sm text-link">Arweave native wallet</div>
             </div>
           </button>
 
@@ -392,9 +392,9 @@ const WalletSelectionModal = ({
             onClick={connectMetaMask}
           >
             <img src="/metamask-logo.svg" alt="MetaMask" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="font-semibold mb-1 text-sm sm:text-base">MetaMask</div>
-              <div className="text-xs text-link">Ethereum wallet</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold mb-1 text-base">MetaMask</div>
+              <div className="text-xs sm:text-sm text-link">Ethereum wallet</div>
             </div>
           </button>
 
@@ -403,9 +403,9 @@ const WalletSelectionModal = ({
             onClick={connectPhantom}
           >
             <img src="/phantom-logo.svg" alt="Phantom" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="font-semibold mb-1 text-sm sm:text-base">Phantom / Solflare</div>
-              <div className="text-xs text-link">Solana wallets</div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold mb-1 text-base">Phantom / Solflare</div>
+              <div className="text-xs sm:text-sm text-link">Solana wallets</div>
             </div>
           </button>
         </div>
