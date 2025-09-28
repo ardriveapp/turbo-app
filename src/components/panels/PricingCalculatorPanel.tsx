@@ -12,14 +12,16 @@ export default function PricingCalculatorPanel() {
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
   const [storageAmount, setStorageAmount] = useState(1);
+  const [storageAmountInput, setStorageAmountInput] = useState('1'); // String for display
   const [storageUnit, setStorageUnit] = useState<'MiB' | 'GiB' | 'TiB'>('GiB');
-  
+
   const storageUnits = [
     { value: 'MiB', label: 'MiB' },
     { value: 'GiB', label: 'GiB' },
     { value: 'TiB', label: 'TiB' },
   ] as const;
   const [dollarAmount, setDollarAmount] = useState(10);
+  const [dollarAmountInput, setDollarAmountInput] = useState('10'); // String for display
   
   // Get conversion rates
   const wincForOneGiB = useWincForOneGiB();
@@ -163,8 +165,32 @@ export default function PricingCalculatorPanel() {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={storageAmount}
-                        onChange={(e) => setStorageAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                        value={storageAmountInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setStorageAmountInput(value);
+
+                          // Update numeric value for calculations
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue) && numValue >= 0) {
+                            setStorageAmount(numValue);
+                          } else if (value === '' || value === '0') {
+                            setStorageAmount(0);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up input on blur
+                          const numValue = parseFloat(e.target.value);
+                          if (isNaN(numValue) || numValue < 0) {
+                            setStorageAmountInput('1');
+                            setStorageAmount(1);
+                          } else {
+                            // Remove leading zeros but keep the number
+                            const cleanValue = numValue.toString();
+                            setStorageAmountInput(cleanValue);
+                            setStorageAmount(numValue);
+                          }
+                        }}
                         className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
@@ -254,8 +280,32 @@ export default function PricingCalculatorPanel() {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={dollarAmount}
-                        onChange={(e) => setDollarAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                        value={dollarAmountInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setDollarAmountInput(value);
+
+                          // Update numeric value for calculations
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue) && numValue >= 0) {
+                            setDollarAmount(numValue);
+                          } else if (value === '' || value === '0') {
+                            setDollarAmount(0);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up input on blur
+                          const numValue = parseFloat(e.target.value);
+                          if (isNaN(numValue) || numValue < 0) {
+                            setDollarAmountInput('10');
+                            setDollarAmount(10);
+                          } else {
+                            // Remove leading zeros but keep the number
+                            const cleanValue = numValue.toString();
+                            setDollarAmountInput(cleanValue);
+                            setDollarAmount(numValue);
+                          }
+                        }}
                         className="flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
@@ -403,7 +453,6 @@ export default function PricingCalculatorPanel() {
       {showWalletModal && (
         <WalletSelectionModal
           onClose={() => setShowWalletModal(false)}
-          message={''}
         />
       )}
     </div>

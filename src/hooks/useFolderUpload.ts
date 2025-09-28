@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { 
-  TurboFactory, 
+import {
+  TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   SolanaWalletAdapter
@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
 import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
+import { useWallets } from '@privy-io/react-auth';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -24,10 +25,31 @@ interface DeployResult {
   receipt?: any; // Store receipt for manifest
 }
 
+export interface ActiveUpload {
+  name: string;
+  progress: number;
+  size: number;
+}
+
+export interface RecentFile {
+  name: string;
+  size: number;
+  status: 'success' | 'error';
+  error?: string;
+  timestamp: number;
+}
+
+export interface UploadError {
+  fileName: string;
+  error: string;
+  retryable: boolean;
+}
+
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
-  
+  const { wallets } = useWallets(); // Get Privy wallets
+
   // useFolderUpload store state logged
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
@@ -36,6 +58,15 @@ export function useFolderUpload() {
   const [currentFile, setCurrentFile] = useState<string>('');
   const [deployResults, setDeployResults] = useState<DeployResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const [totalFilesCount, setTotalFilesCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
+  const [activeUploads, setActiveUploads] = useState<ActiveUpload[]>([]);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const [uploadErrors, setUploadErrors] = useState<UploadError[]>([]);
+  const [totalSize, setTotalSize] = useState<number>(0);
+  const [uploadedSize, setUploadedSize] = useState<number>(0);
+  const [failedFiles, setFailedFiles] = useState<File[]>([]);
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
@@ -67,13 +98,10 @@ export function useFolderUpload() {
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
-    
-    console.log('Deploy hook wallet info:', { address, walletType });
-    
+
     // HOTFIX: Detect corrupted wallet type (contains address instead of type)
     let actualWalletType = walletType;
     if (walletType && walletType.length > 20) {
-      console.warn('🔧 HOTFIX: walletType contains address, detecting actual type...');
       // Detect wallet type based on address format
       if (address?.startsWith('0x')) {
         actualWalletType = 'ethereum';
@@ -84,7 +112,6 @@ export function useFolderUpload() {
       } else {
         actualWalletType = 'arweave'; // Default fallback for Arweave
       }
-      console.log('🔧 Detected wallet type:', actualWalletType);
     }
     
     switch (actualWalletType) {
@@ -100,20 +127,39 @@ export function useFolderUpload() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          // Creating Ethereum walletAdapter
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        // Creating Ethereum walletAdapter
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
@@ -158,7 +204,8 @@ export function useFolderUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, validateWalletState]);
+  }, [address, walletType, wallets, validateWalletState]);
+
 
   // Smart content type detection based on file extensions
   const getContentType = useCallback((file: File): string => {
@@ -166,19 +213,19 @@ export function useFolderUpload() {
     if (file.type && file.type !== 'application/octet-stream') {
       return file.type;
     }
-    
+
     // Fallback to extension-based detection
     const extension = file.name.split('.').pop()?.toLowerCase();
     const mimeTypes: Record<string, string> = {
       // Images
       'png': 'image/png',
-      'jpg': 'image/jpeg', 
+      'jpg': 'image/jpeg',
       'jpeg': 'image/jpeg',
       'gif': 'image/gif',
       'svg': 'image/svg+xml',
       'webp': 'image/webp',
       'ico': 'image/x-icon',
-      
+
       // Documents
       'html': 'text/html',
       'css': 'text/css',
@@ -187,20 +234,65 @@ export function useFolderUpload() {
       'xml': 'application/xml',
       'txt': 'text/plain',
       'md': 'text/markdown',
-      
+
       // Fonts
       'woff': 'font/woff',
       'woff2': 'font/woff2',
       'ttf': 'font/ttf',
       'otf': 'font/otf',
-      
+
       // Other
       'pdf': 'application/pdf',
       'zip': 'application/zip',
     };
-    
+
     return mimeTypes[extension || ''] || 'application/octet-stream';
   }, []);
+
+  // Upload with retry logic
+  const uploadFileWithRetry = useCallback(async (
+    turbo: TurboAuthenticatedClient,
+    file: File,
+    folderPath: string,
+    maxRetries = 3
+  ): Promise<any> => {
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Add timeout wrapper for upload
+        const uploadPromise = turbo.uploadFile({
+          file: file,
+          dataItemOpts: {
+            tags: [
+              { name: 'Content-Type', value: getContentType(file) },
+              { name: 'File-Path', value: file.webkitRelativePath || file.name },
+              { name: 'App-Name', value: 'Turbo-Deploy' }
+            ]
+          }
+        });
+
+        // 5 minute timeout per file
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Upload timeout after 5 minutes')), 5 * 60 * 1000);
+        });
+
+        const result = await Promise.race([uploadPromise, timeoutPromise]);
+        return result;
+
+      } catch (error) {
+        lastError = error;
+        console.warn(`Upload attempt ${attempt} failed for ${file.name}:`, error);
+
+        if (attempt < maxRetries) {
+          // Exponential backoff: 2s, 4s, 8s
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+    }
+
+    throw lastError || new Error(`Failed to upload ${file.name} after ${maxRetries} attempts`);
+  }, [getContentType]);
 
   const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
     // Validate wallet state before any operations
@@ -212,6 +304,18 @@ export function useFolderUpload() {
     setDeployProgress(0);
     setDeployStage('uploading');
     setCurrentFile('');
+    setUploadedCount(0);
+    setTotalFilesCount(files.length);
+    setFailedCount(0);
+    setActiveUploads([]);
+    setRecentFiles([]);
+    setUploadErrors([]);
+    setFailedFiles([]);
+
+    // Calculate total size
+    const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
+    setTotalSize(totalSizeBytes);
+    setUploadedSize(0);
 
     try {
       // Creating Turbo client for folder deployment
@@ -222,51 +326,141 @@ export function useFolderUpload() {
       // Create folder structure for Turbo SDK
       const folderPath = files[0]?.webkitRelativePath?.split('/')[0] || 'site';
       
-      // Upload files individually and create manifest
+      // Upload files with concurrent batching for better performance
       // For web browser, we need to upload files individually and create a manifest
-      // Uploading files individually to create manifest
-      
-      const fileUploadResults = [];
-      let processedFiles = 0;
+      // Uploading files with concurrent batches to avoid hanging
+
+      const fileUploadResults: Array<{
+        id: string;
+        path: string;
+        size: number;
+        receipt: any;
+      }> = [];
       const totalFiles = files.length;
-      
-      // Upload each file individually
-      for (const file of files) {
-        try {
-          // Set current file being uploaded
-          setCurrentFile(file.name);
-          setFileProgress(prev => ({ ...prev, [file.name]: 0 }));
-          
-          // Uploading individual file
-          const fileResult = await turbo.uploadFile({
-            file: file,
-            dataItemOpts: {
-              tags: [
-                { name: 'Content-Type', value: getContentType(file) },
-                { name: 'File-Path', value: file.webkitRelativePath || file.name },
-                { name: 'App-Name', value: 'Turbo-Deploy' }
-              ]
-            }
-          });
-          
-          // Mark file as complete
-          setFileProgress(prev => ({ ...prev, [file.name]: 100 }));
-          
-          fileUploadResults.push({
-            id: fileResult.id,
-            path: file.webkitRelativePath || file.name,
-            size: file.size,
-            receipt: fileResult // Store full result as receipt
-          });
-          
-          processedFiles += 1;
-          setDeployProgress(Math.round((processedFiles / totalFiles) * 90)); // Reserve 10% for manifest
-          
-        } catch (fileError) {
-          // Mark file as failed
-          setFileProgress(prev => ({ ...prev, [file.name]: -1 })); // -1 indicates error
-          setErrors(prev => ({ ...prev, [file.name]: fileError instanceof Error ? fileError.message : 'Upload failed' }));
-          throw new Error(`Failed to upload ${file.name}: ${fileError}`);
+      const BATCH_SIZE = 5; // Upload 5 files concurrently
+      let completedFiles = 0;
+      const failedUploads: { file: File; error: Error }[] = [];
+
+      // Process files in batches
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
+
+        // Upload batch concurrently
+        const batchPromises = batch.map(async (file) => {
+          try {
+            // Add to active uploads
+            setActiveUploads(prev => [
+              ...prev.filter(u => u.name !== file.name),
+              { name: file.name, progress: 0, size: file.size }
+            ].slice(0, 10)); // Keep max 10 active uploads in display
+
+            // Set current file being uploaded
+            setCurrentFile(file.name);
+            setFileProgress(prev => {
+              // Limit object size to prevent memory issues
+              const newProgress = { ...prev };
+              // Only keep last 1000 file progress entries to prevent memory issues
+              const keys = Object.keys(newProgress);
+              if (keys.length > 1000) {
+                // Remove oldest entries
+                keys.slice(0, keys.length - 1000).forEach(key => delete newProgress[key]);
+              }
+              newProgress[file.name] = 0;
+              return newProgress;
+            });
+
+            // Upload with retry logic and timeout
+            const fileResult = await uploadFileWithRetry(turbo, file, folderPath);
+
+            // Mark file as complete
+            setFileProgress(prev => ({ ...prev, [file.name]: 100 }));
+
+            // Remove from active uploads
+            setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+
+            // Add to recent files (keep last 20)
+            setRecentFiles(prev => [
+              {
+                name: file.name,
+                size: file.size,
+                status: 'success' as const,
+                timestamp: Date.now()
+              },
+              ...prev
+            ].slice(0, 20));
+
+            fileUploadResults.push({
+              id: fileResult.id,
+              path: file.webkitRelativePath || file.name,
+              size: file.size,
+              receipt: fileResult // Store full result as receipt
+            });
+
+            completedFiles += 1;
+            setUploadedCount(completedFiles);
+            setUploadedSize(prev => prev + file.size);
+            setDeployProgress(Math.round((completedFiles / totalFiles) * 90)); // Reserve 10% for manifest
+
+            return { success: true, file };
+
+          } catch (fileError) {
+            // Mark file as failed but continue with other files
+            console.error(`Failed to upload ${file.name}:`, fileError);
+            setFileProgress(prev => ({ ...prev, [file.name]: -1 })); // -1 indicates error
+            setErrors(prev => ({ ...prev, [file.name]: fileError instanceof Error ? fileError.message : 'Upload failed' }));
+
+            // Remove from active uploads
+            setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+
+            // Add to recent files as error
+            setRecentFiles(prev => [
+              {
+                name: file.name,
+                size: file.size,
+                status: 'error' as const,
+                error: fileError instanceof Error ? fileError.message : 'Upload failed',
+                timestamp: Date.now()
+              },
+              ...prev
+            ].slice(0, 20));
+
+            // Add to upload errors
+            setUploadErrors(prev => [
+              ...prev,
+              {
+                fileName: file.name,
+                error: fileError instanceof Error ? fileError.message : 'Upload failed',
+                retryable: true
+              }
+            ]);
+
+            failedUploads.push({
+              file,
+              error: fileError instanceof Error ? fileError : new Error('Upload failed')
+            });
+
+            setFailedCount(prev => prev + 1);
+            setUploadedCount(prev => prev + 1); // Still count as processed
+
+            return { success: false, file, error: fileError };
+          }
+        });
+
+        // Wait for batch to complete before starting next batch
+        await Promise.allSettled(batchPromises);
+
+        // Check if we should abort due to too many failures
+        if (failedUploads.length > totalFiles * 0.1) { // Stop if more than 10% failed
+          throw new Error(`Too many upload failures (${failedUploads.length}/${totalFiles}). Stopping deployment.`);
+        }
+      }
+
+      // If some files failed but not too many, log them but continue
+      if (failedUploads.length > 0) {
+        console.warn(`${failedUploads.length} files failed to upload:`, failedUploads);
+        // Optionally continue with successful uploads
+        if (fileUploadResults.length === 0) {
+          throw new Error('All file uploads failed');
         }
       }
       
@@ -388,7 +582,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [address, createTurboClient, getContentType, validateWalletState]);
+  }, [createTurboClient, getContentType, validateWalletState]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);
@@ -397,6 +591,15 @@ export function useFolderUpload() {
     setCurrentFile('');
     setErrors({});
     setDeploying(false);
+    setUploadedCount(0);
+    setTotalFilesCount(0);
+    setFailedCount(0);
+    setActiveUploads([]);
+    setRecentFiles([]);
+    setUploadErrors([]);
+    setTotalSize(0);
+    setUploadedSize(0);
+    setFailedFiles([]);
     // Don't clear results in reset - that's now separate
   }, []);
 
@@ -415,6 +618,19 @@ export function useFolderUpload() {
     }
   }, []);
 
+  // Retry failed files
+  const retryFailedFiles = useCallback(async () => {
+    if (failedFiles.length === 0) return;
+
+    // Reset failed state
+    setFailedCount(0);
+    setUploadErrors([]);
+
+    // Re-attempt upload of failed files
+    // This would call deployFolder with just the failed files
+    // Implementation depends on how you want to handle partial retries
+  }, [failedFiles]);
+
   return {
     deployFolder,
     deploying,
@@ -427,5 +643,14 @@ export function useFolderUpload() {
     reset,
     clearResults,
     updateDeployStage,
+    uploadedCount,
+    totalFilesCount,
+    failedCount,
+    activeUploads,
+    recentFiles,
+    uploadErrors,
+    totalSize,
+    uploadedSize,
+    retryFailedFiles,
   };
 }

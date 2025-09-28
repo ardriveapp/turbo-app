@@ -114,24 +114,53 @@ export const getGatewayBaseUrl = (): string => {
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
   const port = window.location.port;
-  
-  // Local development - use arweave.net
+
+  // Local development - use turbo-gateway.com
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://arweave.net';
+    return 'https://turbo-gateway.com';
   }
-  
-  // Production - use current domain as gateway  
+
+  // Check if we're on a subdomain-based ArNS gateway (e.g., turbo.ar.io, turbo.vilenarios.com)
+  const hasTurboSubdomain = hostname.startsWith('turbo.');
+
+  if (hasTurboSubdomain) {
+    // Remove the 'turbo.' subdomain to get the base gateway
+    const baseGateway = hostname.replace('turbo.', '');
+
+    // Special case: ar.io cannot serve transaction content
+    if (baseGateway === 'ar.io') {
+      return 'https://turbo-gateway.com';
+    }
+
+    // For other gateways that can serve content (vilenarios.com, arweave.net, etc.)
+    // Use the base gateway without the turbo subdomain
+    const baseUrl = port ? `${protocol}//${baseGateway}:${port}` : `${protocol}//${baseGateway}`;
+    return baseUrl;
+  }
+
+  // For non-subdomain access (direct domain), use current domain
   const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
   return baseUrl;
 };
 
 export const getArweaveUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
+
+  // The gateway base URL already handles all the logic:
+  // - localhost -> turbo-gateway.com
+  // - turbo.ar.io -> turbo-gateway.com (ar.io cannot serve content)
+  // - turbo.vilenarios.com -> vilenarios.com (can serve content)
+  // - turbo-gateway.com -> turbo-gateway.com
   return `${gatewayBase}/${txId}`;
 };
 
 export const getArweaveRawUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
+
+  // The gateway base URL already handles the logic for which domain to use
+  // ar.io -> turbo-gateway.com (cannot serve content)
+  // vilenarios.com -> vilenarios.com (can serve content)
+  // turbo-gateway.com -> turbo-gateway.com (can serve content)
   return `${gatewayBase}/raw/${txId}`;
 };
 

@@ -15,9 +15,10 @@ The result is a feature-complete application providing seamless access to all Tu
 
 ### ✅ Complete Feature Set
 
-#### 🔐 Multi-Chain Wallet Support
+#### 🔐 Authentication & Wallet Support
+- **Email Sign-in** - Privy email authentication with automatic embedded wallet creation
 - **Arweave (Wander)** - Native Arweave wallet with ArconnectSigner integration
-- **Ethereum** - MetaMask & WalletConnect via Wagmi v2 with ethers.BrowserProvider
+- **Ethereum** - MetaMask direct connection via Wagmi v2 with ethers.BrowserProvider
 - **Solana** - Phantom & Solflare via @solana/wallet-adapter with custom implementation
 - Session persistence with Zustand + localStorage
 - ArNS primary name resolution with 24-hour cache
@@ -88,7 +89,8 @@ State & Data Management:
   - Custom hooks for complex state logic
   - Event-driven balance refresh system
 
-Multi-Chain Integration:
+Authentication & Wallet Integration:
+  - @privy-io/react-auth (Email authentication with embedded wallets)
   - @ardrive/turbo-sdk v1.31.1-alpha.2 (Turbo services)
   - @ar.io/sdk v3.19.0-alpha.10 (ArNS resolution and domain management)
   - Wagmi v2.12.5 with ethers v6 (Ethereum wallets)
@@ -157,8 +159,11 @@ The application works with sensible defaults, but you can customize with a `.env
 # Node environment
 VITE_NODE_ENV=production
 
-# Wallet integrations  
-VITE_WALLETCONNECT_PROJECT_ID=your_project_id
+# Authentication
+VITE_PRIVY_APP_ID=your_privy_app_id  # Required for email authentication
+
+# Wallet integrations
+VITE_WALLETCONNECT_PROJECT_ID=your_project_id  # Optional
 VITE_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
 # Service endpoints (have defaults)

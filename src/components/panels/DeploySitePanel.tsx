@@ -14,6 +14,7 @@ import ReceiptModal from '../modals/ReceiptModal';
 import ArNSAssociationPanel from '../ArNSAssociationPanel';
 import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
+import UploadProgressSummary from '../UploadProgressSummary';
 
 // Enhanced Deploy Confirmation Modal for original deploy page
 interface DeployConfirmationModalProps {
@@ -188,7 +189,23 @@ export default function DeploySitePanel() {
   // Domain assignment modal state
   const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
   const wincForOneGiB = useWincForOneGiB();
-  const { deployFolder, deploying, deployProgress, fileProgress, deployStage, currentFile, updateDeployStage } = useFolderUpload();
+  const {
+    deployFolder,
+    deploying,
+    deployProgress,
+    deployStage,
+    currentFile,
+    updateDeployStage,
+    uploadedCount,
+    totalFilesCount,
+    failedCount,
+    activeUploads,
+    recentFiles,
+    uploadErrors,
+    totalSize,
+    uploadedSize,
+    retryFailedFiles
+  } = useFolderUpload();
   const { 
     checkUploadStatus, 
     checkMultipleStatuses, 
@@ -361,15 +378,6 @@ export default function DeploySitePanel() {
     return Array.from(selectedFolder).reduce((total, file) => total + file.size, 0);
   };
 
-  const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier: Files under 100KiB
-    if (!wincForOneGiB) return null;
-    
-    const gibSize = bytes / (1024 * 1024 * 1024);
-    const wincCost = gibSize * Number(wincForOneGiB);
-    const creditCost = wincCost / wincPerCredit;
-    return creditCost;
-  };
 
   const calculateTotalCost = (): number => {
     if (!wincForOneGiB || !selectedFolder) return 0;
@@ -779,7 +787,7 @@ export default function DeploySitePanel() {
     );
   }
 
-  const totalSize = calculateTotalSize();
+  const totalFileSize = calculateTotalSize();
   const totalCost = calculateTotalCost();
   const folderName = selectedFolder?.[0]?.webkitRelativePath?.split('/')[0] || '';
 
@@ -1056,7 +1064,7 @@ export default function DeploySitePanel() {
         <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
               <span className="text-link">Total Size:</span>
-              <span className="font-medium">{(totalSize / 1024 / 1024).toFixed(2)} MB</span>
+              <span className="font-medium">{(totalFileSize / 1024 / 1024).toFixed(2)} MB</span>
             </div>
             <div className="flex justify-between mb-2">
               <span className="text-link">Estimated Cost:</span>
@@ -1119,8 +1127,25 @@ export default function DeploySitePanel() {
         </button>
       )}
 
-      {/* Deploy Progress */}
-      {deploying && selectedFolder && (
+      {/* Deploy Progress with New Summary Component */}
+      {deploying && selectedFolder && deployStage === 'uploading' && (
+        <div className="mt-4">
+          <UploadProgressSummary
+            uploadedCount={uploadedCount}
+            totalCount={totalFilesCount}
+            failedCount={failedCount}
+            activeUploads={activeUploads}
+            recentFiles={recentFiles}
+            errors={uploadErrors}
+            totalSize={totalSize}
+            uploadedSize={uploadedSize}
+            onRetryFailed={retryFailedFiles}
+          />
+        </div>
+      )}
+
+      {/* Non-upload stages (manifest, ArNS update) */}
+      {deploying && selectedFolder && deployStage !== 'uploading' && (
         <div className="mt-4 p-4 bg-surface rounded-lg border border-turbo-red/20">
           <div className="space-y-4">
             {/* Stage Header */}
@@ -1128,14 +1153,12 @@ export default function DeploySitePanel() {
               <div className="flex items-center gap-2">
                 <Loader2 className="w-5 h-5 text-turbo-red animate-spin" />
                 <span className="font-medium text-fg-muted">
-                  {deployStage === 'uploading' && 'Uploading Files'}
                   {deployStage === 'manifest' && 'Creating Manifest'}
                   {deployStage === 'updating-arns' && 'Updating ArNS Name'}
                   {deployStage === 'complete' && 'Complete'}
                 </span>
               </div>
               <span className="text-sm text-link">
-                {deployStage === 'uploading' && `${Object.keys(fileProgress).filter(key => fileProgress[key] === 100).length} / ${selectedFolder.length} files`}
                 {deployStage === 'manifest' && 'Finalizing deployment...'}
                 {deployStage === 'updating-arns' && `Updating ${selectedUndername ? selectedUndername + '_' : ''}${selectedArnsName}.ar.io`}
                 {deployStage === 'complete' && 'Deployment complete!'}
@@ -1144,7 +1167,7 @@ export default function DeploySitePanel() {
 
             {/* Overall Progress Bar */}
             <div className="w-full bg-[#090909] rounded-full h-2 overflow-hidden">
-              <div 
+              <div
                 className="bg-turbo-red h-full transition-all duration-300"
                 style={{ width: `${deployProgress}%` }}
               />
@@ -1153,12 +1176,6 @@ export default function DeploySitePanel() {
             {/* Current File/Stage Info */}
             {(currentFile || deployStage === 'updating-arns') && (
               <div className="flex items-center gap-2 text-sm text-link">
-                {deployStage === 'uploading' && (
-                  <>
-                    <div className="w-2 h-2 bg-turbo-red rounded-full animate-pulse" />
-                    <span>Uploading: {currentFile}</span>
-                  </>
-                )}
                 {deployStage === 'manifest' && (
                   <>
                     <div className="w-2 h-2 bg-turbo-red rounded-full animate-pulse" />
@@ -1198,68 +1215,7 @@ export default function DeploySitePanel() {
               </div>
             )}
 
-            {/* Expandable File Progress List */}
-            {deployStage === 'uploading' && Object.keys(fileProgress).length > 0 && (
-              <details className="group">
-                <summary className="cursor-pointer text-sm text-link hover:text-fg-muted transition-colors flex items-center gap-2">
-                  <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform" />
-                  View Individual File Progress
-                </summary>
-                <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                  {Array.from(selectedFolder).map((file, index) => {
-                    const progress = fileProgress[file.name];
-                    const isComplete = progress === 100;
-                    const hasError = progress === -1;
-                    const isUploading = progress !== undefined && progress >= 0 && progress < 100;
-                    const cost = calculateUploadCost(file.size);
-                    const isFree = file.size < 100 * 1024;
-                    
-                    return (
-                      <div key={index} className="bg-[#090909] rounded p-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-medium truncate">{file.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs text-link text-right">
-                              <div>
-                                {file.size < 1024 
-                                  ? `${file.size}B` 
-                                  : file.size < 1024 * 1024 
-                                  ? `${(file.size / 1024).toFixed(1)}KB`
-                                  : `${(file.size / 1024 / 1024).toFixed(1)}MB`}
-                                {isFree && <span className="ml-2 text-turbo-green">• FREE</span>}
-                                {cost !== null && cost > 0 && (
-                                  <span className="ml-2">• {cost.toFixed(6)} Credits</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              {isComplete && <CheckCircle className="w-4 h-4 text-turbo-green ml-2" />}
-                              {hasError && <XCircle className="w-4 h-4 text-red-400 ml-2" />}
-                              {isUploading && <Loader2 className="w-4 h-4 text-turbo-red animate-spin ml-2" />}
-                              {progress === undefined && <div className="w-4 h-4 border border-link/30 rounded-full ml-2" />}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Individual File Progress Bar */}
-                        {progress !== undefined && progress >= 0 && (
-                          <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-300 ${
-                                hasError ? 'bg-red-400' : isComplete ? 'bg-turbo-green' : 'bg-turbo-red'
-                              }`}
-                              style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </details>
-            )}
+            {/* File progress details are now handled by UploadProgressSummary */}
           </div>
         </div>
       )}

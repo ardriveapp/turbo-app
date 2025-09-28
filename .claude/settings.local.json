@@ -38,7 +38,9 @@
       "Read(/mnt/c/source/turbo-gateway/Code/turbo-topup/src/panels/**)",
       "Read(//mnt/c/source/turbo-gateway/Code/**)",
       "Read(//mnt/c/source/turbo-gateway/Code/turbo-app/src/pages/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:docs.privy.io)"
     ],
     "deny": [],
     "ask": []

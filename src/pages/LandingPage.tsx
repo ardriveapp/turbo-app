@@ -317,7 +317,6 @@ const LandingPage = () => {
         {showWalletModal && (
           <WalletSelectionModal
             onClose={() => setShowWalletModal(false)}
-            message={''}
           />
         )}
       </div>

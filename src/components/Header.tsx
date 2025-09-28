@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock } from 'lucide-react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
@@ -11,6 +11,8 @@ import WalletSelectionModal from './modals/WalletSelectionModal';
 import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
 import { useNavigate } from 'react-router-dom';
 import { useTurboConfig } from '../hooks/useTurboConfig';
+import { usePrivyWallet } from '../hooks/usePrivyWallet';
+import { usePrivy } from '@privy-io/react-auth';
 
 // Services for logged-in users
 const accountServices = [
@@ -68,6 +70,8 @@ const Header = () => {
   const navigate = useNavigate();
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode } = useStore();
   const turboConfig = useTurboConfig();
+  const { isPrivyUser, privyLogout } = usePrivyWallet();
+  const { exportWallet } = usePrivy();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, profile, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
   
@@ -75,7 +79,6 @@ const Header = () => {
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
-  const [walletModalMessage, setWalletModalMessage] = useState('');
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
@@ -221,7 +224,6 @@ const Header = () => {
                         key={service.page}
                         onClick={() => {
                           close();
-                          setWalletModalMessage(`Connect your wallet to ${service.name.toLowerCase()}`);
                           setShowWalletModal(true);
                         }}
                         className="w-full flex items-center gap-3 py-2 px-4 text-sm text-link/60 hover:bg-canvas hover:text-fg-muted transition-colors group"
@@ -339,7 +341,7 @@ const Header = () => {
             <div className="px-6 py-4 border-b border-default">
               <div className="text-xs text-link mb-2">
                 {walletType === 'arweave' && 'Arweave Account'}
-                {walletType === 'ethereum' && 'Ethereum Account'}
+                {walletType === 'ethereum' && `Ethereum Account${isPrivyUser ? ' (Privy.io)' : ''}`}
                 {walletType === 'solana' && 'Solana Account'}
               </div>
               <div className="flex items-center justify-between">
@@ -387,12 +389,31 @@ const Header = () => {
               <User className="w-4 h-4" />
               My Account
             </button>
-            
+
+            {/* Export Wallet - Only show for Privy users */}
+            {isPrivyUser && (
+              <button
+                className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
+                onClick={async () => {
+                  try {
+                    // Export the Privy wallet - this opens Privy's secure modal
+                    await exportWallet();
+                    close(); // Close dropdown after export modal opens
+                  } catch {
+                    // Failed to export wallet
+                  }
+                }}
+              >
+                <Key className="w-4 h-4" />
+                Export Private Key
+              </button>
+            )}
+
             <button
               className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
               onClick={() => {
                 let explorerUrl = '';
-                
+
                 if (walletType === 'ethereum') {
                   explorerUrl = `https://etherscan.io/address/${address}`;
                 } else if (walletType === 'solana') {
@@ -401,7 +422,7 @@ const Header = () => {
                   // Default to Arweave
                   explorerUrl = `https://viewblock.io/arweave/address/${address}`;
                 }
-                
+
                 window.open(explorerUrl, '_blank');
               }}
             >
@@ -413,36 +434,40 @@ const Header = () => {
               className="px-6 py-3 font-semibold text-red-400 hover:bg-canvas hover:text-red-300 border-t border-default transition-colors"
               onClick={async () => {
                 try {
-                  // Disconnect from the actual wallet extension based on wallet type
-                  if (walletType === 'arweave' && window.arweaveWallet) {
-                    await window.arweaveWallet.disconnect();
-                    console.log('Disconnected from Wander wallet');
-                  } else if (walletType === 'ethereum') {
-                    // For Ethereum wallets, we should clear the connection
-                    // Note: MetaMask doesn't have a direct disconnect method
-                    // The connection is managed by wagmi
-                    console.log('Clearing Ethereum wallet connection');
-                  } else if (walletType === 'solana' && window.solana) {
-                    // Properly disconnect Solana wallet to prevent conflicts
-                    try {
-                      if (window.solana.isConnected) {
-                        await window.solana.disconnect();
-                        console.log('Disconnected from Solana wallet');
+                  // Check if this is a Privy user and handle logout differently
+                  if (isPrivyUser) {
+                    await privyLogout();
+                  } else {
+                    // Disconnect from the actual wallet extension based on wallet type
+                    if (walletType === 'arweave' && window.arweaveWallet) {
+                      await window.arweaveWallet.disconnect();
+                    } else if (walletType === 'ethereum') {
+                      // For Ethereum wallets, we should clear the connection
+                      // Note: MetaMask doesn't have a direct disconnect method
+                      // The connection is managed by wagmi
+                    } else if (walletType === 'solana' && window.solana) {
+                      // Properly disconnect Solana wallet to prevent conflicts
+                      try {
+                        if (window.solana.isConnected) {
+                          await window.solana.disconnect();
+                        }
+                      } catch {
+                        // Solana wallet disconnect failed, continue anyway
                       }
-                    } catch (solanaError) {
-                      console.log('Solana wallet disconnect failed:', solanaError);
                     }
                   }
-                } catch (disconnectError) {
-                  console.log('Error disconnecting from wallet extension:', disconnectError);
+                } catch {
+                  // Error disconnecting from wallet extension, continue anyway
                 }
-                
-                // Always clear our app state
-                clearAllPaymentState();
-                clearAddress();
+
+                // Always clear our app state (unless Privy already handled it)
+                if (!isPrivyUser) {
+                  clearAllPaymentState();
+                  clearAddress();
+                }
               }}
             >
-              Disconnect
+              {isPrivyUser ? 'Logout' : 'Disconnect'}
             </button>
               </>
             )}
@@ -454,7 +479,6 @@ const Header = () => {
       {!address && (
         <button
           onClick={() => {
-            setWalletModalMessage('');
             setShowWalletModal(true);
           }}
           className="flex items-center gap-2 bg-fg-muted text-black px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-fg-muted/90 transition-colors mr-2 sm:mr-0"
@@ -469,9 +493,7 @@ const Header = () => {
         <WalletSelectionModal
           onClose={() => {
             setShowWalletModal(false);
-            setWalletModalMessage('');
           }}
-          message={walletModalMessage}
         />
       )}
     </div>

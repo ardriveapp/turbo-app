@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { 
-  TurboFactory, 
+import {
+  TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   SolanaWalletAdapter
@@ -10,6 +10,7 @@ import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { useTurboConfig } from './useTurboConfig';
+import { useWallets } from '@privy-io/react-auth';
 
 interface UploadResult {
   id: string;
@@ -21,13 +22,43 @@ interface UploadResult {
   receipt?: any; // Store the full receipt response
 }
 
+export interface ActiveUpload {
+  name: string;
+  progress: number;
+  size: number;
+}
+
+export interface RecentFile {
+  name: string;
+  size: number;
+  status: 'success' | 'error';
+  error?: string;
+  timestamp: number;
+}
+
+export interface UploadError {
+  fileName: string;
+  error: string;
+  retryable: boolean;
+}
+
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const turboConfig = useTurboConfig();
+  const { wallets } = useWallets(); // Get Privy wallets
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadedCount, setUploadedCount] = useState<number>(0);
+  const [totalFilesCount, setTotalFilesCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
+  const [activeUploads, setActiveUploads] = useState<ActiveUpload[]>([]);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const [uploadErrors, setUploadErrors] = useState<UploadError[]>([]);
+  const [totalSize, setTotalSize] = useState<number>(0);
+  const [uploadedSize, setUploadedSize] = useState<number>(0);
+  const [failedFiles, setFailedFiles] = useState<File[]>([]);
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
@@ -73,21 +104,40 @@ export function useFileUpload() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          // Creating Ethereum walletAdapter
+          // Create ethers provider and get the signer
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        // Creating Ethereum walletAdapter
-        // Create ethers provider and get the signer
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
@@ -132,7 +182,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, turboConfig, validateWalletState]);
+  }, [walletType, wallets, turboConfig, validateWalletState]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!address) {
@@ -198,42 +248,128 @@ export function useFileUpload() {
   const uploadMultipleFiles = useCallback(async (files: File[]) => {
     // Validate wallet state before any operations
     validateWalletState();
-    
+
     setUploading(true);
     setErrors({});
     setUploadResults([]);
-    
+    setUploadedCount(0);
+    setTotalFilesCount(files.length);
+    setFailedCount(0);
+    setActiveUploads([]);
+    setRecentFiles([]);
+    setUploadErrors([]);
+    setFailedFiles([]);
+
+    // Calculate total size
+    const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
+    setTotalSize(totalSizeBytes);
+    setUploadedSize(0);
+
     const results: UploadResult[] = [];
-    const failedFiles: string[] = [];
+    const failedFileNames: string[] = [];
 
     for (const file of files) {
       try {
+        // Add to active uploads
+        setActiveUploads(prev => [
+          ...prev.filter(u => u.name !== file.name),
+          { name: file.name, progress: 0, size: file.size }
+        ]);
+
         // Starting upload for file
         const result = await uploadFile(file);
+
+        // Remove from active uploads
+        setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+
+        // Add to recent files
+        setRecentFiles(prev => [
+          {
+            name: file.name,
+            size: file.size,
+            status: 'success' as const,
+            timestamp: Date.now()
+          },
+          ...prev
+        ].slice(0, 20)); // Keep last 20
+
         // Upload completed for file
         results.push(result);
         setUploadResults(prev => [...prev, result]);
+        setUploadedCount(prev => prev + 1);
+        setUploadedSize(prev => prev + file.size);
+
       } catch (error) {
+        // Remove from active uploads
+        setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+
+        // Add to recent files as error
+        setRecentFiles(prev => [
+          {
+            name: file.name,
+            size: file.size,
+            status: 'error' as const,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: Date.now()
+          },
+          ...prev
+        ].slice(0, 20));
+
+        // Add to upload errors
+        setUploadErrors(prev => [
+          ...prev,
+          {
+            fileName: file.name,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            retryable: true
+          }
+        ]);
+
         // Failed to upload file
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         setErrors(prev => ({ ...prev, [file.name]: errorMessage }));
-        failedFiles.push(file.name);
-        
+        failedFileNames.push(file.name);
+        setFailedFiles(prev => [...prev, file]);
+        setFailedCount(prev => prev + 1);
+        setUploadedCount(prev => prev + 1); // Still count as processed
+
         // Error details logged for debugging
       }
     }
 
     setUploading(false);
     // Upload summary processed
-    return { results, failedFiles };
-  }, [uploadFile]);
+    return { results, failedFiles: failedFileNames };
+  }, [uploadFile, validateWalletState]);
 
   const reset = useCallback(() => {
     setUploadProgress({});
     setUploadResults([]);
     setErrors({});
     setUploading(false);
+    setUploadedCount(0);
+    setTotalFilesCount(0);
+    setFailedCount(0);
+    setActiveUploads([]);
+    setRecentFiles([]);
+    setUploadErrors([]);
+    setTotalSize(0);
+    setUploadedSize(0);
+    setFailedFiles([]);
   }, []);
+
+  // Retry failed files
+  const retryFailedFiles = useCallback(async () => {
+    if (failedFiles.length === 0) return;
+
+    // Reset failed state and retry the failed files
+    const filesToRetry = [...failedFiles];
+    setFailedFiles([]);
+    setUploadErrors([]);
+    setFailedCount(0);
+
+    return await uploadMultipleFiles(filesToRetry);
+  }, [failedFiles, uploadMultipleFiles]);
 
   return {
     uploadFile,
@@ -243,5 +379,14 @@ export function useFileUpload() {
     uploadResults,
     errors,
     reset,
+    uploadedCount,
+    totalFilesCount,
+    failedCount,
+    activeUploads,
+    recentFiles,
+    uploadErrors,
+    totalSize,
+    uploadedSize,
+    retryFailedFiles,
   };
 }

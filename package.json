@@ -1,6 +1,6 @@
 {
   "name": "turbo-gateway-app",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "description": "Unified Turbo Gateway Application",
   "scripts": {
@@ -20,6 +20,7 @@
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
     "@permaweb/aoconnect": "^0.0.69",
+    "@privy-io/react-auth": "^3.0.1",
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@solana/wallet-adapter-base": "^0.9.23",

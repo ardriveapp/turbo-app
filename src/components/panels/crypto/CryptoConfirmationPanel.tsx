@@ -6,6 +6,7 @@ import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, win
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import TurboLogo from '../../TurboLogo';
+import { useWallets } from '@privy-io/react-auth';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -21,6 +22,7 @@ export default function CryptoConfirmationPanel({
   onPaymentComplete
 }: CryptoConfirmationPanelProps) {
   const { address, walletType } = useStore();
+  const { wallets } = useWallets(); // Get Privy wallets
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   
@@ -101,63 +103,92 @@ export default function CryptoConfirmationPanel({
             tokenType,
             transactionId: result.id,
           });
-        } else if (walletType === 'ethereum' && window.ethereum && (tokenType === 'ethereum' || tokenType === 'base-eth')) {
+        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) {
           // ETH L1/Base ETH direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
-          let provider = new ethers.BrowserProvider(window.ethereum);
-          let signer = await provider.getSigner();
+
+          // Check if this is a Privy embedded wallet
+          const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+          let provider;
+          let signer;
+
+          if (privyWallet) {
+            // Use Privy embedded wallet
+            const privyProvider = await privyWallet.getEthereumProvider();
+            provider = new ethers.BrowserProvider(privyProvider);
+            signer = await provider.getSigner();
+          } else if (window.ethereum) {
+            // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+            provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+          } else {
+            throw new Error('No Ethereum wallet available');
+          }
           
           // Network validation and auto-switching
           const network = await provider.getNetwork();
           const expectedChainId = tokenType === 'ethereum' ? 1 : 8453; // Mainnet vs Base
           
-          console.log('Connected to network:', network.name, 'Chain ID:', Number(network.chainId));
-          console.log('Expected chain for', tokenType, ':', expectedChainId);
           
           // Auto-switch network if needed
           if (Number(network.chainId) !== expectedChainId) {
-            if (tokenType === 'base-eth') {
+            if (privyWallet) {
+              // Privy wallets use their own switchChain method
               try {
-                console.log('Auto-switching to Base network...');
-                await window.ethereum.request({
-                  method: 'wallet_switchEthereumChain',
-                  params: [{ chainId: '0x2105' }], // Hex for 8453 (Base)
-                });
+                await privyWallet.switchChain(expectedChainId);
+                // Wait for switch to complete
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Create fresh provider after switch
-                provider = new ethers.BrowserProvider(window.ethereum);
+
+                // Re-create provider and signer after switch
+                const newPrivyProvider = await privyWallet.getEthereumProvider();
+                provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
-                console.log('Successfully switched to Base network');
               } catch {
-                throw new Error(`Please switch to Base Network in MetaMask for Base ETH payments.`);
+                if (tokenType === 'base-eth') {
+                  throw new Error('Failed to switch to Base network. Please try again.');
+                } else {
+                  throw new Error('Failed to switch to Ethereum Mainnet. Please try again.');
+                }
               }
-            } else if (tokenType === 'ethereum') {
-              try {
-                console.log('Auto-switching to Ethereum Mainnet...');
-                await window.ethereum.request({
-                  method: 'wallet_switchEthereumChain',
-                  params: [{ chainId: '0x1' }], // Hex for 1 (Ethereum Mainnet)
-                });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Create fresh provider after switch
-                provider = new ethers.BrowserProvider(window.ethereum);
-                signer = await provider.getSigner();
-                console.log('Successfully switched to Ethereum Mainnet');
-              } catch {
-                throw new Error(`Please switch to Ethereum Mainnet in MetaMask for ETH L1 payments.`);
+            } else if (window.ethereum) {
+              // Only attempt auto-switching for regular wallets
+              if (tokenType === 'base-eth') {
+                try {
+                  await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x2105' }], // Hex for 8453 (Base)
+                  });
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                  // Create fresh provider after switch
+                  provider = new ethers.BrowserProvider(window.ethereum);
+                  signer = await provider.getSigner();
+                } catch {
+                  throw new Error(`Please switch to Base Network in your wallet for Base ETH payments.`);
+                }
+              } else if (tokenType === 'ethereum') {
+                try {
+                  await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x1' }], // Hex for 1 (Ethereum Mainnet)
+                  });
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                  // Create fresh provider after switch
+                  provider = new ethers.BrowserProvider(window.ethereum);
+                  signer = await provider.getSigner();
+                } catch {
+                  throw new Error(`Please switch to Ethereum Mainnet in your wallet for ETH L1 payments.`);
+                }
               }
             }
           }
           
-          // Log balance info for debugging
+          // Get wallet balance for validation
           const balance = await provider.getBalance(await signer.getAddress());
-          console.log('Wallet balance:', ethers.formatEther(balance), 'ETH');
-          console.log('Trying to send:', cryptoAmount, tokenLabels[tokenType]);
           
           // ETH L1/Base ETH direct payment using walletAdapter (native SDK support)
-          console.log('Creating authenticated client for', tokenType, 'using walletAdapter pattern');
           const turbo = TurboFactory.authenticated({
             token: tokenType,
             walletAdapter: {
@@ -169,7 +200,6 @@ export default function CryptoConfirmationPanel({
           });
 
           const tokenAmount = ETHToTokenAmount(cryptoAmount); // Convert to wei
-          console.log('Token amount (wei):', tokenAmount.toString());
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,

@@ -31,22 +31,23 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Fix for WalletConnect resolution issues
-      '@walletconnect/ethereum-provider': path.resolve(
-        __dirname,
-        'node_modules/@walletconnect/ethereum-provider/dist/index.es.js'
-      ),
     },
   },
   optimizeDeps: {
-    exclude: ['@walletconnect/ethereum-provider'],
     include: [
+      '@privy-io/react-auth',
+      '@walletconnect/ethereum-provider',
       '@walletconnect/modal',
       '@walletconnect/sign-client',
       '@walletconnect/utils',
-      'stream',
-      'crypto',
+      '@walletconnect/environment',
+      '@walletconnect/jsonrpc-utils',
     ],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
   },
   server: {
     port: 3000,

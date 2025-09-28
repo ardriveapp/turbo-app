@@ -8,6 +8,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { Elements } from '@stripe/react-stripe-js';
 import { STRIPE_PROMISE } from '../services/paymentService';
+import { PrivyProvider } from '@privy-io/react-auth';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 // Configure Wagmi for Ethereum wallets
@@ -45,18 +46,42 @@ interface WalletProvidersProps {
 
 export function WalletProviders({ children }: WalletProvidersProps) {
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <ConnectionProvider endpoint={import.meta.env.VITE_SOLANA_RPC || 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/'}>
-          <WalletProvider wallets={solanaWallets} autoConnect={false}>
-            <WalletModalProvider>
-              <Elements stripe={STRIPE_PROMISE}>
-                {children}
-              </Elements>
-            </WalletModalProvider>
-          </WalletProvider>
-        </ConnectionProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <PrivyProvider
+      appId={import.meta.env.VITE_PRIVY_APP_ID || 'cmfbrom1o000njr0bdhjvtaza'}
+      config={{
+        embeddedWallets: {
+          ethereum: {
+            createOnLogin: 'all-users', // Create wallet for all users who log in
+          },
+          // Disable wallet UIs to prevent signature prompts during file uploads
+          showWalletUIs: false,
+        },
+        loginMethods: ['email'], // Email-only, no wallet connections through Privy
+        appearance: {
+          theme: 'dark',
+          accentColor: '#FE0230', // Turbo red
+          showWalletLoginFirst: false,
+        },
+        // Only set WalletConnect project ID if it's actually configured
+        ...(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID &&
+            import.meta.env.VITE_WALLETCONNECT_PROJECT_ID !== 'YOUR_WALLETCONNECT_PROJECT_ID'
+            ? { walletConnectCloudProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID }
+            : {}),
+      }}
+    >
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <ConnectionProvider endpoint={import.meta.env.VITE_SOLANA_RPC || 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/'}>
+            <WalletProvider wallets={solanaWallets} autoConnect={false}>
+              <WalletModalProvider>
+                <Elements stripe={STRIPE_PROMISE}>
+                  {children}
+                </Elements>
+              </WalletModalProvider>
+            </WalletProvider>
+          </ConnectionProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </PrivyProvider>
   );
 }

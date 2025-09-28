@@ -10,6 +10,7 @@ import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { usePrimaryArNSName } from '../../hooks/usePrimaryArNSName';
 import CopyButton from '../CopyButton';
+import { useWallets } from '@privy-io/react-auth';
 
 interface BalanceResult {
   address: string;
@@ -44,6 +45,7 @@ interface BalanceResult {
 export default function BalanceCheckerPanel() {
   const { address: connectedAddress, walletType } = useStore();
   const turboConfig = useTurboConfig();
+  const { wallets } = useWallets(); // Get Privy wallets
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -75,19 +77,38 @@ export default function BalanceCheckerPanel() {
         });
         
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          // Use Privy embedded wallet
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
+        } else {
+          // Fallback to regular Ethereum wallet
+          if (!window.ethereum) {
+            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
+          }
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const ethersSigner = await ethersProvider.getSigner();
+
+          return TurboFactory.authenticated({
+            token: "ethereum",
+            walletAdapter: {
+              getSigner: () => ethersSigner as any,
+            },
+            ...turboConfig,
+          });
         }
-        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-        const ethersSigner = await ethersProvider.getSigner();
-        
-        return TurboFactory.authenticated({
-          token: "ethereum",
-          walletAdapter: {
-            getSigner: () => ethersSigner as any,
-          },
-          ...turboConfig,
-        });
         
       case 'solana':
         if (!window.solana) {
@@ -113,7 +134,7 @@ export default function BalanceCheckerPanel() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [connectedAddress, walletType, turboConfig]);
+  }, [connectedAddress, walletType, turboConfig, wallets]);
 
   // Load recent searches from localStorage and check for pre-filled address
   useEffect(() => {
