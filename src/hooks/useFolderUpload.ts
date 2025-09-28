@@ -54,7 +54,7 @@ export function useFolderUpload() {
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
   const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
-  const [deployStage, setDeployStage] = useState<'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete'>('idle');
+  const [deployStage, setDeployStage] = useState<'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete' | 'cancelled'>('idle');
   const [currentFile, setCurrentFile] = useState<string>('');
   const [deployResults, setDeployResults] = useState<DeployResult[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,6 +67,7 @@ export function useFolderUpload() {
   const [totalSize, setTotalSize] = useState<number>(0);
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
+  const [isCancelled, setIsCancelled] = useState<boolean>(false);
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
@@ -311,6 +312,7 @@ export function useFolderUpload() {
     setRecentFiles([]);
     setUploadErrors([]);
     setFailedFiles([]);
+    setIsCancelled(false);
 
     // Calculate total size
     const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
@@ -343,6 +345,13 @@ export function useFolderUpload() {
 
       // Process files in batches
       for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        // Check if cancelled
+        if (isCancelled) {
+          setDeploying(false);
+          setActiveUploads([]);
+          return { results: fileUploadResults, failedFileNames: [] };
+        }
+
         const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
 
         // Upload batch concurrently
@@ -600,6 +609,7 @@ export function useFolderUpload() {
     setTotalSize(0);
     setUploadedSize(0);
     setFailedFiles([]);
+    setIsCancelled(false);
     // Don't clear results in reset - that's now separate
   }, []);
 
@@ -607,11 +617,11 @@ export function useFolderUpload() {
     setDeployResults([]);
   }, []);
 
-  const updateDeployStage = useCallback((stage: 'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete') => {
+  const updateDeployStage = useCallback((stage: 'idle' | 'uploading' | 'manifest' | 'updating-arns' | 'complete' | 'cancelled') => {
     setDeployStage(stage);
-    
-    // Keep deploying true during ArNS updates, only set false on complete
-    if (stage === 'complete') {
+
+    // Keep deploying true during ArNS updates, only set false on complete or cancelled
+    if (stage === 'complete' || stage === 'cancelled') {
       setDeploying(false);
     } else if (stage !== 'idle') {
       setDeploying(true);
@@ -630,6 +640,14 @@ export function useFolderUpload() {
     // This would call deployFolder with just the failed files
     // Implementation depends on how you want to handle partial retries
   }, [failedFiles]);
+
+  // Cancel ongoing uploads
+  const cancelUploads = useCallback(() => {
+    setIsCancelled(true);
+    setDeploying(false);
+    setActiveUploads([]);
+    setDeployStage('cancelled');
+  }, []);
 
   return {
     deployFolder,
@@ -652,5 +670,6 @@ export function useFolderUpload() {
     totalSize,
     uploadedSize,
     retryFailedFiles,
+    cancelUploads,
   };
 }

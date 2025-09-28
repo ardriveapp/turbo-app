@@ -59,6 +59,7 @@ export function useFileUpload() {
   const [totalSize, setTotalSize] = useState<number>(0);
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
+  const [isCancelled, setIsCancelled] = useState<boolean>(false);
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
@@ -259,6 +260,7 @@ export function useFileUpload() {
     setRecentFiles([]);
     setUploadErrors([]);
     setFailedFiles([]);
+    setIsCancelled(false);
 
     // Calculate total size
     const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
@@ -269,6 +271,13 @@ export function useFileUpload() {
     const failedFileNames: string[] = [];
 
     for (const file of files) {
+      // Check if cancelled
+      if (isCancelled) {
+        setUploading(false);
+        setActiveUploads([]);
+        return { results, failedFiles: failedFileNames };
+      }
+
       try {
         // Add to active uploads
         setActiveUploads(prev => [
@@ -356,6 +365,7 @@ export function useFileUpload() {
     setTotalSize(0);
     setUploadedSize(0);
     setFailedFiles([]);
+    setIsCancelled(false);
   }, []);
 
   // Retry failed files
@@ -370,6 +380,13 @@ export function useFileUpload() {
 
     return await uploadMultipleFiles(filesToRetry);
   }, [failedFiles, uploadMultipleFiles]);
+
+  // Cancel ongoing uploads
+  const cancelUploads = useCallback(() => {
+    setIsCancelled(true);
+    setUploading(false);
+    setActiveUploads([]);
+  }, []);
 
   return {
     uploadFile,
@@ -388,5 +405,6 @@ export function useFileUpload() {
     totalSize,
     uploadedSize,
     retryFailedFiles,
+    cancelUploads,
   };
 }

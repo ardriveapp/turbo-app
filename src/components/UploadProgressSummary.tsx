@@ -9,7 +9,8 @@ import {
   RefreshCw,
   FileText,
   Clock,
-  HardDrive
+  HardDrive,
+  X
 } from 'lucide-react';
 
 export interface ActiveUpload {
@@ -42,6 +43,7 @@ interface UploadProgressSummaryProps {
   totalSize: number;
   uploadedSize: number;
   onRetryFailed?: () => void;
+  onCancel?: () => void;
   compact?: boolean;
   className?: string;
 }
@@ -56,12 +58,12 @@ export default function UploadProgressSummary({
   totalSize,
   uploadedSize,
   onRetryFailed,
+  onCancel,
   compact = false,
   className = ''
 }: UploadProgressSummaryProps) {
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [showErrors, setShowErrors] = useState(true);
-  const [showRecent, setShowRecent] = useState(true);
 
   const inProgressCount = activeUploads.length;
   const successCount = uploadedCount - failedCount;
@@ -176,137 +178,121 @@ export default function UploadProgressSummary({
         </div>
       </div>
 
-      {/* Active Uploads */}
-      {activeUploads.length > 0 && (
+      {/* Active Uploads - Fixed height to prevent jumping */}
+      {(activeUploads.length > 0 || uploadedCount < totalCount) && (
         <div className="bg-surface rounded-xl border border-default p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-turbo-red animate-spin" />
-              Currently Uploading ({activeUploads.length})
+              {activeUploads.length > 0 ? (
+                <>
+                  <Loader2 className="w-4 h-4 text-turbo-red animate-spin" />
+                  Currently Uploading ({activeUploads.length})
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4 text-link" />
+                  Waiting to Upload
+                </>
+              )}
             </h4>
+            {onCancel && activeUploads.length > 0 && (
+              <button
+                onClick={onCancel}
+                className="px-3 py-1 rounded-lg border border-red-400/50 text-xs font-medium text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-1"
+                title="Cancel all uploads"
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </button>
+            )}
           </div>
-          <div className="space-y-2">
-            {activeUploads.slice(0, 5).map((file, index) => (
-              <div key={index} className="bg-canvas rounded-lg p-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-fg-muted truncate max-w-[60%]">
-                    {file.name}
-                  </span>
-                  <span className="text-xs text-link">
-                    {file.progress}% • {formatSize(file.size)}
-                  </span>
-                </div>
-                <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-turbo-red h-full transition-all duration-300"
-                    style={{ width: `${file.progress}%` }}
-                  />
-                </div>
+          <div className="space-y-2 min-h-[120px]">
+            {activeUploads.length > 0 ? (
+              <>
+                {activeUploads.slice(0, 5).map((file, index) => (
+                  <div key={index} className="bg-canvas rounded-lg p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-fg-muted truncate max-w-[60%]">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-link">
+                        {file.progress}% • {formatSize(file.size)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-turbo-red h-full transition-all duration-300"
+                        style={{ width: `${file.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {activeUploads.length > 5 && (
+                  <p className="text-xs text-link text-center">
+                    +{activeUploads.length - 5} more uploading...
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-[100px] text-sm text-link">
+                {uploadedCount === totalCount ? 'All uploads complete!' : 'Processing queue...'}
               </div>
-            ))}
-            {activeUploads.length > 5 && (
-              <p className="text-xs text-link text-center">
-                +{activeUploads.length - 5} more uploading...
-              </p>
             )}
           </div>
         </div>
       )}
 
-      {/* Recent Completions & Errors Side by Side */}
-      <div className={`grid grid-cols-1 ${recentFiles.length > 0 && errors.length > 0 ? 'lg:grid-cols-2' : ''} gap-4`}>
-        {/* Recent Completions */}
-        {recentFiles.length > 0 && (
-          <div className="bg-surface rounded-xl border border-default p-4">
-            <button
-              onClick={() => setShowRecent(!showRecent)}
-              className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
-            >
-              <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-                <Clock className="w-4 h-4 text-link" />
-                Recent Completions ({recentFiles.length})
-              </h4>
-              {showRecent ? (
-                <ChevronUp className="w-4 h-4 text-link" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
-              )}
-            </button>
+      {/* Errors */}
+      {errors.length > 0 && (
+        <div className="bg-surface rounded-xl border border-red-400/20 p-4">
+          <button
+            onClick={() => setShowErrors(!showErrors)}
+            className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
+          >
+            <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              Upload Errors ({errors.length})
+            </h4>
+            {showErrors ? (
+              <ChevronUp className="w-4 h-4 text-link" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-link" />
+            )}
+          </button>
 
-            {showRecent && (
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {recentFiles.slice(0, 10).map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 py-1">
-                    {file.status === 'success' ? (
-                      <CheckCircle className="w-3 h-3 text-turbo-green flex-shrink-0" />
-                    ) : (
-                      <XCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
-                    )}
-                    <span className="text-xs text-fg-muted truncate flex-1">
-                      {file.name}
-                    </span>
-                    <span className="text-xs text-link">
-                      {formatSize(file.size)}
-                    </span>
+          {showErrors && (
+            <>
+              <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
+                {errors.slice(0, 10).map((error, index) => (
+                  <div key={index} className="bg-canvas/50 rounded p-2">
+                    <p className="text-xs font-medium text-fg-muted truncate">
+                      {error.fileName}
+                    </p>
+                    <p className="text-xs text-red-400 mt-1">
+                      {error.error}
+                    </p>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Errors */}
-        {errors.length > 0 && (
-          <div className="bg-surface rounded-xl border border-red-400/20 p-4">
-            <button
-              onClick={() => setShowErrors(!showErrors)}
-              className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
-            >
-              <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-                Upload Errors ({errors.length})
-              </h4>
-              {showErrors ? (
-                <ChevronUp className="w-4 h-4 text-link" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
-              )}
-            </button>
-
-            {showErrors && (
-              <>
-                <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
-                  {errors.slice(0, 10).map((error, index) => (
-                    <div key={index} className="bg-canvas/50 rounded p-2">
-                      <p className="text-xs font-medium text-fg-muted truncate">
-                        {error.fileName}
-                      </p>
-                      <p className="text-xs text-red-400 mt-1">
-                        {error.error}
-                      </p>
-                    </div>
-                  ))}
-                  {errors.length > 10 && (
-                    <p className="text-xs text-link text-center">
-                      +{errors.length - 10} more errors
-                    </p>
-                  )}
-                </div>
-
-                {onRetryFailed && errors.some(e => e.retryable) && (
-                  <button
-                    onClick={onRetryFailed}
-                    className="w-full py-2 px-3 rounded-lg bg-turbo-red text-white text-sm font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Retry Failed Uploads
-                  </button>
+                {errors.length > 10 && (
+                  <p className="text-xs text-link text-center">
+                    +{errors.length - 10} more errors
+                  </p>
                 )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+              </div>
+
+              {onRetryFailed && errors.some(e => e.retryable) && (
+                <button
+                  onClick={onRetryFailed}
+                  className="w-full py-2 px-3 rounded-lg bg-turbo-red text-white text-sm font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry Failed Uploads
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* View All Files Button */}
       {totalCount > 20 && (

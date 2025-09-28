@@ -37,7 +37,8 @@ export default function UploadPanel() {
     uploadErrors,
     totalSize,
     uploadedSize,
-    retryFailedFiles
+    retryFailedFiles,
+    cancelUploads
   } = useFileUpload();
   const { 
     checkUploadStatus, 
@@ -467,6 +468,7 @@ export default function UploadPanel() {
             totalSize={totalSize}
             uploadedSize={uploadedSize}
             onRetryFailed={retryFailedFiles}
+            onCancel={cancelUploads}
             compact={totalFilesCount <= 10} // Use compact mode for small uploads
           />
         </div>
