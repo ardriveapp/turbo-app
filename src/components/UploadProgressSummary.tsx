@@ -214,7 +214,7 @@ export default function UploadProgressSummary({
       )}
 
       {/* Recent Completions & Errors Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 ${recentFiles.length > 0 && errors.length > 0 ? 'lg:grid-cols-2' : ''} gap-4`}>
         {/* Recent Completions */}
         {recentFiles.length > 0 && (
           <div className="bg-surface rounded-xl border border-default p-4">
