@@ -2018,7 +2018,7 @@ export default function DeploySitePanel() {
           onConfirm={handleConfirmDeploy}
           folderName={folderName}
           fileCount={selectedFolder.length}
-          totalSize={totalSize}
+          totalSize={totalFileSize}
           totalCost={totalCost}
           indexFile={indexFile}
           fallbackFile={fallbackFile}
