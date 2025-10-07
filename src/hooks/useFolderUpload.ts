@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
@@ -68,6 +68,7 @@ export function useFolderUpload() {
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
   const [isCancelled, setIsCancelled] = useState<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
@@ -255,21 +256,48 @@ export function useFolderUpload() {
     turbo: TurboAuthenticatedClient,
     file: File,
     folderPath: string,
+    signal: AbortSignal,
     maxRetries = 3
   ): Promise<any> => {
     let lastError;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Check if already cancelled before retry
+      if (signal.aborted) {
+        throw new Error('Upload cancelled');
+      }
+
       try {
         // Add timeout wrapper for upload
         const uploadPromise = turbo.uploadFile({
           file: file,
+          signal: signal, // Pass the abort signal to the SDK
           dataItemOpts: {
             tags: [
               { name: 'Content-Type', value: getContentType(file) },
               { name: 'File-Path', value: file.webkitRelativePath || file.name },
               { name: 'App-Name', value: 'Turbo-Deploy' }
             ]
+          },
+          events: {
+            // Track progress for individual files
+            onProgress: ({ totalBytes, processedBytes }) => {
+              const percentage = Math.round((processedBytes / totalBytes) * 100);
+              setFileProgress(prev => ({ ...prev, [file.name]: percentage }));
+              // Update active upload progress
+              setActiveUploads(prev => prev.map(u =>
+                u.name === file.name ? { ...u, progress: percentage } : u
+              ));
+            },
+            onError: (error: any) => {
+              console.error(`Upload error for ${file.name}:`, error);
+            },
+            onSuccess: () => {
+              // Progress is already tracked by onProgress, just ensure it's at 100%
+              setActiveUploads(prev => prev.map(u =>
+                u.name === file.name ? { ...u, progress: 100 } : u
+              ));
+            }
           }
         });
 
@@ -293,7 +321,7 @@ export function useFolderUpload() {
     }
 
     throw lastError || new Error(`Failed to upload ${file.name} after ${maxRetries} attempts`);
-  }, [getContentType]);
+  }, [getContentType, setFileProgress, setActiveUploads]);
 
   const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
     // Validate wallet state before any operations
@@ -313,6 +341,10 @@ export function useFolderUpload() {
     setUploadErrors([]);
     setFailedFiles([]);
     setIsCancelled(false);
+
+    // Create a new AbortController for this deployment
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     // Calculate total size
     const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
@@ -354,14 +386,24 @@ export function useFolderUpload() {
 
         const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
 
+        // Clear completed files from previous batch and add new batch files
+        // This ensures smooth transition without empty state
+        setActiveUploads(prev => {
+          // Remove files at 100% or failed (-1) from previous batches
+          const stillUploading = prev.filter(u => u.progress > 0 && u.progress < 100);
+          // Add all files from new batch
+          const newFiles = batch.map(file => ({
+            name: file.name,
+            progress: 0,
+            size: file.size
+          }));
+          // Combine and limit to reasonable size
+          return [...stillUploading, ...newFiles].slice(-10);
+        });
+
         // Upload batch concurrently
         const batchPromises = batch.map(async (file) => {
           try {
-            // Add to active uploads
-            setActiveUploads(prev => [
-              ...prev.filter(u => u.name !== file.name),
-              { name: file.name, progress: 0, size: file.size }
-            ].slice(0, 10)); // Keep max 10 active uploads in display
 
             // Set current file being uploaded
             setCurrentFile(file.name);
@@ -379,13 +421,14 @@ export function useFolderUpload() {
             });
 
             // Upload with retry logic and timeout
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath);
+            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal);
 
-            // Mark file as complete
-            setFileProgress(prev => ({ ...prev, [file.name]: 100 }));
+            // Mark file as complete in active uploads (keep at 100%)
+            setActiveUploads(prev => prev.map(u =>
+              u.name === file.name ? { ...u, progress: 100 } : u
+            ));
 
-            // Remove from active uploads
-            setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+            // Don't remove completed files - they'll be cleared when next batch starts
 
             // Add to recent files (keep last 20)
             setRecentFiles(prev => [
@@ -412,14 +455,23 @@ export function useFolderUpload() {
 
             return { success: true, file };
 
-          } catch (fileError) {
+          } catch (fileError: any) {
+            // Check if error is due to cancellation
+            if (fileError.message === 'Upload cancelled' || controller.signal.aborted) {
+              // Don't log cancellation as an error, just skip
+              return null;
+            }
             // Mark file as failed but continue with other files
             console.error(`Failed to upload ${file.name}:`, fileError);
             setFileProgress(prev => ({ ...prev, [file.name]: -1 })); // -1 indicates error
             setErrors(prev => ({ ...prev, [file.name]: fileError instanceof Error ? fileError.message : 'Upload failed' }));
 
-            // Remove from active uploads
-            setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+            // Mark as failed in active uploads (set to -1 to indicate error)
+            setActiveUploads(prev => prev.map(u =>
+              u.name === file.name ? { ...u, progress: -1 } : u
+            ));
+
+            // Don't remove failed files - they'll be cleared when next batch starts
 
             // Add to recent files as error
             setRecentFiles(prev => [
@@ -458,10 +510,20 @@ export function useFolderUpload() {
         // Wait for batch to complete before starting next batch
         await Promise.allSettled(batchPromises);
 
+        // Check again if cancelled after batch completes
+        if (isCancelled || controller.signal.aborted) {
+          setDeploying(false);
+          setActiveUploads([]);
+          abortControllerRef.current = null;
+          return { results: fileUploadResults, failedFileNames: [] };
+        }
+
         // Check if we should abort due to too many failures
         if (failedUploads.length > totalFiles * 0.1) { // Stop if more than 10% failed
           throw new Error(`Too many upload failures (${failedUploads.length}/${totalFiles}). Stopping deployment.`);
         }
+
+        // No need to pre-add files anymore - the UI handles transitions smoothly
       }
 
       // If some files failed but not too many, log them but continue
@@ -473,10 +535,21 @@ export function useFolderUpload() {
         }
       }
       
+      // Check if cancelled before manifest creation
+      if (isCancelled || controller.signal.aborted) {
+        setDeploying(false);
+        setActiveUploads([]);
+        abortControllerRef.current = null;
+        return { results: fileUploadResults, failedFileNames: [] };
+      }
+
       // Switch to manifest creation stage
       setDeployStage('manifest');
       setCurrentFile('Creating manifest...');
       setDeployProgress(90);
+
+      // Clear all active uploads since we're done with file uploads
+      setActiveUploads([]);
       
       // Create manifest using version 0.2.0 spec with fallback support
       const manifestData = {
@@ -534,6 +607,7 @@ export function useFolderUpload() {
       
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
+        signal: controller.signal, // Also pass signal to manifest upload
         dataItemOpts: {
           tags: [
             { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
@@ -577,7 +651,8 @@ export function useFolderUpload() {
       setDeployProgress(100);
       setDeployStage('complete');
       setCurrentFile('');
-      
+      abortControllerRef.current = null; // Clear the controller when done
+
       return {
         manifestId: uploadResult.manifestId,
         files: uploadResult.files,
@@ -587,11 +662,12 @@ export function useFolderUpload() {
       // Deployment failed
       const errorMessage = error instanceof Error ? error.message : 'Deployment failed';
       setErrors({ deployment: errorMessage });
+      abortControllerRef.current = null; // Clear the controller on error
       throw error;
     } finally {
       setDeploying(false);
     }
-  }, [createTurboClient, getContentType, validateWalletState]);
+  }, [createTurboClient, getContentType, validateWalletState, isCancelled, uploadFileWithRetry]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);
@@ -610,6 +686,7 @@ export function useFolderUpload() {
     setUploadedSize(0);
     setFailedFiles([]);
     setIsCancelled(false);
+    abortControllerRef.current = null;
     // Don't clear results in reset - that's now separate
   }, []);
 
@@ -644,6 +721,11 @@ export function useFolderUpload() {
   // Cancel ongoing uploads
   const cancelUploads = useCallback(() => {
     setIsCancelled(true);
+    // Abort all in-flight requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setDeploying(false);
     setActiveUploads([]);
     setDeployStage('cancelled');

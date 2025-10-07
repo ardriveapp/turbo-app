@@ -225,6 +225,7 @@ All service panels follow consistent styling:
 - `useGatewayInfo`: Gateway information fetching
 - `useTurboWallets`: Turbo wallet management
 - `useUploadStatus`: Upload status tracking
+- `usePrivyWallet`: Privy wallet detection and logout management
 
 ### Styling System
 
@@ -289,7 +290,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ## Key Dependencies
 
 ### Core Integration
-- `@ardrive/turbo-sdk`: v1.31.0 - Turbo services integration
+- `@ardrive/turbo-sdk`: v1.31.1-alpha.2 - Turbo services integration
 - `@ar.io/sdk`: v3.19.0-alpha.10 - ArNS name resolution and domain management
 - `@privy-io/react-auth`: Email authentication with embedded wallets
 - `wagmi`: v2.12.5 - Ethereum wallet integration and Web3 functionality
@@ -306,14 +307,18 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features
+### ✅ Completed Features (v0.4.0)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
+- Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - Crypto payments for Solana and Ethereum
 - File upload with progress tracking (Arweave wallets only)
 - Site deployment with data export functionality and ArNS association
+- **Proper upload cancellation with AbortController support**
+- **Improved upload progress display with single file view**
+- **Fixed duplicate file re-upload issues**
 - Credit sharing between wallets (Wander wallet required for signing)
 - Credit revocation system
 - Gift credit system (send/redeem)

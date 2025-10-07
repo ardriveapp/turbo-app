@@ -51,7 +51,24 @@ export const getANT = (processId: string, signer?: any, hyperbeamUrl?: string) =
  */
 export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 'solana' | null): Promise<ContractSigner> => {
   if (walletType === 'arweave') {
-    // For Arweave wallets, use direct wallet (like WanderWalletConnector)
+    // For Arweave wallets, ensure wallet is connected and get the active address
+    if (!window.arweaveWallet) {
+      throw new Error('Arweave wallet not found. Please connect your wallet.');
+    }
+
+    // Ensure the wallet has the active address available
+    try {
+      const activeAddress = await window.arweaveWallet.getActiveAddress();
+      if (!activeAddress) {
+        throw new Error('No active address found. Please reconnect your Arweave wallet.');
+      }
+      // Wallet is properly connected with an active address
+    } catch (error) {
+      console.error('Failed to get Arweave wallet address:', error);
+      throw new Error('Failed to verify Arweave wallet connection. Please reconnect.');
+    }
+
+    // Return the wallet as ContractSigner
     return window.arweaveWallet as ContractSigner;
   } else if (walletType === 'ethereum') {
     // For Ethereum wallets, create AoSigner (like EthWalletConnector + our existing pattern)
@@ -62,7 +79,8 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
     // Use our existing Ethereum pattern from uploads
     const ethersProvider = new ethers.BrowserProvider(window.ethereum);
     const ethersSigner = await ethersProvider.getSigner();
-    
+    const address = await ethersSigner.getAddress();
+
     // Create provider interface that matches reference app pattern
     const provider = {
       getSigner: () => ({
@@ -70,12 +88,16 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
           const arg = typeof message === 'string' ? message : message.raw || message;
           return await ethersSigner.signMessage(arg);
         },
+        getAddress: async () => address,
       }),
     };
-    
+
     const injectedSigner = new InjectedEthereumSigner(provider as any);
-    
-    // Set up public key (required for Ethereum signers)  
+
+    // CRITICAL: Set the address property for ArNS permission checks
+    (injectedSigner as any).address = address;
+
+    // Set up public key (required for Ethereum signers)
     const message = 'Sign this message to connect to Turbo Gateway';
     const signature = await ethersSigner.signMessage(message);
     const messageHash = ethers.hashMessage(message);
@@ -118,9 +140,9 @@ export const WRITE_OPTIONS = {
       name: 'App-Name',
       value: 'Turbo App',
     },
-    { 
-      name: 'App-Version', 
-      value: '0.3.0' 
+    {
+      name: 'App-Version',
+      value: '0.4.0'
     },
   ],
 };

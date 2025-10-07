@@ -317,7 +317,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
 
       {activeTab === 'guides' && (
         <div className="grid md:grid-cols-2 gap-4">
-          <a href="https://docs.ardrive.io/docs/turbo/turbo-sdk/" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/bundling-services" target="_blank" rel="noopener noreferrer"
              className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
             <div className="text-xs text-link uppercase tracking-wider mb-2">SDK</div>
             <h5 className="font-bold mb-2 text-fg-muted">Turbo SDK (Node & Web)</h5>
