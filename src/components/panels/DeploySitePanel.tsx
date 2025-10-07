@@ -204,7 +204,8 @@ export default function DeploySitePanel() {
     uploadErrors,
     totalSize,
     uploadedSize,
-    retryFailedFiles
+    retryFailedFiles,
+    cancelUploads
   } = useFolderUpload();
   const { 
     checkUploadStatus, 
@@ -1140,6 +1141,7 @@ export default function DeploySitePanel() {
             totalSize={totalSize}
             uploadedSize={uploadedSize}
             onRetryFailed={retryFailedFiles}
+            onCancel={cancelUploads}
           />
         </div>
       )}

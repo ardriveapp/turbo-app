@@ -37,7 +37,8 @@ export default function UploadPanel() {
     uploadErrors,
     totalSize,
     uploadedSize,
-    retryFailedFiles
+    retryFailedFiles,
+    cancelUploads
   } = useFileUpload();
   const { 
     checkUploadStatus, 
@@ -183,19 +184,24 @@ export default function UploadPanel() {
       if (results.length > 0) {
         // Add to persistent upload history
         addUploadResults(results);
-        
+
         // Clear successfully uploaded files from selection
         // Clear all files if upload was successful (simpler approach)
         if (failedFiles.length === 0) {
           setFiles([]);
+          // Reset the file input to allow re-selecting the same files
+          const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+          if (fileInput) {
+            fileInput.value = '';
+          }
         }
-        
+
         // Upload successful
-        
+
         if (failedFiles.length === 0) {
-          setUploadMessage({ 
-            type: 'success', 
-            text: `Successfully uploaded ${results.length} file${results.length !== 1 ? 's' : ''}!` 
+          setUploadMessage({
+            type: 'success',
+            text: `Successfully uploaded ${results.length} file${results.length !== 1 ? 's' : ''}!`
           });
         }
       }
@@ -301,15 +307,20 @@ export default function UploadPanel() {
         </label>
       </div>
 
-      {/* File List */}
-      {files.length > 0 && (
+      {/* File List - Hide during upload */}
+      {files.length > 0 && !uploading && (
         <div className="mt-4 sm:mt-6">
           <div className="mb-3 flex justify-between items-center">
             <h4 className="font-medium">Selected Files ({files.length})</h4>
-            <button 
+            <button
               onClick={() => {
                 setFiles([]);
                 setUploadMessage(null);
+                // Reset the file input to allow re-selecting the same files
+                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                if (fileInput) {
+                  fileInput.value = '';
+                }
               }}
               className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
             >
@@ -467,6 +478,7 @@ export default function UploadPanel() {
             totalSize={totalSize}
             uploadedSize={uploadedSize}
             onRetryFailed={retryFailedFiles}
+            onCancel={cancelUploads}
             compact={totalFilesCount <= 10} // Use compact mode for small uploads
           />
         </div>

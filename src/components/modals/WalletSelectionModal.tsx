@@ -357,15 +357,15 @@ const WalletSelectionModal = ({
         <div className="flex w-full flex-col gap-3 sm:gap-4">
           {/* Email login option - prominently at the top */}
           <button
-            className="w-full bg-gradient-to-r from-turbo-red/20 to-turbo-red/10 border border-turbo-red/30 p-3 sm:p-4 rounded hover:from-turbo-red/30 hover:to-turbo-red/20 transition-all text-left flex items-center gap-3"
+            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
             onClick={connectWithEmail}
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-turbo-red" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-surface rounded-lg flex items-center justify-center flex-shrink-0 border border-default/30">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-link" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold mb-1 text-base text-fg-muted">Email Sign-in</div>
-              <div className="text-xs sm:text-sm text-turbo-red">No wallet needed • Instant access</div>
+              <div className="font-semibold mb-1 text-base">Email Sign-in</div>
+              <div className="text-xs sm:text-sm text-link">No wallet needed • Instant access</div>
             </div>
           </button>
 

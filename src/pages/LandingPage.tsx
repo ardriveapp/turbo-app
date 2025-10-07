@@ -675,18 +675,18 @@ const LandingPage = () => {
       <section>
         <h2 className="text-2xl font-bold mb-6 text-fg-muted">Build</h2>
         <div className="grid md:grid-cols-3 gap-4">
-          <a href="https://docs.ardrive.io/docs/turbo/turbo-sdk/" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/bundling-services" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <div className="text-xs text-link uppercase tracking-wider mb-2">SDK</div>
             <h3 className="font-bold mb-2 text-fg-muted">Turbo SDK (Node & Web)</h3>
             <p className="text-sm text-link">Install, quick start, events, CLI, and architecture.</p>
           </a>
           
-          <a href="https://docs.ardrive.io/docs/turbo/turbo-sdk/frameworks/html.html" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/turbo-credits" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <div className="text-xs text-link uppercase tracking-wider mb-2">GUIDE</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Use Turbo SDK in plain HTML</h3>
-            <p className="text-sm text-link">Drop-in CDN import — no bundlers needed.</p>
+            <h3 className="font-bold mb-2 text-fg-muted">How to purchase Turbo Credits</h3>
+            <p className="text-sm text-link">Turbo Credits are the payment medium used by Turbo's upload service.</p>
           </a>
           
           <a href="https://docs.ar.io/guides/uploading-to-arweave" target="_blank" rel="noopener noreferrer"
@@ -696,11 +696,11 @@ const LandingPage = () => {
             <p className="text-sm text-link">AR.IO guide that walks through uploads with Turbo.</p>
           </a>
           
-          <a href="https://cookbook.ar.io/guides/posting-transactions/turbo.html" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/advanced-uploading-with-turbo" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">EXAMPLES</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Posting transactions via Turbo</h3>
-            <p className="text-sm text-link">Code-first cookbook examples for data and files.</p>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">ADVANCED</div>
+            <h3 className="font-bold mb-2 text-fg-muted">Advanced Uploading with Turbo</h3>
+            <p className="text-sm text-link">Code-first examples for paying for and uploading files.</p>
           </a>
           
           <a href="https://docs.ardrive.io/docs/turbo/migrating.html" target="_blank" rel="noopener noreferrer"
@@ -710,11 +710,11 @@ const LandingPage = () => {
             <p className="text-sm text-link">Point your Irys SDK/CLI at Turbo with minimal changes.</p>
           </a>
           
-          <a href="https://docs.ar.io/guides/permaweb-deploy" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/guides/hosting-decentralized-websites" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <div className="text-xs text-link uppercase tracking-wider mb-2">DEPLOY</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Deploy to Permaweb with GitHub</h3>
-            <p className="text-sm text-link">Auto-deploy sites to Arweave with GitHub Actions and ArNS.</p>
+            <h3 className="font-bold mb-2 text-fg-muted">Host Decentralized Websites</h3>
+            <p className="text-sm text-link">Deploy your webpage or app Arweave with ArNS.</p>
           </a>
         </div>
       </section>
@@ -751,21 +751,21 @@ const LandingPage = () => {
         <h2 className="text-2xl font-bold mb-6 text-fg-muted">Resources</h2>
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
           {/* Documentation */}
-          <a href="https://docs.ar.io/gateways/" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/learn/gateways" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <Server className="w-6 h-6 text-turbo-purple mb-3" />
             <h3 className="font-bold mb-2 text-fg-muted">AR.IO Node</h3>
             <p className="text-sm text-link">Architecture, network, and implementation details.</p>
           </a>
           
-          <a href="https://docs.ardrive.io/docs/turbo/credit-sharing.html" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/turbo-credits#credit-sharing" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <Users className="w-6 h-6 text-turbo-purple mb-3" />
             <h3 className="font-bold mb-2 text-fg-muted">Turbo Credit Sharing</h3>
             <p className="text-sm text-link">Approve other wallets to use your Credits with guardrails.</p>
           </a>
           
-          <a href="https://docs.ar.io/introduction" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/learn/what-is-ario" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <Globe2 className="w-6 h-6 text-turbo-purple mb-3" />
             <h3 className="font-bold mb-2 text-fg-muted">AR.IO Network</h3>

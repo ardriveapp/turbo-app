@@ -9,7 +9,8 @@ import {
   RefreshCw,
   FileText,
   Clock,
-  HardDrive
+  HardDrive,
+  X
 } from 'lucide-react';
 
 export interface ActiveUpload {
@@ -42,6 +43,7 @@ interface UploadProgressSummaryProps {
   totalSize: number;
   uploadedSize: number;
   onRetryFailed?: () => void;
+  onCancel?: () => void;
   compact?: boolean;
   className?: string;
 }
@@ -56,12 +58,12 @@ export default function UploadProgressSummary({
   totalSize,
   uploadedSize,
   onRetryFailed,
+  onCancel,
   compact = false,
   className = ''
 }: UploadProgressSummaryProps) {
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [showErrors, setShowErrors] = useState(true);
-  const [showRecent, setShowRecent] = useState(true);
 
   const inProgressCount = activeUploads.length;
   const successCount = uploadedCount - failedCount;
@@ -112,7 +114,7 @@ export default function UploadProgressSummary({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Summary Card */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4">
+      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
             <FileText className="w-5 h-5 text-turbo-red" />
@@ -155,10 +157,10 @@ export default function UploadProgressSummary({
 
           <div className="bg-surface/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Loader2 className="w-4 h-4 text-turbo-red animate-spin" />
-              <span className="text-xs text-link">Active</span>
+              <Clock className="w-4 h-4 text-link" />
+              <span className="text-xs text-link">Remaining</span>
             </div>
-            <p className="text-lg font-bold text-fg-muted">{inProgressCount}</p>
+            <p className="text-lg font-bold text-fg-muted">{totalCount - uploadedCount}</p>
           </div>
 
           <div className="bg-surface/50 rounded-lg p-3">
@@ -176,168 +178,133 @@ export default function UploadProgressSummary({
         </div>
       </div>
 
-      {/* Active Uploads */}
+      {/* Active Upload - Single file display for smooth UI */}
       {activeUploads.length > 0 && (
         <div className="bg-surface rounded-xl border border-default p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-turbo-red animate-spin" />
-              Currently Uploading ({activeUploads.length})
+              Uploading Files
             </h4>
-          </div>
-          <div className="space-y-2">
-            {activeUploads.slice(0, 5).map((file, index) => (
-              <div key={index} className="bg-canvas rounded-lg p-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-fg-muted truncate max-w-[60%]">
-                    {file.name}
-                  </span>
-                  <span className="text-xs text-link">
-                    {file.progress}% • {formatSize(file.size)}
-                  </span>
-                </div>
-                <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-turbo-red h-full transition-all duration-300"
-                    style={{ width: `${file.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-            {activeUploads.length > 5 && (
-              <p className="text-xs text-link text-center">
-                +{activeUploads.length - 5} more uploading...
-              </p>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="px-3 py-1 rounded-lg border border-red-400/50 text-xs font-medium text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-1"
+                title="Cancel all uploads"
+              >
+                <X className="w-3 h-3" />
+                Cancel
+              </button>
             )}
           </div>
-        </div>
-      )}
+          <div className="space-y-3">
+            {/* Single file display - pick the first active upload or one with most progress */}
+            {(() => {
+              // Find the file with the most progress to display (looks more active)
+              // But prioritize files that aren't complete yet
+              const displayFile = activeUploads.reduce((prev, curr) => {
+                // Prefer files that are still uploading (not at 100%)
+                if (prev.progress < 100 && curr.progress >= 100) return prev;
+                if (curr.progress < 100 && prev.progress >= 100) return curr;
+                // If both are same status, pick the one with more progress
+                return curr.progress > prev.progress ? curr : prev;
+              }, activeUploads[0]);
 
-      {/* Recent Completions & Errors Side by Side */}
-      <div className={`grid grid-cols-1 ${recentFiles.length > 0 && errors.length > 0 ? 'lg:grid-cols-2' : ''} gap-4`}>
-        {/* Recent Completions */}
-        {recentFiles.length > 0 && (
-          <div className="bg-surface rounded-xl border border-default p-4">
-            <button
-              onClick={() => setShowRecent(!showRecent)}
-              className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
-            >
-              <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-                <Clock className="w-4 h-4 text-link" />
-                Recent Completions ({recentFiles.length})
-              </h4>
-              {showRecent ? (
-                <ChevronUp className="w-4 h-4 text-link" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
-              )}
-            </button>
-
-            {showRecent && (
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {recentFiles.slice(0, 10).map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 py-1">
-                    {file.status === 'success' ? (
-                      <CheckCircle className="w-3 h-3 text-turbo-green flex-shrink-0" />
-                    ) : (
-                      <XCircle className="w-3 h-3 text-red-400 flex-shrink-0" />
-                    )}
-                    <span className="text-xs text-fg-muted truncate flex-1">
-                      {file.name}
+              return (
+                <div className="bg-canvas rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-fg-muted truncate max-w-[60%]">
+                      {displayFile.name}
                     </span>
                     <span className="text-xs text-link">
-                      {formatSize(file.size)}
+                      {activeUploads.length > 1 && (
+                        <span className="mr-2 text-turbo-red">
+                          +{activeUploads.length - 1} more
+                        </span>
+                      )}
+                      {formatSize(displayFile.size)}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Errors */}
-        {errors.length > 0 && (
-          <div className="bg-surface rounded-xl border border-red-400/20 p-4">
-            <button
-              onClick={() => setShowErrors(!showErrors)}
-              className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
-            >
-              <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-                Upload Errors ({errors.length})
-              </h4>
-              {showErrors ? (
-                <ChevronUp className="w-4 h-4 text-link" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
-              )}
-            </button>
-
-            {showErrors && (
-              <>
-                <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
-                  {errors.slice(0, 10).map((error, index) => (
-                    <div key={index} className="bg-canvas/50 rounded p-2">
-                      <p className="text-xs font-medium text-fg-muted truncate">
-                        {error.fileName}
-                      </p>
-                      <p className="text-xs text-red-400 mt-1">
-                        {error.error}
-                      </p>
+                  <div className="space-y-2">
+                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-turbo-red h-full transition-all duration-300 relative"
+                        style={{ width: `${displayFile.progress || 0}%` }}
+                      >
+                        {displayFile.progress > 0 && (
+                          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  {errors.length > 10 && (
-                    <p className="text-xs text-link text-center">
-                      +{errors.length - 10} more errors
-                    </p>
-                  )}
+                    <div className="flex justify-between text-xs text-link">
+                      <span>
+                        {activeUploads.length > 1
+                          ? `Processing batch (${activeUploads.length} concurrent)`
+                          : `${displayFile.progress || 0}% complete`
+                        }
+                      </span>
+                      <span>{uploadedCount} of {totalCount} complete</span>
+                    </div>
+                  </div>
                 </div>
-
-                {onRetryFailed && errors.some(e => e.retryable) && (
-                  <button
-                    onClick={onRetryFailed}
-                    className="w-full py-2 px-3 rounded-lg bg-turbo-red text-white text-sm font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Retry Failed Uploads
-                  </button>
-                )}
-              </>
-            )}
+              );
+            })()}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* View All Files Button */}
-      {totalCount > 20 && (
-        <div className="flex justify-center">
+      {/* Errors */}
+      {errors.length > 0 && (
+        <div className="bg-surface rounded-xl border border-red-400/20 p-4">
           <button
-            onClick={() => setShowAllFiles(!showAllFiles)}
-            className="px-4 py-2 rounded-lg border border-default text-sm text-link hover:text-fg-muted hover:border-default/50 transition-colors flex items-center gap-2"
+            onClick={() => setShowErrors(!showErrors)}
+            className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
           >
-            {showAllFiles ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Hide File Details
-              </>
+            <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              Upload Errors ({errors.length})
+            </h4>
+            {showErrors ? (
+              <ChevronUp className="w-4 h-4 text-link" />
             ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                View All {totalCount} Files
-              </>
+              <ChevronDown className="w-4 h-4 text-link" />
             )}
           </button>
+
+          {showErrors && (
+            <>
+              <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
+                {errors.slice(0, 10).map((error, index) => (
+                  <div key={index} className="bg-canvas/50 rounded p-2">
+                    <p className="text-xs font-medium text-fg-muted truncate">
+                      {error.fileName}
+                    </p>
+                    <p className="text-xs text-red-400 mt-1">
+                      {error.error}
+                    </p>
+                  </div>
+                ))}
+                {errors.length > 10 && (
+                  <p className="text-xs text-link text-center">
+                    +{errors.length - 10} more errors
+                  </p>
+                )}
+              </div>
+
+              {onRetryFailed && errors.some(e => e.retryable) && (
+                <button
+                  onClick={onRetryFailed}
+                  className="w-full py-2 px-3 rounded-lg bg-turbo-red text-white text-sm font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry Failed Uploads
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {/* Note: Virtual scrolling for all files would be implemented here */}
-      {showAllFiles && (
-        <div className="bg-surface rounded-xl border border-default p-4">
-          <p className="text-sm text-link text-center">
-            File list with virtual scrolling will be displayed here
-          </p>
-        </div>
-      )}
     </div>
   );
 }
