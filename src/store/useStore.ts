@@ -131,12 +131,17 @@ interface StoreState {
   paymentInformation?: PaymentInformation;
   paymentIntentResult?: PaymentIntentResult;
   promoCode?: string;
-  
+
+  // Target wallet for payments (can be different from connected wallet)
+  // This allows users to fund any wallet without authentication
+  paymentTargetAddress: string | null;
+  paymentTargetType: 'arweave' | 'ethereum' | 'solana' | null;
+
   // Crypto payment state
   cryptoTopupValue?: number;
   cryptoManualTopup: boolean;
   cryptoTopupResponse?: TurboCryptoFundResponse;
-  
+
   // UI state
   showResumeTransactionPanel: boolean;
   
@@ -186,6 +191,8 @@ interface StoreState {
   setPaymentInformation: (info?: PaymentInformation) => void;
   setPaymentIntentResult: (result?: PaymentIntentResult) => void;
   setPromoCode: (code?: string) => void;
+  setPaymentTarget: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
+  clearPaymentTarget: () => void;
   
   // Crypto actions
   setCryptoTopupValue: (value?: number) => void;
@@ -225,7 +232,9 @@ export const useStore = create<StoreState>()(
       paymentInformation: undefined,
       paymentIntentResult: undefined,
       promoCode: undefined,
-      
+      paymentTargetAddress: null,
+      paymentTargetType: null,
+
       // Crypto state
       cryptoTopupValue: undefined,
       cryptoManualTopup: false,
@@ -322,6 +331,8 @@ export const useStore = create<StoreState>()(
       setPaymentInformation: (info) => set({ paymentInformation: info }),
       setPaymentIntentResult: (result) => set({ paymentIntentResult: result }),
       setPromoCode: (code) => set({ promoCode: code }),
+      setPaymentTarget: (address, type) => set({ paymentTargetAddress: address, paymentTargetType: type }),
+      clearPaymentTarget: () => set({ paymentTargetAddress: null, paymentTargetType: null }),
       
       // Crypto actions
       setCryptoTopupValue: (value) => set({ cryptoTopupValue: value }),
@@ -334,6 +345,8 @@ export const useStore = create<StoreState>()(
         paymentInformation: undefined,
         paymentIntentResult: undefined,
         promoCode: undefined,
+        paymentTargetAddress: null,
+        paymentTargetType: null,
         cryptoTopupValue: undefined,
         cryptoManualTopup: false,
         cryptoTopupResponse: undefined,

@@ -204,5 +204,9 @@ export const getDisplayArNSName = (name: string, showOriginal = false): string =
   return decoded;
 };
 
+// Export address validation utilities
+export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong } from './addressValidation';
+export type { WalletAddressType, AddressValidationResult } from './addressValidation';
+
 // Export AR.IO configuration helpers
 export { getARIO, getANT, WRITE_OPTIONS, createContractSigner } from './arIOConfig';

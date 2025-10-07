@@ -625,6 +625,62 @@ const uploadResult = await turbo.uploadFile({
 });
 ```
 
+##### Customize Multi-Part Upload Behavior
+
+By default, the Turbo upload methods will split files that are larger than 10 MiB into chunks and send them to the upload service multi-part endpoints. This behavior can be customized with the following inputs:
+
+- `chunkByteCount`: The maximum size in bytes for each chunk. Must be between 5 MiB and 500 MiB. Defaults to 5 MiB.
+- `maxChunkConcurrency`: The maximum number of chunks to upload concurrently. Defaults to 5. Reducing concurrency will slow down uploads, but reduce memory utilization and serialize network calls. Increasing it will upload faster, but can strain available resources.
+- `chunkingMode`: The chunking mode to use. Can be 'auto', 'force', or 'disabled'. Defaults to 'auto'. Auto behavior means chunking is enabled if the file would be split into at least three chunks.
+- `maxFinalizeMs`: The maximum time in milliseconds to wait for the finalization of all chunks after the last chunk is uploaded. Defaults to 1 minute per GiB of the total file size.
+
+```typescript
+// Customize chunking behavior
+await turbo.upload({
+  ...params,
+  chunkByteCount: 1024 * 1024 * 500, // Max chunk size
+  maxChunkConcurrency: 1, // Minimize concurrency
+});
+```
+
+```typescript
+// Disable chunking behavior
+await turbo.upload({
+  ...params,
+  chunkingMode: 'disabled',
+});
+```
+
+```typescript
+// Force chunking behavior
+await turbo.upload({
+  ...params,
+  chunkingMode: 'force',
+});
+```
+
+#### On Demand Uploads
+
+With the upload methods, you can choose to Top Up with selected crypto token on demand if the connected wallet does not have enough credits to complete the upload.
+
+This is done by providing the `OnDemandFunding` class to the `fundingMode` parameter on upload methods. The `maxTokenAmount` (optional) is the maximum amount of tokens in the token type's smallest unit value (e.g: Winston for arweave token type) to fund the wallet with. The `topUpBufferMultiplier` (optional) is the multiplier to apply to the estimated top-up amount to avoid underpayment during on-demand top-ups due to price fluctuations on longer uploads. Defaults to 1.1, meaning a 10% buffer.
+
+Note: On demand API currently only available for $ARIO (`ario`), $SOL (`solana`), and $ETH on Base Network (`base-eth`) token types.
+
+```typescript
+const turbo = TurboFactory.authenticated({
+  signer: arweaveSignerWithARIO,
+  token: 'ario',
+});
+await turbo.upload({
+  ...params,
+  fundingMode: new OnDemandFunding({
+    maxTokenAmount: ARIOToTokenAmount(500), // Max 500 $ARIO
+    topUpBufferMultiplier: 1.1, // 10% buffer to avoid underpayment
+  }),
+});
+```
+
 #### `uploadFolder({ folderPath, files, dataItemOpts, signal, maxConcurrentUploads, throwOnFailure, manifestOptions })`
 
 Signs and uploads a folder of files. For NodeJS, the `folderPath` of the folder to upload is required. For the browser, an array of `files` is required. The `dataItemOpts` is an optional object that can be used to configure tags, target, and anchor for the data item upload. The `signal` is an optional [AbortSignal] that can be used to cancel the upload or timeout the request. The `maxConcurrentUploads` is an optional number that can be used to limit the number of concurrent uploads. The `throwOnFailure` is an optional boolean that can be used to throw an error if any upload fails. The `manifestOptions` is an optional object that can be used to configure the manifest file, including a custom index file, fallback file, or whether to disable manifests altogether. Manifests are enabled by default.
@@ -765,8 +821,8 @@ Shares credits from the connected wallet to the provided native address and appr
 ```typescript
 const { approvalDataItemId, approvedWincAmount } = await turbo.shareCredits({
   approvedAddress: '2cor...VUa',
-  approvedWincAmount: 0.08315565032,
-  expiresBySeconds: 3600,
+  approvedWincAmount: 800_000_000_000, // 0.8 Credits
+  expiresBySeconds: 3600, // Credits will expire back to original wallet in 1 hour
 });
 ```
 
@@ -776,7 +832,7 @@ Revokes all credits shared from the connected wallet to the provided native addr
 
 ```typescript
 const revokedApprovals = await turbo.revokeCredits({
-  approvedAddress: '2cor...VUa',
+  revokedAddress: '2cor...VUa',
 });
 ```
 
@@ -1011,6 +1067,9 @@ Command Options:
 - `--fallback-file <fallbackFile>` - File to use for the "fallback" path in the resulting manifest
 - `--no-manifest` - Disable manifest creation
 - `--max-concurrency <maxConcurrency>` - Maximum number of concurrent uploads
+- `--on-demand` - Enable on-demand top up if the connected wallet does not have enough credits to complete the upload (only available for $ARIO, $SOL, and $ETH on Base Network token types)
+- `--max-crypto-top-up-value <maxCryptoTopUpValue>` - Maximum value of crypto token for on-demand top up. e.g: 100 for 100 $ARIO. NOTE: This is a value in the token's standard crypto unit, not the smallest unit. e.g: 100 for 100 $ARIO, NOT 100000000 for 100 $ARIO
+- `--top-up-buffer-multiplier <topUpBufferMultiplier>` - Multiplier to apply to the estimated top-up amount to avoid underpayment during on-demand top-ups due to price fluctuations. Default: 1.1 (10% buffer)
 
 e.g:
 
@@ -1025,6 +1084,9 @@ Upload a file to the Turbo Upload Service.
 Command Options:
 
 - `-f, --file-path <filePath>` - Path to the file to upload
+- `--on-demand` - Enable on-demand top up if the connected wallet does not have enough credits to complete the upload (only available for $ARIO, $SOL, and $ETH on Base Network token types)
+- `--max-crypto-top-up-value <maxCryptoTopUpValue>` - Maximum value of crypto token for on-demand top up. e.g: 100 for 100 $ARIO. NOTE: This is a value in the token's standard crypto unit, not the smallest unit. e.g: 100 for 100 $ARIO, NOT 100000000 for 100 $ARIO
+- `--top-up-buffer-multiplier <topUpBufferMultiplier>` - Multiplier to apply to the estimated top-up amount to avoid underpayment during on-demand top-ups due to price fluctuations. Default: 1.1 (10% buffer)
 
 e.g:
 
@@ -1202,4 +1264,4 @@ For more information on how to contribute, please see [CONTRIBUTING.md].
 [AbortSignal]: https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal
 [CONTRIBUTING.md]: ./CONTRIBUTING.md
 [docs/native-address]: https://docs.ar.io/glossary.html#native-address
-[Events]: #events
+[Events]: #event

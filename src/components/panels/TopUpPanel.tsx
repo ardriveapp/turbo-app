@@ -4,7 +4,7 @@ import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check, X, Users } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
@@ -12,16 +12,24 @@ import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
 import PaymentConfirmationPanel from './fiat/PaymentConfirmationPanel';
 import PaymentSuccessPanel from './fiat/PaymentSuccessPanel';
 import { getPaymentIntent } from '../../services/paymentService';
+import { validateWalletAddress, getWalletTypeLabel } from '../../utils/addressValidation';
+import CopyButton from '../CopyButton';
+import WalletSelectionModal from '../modals/WalletSelectionModal';
+import { getTurboBalance } from '../../utils';
 
 
 export default function TopUpPanel() {
-  const { 
-    address, 
-    walletType, 
-    creditBalance, 
+  const {
+    address,
+    walletType,
+    creditBalance,
     setPaymentAmount,
     setPaymentIntent,
-    clearAllPaymentState
+    clearAllPaymentState,
+    paymentTargetAddress,
+    paymentTargetType,
+    setPaymentTarget,
+    clearPaymentTarget
   } = useStore();
   
   const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
@@ -41,7 +49,16 @@ export default function TopUpPanel() {
   const [cryptoAmountInput, setCryptoAmountInput] = useState('0.01');
   const [errorMessage, setErrorMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
+  // Target wallet state
+  const [targetAddressInput, setTargetAddressInput] = useState('');
+  const [targetAddressError, setTargetAddressError] = useState('');
+  const [targetBalance, setTargetBalance] = useState<number | null>(null);
+  const [loadingTargetBalance, setLoadingTargetBalance] = useState(false);
+
+  // Wallet modal state
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
   // Payment flow state
   const [fiatFlowStep, setFiatFlowStep] = useState<'amount' | 'details' | 'confirmation' | 'success'>('amount');
   
@@ -166,49 +183,54 @@ export default function TopUpPanel() {
   };
 
   const handleCheckout = async () => {
-    if (!address) {
-      setErrorMessage('Please connect your wallet first');
-      return;
-    }
-
     const effectiveAmount = getEffectiveUsdAmount();
-    
+
     // Validate amount limits
     if (effectiveAmount < minUSDAmount) {
       setErrorMessage(`Minimum purchase amount is $${minUSDAmount}${inputType === 'storage' ? ' (reduce storage amount)' : ''}`);
       return;
     }
-    
+
     if (effectiveAmount > maxUSDAmount) {
       setErrorMessage(`Maximum purchase amount is $${maxUSDAmount}${inputType === 'storage' ? ' (reduce storage amount)' : ''}`);
       return;
     }
 
     if (paymentMethod === 'fiat') {
+      // For fiat, we need either a connected wallet OR a target address
+      const targetAddress = paymentTargetAddress || address;
+      const targetToken = paymentTargetType || walletType;
+
+      if (!targetAddress) {
+        setErrorMessage('Please connect your wallet or enter a recipient address');
+        return;
+      }
+
       setIsProcessing(true);
       setErrorMessage('');
-      
+
       try {
-        // Determine the token type based on wallet type
+        // Map wallet type to token type
         const tokenMap = {
           'arweave': 'arweave',
-          'ethereum': 'ethereum', 
+          'ethereum': 'ethereum',
           'solana': 'solana'
         } as const;
-        
-        const token = tokenMap[walletType || 'arweave'];
-        
+
+        const token = tokenMap[targetToken || 'arweave'];
+
         // Create payment intent for inline flow
+        // The Turbo SDK accepts ANY address here - no authentication required
         const paymentIntentResponse = await getPaymentIntent(
-          address,
+          targetAddress, // ✅ Uses target address (can be different from connected wallet)
           effectiveAmount * 100, // Convert to cents
           token as any,
         );
-        
+
         // Store payment state
         setPaymentAmount(effectiveAmount * 100);
         setPaymentIntent(paymentIntentResponse.paymentSession);
-        
+
         // Move to payment details step
         setFiatFlowStep('details');
       } catch (error) {
@@ -330,6 +352,32 @@ export default function TopUpPanel() {
   // Instead, crypto mode lets users enter token amounts directly
   // We should simplify this to match the reference pattern
 
+  // Fetch balance for target address when it changes
+  useEffect(() => {
+    const fetchTargetBalance = async () => {
+      if (paymentTargetAddress && paymentTargetType) {
+        setLoadingTargetBalance(true);
+        try {
+          const tokenMap = {
+            'arweave': 'arweave',
+            'ethereum': 'ethereum',
+            'solana': 'solana'
+          } as const;
+          const result = await getTurboBalance(paymentTargetAddress, tokenMap[paymentTargetType]);
+          setTargetBalance(result.winc ? result.winc / wincPerCredit : 0);
+        } catch (error) {
+          console.error('Error fetching target balance:', error);
+          setTargetBalance(0);
+        } finally {
+          setLoadingTargetBalance(false);
+        }
+      } else {
+        setTargetBalance(null);
+      }
+    };
+    fetchTargetBalance();
+  }, [paymentTargetAddress, paymentTargetType]);
+
   // Auto-select token based on wallet type
   useEffect(() => {
     const availableTokens = getAvailableTokens();
@@ -338,6 +386,13 @@ export default function TopUpPanel() {
     }
   }, [walletType, getAvailableTokens]);
 
+
+  // Set initial target to connected wallet when user logs in
+  useEffect(() => {
+    if (address && walletType && !paymentTargetAddress) {
+      setPaymentTarget(address, walletType);
+    }
+  }, [address, walletType, paymentTargetAddress, setPaymentTarget]);
 
   // Clear payment state when wallet changes
   useEffect(() => {
@@ -348,6 +403,10 @@ export default function TopUpPanel() {
 
   // Render fiat flow screens
   if (paymentMethod === 'fiat' && fiatFlowStep !== 'amount') {
+    // Determine target address for payment (use target if set, otherwise connected wallet)
+    const targetAddress = paymentTargetAddress || address;
+    const targetWalletType = paymentTargetType || walletType;
+
     switch (fiatFlowStep) {
       case 'details':
         return (
@@ -355,6 +414,8 @@ export default function TopUpPanel() {
             usdAmount={getEffectiveUsdAmount()}
             onBack={handleFiatBackToAmount}
             onNext={handleFiatPaymentDetailsNext}
+            targetAddress={targetAddress || ''}
+            targetWalletType={targetWalletType || 'arweave'}
           />
         );
       case 'confirmation':
@@ -363,12 +424,16 @@ export default function TopUpPanel() {
             usdAmount={getEffectiveUsdAmount()}
             onBack={() => setFiatFlowStep('details')}
             onSuccess={handleFiatPaymentSuccess}
+            targetAddress={targetAddress || ''}
+            targetWalletType={targetWalletType || 'arweave'}
           />
         );
       case 'success':
         return (
           <PaymentSuccessPanel
             onComplete={handleFiatComplete}
+            targetAddress={targetAddress || ''}
+            targetWalletType={targetWalletType || 'arweave'}
           />
         );
     }
@@ -428,45 +493,7 @@ export default function TopUpPanel() {
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
-        {/* Input Mode Toggle - Universal for all payment methods */}
-        <div className="mb-6">
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex w-full max-w-sm sm:w-auto bg-surface rounded-lg p-1 border border-default">
-              <button
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  inputType === 'storage'
-                    ? 'bg-fg-muted text-black'
-                    : 'text-link hover:text-fg-muted'
-                }`}
-                onClick={() => {
-                  setInputType('storage');
-                  setErrorMessage('');
-                }}
-              >
-                <HardDrive className="w-4 h-4" />
-                <span className="hidden sm:inline">Storage to Cost</span>
-                <span className="sm:hidden">Storage</span>
-              </button>
-              <button
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  inputType === 'dollars'
-                    ? 'bg-fg-muted text-black'
-                    : 'text-link hover:text-fg-muted'
-                }`}
-                onClick={() => {
-                  setInputType('dollars');
-                  setErrorMessage('');
-                }}
-              >
-                <DollarSign className="w-4 h-4" />
-                <span className="hidden sm:inline">Budget to Storage</span>
-                <span className="sm:hidden">Budget</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Method Selection */}
+        {/* Payment Method Selection - Always show */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-link mb-3">Choose Payment Method</label>
           <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
@@ -486,8 +513,14 @@ export default function TopUpPanel() {
             </button>
             <button
               onClick={() => {
-                setPaymentMethod('crypto');
-                setErrorMessage('');
+                // If no wallet connected, show wallet modal
+                if (!address || !walletType) {
+                  setShowWalletModal(true);
+                  setErrorMessage('');
+                } else {
+                  setPaymentMethod('crypto');
+                  setErrorMessage('');
+                }
               }}
               className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 paymentMethod === 'crypto'
@@ -500,6 +533,143 @@ export default function TopUpPanel() {
             </button>
           </div>
         </div>
+
+        {/* Recipient Wallet Address - Only show for fiat payments */}
+        {paymentMethod === 'fiat' && !address && (
+          <div className="mb-6">
+            <div className="bg-surface rounded-lg p-4 border border-default">
+              <label className="block text-sm font-medium text-link mb-3">
+                Enter Recipient Wallet Address
+              </label>
+              <input
+                type="text"
+                value={targetAddressInput}
+                onChange={(e) => {
+                  setTargetAddressInput(e.target.value);
+                  setTargetAddressError('');
+                  setTargetBalance(null);
+                }}
+                onBlur={() => {
+                  const trimmed = targetAddressInput.trim();
+                  if (trimmed) {
+                    const validation = validateWalletAddress(trimmed);
+                    if (validation.isValid && validation.type !== 'unknown') {
+                      setPaymentTarget(trimmed, validation.type);
+                      setTargetAddressError('');
+                    } else {
+                      setTargetAddressError(validation.error || 'Invalid address');
+                      setTargetBalance(null);
+                    }
+                  } else {
+                    // Clear target when field is empty
+                    clearPaymentTarget();
+                    setTargetAddressError('');
+                    setTargetBalance(null);
+                  }
+                }}
+                placeholder="Enter Arweave, Ethereum, or Solana address"
+                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                  targetAddressError
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-default focus:border-fg-muted'
+                }`}
+              />
+              {targetAddressError && (
+                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+              )}
+              {paymentTargetAddress && !targetAddressError && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-turbo-green" />
+                    <span className="text-xs text-turbo-green">
+                      Valid {getWalletTypeLabel(paymentTargetType || 'unknown')} address
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* For logged-in users with fiat - show editable recipient field */}
+        {paymentMethod === 'fiat' && address && (
+          <div className="mb-6">
+            <div className="bg-surface rounded-lg p-4 border border-default">
+              <label className="block text-sm font-medium text-link mb-3">
+                Recipient Wallet Address
+              </label>
+              <input
+                type="text"
+                value={targetAddressInput || address}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setTargetAddressInput(value);
+                  setTargetAddressError('');
+                  setTargetBalance(null);
+
+                  // If user clears to match their address, set target to their wallet
+                  if (value === address) {
+                    setPaymentTarget(address, walletType);
+                  }
+                }}
+                onBlur={() => {
+                  const trimmed = targetAddressInput.trim();
+                  if (trimmed && trimmed !== address) {
+                    // Validating a different address
+                    const validation = validateWalletAddress(trimmed);
+                    if (validation.isValid && validation.type !== 'unknown') {
+                      setPaymentTarget(trimmed, validation.type);
+                      setTargetAddressError('');
+                    } else {
+                      setTargetAddressError(validation.error || 'Invalid address');
+                      setTargetBalance(null);
+                    }
+                  } else if (!trimmed) {
+                    // Reset to connected wallet if cleared
+                    setTargetAddressInput('');
+                    setPaymentTarget(address, walletType);
+                    setTargetAddressError('');
+                    setTargetBalance(null);
+                  } else {
+                    // It's their own address
+                    setTargetAddressInput('');
+                    setPaymentTarget(address, walletType);
+                    setTargetAddressError('');
+                    setTargetBalance(null);
+                  }
+                }}
+                onFocus={() => {
+                  // If showing connected address, clear input for easy editing
+                  if (!targetAddressInput) {
+                    setTargetAddressInput(address || '');
+                  }
+                }}
+                placeholder="Enter Arweave, Ethereum, or Solana address"
+                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                  targetAddressError
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-default focus:border-fg-muted'
+                }`}
+              />
+              {targetAddressError && (
+                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+              )}
+              {paymentTargetAddress && !targetAddressError && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-turbo-green" />
+                    <span className="text-xs text-turbo-green">
+                      {paymentTargetAddress === address
+                        ? 'Credits will be added to your wallet'
+                        : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
+                      }
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Crypto Token Selection - Show immediately after selecting crypto */}
         {paymentMethod === 'crypto' && (
@@ -583,10 +753,42 @@ export default function TopUpPanel() {
         <div className="mb-6">
           {paymentMethod === 'fiat' ? (
             <>
-              <label className="block text-sm font-medium text-link mb-3">
-                {inputType === 'dollars' ? 'Select USD Amount' : 'Enter Storage Amount'}
-              </label>
-              
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-link">
+                  {inputType === 'dollars' ? 'Select USD Amount' : 'Enter Storage Amount'}
+                </label>
+                <div className="inline-flex bg-surface rounded-lg p-0.5 border border-default">
+                  <button
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      inputType === 'storage'
+                        ? 'bg-fg-muted text-black'
+                        : 'text-link hover:text-fg-muted'
+                    }`}
+                    onClick={() => {
+                      setInputType('storage');
+                      setErrorMessage('');
+                    }}
+                  >
+                    <HardDrive className="w-3.5 h-3.5" />
+                    Storage
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      inputType === 'dollars'
+                        ? 'bg-fg-muted text-black'
+                        : 'text-link hover:text-fg-muted'
+                    }`}
+                    onClick={() => {
+                      setInputType('dollars');
+                      setErrorMessage('');
+                    }}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    USD
+                  </button>
+                </div>
+              </div>
+
               {inputType === 'dollars' ? (
                 <>
                   {/* USD Preset Amounts */}
@@ -642,27 +844,45 @@ export default function TopUpPanel() {
                 </>
               ) : (
                 <>
-                  {/* Storage Amount Input */}
+                  {/* Storage Preset Amounts */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                    {[
+                      { amount: 100, unit: 'MiB', label: '100 MiB' },
+                      { amount: 500, unit: 'MiB', label: '500 MiB' },
+                      { amount: 1, unit: 'GiB', label: '1 GiB' },
+                      { amount: 10, unit: 'GiB', label: '10 GiB' },
+                      { amount: 100, unit: 'GiB', label: '100 GiB' },
+                      { amount: 1, unit: 'TiB', label: '1 TiB' },
+                    ].map((preset) => {
+                      const isSelected = storageAmount === preset.amount && storageUnit === preset.unit;
+                      return (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setStorageAmount(preset.amount);
+                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
+                            setErrorMessage('');
+                          }}
+                          className={`py-3 px-3 rounded-lg border transition-all font-medium ${
+                            isSelected
+                              ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                              : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Storage Input */}
                   <div className="bg-surface rounded-lg p-4 mb-4">
                     <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-                      How much data do you need to store?
+                      Custom Amount
                     </label>
-                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={storageAmount}
-                        onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
-                          setStorageAmount(value);
-                          setErrorMessage('');
-                        }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
-                        placeholder="Enter amount"
-                      />
-                      <Listbox 
-                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3">
+                      <Listbox
+                        value={storageUnits.find(unit => unit.value === storageUnit)}
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
@@ -707,34 +927,25 @@ export default function TopUpPanel() {
                           </Transition>
                         </div>
                       </Listbox>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={storageAmount}
+                        onChange={(e) => {
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          setStorageAmount(value);
+                          setErrorMessage('');
+                        }}
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
+                        placeholder="Enter amount"
+                      />
                     </div>
-                    
-                    {/* Common storage sizes */}
-                    <div className="text-xs text-link mb-2">Quick select:</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[
-                        { amount: 100, unit: 'MiB', label: '100 MiB' },
-                        { amount: 500, unit: 'MiB', label: '500 MiB' },
-                        { amount: 1, unit: 'GiB', label: '1 GiB' },
-                        { amount: 10, unit: 'GiB', label: '10 GiB' },
-                        { amount: 100, unit: 'GiB', label: '100 GiB' },
-                        { amount: 1, unit: 'TiB', label: '1 TiB' },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() => {
-                            setStorageAmount(preset.amount);
-                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
-                            setErrorMessage('');
-                          }}
-                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                    <div className="mt-2 text-xs text-link">
+                      Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
                     </div>
                   </div>
-                  
+
                   {/* Cost Display for Storage Mode */}
                   {wincForOneGiB && creditsForOneUSD && (
                     <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
@@ -754,33 +965,83 @@ export default function TopUpPanel() {
             </>
           ) : (
             <>
-              <label className="block text-sm font-medium text-link mb-3">
-                {inputType === 'storage' ? 'Enter Storage Amount' : `Select ${tokenLabels[selectedTokenType]} Amount`}
-              </label>
-              
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-link">
+                  {inputType === 'storage' ? 'Enter Storage Amount' : `Select ${tokenLabels[selectedTokenType]} Amount`}
+                </label>
+                <div className="inline-flex bg-surface rounded-lg p-0.5 border border-default">
+                  <button
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      inputType === 'storage'
+                        ? 'bg-fg-muted text-black'
+                        : 'text-link hover:text-fg-muted'
+                    }`}
+                    onClick={() => {
+                      setInputType('storage');
+                      setErrorMessage('');
+                    }}
+                  >
+                    <HardDrive className="w-3.5 h-3.5" />
+                    Storage
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      inputType === 'dollars'
+                        ? 'bg-fg-muted text-black'
+                        : 'text-link hover:text-fg-muted'
+                    }`}
+                    onClick={() => {
+                      setInputType('dollars');
+                      setErrorMessage('');
+                    }}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    Token
+                  </button>
+                </div>
+              </div>
+
               {inputType === 'storage' ? (
                 <>
-                  {/* Storage Amount Input for Crypto */}
+                  {/* Storage Preset Amounts for Crypto */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                    {[
+                      { amount: 100, unit: 'MiB', label: '100 MiB' },
+                      { amount: 500, unit: 'MiB', label: '500 MiB' },
+                      { amount: 1, unit: 'GiB', label: '1 GiB' },
+                      { amount: 10, unit: 'GiB', label: '10 GiB' },
+                      { amount: 100, unit: 'GiB', label: '100 GiB' },
+                      { amount: 1, unit: 'TiB', label: '1 TiB' },
+                    ].map((preset) => {
+                      const isSelected = storageAmount === preset.amount && storageUnit === preset.unit;
+                      return (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setStorageAmount(preset.amount);
+                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
+                            setErrorMessage('');
+                          }}
+                          className={`py-3 px-3 rounded-lg border transition-all font-medium ${
+                            isSelected
+                              ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                              : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Storage Input for Crypto */}
                   <div className="bg-surface rounded-lg p-4 mb-4">
                     <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-                      How much data do you need to store?
+                      Custom Amount
                     </label>
-                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={storageAmount}
-                        onChange={(e) => {
-                          const value = Math.max(0, parseFloat(e.target.value) || 0);
-                          setStorageAmount(value);
-                          setErrorMessage('');
-                        }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
-                        placeholder="Enter amount"
-                      />
-                      <Listbox 
-                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3">
+                      <Listbox
+                        value={storageUnits.find(unit => unit.value === storageUnit)}
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
@@ -825,34 +1086,25 @@ export default function TopUpPanel() {
                           </Transition>
                         </div>
                       </Listbox>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={storageAmount}
+                        onChange={(e) => {
+                          const value = Math.max(0, parseFloat(e.target.value) || 0);
+                          setStorageAmount(value);
+                          setErrorMessage('');
+                        }}
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
+                        placeholder="Enter amount"
+                      />
                     </div>
-                    
-                    {/* Common storage sizes */}
-                    <div className="text-xs text-link mb-2">Quick select:</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[
-                        { amount: 100, unit: 'MiB', label: '100 MiB' },
-                        { amount: 500, unit: 'MiB', label: '500 MiB' },
-                        { amount: 1, unit: 'GiB', label: '1 GiB' },
-                        { amount: 10, unit: 'GiB', label: '10 GiB' },
-                        { amount: 100, unit: 'GiB', label: '100 GiB' },
-                        { amount: 1, unit: 'TiB', label: '1 TiB' },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() => {
-                            setStorageAmount(preset.amount);
-                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
-                            setErrorMessage('');
-                          }}
-                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                    <div className="mt-2 text-xs text-link">
+                      Min: ${minUSDAmount} • Max: ${maxUSDAmount.toLocaleString()}
                     </div>
                   </div>
-                  
+
                   {/* Crypto Cost Display for Storage Mode */}
                   {wincForOneGiB && creditsForOneUSD && (
                     <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
@@ -950,7 +1202,7 @@ export default function TopUpPanel() {
           <div className="space-y-4 mb-6">
             {/* Purchase Summary */}
             <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-              <div className="text-sm text-link mb-1">You'll Receive</div>
+              <div className="text-sm text-link mb-1">You'll Purchase</div>
               <div className="text-4xl font-bold text-fg-muted mb-1">
                 {paymentMethod === 'fiat' 
                   ? (inputType === 'storage' 
@@ -984,13 +1236,22 @@ export default function TopUpPanel() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-link">Current Balance</span>
                 <div className="text-right">
-                  <span className="font-medium text-fg-muted">
-                    {creditBalance.toLocaleString()} Credits
-                  </span>
-                  {wincForOneGiB && creditBalance > 0 && (
-                    <div className="text-xs text-link">
-                      ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB
+                  {loadingTargetBalance ? (
+                    <div className="flex items-center gap-2 text-sm text-link">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Loading...</span>
                     </div>
+                  ) : (
+                    <>
+                      <span className="font-medium text-fg-muted">
+                        {(targetBalance !== null ? targetBalance : creditBalance).toLocaleString()} Credits
+                      </span>
+                      {wincForOneGiB && (targetBalance !== null ? targetBalance : creditBalance) > 0 && (
+                        <div className="text-xs text-link">
+                          ~{(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -998,14 +1259,14 @@ export default function TopUpPanel() {
                 <span className="text-sm text-link">After Purchase</span>
                 <div className="text-right">
                   <span className="font-bold text-turbo-green text-lg">
-                    {paymentMethod === 'fiat' 
-                      ? (inputType === 'storage' 
-                          ? (creditBalance + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : credits ? (creditBalance + credits).toLocaleString() : '...'
+                    {paymentMethod === 'fiat'
+                      ? (inputType === 'storage'
+                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
+                          : credits ? ((targetBalance !== null ? targetBalance : creditBalance) + credits).toLocaleString() : '...'
                         )
                       : (inputType === 'storage'
-                          ? (creditBalance + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : cryptoCredits ? (creditBalance + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
+                          : cryptoCredits ? ((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
                         )
                     } Credits
                   </span>
@@ -1042,6 +1303,7 @@ export default function TopUpPanel() {
           className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
             (paymentMethod === 'fiat' && (
+              !paymentTargetAddress || // Must have valid target address (either connected wallet or entered)
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
             )) ||
@@ -1098,6 +1360,13 @@ export default function TopUpPanel() {
         )}
 
       </div>
+
+      {/* Wallet Selection Modal */}
+      {showWalletModal && (
+        <WalletSelectionModal
+          onClose={() => setShowWalletModal(false)}
+        />
+      )}
 
     </div>
   );

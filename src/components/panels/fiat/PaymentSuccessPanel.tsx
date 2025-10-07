@@ -1,7 +1,9 @@
-import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock, Mail } from 'lucide-react';
+import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock, Mail, Users } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { tokenLabels, SupportedTokenType } from '../../../constants';
 import { useNavigate } from 'react-router-dom';
+import { getWalletTypeLabel } from '../../../utils/addressValidation';
+import CopyButton from '../../CopyButton';
 
 interface PaymentSuccessPanelProps {
   onComplete: () => void;
@@ -10,16 +12,21 @@ interface PaymentSuccessPanelProps {
   tokenType?: SupportedTokenType;
   transactionId?: string;
   creditsReceived?: number;
+  // Target wallet details
+  targetAddress?: string;
+  targetWalletType?: 'arweave' | 'ethereum' | 'solana';
 }
 
-const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({ 
-  onComplete, 
-  cryptoAmount, 
-  tokenType, 
+const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
+  onComplete,
+  cryptoAmount,
+  tokenType,
   transactionId,
-  creditsReceived
+  creditsReceived,
+  targetAddress,
+  targetWalletType
 }) => {
-  const { paymentIntentResult, creditBalance } = useStore();
+  const { paymentIntentResult, creditBalance, address } = useStore();
   const navigate = useNavigate();
 
   // Get appropriate blockchain explorer URL
@@ -66,7 +73,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
     <div>
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-        
+
         {/* Success Icon and Message */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-turbo-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -74,12 +81,31 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
           </div>
           <h4 className="text-2xl font-bold text-turbo-green mb-2">Payment Complete!</h4>
           <p className="text-link">
-            {isCryptoPayment && tokenType === 'arweave' 
+            {isCryptoPayment && tokenType === 'arweave'
               ? 'Your account will be credited in 15-30 minutes.'
-              : 'Your credits are now available in your account.'
+              : 'Your credits are now available.'
             }
           </p>
         </div>
+
+        {/* Show recipient info if funding another wallet */}
+        {targetAddress && targetAddress !== address && (
+          <div className="mb-6 bg-turbo-green/10 border border-turbo-green/20 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-turbo-green mb-2">
+              <Users className="w-4 h-4" />
+              <span className="font-medium text-sm">Credits delivered to:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="text-sm text-turbo-green font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+                {targetAddress}
+              </code>
+              <CopyButton textToCopy={targetAddress} />
+            </div>
+            <div className="text-xs text-turbo-green/80 mt-2">
+              {getWalletTypeLabel(targetWalletType || 'unknown')} wallet
+            </div>
+          </div>
+        )}
 
         {/* Payment Summary */}
         <div className="bg-canvas rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
