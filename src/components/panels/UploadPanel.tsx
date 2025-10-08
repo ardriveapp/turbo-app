@@ -346,158 +346,125 @@ export default function UploadPanel() {
         </div>
       )}
 
-      {/* Upload Area */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-          isDragging 
-            ? 'border-turbo-red bg-turbo-red/10' 
-            : 'border-default hover:border-turbo-red/50'
-        }`}
-      >
-        <div className="mb-4">
-          <Upload className="w-12 h-12 text-turbo-red mx-auto mb-2" />
-          <p className="text-lg font-medium mb-2">
-            Drop files here or click to browse
-          </p>
-          <p className="text-sm text-link">
-            Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
-          </p>
-        </div>
-        <input
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          id="file-upload"
-        />
-        <label
-          htmlFor="file-upload"
-          className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
-        >
-          Select Files
-        </label>
-      </div>
-
-      {/* File List - Hide during upload */}
-      {files.length > 0 && !uploading && (
-        <div className="mt-4 sm:mt-6">
-          <div className="mb-3 flex justify-between items-center">
-            <h4 className="font-medium">Selected Files ({files.length})</h4>
-            <button
-              onClick={() => {
-                setFiles([]);
-                setUploadMessage(null);
-                // Reset the file input to allow re-selecting the same files
-                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                if (fileInput) {
-                  fileInput.value = '';
-                }
-              }}
-              className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
+      {/* Main Content Container with Gradient - Hide during upload */}
+      {!uploading && (
+        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
+          {/* Upload Area - Show when no files selected */}
+          {files.length === 0 && (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                isDragging
+                  ? 'border-turbo-red bg-turbo-red/10'
+                  : 'border-link/30 hover:border-turbo-red/50'
+              }`}
             >
-              <XCircle className="w-4 h-4" />
-              Clear all
-            </button>
-          </div>
-          
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {files.map((file, index) => {
-              const cost = calculateUploadCost(file.size);
-              const isFree = file.size < 100 * 1024;
-              const progress = uploadProgress[file.name];
-              const error = errors[file.name];
-              const isUploading = uploading && progress !== undefined && progress < 100;
-              const isComplete = progress === 100;
-              
-              return (
-                <div key={index} className="bg-surface/50 rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="text-sm text-fg-muted truncate">{file.name}</div>
-                      <div className="text-xs text-link">
-                        {formatFileSize(file.size)}
-                        {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
-                        {cost !== null && cost > 0 && (
-                          <span className="ml-2">• {cost.toFixed(6)} Credits</span>
-                        )}
-                      </div>
-                    </div>
-                    {!uploading && !isComplete && (
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="text-link hover:text-error ml-4"
-                      >
-                        <XCircle className="w-5 h-5" />
-                      </button>
-                    )}
-                    {isComplete && (
-                      <CheckCircle className="w-5 h-5 text-turbo-green ml-4" />
-                    )}
-                  </div>
-                  
-                  {/* Progress Bar - Only show for small uploads to prevent performance issues */}
-                  {isUploading && files.length <= 20 && (
-                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-turbo-red h-full transition-all duration-300"
-                        style={{ width: `${progress || 0}%` }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Status indicator for large uploads */}
-                  {isUploading && files.length > 20 && (
-                    <div className="flex items-center gap-2 text-sm text-link">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Uploading...</span>
-                    </div>
-                  )}
-                  
-                  {/* Error Message */}
-                  {error && (
-                    <div className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                      <XCircle className="w-4 h-4" />
-                      {error}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary - Hide during upload */}
-          {!uploading && (
-            <div className="mt-4 p-4 bg-surface/50 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-link">Total Size:</span>
-                <span className="text-xs text-fg-muted">{formatFileSize(totalFileSize)}</span>
+              <div className="mb-4">
+                <Upload className="w-12 h-12 text-turbo-red mx-auto mb-2" />
+                <p className="text-lg font-medium mb-2">
+                  Drop files here or click to browse
+                </p>
+                <p className="text-sm text-link">
+                  Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
+                </p>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-link">Files:</span>
-                <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
-              </div>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+              >
+                Select Files
+              </label>
             </div>
           )}
 
-          {/* Upload Button - Hide during upload */}
-          {!uploading && (
-            <button
-              onClick={handleUpload}
-              disabled={uploading || files.length === 0}
-              className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <Upload className="w-5 h-5" />
-              Upload {files.length} File{files.length !== 1 ? 's' : ''}
-            </button>
+          {/* File List - Show when files selected */}
+          {files.length > 0 && (
+            <div>
+              <div className="mb-3 flex justify-between items-center">
+                <h4 className="font-medium">Selected Files ({files.length})</h4>
+                <button
+                  onClick={() => {
+                    setFiles([]);
+                    setUploadMessage(null);
+                    // Reset the file input to allow re-selecting the same files
+                    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                    if (fileInput) {
+                      fileInput.value = '';
+                    }
+                  }}
+                  className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Clear all
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {files.map((file, index) => {
+                  const cost = calculateUploadCost(file.size);
+                  const isFree = file.size < 100 * 1024;
+
+                  return (
+                    <div key={index} className="bg-surface/50 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="text-sm text-fg-muted truncate">{file.name}</div>
+                          <div className="text-xs text-link">
+                            {formatFileSize(file.size)}
+                            {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
+                            {cost !== null && cost > 0 && (
+                              <span className="ml-2">• {cost.toFixed(6)} Credits</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-link hover:text-error ml-4"
+                        >
+                          <XCircle className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary */}
+              <div className="mt-4 p-4 bg-surface/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-link">Total Size:</span>
+                  <span className="text-xs text-fg-muted">{formatFileSize(totalFileSize)}</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-link">Files:</span>
+                  <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+
+              {/* Upload Button */}
+              <button
+                onClick={handleUpload}
+                disabled={files.length === 0}
+                className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Upload {files.length} File{files.length !== 1 ? 's' : ''}
+              </button>
+            </div>
           )}
         </div>
       )}
-      </div>
 
-      {/* Upload Progress Summary - Show during upload for large file counts */}
+      {/* Upload Progress Summary - Show during upload */}
       {uploading && totalFilesCount > 0 && (
         <div className="mt-4">
           <UploadProgressSummary
@@ -511,7 +478,6 @@ export default function UploadPanel() {
             uploadedSize={uploadedSize}
             onRetryFailed={retryFailedFiles}
             onCancel={cancelUploads}
-            compact={totalFilesCount <= 10} // Use compact mode for small uploads
           />
         </div>
       )}
