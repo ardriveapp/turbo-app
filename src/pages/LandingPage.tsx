@@ -253,13 +253,13 @@ const LandingPage = () => {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
           
-          <a 
-            href="https://docs.ardrive.io/docs/turbo/what-is-turbo.html"
+          <a
+            href="https://docs.ar.io/build/upload/bundling-services"
             target="_blank"
             rel="noopener noreferrer"
             className="text-link hover:text-fg-muted font-medium flex items-center gap-1 group"
           >
-            What is Turbo?
+            Start Building
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </a>
         </div>

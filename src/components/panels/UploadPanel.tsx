@@ -390,7 +390,7 @@ export default function UploadPanel() {
                 <div className="flex items-center gap-2">
                   <label
                     htmlFor="file-upload-add"
-                    className="text-link hover:text-turbo-red text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-link hover:text-fg-muted text-sm flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     <Upload className="w-4 h-4" />
                     Add More
