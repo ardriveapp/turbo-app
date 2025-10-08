@@ -39,8 +39,6 @@ interface DeployConfirmationModalProps {
   onJitEnabledChange: (enabled: boolean) => void;
   jitMaxTokenAmount: number;
   onJitMaxTokenAmountChange: (amount: number) => void;
-  jitBufferMultiplier: number;
-  onJitBufferMultiplierChange: (multiplier: number) => void;
 }
 
 function DeployConfirmationModal({
@@ -61,11 +59,18 @@ function DeployConfirmationModal({
   onJitEnabledChange,
   jitMaxTokenAmount,
   onJitMaxTokenAmountChange,
-  jitBufferMultiplier,
-  onJitBufferMultiplierChange,
 }: DeployConfirmationModalProps) {
   const creditsNeeded = Math.max(0, totalCost - currentBalance);
-  const showJitOption = creditsNeeded > 0 && walletType && supportsJitPayment(walletType);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenType = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
+  const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
   return (
     <BaseModal onClose={onClose}>
       <div className="p-4 sm:p-6 w-full max-w-4xl mx-auto min-w-[90vw] sm:min-w-[600px]">
@@ -149,19 +154,17 @@ function DeployConfirmationModal({
         </div>
 
         {/* JIT Payment Card - Show when insufficient credits and wallet supports it */}
-        {showJitOption && walletType && (
+        {showJitOption && jitTokenType && (
           <div className="mb-6">
             <JitPaymentCard
               creditsNeeded={creditsNeeded}
               totalCost={totalCost}
               currentBalance={currentBalance}
-              tokenType={walletType}
+              tokenType={jitTokenType}
               enabled={jitEnabled}
               onEnabledChange={onJitEnabledChange}
               maxTokenAmount={jitMaxTokenAmount}
               onMaxTokenAmountChange={onJitMaxTokenAmountChange}
-              bufferMultiplier={jitBufferMultiplier}
-              onBufferMultiplierChange={onJitBufferMultiplierChange}
             />
           </div>
         )}
@@ -241,10 +244,8 @@ export default function DeploySitePanel() {
     clearDeployHistory,
     jitPaymentEnabled,
     jitMaxTokenAmount,
-    jitBufferMultiplier,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
-    setJitBufferMultiplier,
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
@@ -273,10 +274,24 @@ export default function DeploySitePanel() {
 
   // JIT payment local state for this deployment
   const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenTypeForDefaults = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
+
   const [localJitMax, setLocalJitMax] = useState(
-    walletType && jitMaxTokenAmount[walletType] ? jitMaxTokenAmount[walletType] : 0
+    jitTokenTypeForDefaults && jitMaxTokenAmount[jitTokenTypeForDefaults]
+      ? jitMaxTokenAmount[jitTokenTypeForDefaults]
+      : 0
   );
-  const [localJitBuffer, setLocalJitBuffer] = useState(jitBufferMultiplier);
+
+  // Fixed 10% buffer for SDK (not exposed to user)
+  const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
   const {
     deployFolder,
@@ -748,15 +763,25 @@ export default function DeploySitePanel() {
 
     // Save JIT preferences to store
     setJitPaymentEnabled(localJitEnabled);
-    if (walletType) {
-      setJitMaxTokenAmount(walletType, localJitMax);
+
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
+    // Save max token amount to store for future use
+    if (jitTokenType) {
+      setJitMaxTokenAmount(jitTokenType, localJitMax);
     }
-    setJitBufferMultiplier(localJitBuffer);
 
     // Convert max token amount to smallest unit for SDK
     let jitMaxTokenAmountSmallest = 0;
-    if (localJitEnabled && walletType && supportsJitPayment(walletType)) {
-      const converter = getTokenConverter(walletType);
+    if (localJitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
+      const converter = getTokenConverter(jitTokenType);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -769,7 +794,7 @@ export default function DeploySitePanel() {
         fallbackFile: fallbackFile || undefined,
         jitEnabled: localJitEnabled,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: localJitBuffer,
+        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
       });
       
       if (result.manifestId) {
@@ -2136,8 +2161,6 @@ export default function DeploySitePanel() {
           onJitEnabledChange={setLocalJitEnabled}
           jitMaxTokenAmount={localJitMax}
           onJitMaxTokenAmountChange={setLocalJitMax}
-          jitBufferMultiplier={localJitBuffer}
-          onJitBufferMultiplierChange={setLocalJitBuffer}
         />
       )}
 
