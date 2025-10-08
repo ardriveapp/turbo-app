@@ -702,14 +702,7 @@ const LandingPage = () => {
             <h3 className="font-bold mb-2 text-fg-muted">Advanced Uploading with Turbo</h3>
             <p className="text-sm text-link">Code-first examples for paying for and uploading files.</p>
           </a>
-          
-          <a href="https://docs.ardrive.io/docs/turbo/migrating.html" target="_blank" rel="noopener noreferrer"
-             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">MIGRATION</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Migrating from Irys</h3>
-            <p className="text-sm text-link">Point your Irys SDK/CLI at Turbo with minimal changes.</p>
-          </a>
-          
+
           <a href="https://docs.ar.io/build/guides/hosting-decentralized-websites" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <div className="text-xs text-link uppercase tracking-wider mb-2">DEPLOY</div>
