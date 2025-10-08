@@ -5,10 +5,10 @@ import {
   ArconnectSigner,
   SolanaWalletAdapter,
   OnDemandFunding,
+  TurboUnauthenticatedConfiguration,
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
-import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
@@ -98,10 +98,25 @@ export function useFolderUpload() {
     }
   }, [address, walletType]);
 
+  // Get config function from store
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+
   // Create Turbo client with proper walletAdapter based on wallet type
-  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+  const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
+
+    // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
+    const effectiveTokenType = tokenTypeOverride || walletType;
+    const config = getCurrentConfig();
+    const dynamicTurboConfig: TurboUnauthenticatedConfiguration = {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+      ...(effectiveTokenType && config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap]
+        ? { gatewayUrl: config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap] }
+        : {})
+    };
 
     // HOTFIX: Detect corrupted wallet type (contains address instead of type)
     let actualWalletType = walletType;
@@ -117,7 +132,7 @@ export function useFolderUpload() {
         actualWalletType = 'arweave'; // Default fallback for Arweave
       }
     }
-    
+
     switch (actualWalletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
@@ -125,9 +140,11 @@ export function useFolderUpload() {
         }
         // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
-          ...turboConfig,
-          signer 
+        return TurboFactory.authenticated({
+          ...dynamicTurboConfig,
+          signer,
+          // Use token type override if provided (for JIT with ARIO)
+          ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
         
       case 'ethereum':
@@ -141,11 +158,11 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
-            ...turboConfig,
+            ...dynamicTurboConfig,
           });
         } else {
           // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
@@ -157,11 +174,11 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
-            ...turboConfig,
+            ...dynamicTurboConfig,
           });
         }
         
@@ -202,13 +219,13 @@ export function useFolderUpload() {
         return TurboFactory.authenticated({
           token: "solana",
           walletAdapter,
-          ...turboConfig,
+          ...dynamicTurboConfig,
         });
-        
+
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, wallets, validateWalletState]);
+  }, [address, walletType, wallets, getCurrentConfig, validateWalletState]);
 
 
   // Smart content type detection based on file extensions
@@ -364,9 +381,18 @@ export function useFolderUpload() {
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
     // Create funding mode if JIT enabled and supported
     let fundingMode: OnDemandFunding | undefined = undefined;
-    if (manifestOptions?.jitEnabled && walletType && supportsJitPayment(walletType)) {
+    if (manifestOptions?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
       fundingMode = new OnDemandFunding({
         maxTokenAmount: manifestOptions.jitMaxTokenAmount || 0,
         topUpBufferMultiplier: manifestOptions.jitBufferMultiplier || 1.1,
@@ -375,7 +401,7 @@ export function useFolderUpload() {
 
     try {
       // Creating Turbo client for folder deployment
-      const turbo = await createTurboClient();
+      const turbo = await createTurboClient(jitTokenType);
       
       // Starting folder deployment
       
