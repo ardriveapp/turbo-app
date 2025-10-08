@@ -46,7 +46,6 @@ export interface UploadError {
 
 export function useFileUpload() {
   const { address, walletType } = useStore();
-  const turboConfig = useTurboConfig(walletType || undefined);
   const { wallets } = useWallets(); // Get Privy wallets
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -89,10 +88,25 @@ export function useFileUpload() {
     }
   }, [address, walletType]);
 
+  // Get config function from store
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+
   // Create Turbo client with proper walletAdapter based on wallet type
   const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
+
+    // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
+    const effectiveTokenType = tokenTypeOverride || walletType;
+    const config = getCurrentConfig();
+    const turboConfig = {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+      ...(effectiveTokenType && config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap]
+        ? { gatewayUrl: config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap] }
+        : {})
+    };
 
     switch (walletType) {
       case 'arweave':
@@ -168,7 +182,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [walletType, wallets, turboConfig, validateWalletState]);
+  }, [walletType, wallets, getCurrentConfig, validateWalletState]);
 
   const uploadFile = useCallback(async (
     file: File,
