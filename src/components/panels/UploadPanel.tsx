@@ -44,7 +44,12 @@ export default function UploadPanel() {
 
   // Determine the token type for JIT payment
   // Arweave wallets must use ARIO for JIT (not AR)
-  const jitTokenTypeForDefaults = walletType === 'arweave' ? 'ario' : walletType;
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenTypeForDefaults = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
 
   // Max will be auto-calculated by JitPaymentCard based on estimated cost
   const [localJitMax, setLocalJitMax] = useState(0);
@@ -221,7 +226,12 @@ export default function UploadPanel() {
 
     // Determine the token type for JIT payment
     // Arweave wallets must use ARIO for JIT (not AR)
-    const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
 
     // Save max token amount to store for future use
     if (jitTokenType) {
@@ -915,7 +925,12 @@ export default function UploadPanel() {
 
               // Determine the token type for JIT payment
               // Arweave wallets must use ARIO for JIT (not AR)
-              const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+              // Ethereum wallets use Base-ETH for JIT
+              const jitTokenType = walletType === 'arweave'
+                ? 'ario'
+                : walletType === 'ethereum'
+                ? 'base-eth'
+                : walletType;
               const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
 
               return (

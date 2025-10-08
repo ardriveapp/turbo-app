@@ -119,7 +119,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -136,7 +136,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -187,7 +187,12 @@ export function useFileUpload() {
 
     // Determine the token type for JIT payment
     // Arweave wallets must use ARIO for JIT (not AR)
-    const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
 
     // Create funding mode if JIT enabled and supported
     let fundingMode: OnDemandFunding | undefined = undefined;
