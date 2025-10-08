@@ -306,26 +306,22 @@ export default function UploadPanel() {
           <p className="text-sm text-link">Store your files permanently on the Arweave network</p>
         </div>
       </div>
-      
-      {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
-        
 
-        {/* Connection Warning */}
-        {!address && (
-          <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-yellow-500" />
-              <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
-            </div>
+      {/* Connection Warning */}
+      {!address && (
+        <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-yellow-500" />
+            <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Upload Message */}
       {uploadMessage && (
         <div className={`mb-4 sm:mb-6 p-4 rounded-lg border ${
-          uploadMessage.type === 'error' 
-            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+          uploadMessage.type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-500'
             : uploadMessage.type === 'success'
             ? 'bg-turbo-green/10 border-turbo-green/20 text-turbo-green'
             : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
@@ -391,22 +387,44 @@ export default function UploadPanel() {
             <div>
               <div className="mb-3 flex justify-between items-center">
                 <h4 className="font-medium">Selected Files ({files.length})</h4>
-                <button
-                  onClick={() => {
-                    setFiles([]);
-                    setUploadMessage(null);
-                    // Reset the file input to allow re-selecting the same files
-                    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                    if (fileInput) {
-                      fileInput.value = '';
-                    }
-                  }}
-                  className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Clear all
-                </button>
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="file-upload-add"
+                    className="text-link hover:text-turbo-red text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Add More
+                  </label>
+                  <button
+                    onClick={() => {
+                      setFiles([]);
+                      setUploadMessage(null);
+                      // Reset the file input to allow re-selecting the same files
+                      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                      if (fileInput) {
+                        fileInput.value = '';
+                      }
+                      const addInput = document.getElementById('file-upload-add') as HTMLInputElement;
+                      if (addInput) {
+                        addInput.value = '';
+                      }
+                    }}
+                    className="text-link hover:text-red-400 text-sm flex items-center gap-1 transition-colors"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Clear all
+                  </button>
+                </div>
               </div>
+
+              {/* Hidden input for adding more files */}
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload-add"
+              />
 
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {files.map((file, index) => {
@@ -428,7 +446,7 @@ export default function UploadPanel() {
                         </div>
                         <button
                           onClick={() => removeFile(index)}
-                          className="text-link hover:text-error ml-4"
+                          className="text-link hover:text-red-400 ml-4 transition-colors"
                         >
                           <XCircle className="w-5 h-5" />
                         </button>
