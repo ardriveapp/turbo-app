@@ -16,7 +16,7 @@ const PRESET_CONFIGS = {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
       ethereum: 'https://api.mainnet.ethereumpow.org',
-      'base-eth': 'https://base.gateway.fm',
+      'base-eth': 'https://mainnet.base.org',
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
       kyve: 'https://api.kyve.network',
       matic: 'https://polygon-bor-rpc.publicnode.com',
@@ -131,12 +131,22 @@ interface StoreState {
   paymentInformation?: PaymentInformation;
   paymentIntentResult?: PaymentIntentResult;
   promoCode?: string;
-  
+
+  // Target wallet for payments (can be different from connected wallet)
+  // This allows users to fund any wallet without authentication
+  paymentTargetAddress: string | null;
+  paymentTargetType: 'arweave' | 'ethereum' | 'solana' | null;
+
   // Crypto payment state
   cryptoTopupValue?: number;
   cryptoManualTopup: boolean;
   cryptoTopupResponse?: TurboCryptoFundResponse;
-  
+
+  // Just-in-time payment preferences (persistent)
+  jitPaymentEnabled: boolean;
+  jitMaxTokenAmount: Record<SupportedTokenType, number>; // Human-readable amounts (e.g., 0.15 SOL, 200 ARIO)
+  jitBufferMultiplier: number; // Buffer multiplier for JIT payments (e.g., 1.1 = 10% buffer)
+
   // UI state
   showResumeTransactionPanel: boolean;
   
@@ -186,6 +196,8 @@ interface StoreState {
   setPaymentInformation: (info?: PaymentInformation) => void;
   setPaymentIntentResult: (result?: PaymentIntentResult) => void;
   setPromoCode: (code?: string) => void;
+  setPaymentTarget: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
+  clearPaymentTarget: () => void;
   
   // Crypto actions
   setCryptoTopupValue: (value?: number) => void;
@@ -193,6 +205,11 @@ interface StoreState {
   setCryptoTopupResponse: (response?: TurboCryptoFundResponse) => void;
   setShowResumeTransactionPanel: (show: boolean) => void;
   clearAllPaymentState: () => void;
+
+  // Just-in-time payment actions
+  setJitPaymentEnabled: (enabled: boolean) => void;
+  setJitMaxTokenAmount: (token: SupportedTokenType, amount: number) => void;
+  setJitBufferMultiplier: (multiplier: number) => void;
   
   // Developer configuration actions
   setConfigMode: (mode: ConfigMode) => void;
@@ -225,13 +242,28 @@ export const useStore = create<StoreState>()(
       paymentInformation: undefined,
       paymentIntentResult: undefined,
       promoCode: undefined,
-      
+      paymentTargetAddress: null,
+      paymentTargetType: null,
+
       // Crypto state
       cryptoTopupValue: undefined,
       cryptoManualTopup: false,
       cryptoTopupResponse: undefined,
       showResumeTransactionPanel: false,
-      
+
+      // Just-in-time payment state (defaults - persistent)
+      jitPaymentEnabled: true, // Default opt-in
+      jitMaxTokenAmount: {
+        ario: 200,      // 200 ARIO ≈ $20
+        solana: 0.15,   // 0.15 SOL ≈ $22.50
+        'base-eth': 0.01, // 0.01 ETH ≈ $25
+        arweave: 0,
+        ethereum: 0,
+        kyve: 0,
+        matic: 0,
+        pol: 0,
+      },
+      jitBufferMultiplier: 1.1, // Default 10% buffer
       // Actions
       setAddress: (address, type) => set({ address, walletType: type }),
       clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {}, ownedArnsCache: {} }),
@@ -322,6 +354,8 @@ export const useStore = create<StoreState>()(
       setPaymentInformation: (info) => set({ paymentInformation: info }),
       setPaymentIntentResult: (result) => set({ paymentIntentResult: result }),
       setPromoCode: (code) => set({ promoCode: code }),
+      setPaymentTarget: (address, type) => set({ paymentTargetAddress: address, paymentTargetType: type }),
+      clearPaymentTarget: () => set({ paymentTargetAddress: null, paymentTargetType: null }),
       
       // Crypto actions
       setCryptoTopupValue: (value) => set({ cryptoTopupValue: value }),
@@ -334,12 +368,23 @@ export const useStore = create<StoreState>()(
         paymentInformation: undefined,
         paymentIntentResult: undefined,
         promoCode: undefined,
+        paymentTargetAddress: null,
+        paymentTargetType: null,
         cryptoTopupValue: undefined,
         cryptoManualTopup: false,
         cryptoTopupResponse: undefined,
         showResumeTransactionPanel: false,
       }),
-      
+
+      // Just-in-time payment actions
+      setJitPaymentEnabled: (enabled) => set({ jitPaymentEnabled: enabled }),
+      setJitMaxTokenAmount: (token, amount) => {
+        const current = get().jitMaxTokenAmount;
+        set({ jitMaxTokenAmount: { ...current, [token]: amount } });
+      },
+      setJitBufferMultiplier: (multiplier) => {
+        set({ jitBufferMultiplier: multiplier });
+      },
       // Developer configuration actions
       setConfigMode: (mode) => {
         set({ configMode: mode });
@@ -390,9 +435,9 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'turbo-gateway-store',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         address: state.address,
-        walletType: state.walletType, 
+        walletType: state.walletType,
         arnsNamesCache: state.arnsNamesCache,
         ownedArnsCache: state.ownedArnsCache,
         uploadHistory: state.uploadHistory,
@@ -400,6 +445,10 @@ export const useStore = create<StoreState>()(
         uploadStatusCache: state.uploadStatusCache,
         configMode: state.configMode,
         customConfig: state.customConfig,
+        // JIT payment preferences
+        jitPaymentEnabled: state.jitPaymentEnabled,
+        jitMaxTokenAmount: state.jitMaxTokenAmount,
+        jitBufferMultiplier: state.jitBufferMultiplier,
       }),
     }
   )

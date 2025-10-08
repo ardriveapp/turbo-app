@@ -34,7 +34,7 @@ export default function Footer() {
               <Twitter className="w-4 h-4" />
             </a>
             <a
-              href="https://github.com/ardriveapp"
+              href="https://github.com/ardriveapp/turbo-gateway-app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-link hover:text-fg-muted transition-colors"

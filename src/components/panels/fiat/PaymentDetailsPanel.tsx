@@ -3,18 +3,22 @@ import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { StripeCardElementOptions } from '@stripe/stripe-js';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { isEmail } from 'validator';
-import { CircleX, RefreshCw, CreditCard } from 'lucide-react';
+import { CircleX, RefreshCw, CreditCard, Users } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import useCountries from '../../../hooks/useCountries';
 import { useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import { getPaymentIntent, getWincForFiat } from '../../../services/paymentService';
 import FormEntry from '../../FormEntry';
 import { wincPerCredit } from '../../../constants';
+import { getWalletTypeLabel } from '../../../utils/addressValidation';
+import CopyButton from '../../CopyButton';
 
 interface PaymentDetailsPanelProps {
   usdAmount: number;
   onBack: () => void;
   onNext: () => void;
+  targetAddress: string; // NEW - address receiving credits
+  targetWalletType: 'arweave' | 'ethereum' | 'solana'; // NEW - type of target wallet
 }
 
 const isValidPromoCode = async (
@@ -34,7 +38,7 @@ const isValidPromoCode = async (
   }
 };
 
-const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, onNext }) => {
+const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, onNext, targetAddress, targetWalletType }) => {
   const countries = useCountries();
   const wincForOneGiB = useWincForOneGiB();
   const { address, walletType } = useStore();
@@ -74,20 +78,20 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
   };
 
   const updateEstimatedCredits = useCallback(async () => {
-    if (!address) return;
-    
+    if (!targetAddress) return;
+
     try {
       const response = await getWincForFiat({
         amount: USD(usdAmount),
         promoCode: promoCode,
-        destinationAddress: address,
+        destinationAddress: targetAddress, // ✅ Use target address instead of connected wallet
       });
       setEstimatedCredits(response);
     } catch (e: unknown) {
       console.error(e);
       setEstimatedCredits(undefined);
     }
-  }, [address, usdAmount, promoCode]);
+  }, [targetAddress, usdAmount, promoCode]);
 
   useEffect(() => {
     updateEstimatedCredits();
@@ -202,7 +206,26 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
 
       {/* Main Content Container with Gradient */}
       <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-        
+
+        {/* Show recipient info if funding another wallet */}
+        {targetAddress && targetAddress !== address && (
+          <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-blue-400 mb-2">
+              <Users className="w-4 h-4" />
+              <span className="font-medium text-sm">Credits will be delivered to:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="text-sm text-blue-400 font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+                {targetAddress}
+              </code>
+              <CopyButton textToCopy={targetAddress} />
+            </div>
+            <div className="text-xs text-blue-300 mt-2">
+              {getWalletTypeLabel(targetWalletType)} wallet
+            </div>
+          </div>
+        )}
+
         {/* Credits Summary */}
         <div className="grid grid-cols-2 mb-8">
           {estimatedCredits ? (
@@ -307,14 +330,14 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                     e.preventDefault();
                     e.stopPropagation();
 
-                    if (address) {
+                    if (targetAddress) {
                       try {
                         // Reset payment intent to one without promo code
                         const newPaymentIntent = await getPaymentIntent(
-                          address,
+                          targetAddress,
                           usdAmount * 100,
-                          walletType === 'ethereum' ? 'ethereum' : 
-                          walletType === 'solana' ? 'solana' : 'arweave',
+                          targetWalletType === 'ethereum' ? 'ethereum' :
+                          targetWalletType === 'solana' ? 'solana' : 'arweave',
                         );
                         setPaymentIntent(newPaymentIntent.paymentSession);
                         setPromoCode(undefined);
@@ -354,14 +377,14 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (address && localPromoCode && localPromoCode.length > 0) {
-                      if (await isValidPromoCode(usdAmount * 100, localPromoCode, address)) {
+                    if (targetAddress && localPromoCode && localPromoCode.length > 0) {
+                      if (await isValidPromoCode(usdAmount * 100, localPromoCode, targetAddress)) {
                         try {
                           const newPaymentIntent = await getPaymentIntent(
-                            address,
+                            targetAddress,
                             usdAmount * 100,
-                            walletType === 'ethereum' ? 'ethereum' : 
-                            walletType === 'solana' ? 'solana' : 'arweave',
+                            targetWalletType === 'ethereum' ? 'ethereum' :
+                            targetWalletType === 'solana' ? 'solana' : 'arweave',
                             localPromoCode,
                           );
                           setPaymentIntent(newPaymentIntent.paymentSession);

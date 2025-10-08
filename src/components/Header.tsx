@@ -23,7 +23,7 @@ const accountServices = [
   { name: 'Send Gift', page: 'gift' as const, icon: Gift },
 ];
 
-// Public utility services  
+// Public utility services
 const utilityServices = [
   { name: 'Search Domains', page: 'domains' as const, icon: Globe },
   { name: 'Developer Resources', page: 'developer' as const, icon: Code },
@@ -216,9 +216,12 @@ const Header = () => {
                 </div>
                 {accountServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
-                  
-                  // If not logged in, handle click differently
-                  if (!address) {
+
+                  // Buy Credits (topup) is always accessible without login
+                  const requiresLogin = service.page !== 'topup';
+
+                  // If not logged in and service requires login, show locked button
+                  if (!address && requiresLogin) {
                     return (
                       <button
                         key={service.page}
@@ -234,16 +237,16 @@ const Header = () => {
                       </button>
                     );
                   }
-                  
-                  // Normal link for logged-in users
+
+                  // Normal link for accessible services (logged-in users or topup)
                   return (
                     <Link
                       key={service.page}
                       to={`/${service.page}`}
                       onClick={() => close()}
                       className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
-                        isActive 
-                          ? 'bg-canvas text-fg-muted font-medium' 
+                        isActive
+                          ? 'bg-canvas text-fg-muted font-medium'
                           : 'text-link hover:bg-canvas hover:text-fg-muted'
                       }`}
                     >

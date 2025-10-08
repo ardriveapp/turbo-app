@@ -44,7 +44,7 @@ export const wincPerCredit = 1_000_000_000_000;
 export const defaultDebounceMs = 500;
 export const ardriveAppUrl = "https://app.ardrive.io";
 
-export const maxUSDAmount = 2000;
+export const maxUSDAmount = 10000;
 export const maxARAmount = 200;
 export const minUSDAmount = 5;
 

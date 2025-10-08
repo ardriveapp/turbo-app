@@ -1,19 +1,34 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Zap } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 import AssignDomainModal from '../modals/AssignDomainModal';
+import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
+import { JitPaymentCard } from '../JitPaymentCard';
+import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
 
 export default function UploadPanel() {
-  const { address, walletType, creditBalance, uploadHistory, addUploadResults, updateUploadWithArNS, clearUploadHistory } = useStore();
+  const {
+    address,
+    walletType,
+    creditBalance,
+    uploadHistory,
+    addUploadResults,
+    updateUploadWithArNS,
+    clearUploadHistory,
+    jitPaymentEnabled,
+    jitMaxTokenAmount,
+    setJitPaymentEnabled,
+    setJitMaxTokenAmount,
+  } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -22,6 +37,25 @@ export default function UploadPanel() {
   const [showUploadResults, setShowUploadResults] = useState(true);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // JIT payment local state for this upload
+  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenTypeForDefaults = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
+
+  // Max will be auto-calculated by JitPaymentCard based on estimated cost
+  const [localJitMax, setLocalJitMax] = useState(0);
+
+  // Fixed 10% buffer for SDK (not exposed to user)
+  const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
   const {
     uploadMultipleFiles,
@@ -70,7 +104,12 @@ export default function UploadPanel() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+      const newFiles = Array.from(e.target.files);
+      setFiles(prev => [...prev, ...newFiles]);
+      // Reset input value after processing to allow re-selecting the same file
+      setTimeout(() => {
+        e.target.value = '';
+      }, 0);
     }
   };
 
@@ -170,16 +209,51 @@ export default function UploadPanel() {
   const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
   const totalCost = calculateUploadCost(totalFileSize);
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!address) {
       setUploadMessage({ type: 'error', text: 'Please connect your wallet to upload files' });
       return;
     }
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmUpload = async () => {
+    setShowConfirmModal(false);
     setUploadMessage(null);
-    
+
+    // Save JIT preferences to store
+    setJitPaymentEnabled(localJitEnabled);
+
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
+    // Save max token amount to store for future use
+    if (jitTokenType) {
+      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    }
+
+    // Only enable JIT if the upload actually costs credits (not free tier)
+    const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
+
+    // Convert max token amount to smallest unit for SDK
+    let jitMaxTokenAmountSmallest = 0;
+    if (shouldEnableJit && jitTokenType && supportsJitPayment(jitTokenType)) {
+      const converter = getTokenConverter(jitTokenType);
+      jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
+    }
+
     try {
-      const { results, failedFiles } = await uploadMultipleFiles(files);
+      const { results, failedFiles } = await uploadMultipleFiles(files, {
+        jitEnabled: shouldEnableJit,
+        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
+        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+      });
       
       if (results.length > 0) {
         // Add to persistent upload history
@@ -232,26 +306,22 @@ export default function UploadPanel() {
           <p className="text-sm text-link">Store your files permanently on the Arweave network</p>
         </div>
       </div>
-      
-      {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
-        
 
-        {/* Connection Warning */}
-        {!address && (
-          <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-yellow-500" />
-              <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
-            </div>
+      {/* Connection Warning */}
+      {!address && (
+        <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-yellow-500" />
+            <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Upload Message */}
       {uploadMessage && (
         <div className={`mb-4 sm:mb-6 p-4 rounded-lg border ${
-          uploadMessage.type === 'error' 
-            ? 'bg-red-500/10 border-red-500/20 text-red-500' 
+          uploadMessage.type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-500'
             : uploadMessage.type === 'success'
             ? 'bg-turbo-green/10 border-turbo-green/20 text-turbo-green'
             : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
@@ -272,200 +342,147 @@ export default function UploadPanel() {
         </div>
       )}
 
-      {/* Upload Area */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-          isDragging 
-            ? 'border-turbo-red bg-turbo-red/10' 
-            : 'border-default hover:border-turbo-red/50'
-        }`}
-      >
-        <div className="mb-4">
-          <Upload className="w-12 h-12 text-turbo-red mx-auto mb-2" />
-          <p className="text-lg font-medium mb-2">
-            Drop files here or click to browse
-          </p>
-          <p className="text-sm text-link">
-            Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
-          </p>
-        </div>
-        <input
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          id="file-upload"
-        />
-        <label
-          htmlFor="file-upload"
-          className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
-        >
-          Select Files
-        </label>
-      </div>
-
-      {/* File List - Hide during upload */}
-      {files.length > 0 && !uploading && (
-        <div className="mt-4 sm:mt-6">
-          <div className="mb-3 flex justify-between items-center">
-            <h4 className="font-medium">Selected Files ({files.length})</h4>
-            <button
-              onClick={() => {
-                setFiles([]);
-                setUploadMessage(null);
-                // Reset the file input to allow re-selecting the same files
-                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                if (fileInput) {
-                  fileInput.value = '';
-                }
-              }}
-              className="text-link hover:text-fg-muted text-sm flex items-center gap-1"
+      {/* Main Content Container with Gradient - Hide during upload */}
+      {!uploading && (
+        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
+          {/* Upload Area - Show when no files selected */}
+          {files.length === 0 && (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                isDragging
+                  ? 'border-turbo-red bg-turbo-red/10'
+                  : 'border-link/30 hover:border-turbo-red/50'
+              }`}
             >
-              <XCircle className="w-4 h-4" />
-              Clear all
-            </button>
-          </div>
-          
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {files.map((file, index) => {
-              const cost = calculateUploadCost(file.size);
-              const isFree = file.size < 100 * 1024;
-              const progress = uploadProgress[file.name];
-              const error = errors[file.name];
-              const isUploading = uploading && progress !== undefined && progress < 100;
-              const isComplete = progress === 100;
-              
-              return (
-                <div key={index} className="bg-surface/50 rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="font-medium truncate">{file.name}</div>
-                      <div className="text-sm text-link">
-                        {formatFileSize(file.size)}
-                        {isFree && <span className="ml-2 text-turbo-green">• FREE</span>}
-                        {cost !== null && cost > 0 && (
-                          <span className="ml-2">• {cost.toFixed(6)} Credits</span>
-                        )}
-                      </div>
-                    </div>
-                    {!uploading && !isComplete && (
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="text-link hover:text-error ml-4"
-                      >
-                        <XCircle className="w-5 h-5" />
-                      </button>
-                    )}
-                    {isComplete && (
-                      <CheckCircle className="w-5 h-5 text-turbo-green ml-4" />
-                    )}
-                  </div>
-                  
-                  {/* Progress Bar - Only show for small uploads to prevent performance issues */}
-                  {isUploading && files.length <= 20 && (
-                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-turbo-red h-full transition-all duration-300"
-                        style={{ width: `${progress || 0}%` }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Status indicator for large uploads */}
-                  {isUploading && files.length > 20 && (
-                    <div className="flex items-center gap-2 text-sm text-link">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Uploading...</span>
-                    </div>
-                  )}
-                  
-                  {/* Error Message */}
-                  {error && (
-                    <div className="text-sm text-red-500 mt-1 flex items-center gap-1">
-                      <XCircle className="w-4 h-4" />
-                      {error}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary - Hide during upload */}
-          {!uploading && (
-            <div className="mt-4 p-4 bg-surface/50 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-link">Total Size:</span>
-              <span className="font-medium">{formatFileSize(totalFileSize)}</span>
+              <div className="mb-4">
+                <Upload className="w-12 h-12 text-turbo-red mx-auto mb-2" />
+                <p className="text-lg font-medium mb-2">
+                  Drop files here or click to browse
+                </p>
+                <p className="text-sm text-link">
+                  Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
+                </p>
+              </div>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+              >
+                Select Files
+              </label>
             </div>
-            <div className="flex justify-between mb-2">
-              <span className="text-link">Estimated Cost:</span>
-              <span className="font-medium">
-                {totalCost === 0 ? (
-                  <span className="text-turbo-green">FREE</span>
-                ) : totalCost !== null ? (
-                  <span>{totalCost.toFixed(6)} Credits</span>
-                ) : (
-                  <span className="text-link">Calculating...</span>
-                )}
-              </span>
-            </div>
-            {totalCost !== null && address && (
-              <div className="flex justify-between">
-                <span className="text-link">Balance After:</span>
-                <div className="text-right">
-                  <span className={`font-medium ${
-                    creditBalance - totalCost < 0 ? 'text-red-400' : 'text-fg-muted'
-                  }`}>
-                    {(creditBalance - totalCost).toFixed(6)} Credits
-                  </span>
-                  {wincForOneGiB && (
-                    <div className="text-xs text-link">
-                      ~{(((creditBalance - totalCost) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
-                    </div>
-                  )}
+          )}
+
+          {/* File List - Show when files selected */}
+          {files.length > 0 && (
+            <div>
+              <div className="mb-3 flex justify-between items-center">
+                <h4 className="font-medium">Selected Files ({files.length})</h4>
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="file-upload-add"
+                    className="text-link hover:text-fg-muted text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Add More
+                  </label>
+                  <button
+                    onClick={() => {
+                      setFiles([]);
+                      setUploadMessage(null);
+                      // Reset the file input to allow re-selecting the same files
+                      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                      if (fileInput) {
+                        fileInput.value = '';
+                      }
+                      const addInput = document.getElementById('file-upload-add') as HTMLInputElement;
+                      if (addInput) {
+                        addInput.value = '';
+                      }
+                    }}
+                    className="text-link hover:text-red-400 text-sm flex items-center gap-1 transition-colors"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Clear all
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-          )}
 
-          {/* Terms - Hide during upload */}
-          {!uploading && (
-            <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
-            <p className="text-xs text-link">
-              By continuing, you agree to our{' '}
-              <a 
-                href="https://ardrive.io/tos-and-privacy/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-turbo-red hover:text-fg-muted/80 transition-colors"
+              {/* Hidden input for adding more files */}
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload-add"
+              />
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {files.map((file, index) => {
+                  const cost = calculateUploadCost(file.size);
+                  const isFree = file.size < 100 * 1024;
+
+                  return (
+                    <div key={index} className="bg-surface/50 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="text-sm text-fg-muted truncate">{file.name}</div>
+                          <div className="text-xs text-link">
+                            {formatFileSize(file.size)}
+                            {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
+                            {cost !== null && cost > 0 && (
+                              <span className="ml-2">• {cost.toFixed(6)} Credits</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-link hover:text-red-400 ml-4 transition-colors"
+                        >
+                          <XCircle className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary */}
+              <div className="mt-4 p-4 bg-surface/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-link">Total Size:</span>
+                  <span className="text-xs text-fg-muted">{formatFileSize(totalFileSize)}</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-link">Files:</span>
+                  <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+
+              {/* Upload Button */}
+              <button
+                onClick={handleUpload}
+                disabled={files.length === 0}
+                className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Terms of Service
-              </a>
-            </p>
+                <Upload className="w-5 h-5" />
+                Upload {files.length} File{files.length !== 1 ? 's' : ''}
+              </button>
             </div>
-          )}
-
-          {/* Upload Button - Hide during upload */}
-          {!uploading && (
-            <button
-              onClick={handleUpload}
-              disabled={uploading || files.length === 0}
-              className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <Upload className="w-5 h-5" />
-              Upload {files.length} File{files.length !== 1 ? 's' : ''}
-            </button>
           )}
         </div>
       )}
-      </div>
 
-      {/* Upload Progress Summary - Show during upload for large file counts */}
+      {/* Upload Progress Summary - Show during upload */}
       {uploading && totalFilesCount > 0 && (
         <div className="mt-4">
           <UploadProgressSummary
@@ -479,7 +496,6 @@ export default function UploadPanel() {
             uploadedSize={uploadedSize}
             onRetryFailed={retryFailedFiles}
             onCancel={cancelUploads}
-            compact={totalFilesCount <= 10} // Use compact mode for small uploads
           />
         </div>
       )}
@@ -826,9 +842,9 @@ export default function UploadPanel() {
           onSuccess={(arnsName: string, undername?: string, transactionId?: string) => {
             // Update the upload item with ArNS assignment
             updateUploadWithArNS(showAssignDomainModal, arnsName, undername, transactionId);
-            
+
             setShowAssignDomainModal(null);
-            
+
             // Show success message
             setUploadMessage({
               type: 'success',
@@ -836,6 +852,144 @@ export default function UploadPanel() {
             });
           }}
         />
+      )}
+
+      {/* Upload Confirmation Modal */}
+      {showConfirmModal && files.length > 0 && (
+        <BaseModal onClose={() => setShowConfirmModal(false)}>
+          <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-turbo-red" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-fg-muted">Ready to Upload</h3>
+                <p className="text-xs text-link">Confirm your upload details</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="bg-surface rounded-lg p-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Files:</span>
+                    <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Total Size:</span>
+                    <span className="text-xs text-fg-muted">
+                      {formatFileSize(totalFileSize)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Cost:</span>
+                    <span className="text-xs text-fg-muted">
+                      {totalCost === 0 ? (
+                        <span className="text-turbo-green font-medium">FREE</span>
+                      ) : typeof totalCost === 'number' ? (
+                        `${totalCost.toFixed(6)} Credits`
+                      ) : (
+                        'Calculating...'
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                    <span className="text-xs text-link">Current Balance:</span>
+                    <span className="text-xs text-fg-muted">
+                      {creditBalance.toFixed(6)} Credits
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* JIT Payment Card */}
+            {(() => {
+              const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
+
+              // Determine the token type for JIT payment
+              // Arweave wallets must use ARIO for JIT (not AR)
+              // Ethereum wallets use Base-ETH for JIT
+              const jitTokenType = walletType === 'arweave'
+                ? 'ario'
+                : walletType === 'ethereum'
+                ? 'base-eth'
+                : walletType;
+              const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+
+              return (
+                <>
+                  {showJitOption && jitTokenType && (
+                    <div className="mb-4">
+                      <JitPaymentCard
+                        creditsNeeded={creditsNeeded}
+                        totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                        currentBalance={creditBalance}
+                        tokenType={jitTokenType}
+                        enabled={localJitEnabled}
+                        onEnabledChange={setLocalJitEnabled}
+                        maxTokenAmount={localJitMax}
+                        onMaxTokenAmountChange={setLocalJitMax}
+                      />
+                    </div>
+                  )}
+
+                  {/* Insufficient credits warning */}
+                  {creditsNeeded > 0 && !localJitEnabled && (
+                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
+                          {!showJitOption && (
+                            <>
+                              {' '}
+                              <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                                Buy credits
+                              </a>{' '}
+                              to continue.
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terms */}
+                  <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-xs text-link text-center">
+                      By uploading, you agree to our{' '}
+                      <a
+                        href="https://ardrive.io/tos-and-privacy/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
+                      >
+                        Terms of Service
+                      </a>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowConfirmModal(false)}
+                      className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={creditsNeeded > 0 && !localJitEnabled}
+                      className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
+                    >
+                      {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </BaseModal>
       )}
 
     </div>

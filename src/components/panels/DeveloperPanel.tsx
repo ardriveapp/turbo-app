@@ -319,44 +319,44 @@ console.log('Folder manifest ID:', folderUpload.id);`,
         <div className="grid md:grid-cols-2 gap-4">
           <a href="https://docs.ar.io/build/upload/bundling-services" target="_blank" rel="noopener noreferrer"
              className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">SDK</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Turbo SDK (Node & Web)</h5>
-            <p className="text-xs text-link">Install, quick start, events, CLI, and architecture.</p>
-          </a>
-          
-          <a href="https://docs.ardrive.io/docs/turbo/turbo-sdk/frameworks/html.html" target="_blank" rel="noopener noreferrer"
-             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">GUIDE</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Use Turbo SDK in plain HTML</h5>
-            <p className="text-xs text-link">Drop-in CDN import — no bundlers needed.</p>
-          </a>
-          
-          <a href="https://docs.ar.io/guides/uploading-to-arweave" target="_blank" rel="noopener noreferrer"
-             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">UPLOAD</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Uploading to Arweave with Turbo</h5>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">START</div>
+            <h5 className="font-bold mb-2 text-fg-muted">Getting Started</h5>
             <p className="text-xs text-link">AR.IO guide that walks through uploads with Turbo.</p>
           </a>
-          
-          <a href="https://cookbook.ar.io/guides/posting-transactions/turbo.html" target="_blank" rel="noopener noreferrer"
+
+          <a href="https://docs.ar.io/build/upload/turbo-credits" target="_blank" rel="noopener noreferrer"
              className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">EXAMPLES</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Posting transactions via Turbo</h5>
-            <p className="text-xs text-link">Code-first cookbook examples for data and files.</p>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">PAY</div>
+            <h5 className="font-bold mb-2 text-fg-muted">Paying for Uploads</h5>
+            <p className="text-xs text-link">Turbo Credits are the payment medium used by Turbo's upload service.</p>
           </a>
-          
-          <a href="https://docs.ardrive.io/docs/turbo/migrating.html" target="_blank" rel="noopener noreferrer"
-             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">MIGRATION</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Migrating from Irys</h5>
-            <p className="text-xs text-link">Point your Irys SDK/CLI at Turbo with minimal changes.</p>
-          </a>
-          
-          <a href="https://docs.ar.io/guides/permaweb-deploy" target="_blank" rel="noopener noreferrer"
+
+          <a href="https://docs.ar.io/build/guides/hosting-decentralized-websites" target="_blank" rel="noopener noreferrer"
              className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
             <div className="text-xs text-link uppercase tracking-wider mb-2">DEPLOY</div>
-            <h5 className="font-bold mb-2 text-fg-muted">Deploy to Permaweb with GitHub</h5>
-            <p className="text-xs text-link">Auto-deploy sites to Arweave with GitHub Actions and ArNS.</p>
+            <h5 className="font-bold mb-2 text-fg-muted">Host Decentralized Websites</h5>
+            <p className="text-xs text-link">Deploy your webpage or app Arweave with ArNS.</p>
+          </a>
+
+          <a href="https://docs.ar.io/build/access" target="_blank" rel="noopener noreferrer"
+             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
+            <div className="text-xs text-link uppercase tracking-wider mb-2">ACCESS</div>
+            <h5 className="font-bold mb-2 text-fg-muted">Accessing Data</h5>
+            <p className="text-xs text-link">Resilient and decentralized access for your apps.</p>
+          </a>
+
+          <a href="https://docs.ar.io/build/upload/advanced-uploading-with-turbo" target="_blank" rel="noopener noreferrer"
+             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
+            <div className="text-xs text-link uppercase tracking-wider mb-2">ADVANCED</div>
+            <h5 className="font-bold mb-2 text-fg-muted">Advanced Uploading</h5>
+            <p className="text-xs text-link">Code-first examples for paying for and uploading files.</p>
+          </a>
+
+          <a href="https://docs.ar.io/build/run-a-gateway" target="_blank" rel="noopener noreferrer"
+             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-turbo-purple/50">
+            <div className="text-xs text-link uppercase tracking-wider mb-2">OPERATE</div>
+            <h5 className="font-bold mb-2 text-fg-muted">Run a Gateway</h5>
+            <p className="text-xs text-link">Join the decentralized network that powers permanent data.</p>
           </a>
         </div>
       )}
@@ -383,7 +383,18 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                 <Zap className="w-6 h-6 text-link mt-0.5 flex-shrink-0" />
                 <div>
                   <div className="font-bold text-fg-muted text-lg mb-1">Fast Lane</div>
-                  <div className="text-sm text-link">Avoid rate limits for you and your data</div>
+                  <div className="text-sm text-link">
+                    Avoid rate limits for you and your data with priority access and dedicated bandwidth with{' '}
+                    <a
+                      href="https://www.coinbase.com/developer-platform/products/x402"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-fg-muted hover:text-turbo-purple transition-colors underline"
+                    >
+                      x402
+                    </a>
+                    .
+                  </div>
                 </div>
               </div>
             </div>

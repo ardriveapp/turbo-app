@@ -3,13 +3,15 @@ import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
-  SolanaWalletAdapter
+  SolanaWalletAdapter,
+  OnDemandFunding,
+  TurboUnauthenticatedConfiguration,
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
-import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { supportsJitPayment } from '../utils/jitPayment';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -96,10 +98,25 @@ export function useFolderUpload() {
     }
   }, [address, walletType]);
 
+  // Get config function from store
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+
   // Create Turbo client with proper walletAdapter based on wallet type
-  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+  const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
+
+    // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
+    const effectiveTokenType = tokenTypeOverride || walletType;
+    const config = getCurrentConfig();
+    const dynamicTurboConfig: TurboUnauthenticatedConfiguration = {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+      ...(effectiveTokenType && config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap]
+        ? { gatewayUrl: config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap] }
+        : {})
+    };
 
     // HOTFIX: Detect corrupted wallet type (contains address instead of type)
     let actualWalletType = walletType;
@@ -115,7 +132,7 @@ export function useFolderUpload() {
         actualWalletType = 'arweave'; // Default fallback for Arweave
       }
     }
-    
+
     switch (actualWalletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
@@ -123,9 +140,11 @@ export function useFolderUpload() {
         }
         // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
-          ...turboConfig,
-          signer 
+        return TurboFactory.authenticated({
+          ...dynamicTurboConfig,
+          signer,
+          // Use token type override if provided (for JIT with ARIO)
+          ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
         
       case 'ethereum':
@@ -139,11 +158,11 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
-            ...turboConfig,
+            ...dynamicTurboConfig,
           });
         } else {
           // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
@@ -155,11 +174,11 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
-            ...turboConfig,
+            ...dynamicTurboConfig,
           });
         }
         
@@ -200,13 +219,13 @@ export function useFolderUpload() {
         return TurboFactory.authenticated({
           token: "solana",
           walletAdapter,
-          ...turboConfig,
+          ...dynamicTurboConfig,
         });
-        
+
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, wallets, validateWalletState]);
+  }, [address, walletType, wallets, getCurrentConfig, validateWalletState]);
 
 
   // Smart content type detection based on file extensions
@@ -257,6 +276,7 @@ export function useFolderUpload() {
     file: File,
     folderPath: string,
     signal: AbortSignal,
+    fundingMode: OnDemandFunding | undefined,
     maxRetries = 3
   ): Promise<any> => {
     let lastError;
@@ -272,6 +292,7 @@ export function useFolderUpload() {
         const uploadPromise = turbo.uploadFile({
           file: file,
           signal: signal, // Pass the abort signal to the SDK
+          fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
           dataItemOpts: {
             tags: [
               { name: 'Content-Type', value: getContentType(file) },
@@ -281,7 +302,7 @@ export function useFolderUpload() {
           },
           events: {
             // Track progress for individual files
-            onProgress: ({ totalBytes, processedBytes }) => {
+            onProgress: ({ totalBytes, processedBytes }: { totalBytes: number; processedBytes: number }) => {
               const percentage = Math.round((processedBytes / totalBytes) * 100);
               setFileProgress(prev => ({ ...prev, [file.name]: percentage }));
               // Update active upload progress
@@ -299,7 +320,7 @@ export function useFolderUpload() {
               ));
             }
           }
-        });
+        } as any); // Type assertion needed until SDK types are updated
 
         // 5 minute timeout per file
         const timeoutPromise = new Promise((_, reject) => {
@@ -323,7 +344,16 @@ export function useFolderUpload() {
     throw lastError || new Error(`Failed to upload ${file.name} after ${maxRetries} attempts`);
   }, [getContentType, setFileProgress, setActiveUploads]);
 
-  const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
+  const deployFolder = useCallback(async (
+    files: File[],
+    manifestOptions?: {
+      indexFile?: string;
+      fallbackFile?: string;
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number; // In smallest unit
+      jitBufferMultiplier?: number;
+    }
+  ) => {
     // Validate wallet state before any operations
     validateWalletState();
 
@@ -351,9 +381,27 @@ export function useFolderUpload() {
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
+    // Create funding mode if JIT enabled and supported
+    let fundingMode: OnDemandFunding | undefined = undefined;
+    if (manifestOptions?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
+      fundingMode = new OnDemandFunding({
+        maxTokenAmount: manifestOptions.jitMaxTokenAmount || 0,
+        topUpBufferMultiplier: manifestOptions.jitBufferMultiplier || 1.1,
+      });
+    }
+
     try {
       // Creating Turbo client for folder deployment
-      const turbo = await createTurboClient();
+      const turbo = await createTurboClient(jitTokenType || undefined);
       
       // Starting folder deployment
       
@@ -421,7 +469,7 @@ export function useFolderUpload() {
             });
 
             // Upload with retry logic and timeout
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal);
+            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -608,6 +656,7 @@ export function useFolderUpload() {
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
         signal: controller.signal, // Also pass signal to manifest upload
+        fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
         dataItemOpts: {
           tags: [
             { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
@@ -615,7 +664,7 @@ export function useFolderUpload() {
             { name: 'Type', value: 'manifest' }
           ]
         }
-      });
+      } as any); // Type assertion needed until SDK types are updated
       
       const uploadResult = {
         manifestId: manifestResult.id,

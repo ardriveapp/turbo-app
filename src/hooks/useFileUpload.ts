@@ -3,7 +3,8 @@ import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
-  SolanaWalletAdapter
+  SolanaWalletAdapter,
+  OnDemandFunding,
 } from '@ardrive/turbo-sdk/web';
 // Removed unused imports - now using walletAdapter pattern instead of direct signers
 import { ethers } from 'ethers';
@@ -11,6 +12,7 @@ import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { useTurboConfig } from './useTurboConfig';
 import { useWallets } from '@privy-io/react-auth';
+import { supportsJitPayment } from '../utils/jitPayment';
 
 interface UploadResult {
   id: string;
@@ -44,7 +46,6 @@ export interface UploadError {
 
 export function useFileUpload() {
   const { address, walletType } = useStore();
-  const turboConfig = useTurboConfig();
   const { wallets } = useWallets(); // Get Privy wallets
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -87,11 +88,26 @@ export function useFileUpload() {
     }
   }, [address, walletType]);
 
+  // Get config function from store
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+
   // Create Turbo client with proper walletAdapter based on wallet type
-  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+  const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
-    
+
+    // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
+    const effectiveTokenType = tokenTypeOverride || walletType;
+    const config = getCurrentConfig();
+    const turboConfig = {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+      ...(effectiveTokenType && config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap]
+        ? { gatewayUrl: config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap] }
+        : {})
+    };
+
     switch (walletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
@@ -99,9 +115,11 @@ export function useFileUpload() {
         }
         // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
+        return TurboFactory.authenticated({
           ...turboConfig,
-          signer 
+          signer,
+          // Use token type override if provided (for JIT with ARIO)
+          ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
         
       case 'ethereum':
@@ -115,7 +133,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -132,7 +150,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -141,30 +159,11 @@ export function useFileUpload() {
         }
         
       case 'solana':
-        // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
-        if (walletType !== 'solana') {
-          throw new Error('Internal error: Attempting Solana operations with non-Solana wallet');
-        }
-        
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
-        
-        // Verify this is an intentional Solana connection
-        if (!window.solana.isConnected) {
-          throw new Error('Solana wallet not connected. Please connect your Solana wallet first.');
-        }
-        
-        // Creating Solana walletAdapter
         const provider = window.solana;
-        
-        // Use existing connection instead of calling connect() again
-        const existingPublicKey = provider.publicKey;
-        if (!existingPublicKey) {
-          throw new Error('Solana wallet connection lost. Please reconnect your Solana wallet.');
-        }
-        
-        const publicKey = new PublicKey(existingPublicKey);
+        const publicKey = new PublicKey((await provider.connect()).publicKey);
 
         const walletAdapter: SolanaWalletAdapter = {
           publicKey,
@@ -183,25 +182,51 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [walletType, wallets, turboConfig, validateWalletState]);
+  }, [walletType, wallets, getCurrentConfig, validateWalletState]);
 
-  const uploadFile = useCallback(async (file: File) => {
+  const uploadFile = useCallback(async (
+    file: File,
+    options?: {
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number; // In smallest unit
+      jitBufferMultiplier?: number;
+    }
+  ) => {
     if (!address) {
       throw new Error('Wallet not connected');
     }
 
     const fileName = file.name;
     setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
-    
+
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
+    // Create funding mode if JIT enabled and supported
+    let fundingMode: OnDemandFunding | undefined = undefined;
+    if (options?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
+      fundingMode = new OnDemandFunding({
+        maxTokenAmount: options.jitMaxTokenAmount || 0,
+        topUpBufferMultiplier: options.jitBufferMultiplier || 1.1,
+      });
+    }
+
     try {
       // Creating Turbo client for upload
-      const turbo = await createTurboClient();
-      
+      const turbo = await createTurboClient(jitTokenType || undefined);
+
       // Starting upload for file
-      
+
       // Upload file using the proper uploadFile method for browsers
       const uploadResult = await turbo.uploadFile({
         file: file,  // Pass the File object directly
+        fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
         dataItemOpts: {
           tags: [
             { name: 'Content-Type', value: file.type || 'application/octet-stream' },
@@ -210,7 +235,7 @@ export function useFileUpload() {
         },
         events: {
           // Overall progress (includes both signing and upload)
-          onProgress: ({ totalBytes, processedBytes }) => {
+          onProgress: ({ totalBytes, processedBytes }: { totalBytes: number; processedBytes: number }) => {
             const percentage = Math.round((processedBytes / totalBytes) * 100);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
             // Upload progress tracked
@@ -225,7 +250,7 @@ export function useFileUpload() {
             setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
           }
         }
-      });
+      } as any); // Type assertion needed until SDK types are updated
       
       // Add timestamp, file metadata, and capture full receipt for display
       const result = {
@@ -246,7 +271,14 @@ export function useFileUpload() {
     }
   }, [address, createTurboClient]);
 
-  const uploadMultipleFiles = useCallback(async (files: File[]) => {
+  const uploadMultipleFiles = useCallback(async (
+    files: File[],
+    options?: {
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number; // In smallest unit
+      jitBufferMultiplier?: number;
+    }
+  ) => {
     // Validate wallet state before any operations
     validateWalletState();
 
@@ -286,7 +318,7 @@ export function useFileUpload() {
         ]);
 
         // Starting upload for file
-        const result = await uploadFile(file);
+        const result = await uploadFile(file, options);
 
         // Remove from active uploads
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));

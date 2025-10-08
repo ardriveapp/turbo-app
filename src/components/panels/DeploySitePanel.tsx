@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
@@ -15,6 +15,8 @@ import ArNSAssociationPanel from '../ArNSAssociationPanel';
 import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 import UploadProgressSummary from '../UploadProgressSummary';
+import { JitPaymentCard } from '../JitPaymentCard';
+import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
 
 // Enhanced Deploy Confirmation Modal for original deploy page
 interface DeployConfirmationModalProps {
@@ -30,6 +32,13 @@ interface DeployConfirmationModalProps {
   arnsEnabled: boolean;
   arnsName: string;
   undername: string;
+  // JIT payment props
+  currentBalance: number;
+  walletType: 'arweave' | 'ethereum' | 'solana' | null;
+  jitEnabled: boolean;
+  onJitEnabledChange: (enabled: boolean) => void;
+  jitMaxTokenAmount: number;
+  onJitMaxTokenAmountChange: (amount: number) => void;
 }
 
 function DeployConfirmationModal({
@@ -43,98 +52,149 @@ function DeployConfirmationModal({
   fallbackFile,
   arnsEnabled,
   arnsName,
-  undername
+  undername,
+  currentBalance,
+  walletType,
+  jitEnabled,
+  onJitEnabledChange,
+  jitMaxTokenAmount,
+  onJitMaxTokenAmountChange,
 }: DeployConfirmationModalProps) {
+  const creditsNeeded = Math.max(0, totalCost - currentBalance);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenType = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
+  const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
   return (
     <BaseModal onClose={onClose}>
-      <div className="p-4 sm:p-6 w-full max-w-4xl mx-auto min-w-[90vw] sm:min-w-[600px]">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Zap className="w-6 h-6 text-turbo-red" />
+      <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Zap className="w-5 h-5 text-turbo-red" />
           </div>
           <div className="text-left">
-            <h3 className="text-xl font-bold text-fg-muted">Ready to Deploy</h3>
-            <p className="text-sm text-link">Confirm your deployment details</p>
+            <h3 className="text-lg font-bold text-fg-muted">Ready to Deploy</h3>
+            <p className="text-xs text-link">Confirm your deployment details</p>
           </div>
         </div>
 
-        <div className="mb-6">
-          <div className="bg-surface rounded-lg p-4">
-            {/* Main deployment stats */}
-            <div className="space-y-3 mb-4">
+        <div className="mb-4">
+          <div className="bg-surface rounded-lg p-3">
+            <div className="space-y-2">
+              {/* ArNS Domain at top */}
+              {arnsEnabled && arnsName && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-link">Domain:</span>
+                  <span className="text-xs text-fg-muted">
+                    {undername ? undername + '_' : ''}{arnsName}.ar.io
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
-                <span className="text-link">Folder:</span>
-                <span className="font-medium text-fg-muted">{folderName}</span>
+                <span className="text-xs text-link">Folder:</span>
+                <span className="text-xs text-fg-muted">{folderName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-link">Files:</span>
-                <span className="font-medium text-fg-muted">{fileCount} files</span>
+                <span className="text-xs text-link">Files:</span>
+                <span className="text-xs text-fg-muted">{fileCount} file{fileCount !== 1 ? 's' : ''}</span>
               </div>
+
+              {/* Auto-detected files - moved up for better grouping */}
+              {(indexFile || fallbackFile) && (
+                <>
+                  {indexFile && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-link">Homepage:</span>
+                      <span className="text-xs text-fg-muted">{indexFile}</span>
+                    </div>
+                  )}
+                  {fallbackFile && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-link">Error page:</span>
+                      <span className="text-xs text-fg-muted">{fallbackFile}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div className="flex justify-between items-center">
-                <span className="text-link">Size:</span>
-                <span className="font-medium text-fg-muted">
+                <span className="text-xs text-link">Total Size:</span>
+                <span className="text-xs text-fg-muted">
                   {(totalSize / 1024 / 1024).toFixed(2)} MB
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-link">Cost:</span>
-                <span className="font-medium text-fg-muted">
+                <span className="text-xs text-link">Cost:</span>
+                <span className="text-xs text-fg-muted">
                   {totalCost === 0 ? (
-                    <span className="text-turbo-green font-bold">FREE</span>
+                    <span className="text-turbo-green font-medium">FREE</span>
                   ) : (
                     `${totalCost.toFixed(6)} Credits`
                   )}
                 </span>
               </div>
+              <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                <span className="text-xs text-link">Current Balance:</span>
+                <span className="text-xs text-fg-muted">
+                  {currentBalance.toFixed(6)} Credits
+                </span>
+              </div>
             </div>
-            
-            {/* Auto-detected files */}
-            {(indexFile || fallbackFile) && (
-              <div className="border-t border-default/30 pt-3">
-                <div className="text-xs text-link mb-2">Configurations:</div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
-                  {indexFile && (
-                    <div className="flex items-center gap-2">
-                      <Home className="w-4 h-4 text-turbo-green" />
-                      <span className="text-fg-muted">Homepage: {indexFile}</span>
-                    </div>
-                  )}
-                  {fallbackFile && (
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
-                      <span className="text-fg-muted">Error page: {fallbackFile}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ArNS Configuration Display */}
-            {arnsEnabled && arnsName && (
-              <div className="border-t border-default/30 pt-3 mt-3">
-                <div className="text-xs text-link mb-2">Domain Configuration:</div>
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3 h-3 text-fg-muted" />
-                  <span className="text-sm font-medium text-fg-muted">
-                    {undername ? undername + '_' : ''}{arnsName}.ar.io
-                  </span>
-                </div>
-                <div className="text-xs text-link mt-1">
-                  Your site will be accessible at this url
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
+        {/* JIT Payment Card - Show when insufficient credits and wallet supports it */}
+        {showJitOption && jitTokenType && (
+          <div className="mb-4">
+            <JitPaymentCard
+              creditsNeeded={creditsNeeded}
+              totalCost={totalCost}
+              currentBalance={currentBalance}
+              tokenType={jitTokenType}
+              enabled={jitEnabled}
+              onEnabledChange={onJitEnabledChange}
+              maxTokenAmount={jitMaxTokenAmount}
+              onMaxTokenAmountChange={onJitMaxTokenAmountChange}
+            />
+          </div>
+        )}
+
+        {/* Insufficient credits warning - Only show if JIT disabled or not supported */}
+        {creditsNeeded > 0 && !jitEnabled && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span>
+                Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
+                {!showJitOption && (
+                  <>
+                    {' '}
+                    <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                      Buy credits
+                    </a>{' '}
+                    to continue.
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Terms and Conditions */}
-        <div className="bg-surface/30 rounded-lg p-3 mb-6">
+        <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
           <p className="text-xs text-link text-center">
             By deploying, you agree to our{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://ardrive.io/tos-and-privacy/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
             >
               Terms of Service
@@ -151,9 +211,10 @@ function DeployConfirmationModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors"
+            disabled={creditsNeeded > 0 && !jitEnabled}
+            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
           >
-            Deploy Now
+            {jitEnabled && creditsNeeded > 0 ? 'Deploy & Auto-Pay' : 'Deploy Now'}
           </button>
         </div>
       </div>
@@ -163,7 +224,18 @@ function DeployConfirmationModal({
 
 export default function DeploySitePanel() {
   const navigate = useNavigate();
-  const { address, walletType, creditBalance, deployHistory, addDeployResults, clearDeployHistory } = useStore();
+  const {
+    address,
+    walletType,
+    creditBalance,
+    deployHistory,
+    addDeployResults,
+    clearDeployHistory,
+    jitPaymentEnabled,
+    jitMaxTokenAmount,
+    setJitPaymentEnabled,
+    setJitMaxTokenAmount,
+  } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -188,6 +260,27 @@ export default function DeploySitePanel() {
   const [postDeployArNSEnabled, setPostDeployArNSEnabled] = useState(false);
   // Domain assignment modal state
   const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
+
+  // JIT payment local state for this deployment
+  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  // Ethereum wallets use Base-ETH for JIT
+  const jitTokenTypeForDefaults = walletType === 'arweave'
+    ? 'ario'
+    : walletType === 'ethereum'
+    ? 'base-eth'
+    : walletType;
+
+  const [localJitMax, setLocalJitMax] = useState(
+    jitTokenTypeForDefaults && jitMaxTokenAmount[jitTokenTypeForDefaults]
+      ? jitMaxTokenAmount[jitTokenTypeForDefaults]
+      : 0
+  );
+
+  // Fixed 10% buffer for SDK (not exposed to user)
+  const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
   const {
     deployFolder,
@@ -657,6 +750,29 @@ export default function DeploySitePanel() {
       return;
     }
 
+    // Save JIT preferences to store
+    setJitPaymentEnabled(localJitEnabled);
+
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    // Ethereum wallets use Base-ETH for JIT
+    const jitTokenType = walletType === 'arweave'
+      ? 'ario'
+      : walletType === 'ethereum'
+      ? 'base-eth'
+      : walletType;
+
+    // Save max token amount to store for future use
+    if (jitTokenType) {
+      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    }
+
+    // Convert max token amount to smallest unit for SDK
+    let jitMaxTokenAmountSmallest = 0;
+    if (localJitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
+      const converter = getTokenConverter(jitTokenType);
+      jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
+    }
 
     try {
       setDeployMessage(null);
@@ -664,7 +780,10 @@ export default function DeploySitePanel() {
       setArnsUpdateCancelled(false); // Reset cancel state for new deployment
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
-        fallbackFile: fallbackFile || undefined
+        fallbackFile: fallbackFile || undefined,
+        jitEnabled: localJitEnabled,
+        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
+        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
       });
       
       if (result.manifestId) {
@@ -1064,54 +1183,28 @@ export default function DeploySitePanel() {
       {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
         <div className="mt-4 p-4 bg-surface/50 rounded-lg">
             <div className="flex justify-between mb-2">
-              <span className="text-link">Total Size:</span>
-              <span className="font-medium">{(totalFileSize / 1024 / 1024).toFixed(2)} MB</span>
+              <span className="text-xs text-link">Total Size:</span>
+              <span className="text-xs text-fg-muted">{(totalFileSize / 1024 / 1024).toFixed(2)} MB</span>
             </div>
-            <div className="flex justify-between mb-2">
-              <span className="text-link">Estimated Cost:</span>
-              <span className="font-medium">
+            <div className="flex justify-between">
+              <span className="text-xs text-link">Estimated Cost:</span>
+              <span className="text-xs text-fg-muted">
                 {totalCost === 0 ? (
-                  <span className="text-turbo-green">FREE</span>
+                  <span className="text-turbo-green font-medium">FREE</span>
                 ) : (
                   <span>{totalCost.toFixed(6)} Credits</span>
                 )}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-link">Balance After:</span>
-              <div className="text-right">
-                <span className={`font-medium ${
-                  creditBalance - totalCost < 0 ? 'text-red-400' : 'text-fg-muted'
-                }`}>
-                  {(creditBalance - totalCost).toFixed(6)} Credits
-                </span>
-                {wincForOneGiB && (
-                  <div className="text-xs text-link">
-                    ~{(((creditBalance - totalCost) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Insufficient Credits Warning */}
-            {selectedFolder && selectedFolder.length > 0 && totalCost > creditBalance && (
-              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
-                <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  <span>Insufficient credits. Need {(totalCost - creditBalance).toFixed(4)} more credits.</span>
-                </div>
-              </div>
-            )}
-
           </div>
       )}
 
 
       {/* Deploy Button - Hide during success display and deployment */}
-      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && creditBalance >= totalCost && (
+      {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
         <button
           onClick={() => setShowConfirmModal(true)}
-          disabled={deploying || totalCost > creditBalance || (arnsEnabled && !selectedArnsName)}
+          disabled={deploying || (arnsEnabled && !selectedArnsName)}
           className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {deploying ? (
@@ -2018,13 +2111,19 @@ export default function DeploySitePanel() {
           onConfirm={handleConfirmDeploy}
           folderName={folderName}
           fileCount={selectedFolder.length}
-          totalSize={totalSize}
+          totalSize={totalFileSize}
           totalCost={totalCost}
           indexFile={indexFile}
           fallbackFile={fallbackFile}
           arnsEnabled={arnsEnabled}
           arnsName={selectedArnsName}
           undername={selectedUndername}
+          currentBalance={creditBalance}
+          walletType={walletType}
+          jitEnabled={localJitEnabled}
+          onJitEnabledChange={setLocalJitEnabled}
+          jitMaxTokenAmount={localJitMax}
+          onJitMaxTokenAmountChange={setLocalJitMax}
         />
       )}
 

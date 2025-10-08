@@ -337,9 +337,8 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ### ⚠️ Known Limitations
 - **Crypto Payments**: Solana and Ethereum crypto payments implemented but need improved UX and additional testing
-- **Share Credits**: Requires Wander wallet for transaction signing
+- **Share Credits**: Requires Arweave (Wander) wallet for transaction signing
 - **ArNS Purchase**: Search UI ready, purchase not connected
-- **Upload Restrictions**: Limited to Arweave wallets only
 - **ArNS Updates**: Requires Arweave wallet for ANT operations and signing
 
 ### 🔄 Wallet Capability Matrix
@@ -347,9 +346,9 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 |---------|---------|----------|--------|
 | Buy Credits (Fiat) | ✅ | ✅ | ✅ |
 | Buy Credits (Crypto) | ✅ | ✅ | ✅ |
-| Upload Files | ✅ | ❌ | ❌ |
-| Deploy Sites | ✅ | ❌ | ❌ |
-| Share Credits | ✅ | ❌ | ❌ |
+| Upload Files | ✅ | ✅ | ✅ |
+| Deploy Sites | ✅ | ✅ | ✅ |
+| Share Credits | ✅ | ✅ | ✅ |
 | ArNS Names | ✅ | ✅ | ❌ |
 | Update ArNS Records | ✅ | ❌ | ❌ |
 

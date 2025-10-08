@@ -142,7 +142,7 @@ export const WRITE_OPTIONS = {
     },
     {
       name: 'App-Version',
-      value: '0.4.0'
+      value: '0.4.1'
     },
   ],
 };

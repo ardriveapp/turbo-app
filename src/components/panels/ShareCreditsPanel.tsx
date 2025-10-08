@@ -10,9 +10,10 @@ import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../../store/useStore';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
-import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code } from 'lucide-react';
+import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code, CheckCircle } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useWallets } from '@privy-io/react-auth';
+import { validateWalletAddress, getWalletTypeLabel } from '../../utils/addressValidation';
 
 interface Approval {
   approvedAddress: string;
@@ -105,11 +106,13 @@ export default function ShareCreditsPanel() {
   const [creditAmount, setCreditAmount] = useState(1);
   const [creditAmountInput, setCreditAmountInput] = useState('1');
   const [approvedAddress, setApprovedAddress] = useState('');
+  const [approvedAddressInput, setApprovedAddressInput] = useState('');
+  const [recipientWalletType, setRecipientWalletType] = useState<'arweave' | 'ethereum' | 'solana' | 'unknown' | null>(null);
   const [expiresBySeconds, setExpiresBySeconds] = useState(0);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
+
   // Revoke state
   const [revokeAddress, setRevokeAddress] = useState('');
   const [revoking, setRevoking] = useState(false);
@@ -142,14 +145,16 @@ export default function ShareCreditsPanel() {
       });
       
       setSuccess(true);
-      
+
       // Refresh balance in header
       window.dispatchEvent(new CustomEvent('refresh-balance'));
-      
+
       // Clear form
       setApprovedAddress('');
-      setCreditAmount(1);
-      setCreditAmountInput('1');
+      setApprovedAddressInput('');
+      setRecipientWalletType(null);
+      setCreditAmount(0);
+      setCreditAmountInput('0');
       setExpiresBySeconds(0);
       
       setTimeout(() => {
@@ -303,14 +308,49 @@ export default function ShareCreditsPanel() {
             <label className="block text-sm font-medium mb-3">Recipient Wallet Address</label>
             <input
               type="text"
-              value={approvedAddress}
-              onChange={(e) => setApprovedAddress(e.target.value)}
+              value={approvedAddressInput}
+              onChange={(e) => {
+                setApprovedAddressInput(e.target.value);
+                // Clear validation state on change
+                if (approvedAddress) {
+                  setApprovedAddress('');
+                  setRecipientWalletType(null);
+                }
+              }}
+              onBlur={() => {
+                const trimmed = approvedAddressInput.trim();
+                if (trimmed) {
+                  const validation = validateWalletAddress(trimmed);
+                  if (validation.isValid && validation.type !== 'unknown') {
+                    setApprovedAddress(trimmed);
+                    setRecipientWalletType(validation.type);
+                  } else {
+                    setRecipientWalletType('unknown');
+                  }
+                } else {
+                  setApprovedAddress('');
+                  setRecipientWalletType(null);
+                }
+              }}
               className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
               placeholder="Arweave, Ethereum, or Solana address"
             />
-            <div className="mt-2 text-xs text-link">
-              e.g., 1seRanklLU_1VTGkEk7P0x...
-            </div>
+            {recipientWalletType && recipientWalletType !== 'unknown' && (
+              <div className="mt-2 text-xs text-turbo-green flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Valid {getWalletTypeLabel(recipientWalletType)} address
+              </div>
+            )}
+            {recipientWalletType === 'unknown' && (
+              <div className="mt-2 text-xs text-red-500">
+                Invalid wallet address format
+              </div>
+            )}
+            {!recipientWalletType && (
+              <div className="mt-2 text-xs text-link">
+                e.g., 1seRanklLU_1VTGkEk7P0x...
+              </div>
+            )}
           </div>
         </div>
 
