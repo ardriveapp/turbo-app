@@ -3,13 +3,15 @@ import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
-  SolanaWalletAdapter
+  SolanaWalletAdapter,
+  OnDemandFunding,
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
 import { PublicKey } from '@solana/web3.js';
 import { turboConfig } from '../constants';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { supportsJitPayment } from '../utils/jitPayment';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -257,6 +259,7 @@ export function useFolderUpload() {
     file: File,
     folderPath: string,
     signal: AbortSignal,
+    fundingMode: OnDemandFunding | undefined,
     maxRetries = 3
   ): Promise<any> => {
     let lastError;
@@ -272,6 +275,7 @@ export function useFolderUpload() {
         const uploadPromise = turbo.uploadFile({
           file: file,
           signal: signal, // Pass the abort signal to the SDK
+          fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
           dataItemOpts: {
             tags: [
               { name: 'Content-Type', value: getContentType(file) },
@@ -281,7 +285,7 @@ export function useFolderUpload() {
           },
           events: {
             // Track progress for individual files
-            onProgress: ({ totalBytes, processedBytes }) => {
+            onProgress: ({ totalBytes, processedBytes }: { totalBytes: number; processedBytes: number }) => {
               const percentage = Math.round((processedBytes / totalBytes) * 100);
               setFileProgress(prev => ({ ...prev, [file.name]: percentage }));
               // Update active upload progress
@@ -299,7 +303,7 @@ export function useFolderUpload() {
               ));
             }
           }
-        });
+        } as any); // Type assertion needed until SDK types are updated
 
         // 5 minute timeout per file
         const timeoutPromise = new Promise((_, reject) => {
@@ -323,7 +327,16 @@ export function useFolderUpload() {
     throw lastError || new Error(`Failed to upload ${file.name} after ${maxRetries} attempts`);
   }, [getContentType, setFileProgress, setActiveUploads]);
 
-  const deployFolder = useCallback(async (files: File[], manifestOptions?: { indexFile?: string; fallbackFile?: string }) => {
+  const deployFolder = useCallback(async (
+    files: File[],
+    manifestOptions?: {
+      indexFile?: string;
+      fallbackFile?: string;
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number; // In smallest unit
+      jitBufferMultiplier?: number;
+    }
+  ) => {
     // Validate wallet state before any operations
     validateWalletState();
 
@@ -350,6 +363,15 @@ export function useFolderUpload() {
     const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
+
+    // Create funding mode if JIT enabled and supported
+    let fundingMode: OnDemandFunding | undefined = undefined;
+    if (manifestOptions?.jitEnabled && walletType && supportsJitPayment(walletType)) {
+      fundingMode = new OnDemandFunding({
+        maxTokenAmount: manifestOptions.jitMaxTokenAmount || 0,
+        topUpBufferMultiplier: manifestOptions.jitBufferMultiplier || 1.1,
+      });
+    }
 
     try {
       // Creating Turbo client for folder deployment
@@ -421,7 +443,7 @@ export function useFolderUpload() {
             });
 
             // Upload with retry logic and timeout
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal);
+            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -608,6 +630,7 @@ export function useFolderUpload() {
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
         signal: controller.signal, // Also pass signal to manifest upload
+        fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
         dataItemOpts: {
           tags: [
             { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
@@ -615,7 +638,7 @@ export function useFolderUpload() {
             { name: 'Type', value: 'manifest' }
           ]
         }
-      });
+      } as any); // Type assertion needed until SDK types are updated
       
       const uploadResult = {
         manifestId: manifestResult.id,

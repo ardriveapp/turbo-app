@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
@@ -15,6 +15,8 @@ import ArNSAssociationPanel from '../ArNSAssociationPanel';
 import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 import UploadProgressSummary from '../UploadProgressSummary';
+import { JitPaymentCard } from '../JitPaymentCard';
+import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
 
 // Enhanced Deploy Confirmation Modal for original deploy page
 interface DeployConfirmationModalProps {
@@ -30,6 +32,15 @@ interface DeployConfirmationModalProps {
   arnsEnabled: boolean;
   arnsName: string;
   undername: string;
+  // JIT payment props
+  currentBalance: number;
+  walletType: 'arweave' | 'ethereum' | 'solana' | null;
+  jitEnabled: boolean;
+  onJitEnabledChange: (enabled: boolean) => void;
+  jitMaxTokenAmount: number;
+  onJitMaxTokenAmountChange: (amount: number) => void;
+  jitBufferMultiplier: number;
+  onJitBufferMultiplierChange: (multiplier: number) => void;
 }
 
 function DeployConfirmationModal({
@@ -43,8 +54,18 @@ function DeployConfirmationModal({
   fallbackFile,
   arnsEnabled,
   arnsName,
-  undername
+  undername,
+  currentBalance,
+  walletType,
+  jitEnabled,
+  onJitEnabledChange,
+  jitMaxTokenAmount,
+  onJitMaxTokenAmountChange,
+  jitBufferMultiplier,
+  onJitBufferMultiplierChange,
 }: DeployConfirmationModalProps) {
+  const creditsNeeded = Math.max(0, totalCost - currentBalance);
+  const showJitOption = creditsNeeded > 0 && walletType && supportsJitPayment(walletType);
   return (
     <BaseModal onClose={onClose}>
       <div className="p-4 sm:p-6 w-full max-w-4xl mx-auto min-w-[90vw] sm:min-w-[600px]">
@@ -127,18 +148,65 @@ function DeployConfirmationModal({
           </div>
         </div>
 
+        {/* JIT Payment Card - Show when insufficient credits and wallet supports it */}
+        {showJitOption && walletType && (
+          <div className="mb-6">
+            <JitPaymentCard
+              creditsNeeded={creditsNeeded}
+              totalCost={totalCost}
+              currentBalance={currentBalance}
+              tokenType={walletType}
+              enabled={jitEnabled}
+              onEnabledChange={onJitEnabledChange}
+              maxTokenAmount={jitMaxTokenAmount}
+              onMaxTokenAmountChange={onJitMaxTokenAmountChange}
+              bufferMultiplier={jitBufferMultiplier}
+              onBufferMultiplierChange={onJitBufferMultiplierChange}
+            />
+          </div>
+        )}
+
+        {/* Insufficient credits warning - Only show if JIT disabled or not supported */}
+        {creditsNeeded > 0 && !jitEnabled && (
+          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <span>
+                Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
+                {!showJitOption && (
+                  <>
+                    {' '}
+                    <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                      Buy credits
+                    </a>{' '}
+                    to continue.
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Terms and Conditions */}
         <div className="bg-surface/30 rounded-lg p-3 mb-6">
           <p className="text-xs text-link text-center">
             By deploying, you agree to our{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://ardrive.io/tos-and-privacy/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
             >
               Terms of Service
             </a>
+            {jitEnabled && creditsNeeded > 0 && walletType && (
+              <>
+                {' '}and authorize auto-payment of up to{' '}
+                <span className="font-medium">
+                  {jitMaxTokenAmount} {tokenLabels[walletType]}
+                </span>
+              </>
+            )}
           </p>
         </div>
 
@@ -151,9 +219,10 @@ function DeployConfirmationModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors"
+            disabled={creditsNeeded > 0 && !jitEnabled}
+            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
           >
-            Deploy Now
+            {jitEnabled && creditsNeeded > 0 ? 'Deploy & Auto-Pay' : 'Deploy Now'}
           </button>
         </div>
       </div>
@@ -163,7 +232,20 @@ function DeployConfirmationModal({
 
 export default function DeploySitePanel() {
   const navigate = useNavigate();
-  const { address, walletType, creditBalance, deployHistory, addDeployResults, clearDeployHistory } = useStore();
+  const {
+    address,
+    walletType,
+    creditBalance,
+    deployHistory,
+    addDeployResults,
+    clearDeployHistory,
+    jitPaymentEnabled,
+    jitMaxTokenAmount,
+    jitBufferMultiplier,
+    setJitPaymentEnabled,
+    setJitMaxTokenAmount,
+    setJitBufferMultiplier,
+  } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -188,6 +270,13 @@ export default function DeploySitePanel() {
   const [postDeployArNSEnabled, setPostDeployArNSEnabled] = useState(false);
   // Domain assignment modal state
   const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
+
+  // JIT payment local state for this deployment
+  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+  const [localJitMax, setLocalJitMax] = useState(
+    walletType && jitMaxTokenAmount[walletType] ? jitMaxTokenAmount[walletType] : 0
+  );
+  const [localJitBuffer, setLocalJitBuffer] = useState(jitBufferMultiplier);
   const wincForOneGiB = useWincForOneGiB();
   const {
     deployFolder,
@@ -657,6 +746,19 @@ export default function DeploySitePanel() {
       return;
     }
 
+    // Save JIT preferences to store
+    setJitPaymentEnabled(localJitEnabled);
+    if (walletType) {
+      setJitMaxTokenAmount(walletType, localJitMax);
+    }
+    setJitBufferMultiplier(localJitBuffer);
+
+    // Convert max token amount to smallest unit for SDK
+    let jitMaxTokenAmountSmallest = 0;
+    if (localJitEnabled && walletType && supportsJitPayment(walletType)) {
+      const converter = getTokenConverter(walletType);
+      jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
+    }
 
     try {
       setDeployMessage(null);
@@ -664,7 +766,10 @@ export default function DeploySitePanel() {
       setArnsUpdateCancelled(false); // Reset cancel state for new deployment
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
-        fallbackFile: fallbackFile || undefined
+        fallbackFile: fallbackFile || undefined,
+        jitEnabled: localJitEnabled,
+        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
+        jitBufferMultiplier: localJitBuffer,
       });
       
       if (result.manifestId) {
@@ -2025,6 +2130,14 @@ export default function DeploySitePanel() {
           arnsEnabled={arnsEnabled}
           arnsName={selectedArnsName}
           undername={selectedUndername}
+          currentBalance={creditBalance}
+          walletType={walletType}
+          jitEnabled={localJitEnabled}
+          onJitEnabledChange={setLocalJitEnabled}
+          jitMaxTokenAmount={localJitMax}
+          onJitMaxTokenAmountChange={setLocalJitMax}
+          jitBufferMultiplier={localJitBuffer}
+          onJitBufferMultiplierChange={setLocalJitBuffer}
         />
       )}
 

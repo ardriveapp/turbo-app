@@ -1,19 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Zap } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
 import ReceiptModal from '../modals/ReceiptModal';
 import AssignDomainModal from '../modals/AssignDomainModal';
+import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
+import { JitPaymentCard } from '../JitPaymentCard';
+import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
 
 export default function UploadPanel() {
-  const { address, walletType, creditBalance, uploadHistory, addUploadResults, updateUploadWithArNS, clearUploadHistory } = useStore();
+  const {
+    address,
+    walletType,
+    creditBalance,
+    uploadHistory,
+    addUploadResults,
+    updateUploadWithArNS,
+    clearUploadHistory,
+    jitPaymentEnabled,
+    jitMaxTokenAmount,
+    jitBufferMultiplier,
+    setJitPaymentEnabled,
+    setJitMaxTokenAmount,
+    setJitBufferMultiplier,
+  } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -22,6 +39,14 @@ export default function UploadPanel() {
   const [showUploadResults, setShowUploadResults] = useState(true);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // JIT payment local state for this upload
+  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+  const [localJitMax, setLocalJitMax] = useState(
+    walletType && jitMaxTokenAmount[walletType] ? jitMaxTokenAmount[walletType] : 0
+  );
+  const [localJitBuffer, setLocalJitBuffer] = useState(jitBufferMultiplier);
   const wincForOneGiB = useWincForOneGiB();
   const {
     uploadMultipleFiles,
@@ -70,7 +95,12 @@ export default function UploadPanel() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+      const newFiles = Array.from(e.target.files);
+      setFiles(prev => [...prev, ...newFiles]);
+      // Reset input value after processing to allow re-selecting the same file
+      setTimeout(() => {
+        e.target.value = '';
+      }, 0);
     }
   };
 
@@ -170,16 +200,41 @@ export default function UploadPanel() {
   const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
   const totalCost = calculateUploadCost(totalFileSize);
 
-  const handleUpload = async () => {
+  const handleUpload = () => {
     if (!address) {
       setUploadMessage({ type: 'error', text: 'Please connect your wallet to upload files' });
       return;
     }
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmUpload = async () => {
+    setShowConfirmModal(false);
     setUploadMessage(null);
-    
+
+    // Save JIT preferences to store
+    setJitPaymentEnabled(localJitEnabled);
+    if (walletType) {
+      setJitMaxTokenAmount(walletType, localJitMax);
+    }
+    setJitBufferMultiplier(localJitBuffer);
+
+    // Only enable JIT if the upload actually costs credits (not free tier)
+    const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
+
+    // Convert max token amount to smallest unit for SDK
+    let jitMaxTokenAmountSmallest = 0;
+    if (shouldEnableJit && walletType && supportsJitPayment(walletType)) {
+      const converter = getTokenConverter(walletType);
+      jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
+    }
+
     try {
-      const { results, failedFiles } = await uploadMultipleFiles(files);
+      const { results, failedFiles } = await uploadMultipleFiles(files, {
+        jitEnabled: shouldEnableJit,
+        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
+        jitBufferMultiplier: localJitBuffer,
+      });
       
       if (results.length > 0) {
         // Add to persistent upload history
@@ -342,10 +397,10 @@ export default function UploadPanel() {
                 <div key={index} className="bg-surface/50 rounded p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex-1">
-                      <div className="font-medium truncate">{file.name}</div>
-                      <div className="text-sm text-link">
+                      <div className="text-sm text-fg-muted truncate">{file.name}</div>
+                      <div className="text-xs text-link">
                         {formatFileSize(file.size)}
-                        {isFree && <span className="ml-2 text-turbo-green">• FREE</span>}
+                        {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
                         {cost !== null && cost > 0 && (
                           <span className="ml-2">• {cost.toFixed(6)} Credits</span>
                         )}
@@ -397,56 +452,14 @@ export default function UploadPanel() {
           {/* Summary - Hide during upload */}
           {!uploading && (
             <div className="mt-4 p-4 bg-surface/50 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-link">Total Size:</span>
-              <span className="font-medium">{formatFileSize(totalFileSize)}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="text-link">Estimated Cost:</span>
-              <span className="font-medium">
-                {totalCost === 0 ? (
-                  <span className="text-turbo-green">FREE</span>
-                ) : totalCost !== null ? (
-                  <span>{totalCost.toFixed(6)} Credits</span>
-                ) : (
-                  <span className="text-link">Calculating...</span>
-                )}
-              </span>
-            </div>
-            {totalCost !== null && address && (
-              <div className="flex justify-between">
-                <span className="text-link">Balance After:</span>
-                <div className="text-right">
-                  <span className={`font-medium ${
-                    creditBalance - totalCost < 0 ? 'text-red-400' : 'text-fg-muted'
-                  }`}>
-                    {(creditBalance - totalCost).toFixed(6)} Credits
-                  </span>
-                  {wincForOneGiB && (
-                    <div className="text-xs text-link">
-                      ~{(((creditBalance - totalCost) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
-                    </div>
-                  )}
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-link">Total Size:</span>
+                <span className="text-xs text-fg-muted">{formatFileSize(totalFileSize)}</span>
               </div>
-            )}
-          </div>
-          )}
-
-          {/* Terms - Hide during upload */}
-          {!uploading && (
-            <div className="text-center bg-surface/30 rounded-lg p-4 mt-4">
-            <p className="text-xs text-link">
-              By continuing, you agree to our{' '}
-              <a 
-                href="https://ardrive.io/tos-and-privacy/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-turbo-red hover:text-fg-muted/80 transition-colors"
-              >
-                Terms of Service
-              </a>
-            </p>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-xs text-link">Files:</span>
+                <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+              </div>
             </div>
           )}
 
@@ -826,9 +839,9 @@ export default function UploadPanel() {
           onSuccess={(arnsName: string, undername?: string, transactionId?: string) => {
             // Update the upload item with ArNS assignment
             updateUploadWithArNS(showAssignDomainModal, arnsName, undername, transactionId);
-            
+
             setShowAssignDomainModal(null);
-            
+
             // Show success message
             setUploadMessage({
               type: 'success',
@@ -836,6 +849,137 @@ export default function UploadPanel() {
             });
           }}
         />
+      )}
+
+      {/* Upload Confirmation Modal */}
+      {showConfirmModal && files.length > 0 && (
+        <BaseModal onClose={() => setShowConfirmModal(false)}>
+          <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-turbo-red" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-fg-muted">Ready to Upload</h3>
+                <p className="text-xs text-link">Confirm your upload details</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="bg-surface rounded-lg p-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Files:</span>
+                    <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Total Size:</span>
+                    <span className="text-xs text-fg-muted">
+                      {formatFileSize(totalFileSize)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-link">Cost:</span>
+                    <span className="text-xs text-fg-muted">
+                      {totalCost === 0 ? (
+                        <span className="text-turbo-green font-medium">FREE</span>
+                      ) : typeof totalCost === 'number' ? (
+                        `${totalCost.toFixed(6)} Credits`
+                      ) : (
+                        'Calculating...'
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                    <span className="text-xs text-link">Current Balance:</span>
+                    <span className="text-xs text-fg-muted">
+                      {creditBalance.toFixed(6)} Credits
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* JIT Payment Card */}
+            {(() => {
+              const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
+              const showJitOption = creditsNeeded > 0 && walletType && supportsJitPayment(walletType);
+
+              return (
+                <>
+                  {showJitOption && walletType && (
+                    <div className="mb-4">
+                      <JitPaymentCard
+                        creditsNeeded={creditsNeeded}
+                        totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                        currentBalance={creditBalance}
+                        tokenType={walletType}
+                        enabled={localJitEnabled}
+                        onEnabledChange={setLocalJitEnabled}
+                        maxTokenAmount={localJitMax}
+                        onMaxTokenAmountChange={setLocalJitMax}
+                        bufferMultiplier={localJitBuffer}
+                        onBufferMultiplierChange={setLocalJitBuffer}
+                      />
+                    </div>
+                  )}
+
+                  {/* Insufficient credits warning */}
+                  {creditsNeeded > 0 && !localJitEnabled && (
+                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
+                          {!showJitOption && (
+                            <>
+                              {' '}
+                              <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                                Buy credits
+                              </a>{' '}
+                              to continue.
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terms */}
+                  <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-xs text-link text-center">
+                      By uploading, you agree to our{' '}
+                      <a
+                        href="https://ardrive.io/tos-and-privacy/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
+                      >
+                        Terms of Service
+                      </a>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setShowConfirmModal(false)}
+                      className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={creditsNeeded > 0 && !localJitEnabled}
+                      className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
+                    >
+                      {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </BaseModal>
       )}
 
     </div>
