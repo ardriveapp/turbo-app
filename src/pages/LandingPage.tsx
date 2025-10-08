@@ -130,8 +130,8 @@ const LandingPage = () => {
       name: 'Upload', 
       icon: Upload, 
       title: 'Upload Files & Folders',
-      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking and instant receipts.',
-      benefits: ['Drag & drop interface', 'Batch uploads', 'Instant receipts'],
+      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking, just in time payments and instant receipts.',
+      benefits: ['Drag & drop interface', 'Batch uploads', 'Just in time payments', 'Instant receipts'],
       action: 'upload',
       loginText: 'Upload Files',
       connectText: 'Connect Wallet to Upload'
@@ -141,7 +141,7 @@ const LandingPage = () => {
       icon: Zap, 
       title: 'Deploy Sites to the Permaweb',
       description: 'Deploy complete websites with automatic manifest creation and permanent hosting. Perfect for static sites, SPAs, and documentation.',
-      benefits: ['Permanent hosting', 'Automatic manifests', 'Custom fallback pages'],
+      benefits: ['Permanent hosting', 'Automatic manifests', 'Custom fallback pages', 'Domain name assignment'],
       action: 'deploy',
       loginText: 'Deploy Site',
       connectText: 'Connect Wallet to Deploy'
@@ -683,7 +683,7 @@ const LandingPage = () => {
 
           <a href="https://docs.ar.io/build/upload/turbo-credits" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">GUIDE</div>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">PAY</div>
             <h3 className="font-bold mb-2 text-fg-muted">Paying for Uploads</h3>
             <p className="text-sm text-link">Turbo Credits are the payment medium used by Turbo's upload service.</p>
           </a>
@@ -695,11 +695,11 @@ const LandingPage = () => {
             <p className="text-sm text-link">AR.IO guide that walks through uploads with Turbo.</p>
           </a>
 
-          <a href="https://docs.ar.io/build/upload/advanced-uploading-with-turbo" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/guides/hosting-decentralized-websites" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">ADVANCED</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Advanced Uploading</h3>
-            <p className="text-sm text-link">Code-first examples for paying for and uploading files.</p>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">DEPLOY</div>
+            <h3 className="font-bold mb-2 text-fg-muted">Host Decentralized Websites</h3>
+            <p className="text-sm text-link">Deploy your webpage or app Arweave with ArNS.</p>
           </a>
 
           <a href="https://docs.ar.io/build/access" target="_blank" rel="noopener noreferrer"
@@ -709,39 +709,13 @@ const LandingPage = () => {
             <p className="text-sm text-link">Resilient and decentralized access for your apps.</p>
           </a>
 
-          <a href="https://docs.ar.io/build/guides/hosting-decentralized-websites" target="_blank" rel="noopener noreferrer"
+          <a href="https://docs.ar.io/build/upload/advanced-uploading-with-turbo" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <div className="text-xs text-link uppercase tracking-wider mb-2">DEPLOY</div>
-            <h3 className="font-bold mb-2 text-fg-muted">Host Decentralized Websites</h3>
-            <p className="text-sm text-link">Deploy your webpage or app Arweave with ArNS.</p>
+            <div className="text-xs text-link uppercase tracking-wider mb-2">ADVANCED</div>
+            <h3 className="font-bold mb-2 text-fg-muted">Advanced Uploading</h3>
+            <p className="text-sm text-link">Code-first examples for paying for and uploading files.</p>
           </a>
-        </div>
-      </section>
 
-      {/* APIs Section */}
-      <section>
-        <h2 className="text-2xl font-bold mb-6 text-fg-muted">APIs</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <a href="https://upload.ardrive.io/api-docs" target="_blank" rel="noopener noreferrer"
-             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <Cloud className="w-6 h-6 text-turbo-purple mb-3" />
-            <h3 className="font-bold mb-2 text-fg-muted">Upload Service API</h3>
-            <p className="text-sm text-link">Pay for signed data-items and post to Arweave.</p>
-          </a>
-          
-          <a href="https://payment.ardrive.io/api-docs" target="_blank" rel="noopener noreferrer"
-             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <Wallet className="w-6 h-6 text-turbo-purple mb-3" />
-            <h3 className="font-bold mb-2 text-fg-muted">Payment Service API</h3>
-            <p className="text-sm text-link">Top ups, fiat rates, supported currencies/countries.</p>
-          </a>
-          
-          <a href="http://turbo-gateway.com/api-docs/" target="_blank" rel="noopener noreferrer"
-             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
-            <Server className="w-6 h-6 text-turbo-purple mb-3" />
-            <h3 className="font-bold mb-2 text-fg-muted">Turbo Gateway API</h3>
-            <p className="text-sm text-link">General gateway endpoints served by this Turbo Gateway.</p>
-          </a>
         </div>
       </section>
 
@@ -749,14 +723,50 @@ const LandingPage = () => {
       <section>
         <h2 className="text-2xl font-bold mb-6 text-fg-muted">Resources</h2>
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* API Cards */}
+          <a href="https://upload.ardrive.io/api-docs" target="_blank" rel="noopener noreferrer"
+             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
+            <Cloud className="w-6 h-6 text-turbo-purple mb-3" />
+            <h3 className="font-bold mb-2 text-fg-muted">Upload Service API</h3>
+            <p className="text-sm text-link">Pay for signed data-items and post to Arweave.</p>
+          </a>
+
+          <a href="https://payment.ardrive.io/api-docs" target="_blank" rel="noopener noreferrer"
+             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
+            <Wallet className="w-6 h-6 text-turbo-purple mb-3" />
+            <h3 className="font-bold mb-2 text-fg-muted">Payment Service API</h3>
+            <p className="text-sm text-link">Top ups, fiat rates, supported currencies/countries.</p>
+          </a>
+
+          <a href="http://turbo-gateway.com/api-docs/" target="_blank" rel="noopener noreferrer"
+             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
+            <Server className="w-6 h-6 text-turbo-purple mb-3" />
+            <h3 className="font-bold mb-2 text-fg-muted">Turbo Gateway API</h3>
+            <p className="text-sm text-link">General gateway endpoints served by this Turbo Gateway.</p>
+          </a>
+
           {/* Documentation */}
           <a href="https://docs.ar.io/learn/gateways" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <Server className="w-6 h-6 text-turbo-purple mb-3" />
-            <h3 className="font-bold mb-2 text-fg-muted">AR.IO Node</h3>
-            <p className="text-sm text-link">Architecture, network, and implementation details.</p>
+            <h3 className="font-bold mb-2 text-fg-muted">AR.IO Gateways</h3>
+            <p className="text-sm text-link">Infrastructure nodes that bridge the Arweave network and applications.</p>
           </a>
-          
+
+          <a href="https://docs.ar.io/learn/arns" target="_blank" rel="noopener noreferrer"
+             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
+            <Globe2 className="w-6 h-6 text-turbo-purple mb-3" />
+            <h3 className="font-bold mb-2 text-fg-muted">Arweave Name System</h3>
+            <p className="text-sm text-link">A decentralized domain system connecting friendly names to permanent data.</p>
+          </a>
+
+          <a href="https://docs.ar.io/learn/wayfinder" target="_blank" rel="noopener noreferrer"
+             className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
+            <Search className="w-6 h-6 text-turbo-purple mb-3" />
+            <h3 className="font-bold mb-2 text-fg-muted">Wayfinder</h3>
+            <p className="text-sm text-link">Decentralized access to Arweave content through any gateway in the AR.IO network.</p>
+          </a>
+
           <a href="https://docs.ar.io/build/upload/turbo-credits#credit-sharing" target="_blank" rel="noopener noreferrer"
              className="bg-canvas border border-default rounded-lg p-6 hover:border-turbo-purple/50 transition-colors">
             <Users className="w-6 h-6 text-turbo-purple mb-3" />
