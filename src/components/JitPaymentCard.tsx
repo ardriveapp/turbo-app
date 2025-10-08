@@ -15,8 +15,6 @@ interface JitPaymentCardProps {
   onEnabledChange: (enabled: boolean) => void;
   maxTokenAmount: number; // Human-readable amount (e.g., 0.15 SOL, 200 ARIO)
   onMaxTokenAmountChange: (amount: number) => void;
-  bufferMultiplier: number;
-  onBufferMultiplierChange: (multiplier: number) => void;
 }
 
 export function JitPaymentCard({
@@ -26,8 +24,6 @@ export function JitPaymentCard({
   onEnabledChange,
   maxTokenAmount,
   onMaxTokenAmountChange,
-  bufferMultiplier,
-  onBufferMultiplierChange,
 }: JitPaymentCardProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState<{
@@ -36,20 +32,26 @@ export function JitPaymentCard({
   } | null>(null);
 
   const tokenLabel = tokenLabels[tokenType];
+  const BUFFER_MULTIPLIER = 1.1; // Fixed 10% buffer for SDK
+  const MAX_MULTIPLIER = 1.5; // Max is 1.5x estimated cost
 
-  // Calculate estimated cost
+  // Calculate estimated cost and auto-set max
   useEffect(() => {
     const calculate = async () => {
       try {
         const cost = await calculateRequiredTokenAmount({
           creditsNeeded,
           tokenType,
-          bufferMultiplier,
+          bufferMultiplier: BUFFER_MULTIPLIER,
         });
         setEstimatedCost({
           tokenAmountReadable: cost.tokenAmountReadable,
           estimatedUSD: cost.estimatedUSD,
         });
+
+        // Auto-calculate max as 1.5x estimated cost
+        const autoMax = cost.tokenAmountReadable * MAX_MULTIPLIER;
+        onMaxTokenAmountChange(autoMax);
       } catch (error) {
         console.error('Failed to calculate JIT cost:', error);
         setEstimatedCost(null);
@@ -59,7 +61,7 @@ export function JitPaymentCard({
     if (creditsNeeded > 0) {
       calculate();
     }
-  }, [creditsNeeded, tokenType, bufferMultiplier]);
+  }, [creditsNeeded, tokenType, onMaxTokenAmountChange]);
 
   return (
     <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-turbo-red/30 p-3">
@@ -109,7 +111,9 @@ export function JitPaymentCard({
               </div>
               {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
                 <div className="text-xs text-link">
-                  ≈ ${estimatedCost.estimatedUSD < 0.01
+                  ≈ ${estimatedCost.estimatedUSD < 0.0001
+                    ? estimatedCost.estimatedUSD.toFixed(6)
+                    : estimatedCost.estimatedUSD < 0.01
                     ? estimatedCost.estimatedUSD.toFixed(4)
                     : estimatedCost.estimatedUSD.toFixed(2)} USD
                 </div>
@@ -117,10 +121,14 @@ export function JitPaymentCard({
             </div>
           </div>
 
+          <div className="text-xs text-link">
+            Up to ~{formatTokenAmount(maxTokenAmount, tokenType)} {tokenLabel} with safety margin
+          </div>
+
           {/* Advanced settings - collapsible */}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="mt-1.5 text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+            className="mt-2 text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
           >
             {showAdvanced ? (
               <ChevronUp className="w-3 h-3" />
@@ -132,46 +140,23 @@ export function JitPaymentCard({
 
           {showAdvanced && (
             <div className="mt-2 pt-2 border-t border-default/30">
-              {/* Max amount and Safety buffer on same row */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-xs text-link block mb-1">
-                    Max {tokenLabel}:
-                  </label>
-                  <input
-                    type="number"
-                    step={tokenType === 'ario' ? '1' : '0.001'}
-                    min="0"
-                    value={maxTokenAmount}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      onMaxTokenAmountChange(value);
-                    }}
-                    className="w-full px-2.5 py-1.5 bg-canvas rounded border border-default text-xs text-fg-muted focus:border-fg-muted focus:outline-none"
-                  />
-                  <div className="text-xs text-link mt-0.5">Spending limit</div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-link">Safety buffer:</label>
-                    <span className="text-xs text-fg-muted font-medium">
-                      {((bufferMultiplier - 1) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1.0"
-                    max="1.5"
-                    step="0.05"
-                    value={bufferMultiplier}
-                    onChange={(e) => onBufferMultiplierChange(parseFloat(e.target.value))}
-                    className="w-full h-2 bg-canvas rounded-lg appearance-none cursor-pointer accent-turbo-red mt-1.5"
-                  />
-                  <div className="flex justify-between text-xs text-link mt-0.5">
-                    <span>0%</span>
-                    <span>50%</span>
-                  </div>
-                  <div className="text-xs text-link mt-0.5">Price fluctuation</div>
+              <div>
+                <label className="text-xs text-link block mb-1">
+                  Max {tokenLabel}:
+                </label>
+                <input
+                  type="number"
+                  step={tokenType === 'ario' ? '0.1' : '0.001'}
+                  min="0"
+                  value={maxTokenAmount.toFixed(tokenType === 'ario' ? 2 : 6)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    onMaxTokenAmountChange(value);
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-canvas rounded border border-default text-xs text-fg-muted focus:border-fg-muted focus:outline-none"
+                />
+                <div className="text-xs text-link mt-0.5">
+                  Auto-calculated spending limit (adjustable)
                 </div>
               </div>
             </div>

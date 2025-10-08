@@ -26,10 +26,8 @@ export default function UploadPanel() {
     clearUploadHistory,
     jitPaymentEnabled,
     jitMaxTokenAmount,
-    jitBufferMultiplier,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
-    setJitBufferMultiplier,
   } = useStore();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -43,10 +41,16 @@ export default function UploadPanel() {
 
   // JIT payment local state for this upload
   const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
-  const [localJitMax, setLocalJitMax] = useState(
-    walletType && jitMaxTokenAmount[walletType] ? jitMaxTokenAmount[walletType] : 0
-  );
-  const [localJitBuffer, setLocalJitBuffer] = useState(jitBufferMultiplier);
+
+  // Determine the token type for JIT payment
+  // Arweave wallets must use ARIO for JIT (not AR)
+  const jitTokenTypeForDefaults = walletType === 'arweave' ? 'ario' : walletType;
+
+  // Max will be auto-calculated by JitPaymentCard based on estimated cost
+  const [localJitMax, setLocalJitMax] = useState(0);
+
+  // Fixed 10% buffer for SDK (not exposed to user)
+  const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
   const {
     uploadMultipleFiles,
@@ -214,18 +218,23 @@ export default function UploadPanel() {
 
     // Save JIT preferences to store
     setJitPaymentEnabled(localJitEnabled);
-    if (walletType) {
-      setJitMaxTokenAmount(walletType, localJitMax);
+
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+
+    // Save max token amount to store for future use
+    if (jitTokenType) {
+      setJitMaxTokenAmount(jitTokenType, localJitMax);
     }
-    setJitBufferMultiplier(localJitBuffer);
 
     // Only enable JIT if the upload actually costs credits (not free tier)
     const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
 
     // Convert max token amount to smallest unit for SDK
     let jitMaxTokenAmountSmallest = 0;
-    if (shouldEnableJit && walletType && supportsJitPayment(walletType)) {
-      const converter = getTokenConverter(walletType);
+    if (shouldEnableJit && jitTokenType && supportsJitPayment(jitTokenType)) {
+      const converter = getTokenConverter(jitTokenType);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -233,7 +242,7 @@ export default function UploadPanel() {
       const { results, failedFiles } = await uploadMultipleFiles(files, {
         jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: localJitBuffer,
+        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
       });
       
       if (results.length > 0) {
@@ -903,23 +912,25 @@ export default function UploadPanel() {
             {/* JIT Payment Card */}
             {(() => {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
-              const showJitOption = creditsNeeded > 0 && walletType && supportsJitPayment(walletType);
+
+              // Determine the token type for JIT payment
+              // Arweave wallets must use ARIO for JIT (not AR)
+              const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+              const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
 
               return (
                 <>
-                  {showJitOption && walletType && (
+                  {showJitOption && jitTokenType && (
                     <div className="mb-4">
                       <JitPaymentCard
                         creditsNeeded={creditsNeeded}
                         totalCost={typeof totalCost === 'number' ? totalCost : 0}
                         currentBalance={creditBalance}
-                        tokenType={walletType}
+                        tokenType={jitTokenType}
                         enabled={localJitEnabled}
                         onEnabledChange={setLocalJitEnabled}
                         maxTokenAmount={localJitMax}
                         onMaxTokenAmountChange={setLocalJitMax}
-                        bufferMultiplier={localJitBuffer}
-                        onBufferMultiplierChange={setLocalJitBuffer}
                       />
                     </div>
                   )}

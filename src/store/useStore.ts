@@ -145,7 +145,6 @@ interface StoreState {
   // Just-in-time payment preferences (persistent)
   jitPaymentEnabled: boolean;
   jitMaxTokenAmount: Record<SupportedTokenType, number>; // Human-readable amounts (e.g., 0.15 SOL, 200 ARIO)
-  jitBufferMultiplier: number;
 
   // UI state
   showResumeTransactionPanel: boolean;
@@ -263,8 +262,6 @@ export const useStore = create<StoreState>()(
         matic: 0,
         pol: 0,
       },
-      jitBufferMultiplier: 1.05, // 5% buffer
-      
       // Actions
       setAddress: (address, type) => set({ address, walletType: type }),
       clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {}, ownedArnsCache: {} }),
@@ -383,8 +380,6 @@ export const useStore = create<StoreState>()(
         const current = get().jitMaxTokenAmount;
         set({ jitMaxTokenAmount: { ...current, [token]: amount } });
       },
-      setJitBufferMultiplier: (multiplier) => set({ jitBufferMultiplier: multiplier }),
-      
       // Developer configuration actions
       setConfigMode: (mode) => {
         set({ configMode: mode });
@@ -448,7 +443,6 @@ export const useStore = create<StoreState>()(
         // JIT payment preferences
         jitPaymentEnabled: state.jitPaymentEnabled,
         jitMaxTokenAmount: state.jitMaxTokenAmount,
-        jitBufferMultiplier: state.jitBufferMultiplier,
       }),
     }
   )

@@ -15,7 +15,7 @@ export function supportsJitPayment(tokenType: SupportedTokenType | null): boolea
 export function getTokenConverter(tokenType: SupportedTokenType): ((amount: number) => number) | null {
   const TOKEN_DECIMALS: Record<SupportedTokenType, number> = {
     arweave: 12,
-    ario: 12,
+    ario: 6,  // 1 ARIO = 1,000,000 mARIO
     ethereum: 18,
     'base-eth': 18,
     solana: 9,
@@ -34,7 +34,7 @@ export function getTokenConverter(tokenType: SupportedTokenType): ((amount: numb
 export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType): number {
   const TOKEN_DECIMALS: Record<SupportedTokenType, number> = {
     arweave: 12,
-    ario: 12,
+    ario: 6,  // 1 ARIO = 1,000,000 mARIO
     ethereum: 18,
     'base-eth': 18,
     solana: 9,
@@ -73,34 +73,24 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
   return amount.toFixed(precision[tokenType]);
 }
 
-/**
- * Get estimated USD value for a token amount (simple placeholder)
- * In production, this should fetch real-time prices from Turbo SDK
- */
-export function estimateUSD(amount: number, tokenType: SupportedTokenType): number | null {
-  // Rough estimates - in production use Turbo SDK's price API
-  const roughPrices: Record<SupportedTokenType, number> = {
-    ario: 0.10,      // $0.10 per ARIO
-    solana: 150,     // $150 per SOL
-    'base-eth': 2500, // $2500 per ETH
-    ethereum: 2500,
-    arweave: 15,
-    kyve: 0.05,
-    matic: 0.50,
-    pol: 0.50,
-  };
-
-  return amount * roughPrices[tokenType];
+// Price cache to avoid spamming Turbo API
+interface PriceCache {
+  tokenPricePerCredit: number;
+  usdPerToken: number | null;
+  timestamp: number;
 }
+
+const priceCache = new Map<SupportedTokenType, PriceCache>();
+const PRICE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Calculate the required token amount for a given credit shortage
- * This uses the Turbo SDK's pricing to convert credits → winc → tokens
+ * Uses Turbo SDK's real-time pricing with caching to avoid spam
  */
 export async function calculateRequiredTokenAmount({
   creditsNeeded,
   tokenType,
-  bufferMultiplier = 1.1,
+  bufferMultiplier = 1.05,
 }: {
   creditsNeeded: number;
   tokenType: SupportedTokenType;
@@ -110,36 +100,91 @@ export async function calculateRequiredTokenAmount({
   tokenAmountReadable: number; // Human-readable (e.g., 0.0001)
   estimatedUSD: number | null;
 }> {
-  // For now, use a simplified calculation
-  // In production, integrate with Turbo SDK's getTokenPriceForBytes
+  const now = Date.now();
+  const cached = priceCache.get(tokenType);
 
-  // Rough conversion: 1 credit ≈ cost of uploading ~1 GiB
-  // For ARIO: ~500 ARIO per GiB → 0.002 ARIO per credit
-  // For SOL: ~0.1 SOL per GiB → 0.0002 SOL per credit
-  // For Base-ETH: ~0.01 ETH per GiB → 0.00002 ETH per credit
+  // Use cached price if available and fresh
+  if (cached && (now - cached.timestamp) < PRICE_CACHE_DURATION) {
+    const baseAmount = creditsNeeded * cached.tokenPricePerCredit;
+    const bufferedAmount = baseAmount * bufferMultiplier;
+    const converter = getTokenConverter(tokenType);
+    const smallestUnit = converter ? converter(bufferedAmount) : 0;
 
-  const creditsToToken: Record<SupportedTokenType, number> = {
-    ario: 0.002,      // credits → ARIO
-    solana: 0.0002,   // credits → SOL
-    'base-eth': 0.00002, // credits → ETH
-    arweave: 0,
-    ethereum: 0,
-    kyve: 0,
-    matic: 0,
-    pol: 0,
-  };
+    return {
+      tokenAmount: smallestUnit,
+      tokenAmountReadable: bufferedAmount,
+      estimatedUSD: cached.usdPerToken ? bufferedAmount * cached.usdPerToken : null,
+    };
+  }
 
-  const baseAmount = creditsNeeded * creditsToToken[tokenType];
-  const bufferedAmount = baseAmount * bufferMultiplier;
+  // Fetch fresh pricing from Turbo SDK
+  try {
+    const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+    const turbo = TurboFactory.unauthenticated({ token: tokenType });
 
-  const converter = getTokenConverter(tokenType);
-  const smallestUnit = converter ? converter(bufferedAmount) : 0;
+    // Get the cost in tokens for uploading credits worth of data
+    // Credits = Winc / wincPerCredit, so we need to figure out winc → bytes → tokens
+    const wincPerCredit = 1_000_000_000_000; // 1 trillion winc = 1 credit
 
-  return {
-    tokenAmount: smallestUnit,
-    tokenAmountReadable: bufferedAmount,
-    estimatedUSD: estimateUSD(bufferedAmount, tokenType),
-  };
+    // Estimate: use 1 GiB as baseline to get token price
+    const oneGiBBytes = 1024 * 1024 * 1024;
+    const priceResult = await turbo.getUploadCosts({ bytes: [oneGiBBytes] });
+    const wincPerGiB = Number(priceResult[0]?.winc || 0);
+
+    if (wincPerGiB === 0) {
+      throw new Error('Failed to get pricing from Turbo SDK - wincPerGiB is 0');
+    }
+
+    // Get token price for 1 GiB worth of winc
+    const tokenPriceForGiB = await turbo.getTokenPriceForBytes({ byteCount: oneGiBBytes });
+    // SDK already returns price in readable token units (ARIO, not mARIO)
+    const tokensPerGiB = Number(tokenPriceForGiB.tokenPrice);
+
+    // Calculate: tokens per credit
+    const creditsPerGiB = wincPerGiB / wincPerCredit;
+    const tokenPricePerCredit = tokensPerGiB / creditsPerGiB;
+
+    // Try to get USD price from Turbo (getFiatRates or similar)
+    let usdPerToken: number | null = null;
+    try {
+      const fiatRates = await turbo.getFiatRates();
+      // fiatRates.fiat gives USD per GiB, we know tokens per GiB
+      const usdPerGiB = fiatRates.fiat?.usd || 0;
+      if (usdPerGiB > 0 && tokensPerGiB > 0) {
+        usdPerToken = usdPerGiB / tokensPerGiB;
+      }
+    } catch (err) {
+      console.warn('Failed to get USD price for JIT payment:', err);
+    }
+
+    // Cache the result
+    priceCache.set(tokenType, {
+      tokenPricePerCredit,
+      usdPerToken,
+      timestamp: now,
+    });
+
+    // Calculate final amounts
+    const baseAmount = creditsNeeded * tokenPricePerCredit;
+    const bufferedAmount = baseAmount * bufferMultiplier;
+
+    const converter = getTokenConverter(tokenType);
+    const smallestUnit = converter ? converter(bufferedAmount) : 0;
+
+    return {
+      tokenAmount: smallestUnit,
+      tokenAmountReadable: bufferedAmount,
+      estimatedUSD: usdPerToken ? bufferedAmount * usdPerToken : null,
+    };
+  } catch (error) {
+    console.error('Failed to calculate JIT payment amount from Turbo SDK:', error);
+    // Fallback: return 0 and let user know pricing failed
+    return {
+      tokenAmount: 0,
+      tokenAmountReadable: 0,
+      estimatedUSD: null,
+    };
+  }
 }
 
 /**

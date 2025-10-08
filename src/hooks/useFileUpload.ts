@@ -90,7 +90,7 @@ export function useFileUpload() {
   }, [address, walletType]);
 
   // Create Turbo client with proper walletAdapter based on wallet type
-  const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
+  const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
     // Validate wallet state first
     validateWalletState();
 
@@ -103,7 +103,9 @@ export function useFileUpload() {
         const signer = new ArconnectSigner(window.arweaveWallet);
         return TurboFactory.authenticated({
           ...turboConfig,
-          signer
+          signer,
+          // Use token type override if provided (for JIT with ARIO)
+          ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
         
       case 'ethereum':
@@ -183,9 +185,13 @@ export function useFileUpload() {
     const fileName = file.name;
     setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
+    // Determine the token type for JIT payment
+    // Arweave wallets must use ARIO for JIT (not AR)
+    const jitTokenType = walletType === 'arweave' ? 'ario' : walletType;
+
     // Create funding mode if JIT enabled and supported
     let fundingMode: OnDemandFunding | undefined = undefined;
-    if (options?.jitEnabled && walletType && supportsJitPayment(walletType)) {
+    if (options?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
       fundingMode = new OnDemandFunding({
         maxTokenAmount: options.jitMaxTokenAmount || 0,
         topUpBufferMultiplier: options.jitBufferMultiplier || 1.1,
@@ -194,7 +200,7 @@ export function useFileUpload() {
 
     try {
       // Creating Turbo client for upload
-      const turbo = await createTurboClient();
+      const turbo = await createTurboClient(jitTokenType);
 
       // Starting upload for file
 
