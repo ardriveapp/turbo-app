@@ -153,8 +153,8 @@ export default function ShareCreditsPanel() {
       setApprovedAddress('');
       setApprovedAddressInput('');
       setRecipientWalletType(null);
-      setCreditAmount(1);
-      setCreditAmountInput('1');
+      setCreditAmount(0);
+      setCreditAmountInput('0');
       setExpiresBySeconds(0);
       
       setTimeout(() => {
