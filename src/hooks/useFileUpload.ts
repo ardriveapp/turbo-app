@@ -133,7 +133,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -150,7 +150,7 @@ export function useFileUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -219,7 +219,7 @@ export function useFileUpload() {
 
     try {
       // Creating Turbo client for upload
-      const turbo = await createTurboClient(jitTokenType);
+      const turbo = await createTurboClient(jitTokenType || undefined);
 
       // Starting upload for file
 

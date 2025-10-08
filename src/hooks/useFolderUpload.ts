@@ -158,7 +158,7 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -174,7 +174,7 @@ export function useFolderUpload() {
           const ethersSigner = await ethersProvider.getSigner();
 
           return TurboFactory.authenticated({
-            token: tokenTypeOverride || "ethereum", // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -401,7 +401,7 @@ export function useFolderUpload() {
 
     try {
       // Creating Turbo client for folder deployment
-      const turbo = await createTurboClient(jitTokenType);
+      const turbo = await createTurboClient(jitTokenType || undefined);
       
       // Starting folder deployment
       
