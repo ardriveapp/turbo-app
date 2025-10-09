@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTurboConfig } from '../hooks/useTurboConfig';
 import { usePrivyWallet } from '../hooks/usePrivyWallet';
 import { usePrivy } from '@privy-io/react-auth';
+import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 
 // Services for logged-in users
 const accountServices = [
@@ -76,9 +77,11 @@ const Header = () => {
   const { arnsName, profile, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
   
   const [credits, setCredits] = useState<string>('0');
+  const [creditsNumeric, setCreditsNumeric] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const wincForOneGiB = useWincForOneGiB();
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
@@ -116,7 +119,8 @@ const Header = () => {
       // Convert winc to credits and format with smart precision
       const creditsAmount = Number(balance.winc) / 1e12;
       setCreditBalance(creditsAmount);
-      
+      setCreditsNumeric(creditsAmount);
+
       // Smart formatting for different credit amounts
       let formattedCredits;
       if (creditsAmount >= 1) {
@@ -134,7 +138,7 @@ const Header = () => {
       } else {
         formattedCredits = '0';
       }
-      
+
       setCredits(formattedCredits);
     } catch (error) {
       // Balance fetch failed
@@ -174,6 +178,27 @@ const Header = () => {
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchBalance();
+  };
+
+  // Calculate storage capacity from credits
+  const formatStorageCapacity = (credits: number): string => {
+    if (!wincForOneGiB || credits === 0) return '';
+
+    const wincPerCredit = 1e12; // 1 trillion winc = 1 credit
+    const totalWinc = credits * wincPerCredit;
+    const gibibytes = totalWinc / Number(wincForOneGiB);
+
+    if (gibibytes >= 1024) {
+      // Show in TiB
+      return `≈ ${(gibibytes / 1024).toFixed(2)} TiB`;
+    } else if (gibibytes >= 1) {
+      // Show in GiB
+      return `≈ ${gibibytes.toFixed(2)} GiB`;
+    } else if (gibibytes > 0) {
+      // Show in MiB
+      return `≈ ${(gibibytes * 1024).toFixed(1)} MiB`;
+    }
+    return '';
   };
 
   return (
@@ -363,8 +388,15 @@ const Header = () => {
                   <span className="text-xs text-link">Credits</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="font-bold text-lg text-fg-muted">
-                    {loadingBalance || isRefreshing ? '...' : credits}
+                  <div className="flex flex-col items-end">
+                    <div className="font-bold text-lg text-fg-muted">
+                      {loadingBalance || isRefreshing ? '...' : credits}
+                    </div>
+                    {!loadingBalance && !isRefreshing && creditsNumeric > 0 && (
+                      <div className="text-xs text-link/60 mt-0.5">
+                        {formatStorageCapacity(creditsNumeric)}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={(e) => {
