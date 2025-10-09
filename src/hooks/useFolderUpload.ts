@@ -205,20 +205,10 @@ export function useFolderUpload() {
         if (!existingPublicKey) {
           throw new Error('Solana wallet connection lost. Please reconnect your Solana wallet.');
         }
-        
-        const publicKey = new PublicKey(existingPublicKey);
-
-        const walletAdapter: SolanaWalletAdapter = {
-          publicKey,
-          signMessage: async (message: Uint8Array) => {
-            const { signature } = await provider.signMessage(message);
-            return signature;
-          },
-        };
 
         return TurboFactory.authenticated({
           token: "solana",
-          walletAdapter,
+          walletAdapter: window.solana,
           ...dynamicTurboConfig,
         });
 

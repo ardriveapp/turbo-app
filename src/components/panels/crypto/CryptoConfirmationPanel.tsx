@@ -1,12 +1,13 @@
-import { TurboFactory, ArconnectSigner, SolanaWalletAdapter, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
-import { turboConfig, tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
+import {  tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import TurboLogo from '../../TurboLogo';
 import { useWallets } from '@privy-io/react-auth';
+import { useTurboConfig } from '../../../hooks/useTurboConfig';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -25,6 +26,8 @@ export default function CryptoConfirmationPanel({
   const { wallets } = useWallets(); // Get Privy wallets
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
+
+  const turboConfig = useStore((state) => state.getCurrentConfig());
   
   // Use comprehensive hook for all token types
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
@@ -79,7 +82,7 @@ export default function CryptoConfirmationPanel({
             signer,
             token: tokenType,
             paymentServiceConfig: {
-              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
+              url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
             },
           });
 
@@ -185,8 +188,6 @@ export default function CryptoConfirmationPanel({
             }
           }
           
-          // Get wallet balance for validation
-          const balance = await provider.getBalance(await signer.getAddress());
           
           // ETH L1/Base ETH direct payment using walletAdapter (native SDK support)
           const turbo = TurboFactory.authenticated({
@@ -195,7 +196,7 @@ export default function CryptoConfirmationPanel({
               getSigner: () => signer as any,
             },
             paymentServiceConfig: {
-              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
+              url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
             },
           });
 
@@ -212,74 +213,25 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else if (walletType === 'solana' && window.solana && tokenType === 'solana') {
-          // SOL direct payment using manual transaction approach to bypass SDK bug
-          const { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } = await import('@solana/web3.js');
-          const provider = window.solana;
-          
-          if (!provider.isConnected) {
-            await provider.connect();
-          }
-
-          if (!provider.publicKey) {
-            throw new Error('Solana wallet public key not available');
-          }
-
-          const publicKey = new PublicKey(provider.publicKey);
-          console.log('Creating manual Solana transaction...');
-          
-          // Get Turbo wallet address for Solana
-          if (!turboWallets) {
-            throw new Error('Turbo wallet addresses not available');
-          }
-          const turboSolanaAddress = turboWallets.solana;
-          
-          if (!turboSolanaAddress) {
-            throw new Error('Turbo Solana wallet address not found');
-          }
-          
-          // Create connection using our QuickNode RPC
-          const connection = new Connection('https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/');
-          
-          // Create transaction manually
-          const transaction = new Transaction();
-          const solAmount = cryptoAmount * LAMPORTS_PER_SOL;
-          
-          transaction.add(
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: new PublicKey(turboSolanaAddress),
-              lamports: Math.floor(solAmount),
-            })
-          );
-          
-          // Get recent blockhash
-          const { blockhash } = await connection.getLatestBlockhash();
-          transaction.recentBlockhash = blockhash;
-          transaction.feePayer = publicKey;
-          
-          // Sign and send transaction
-          const signedTransaction = await provider.signTransaction(transaction);
-          const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-          
-          console.log('Manual Solana transaction sent:', signature);
-          
-          // Submit the transaction ID to Turbo for credit processing
-          const turboUnauthenticated = TurboFactory.unauthenticated({ 
+          const turboAuthenticated = TurboFactory.authenticated({ 
             token: 'solana',
             paymentServiceConfig: {
-              url: turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io',
+              url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
             },
+            walletAdapter: window.solana,
+            gatewayUrl: turboConfig.tokenMap.solana
           });
           
-          const result = await turboUnauthenticated.submitFundTransaction({ 
-            txId: signature 
+          const result = await turboAuthenticated.topUpWithTokens({ 
+            tokenAmount: SOLToTokenAmount(cryptoAmount) // Convert to lamports
+
           });
           
           onPaymentComplete({
             ...result,
             quote,
             tokenType,
-            transactionId: signature,
+            transactionId: result.id,
           });
         } else {
           throw new Error('Wallet not available for direct payment');
