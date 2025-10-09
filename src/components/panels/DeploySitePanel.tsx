@@ -387,16 +387,114 @@ export default function DeploySitePanel() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const items = Array.from(e.dataTransfer.items);
-    const folderItem = items.find(item => item.webkitGetAsEntry?.()?.isDirectory);
-    
-    if (folderItem) {
-      // Handle folder drop - we'll implement this in the hook
-      console.log('Folder dropped:', folderItem);
+
+    // Look for a folder in the dropped items
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+
+      if (entry?.isDirectory) {
+        const rootFolderName = entry.name;
+        console.log('Folder dropped:', rootFolderName);
+
+        // Read all files from the directory recursively
+        const files: File[] = [];
+
+        const readDirectory = async (dirEntry: any, path = '') => {
+          const dirReader = dirEntry.createReader();
+
+          return new Promise<void>((resolve, reject) => {
+            const readEntries = () => {
+              dirReader.readEntries(async (entries: any[]) => {
+                if (entries.length === 0) {
+                  resolve();
+                  return;
+                }
+
+                for (const entry of entries) {
+                  if (entry.isFile) {
+                    await new Promise<void>((resolveFile) => {
+                      entry.file((file: File) => {
+                        // Preserve the original file but store path in name and webkitRelativePath
+                        const fullPath = path ? `${path}/${file.name}` : file.name;
+                        const webkitPath = `${rootFolderName}/${fullPath}`;
+
+                        // Set both name and webkitRelativePath to match native file input behavior
+                        Object.defineProperty(file, 'name', {
+                          writable: true,
+                          value: fullPath
+                        });
+                        Object.defineProperty(file, 'webkitRelativePath', {
+                          writable: true,
+                          value: webkitPath
+                        });
+                        files.push(file);
+                        resolveFile();
+                      });
+                    });
+                  } else if (entry.isDirectory) {
+                    const newPath = path ? `${path}/${entry.name}` : entry.name;
+                    await readDirectory(entry, newPath);
+                  }
+                }
+
+                // Continue reading if there might be more entries
+                readEntries();
+              }, reject);
+            };
+
+            readEntries();
+          });
+        };
+
+        try {
+          await readDirectory(entry);
+
+          if (files.length > 0) {
+            // Convert files array to FileList-like structure
+            const fileList = files as any;
+            fileList.item = (index: number) => files[index];
+
+            setSelectedFolder(fileList);
+            setDeployMessage(null);
+
+            // Auto-detect index and fallback files - call directly since it's defined below
+            const htmlFiles = files.filter(file => {
+              const name = file.name.toLowerCase();
+              return name.endsWith('.html') || name.endsWith('.htm');
+            });
+
+            // Look for common index files
+            const indexFile = htmlFiles.find(file => {
+              const name = file.name.toLowerCase();
+              return name === 'index.html' || name === 'index.htm' || name.endsWith('/index.html') || name.endsWith('/index.htm');
+            });
+
+            // Look for common error/404 pages
+            const fallbackFile = htmlFiles.find(file => {
+              const name = file.name.toLowerCase();
+              return name === '404.html' || name === 'error.html' || name.endsWith('/404.html') || name.endsWith('/error.html');
+            });
+
+            if (indexFile) {
+              setIndexFile(indexFile.name);
+            }
+
+            if (fallbackFile) {
+              setFallbackFile(fallbackFile.name);
+            }
+          }
+        } catch (error) {
+          console.error('Error reading dropped folder:', error);
+          setDeployMessage({ type: 'error', text: 'Failed to read folder contents. Please try using the browse button.' });
+        }
+
+        break; // Only process the first folder
+      }
     }
   }, []);
 
