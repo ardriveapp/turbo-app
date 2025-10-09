@@ -3,12 +3,10 @@ import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
-  SolanaWalletAdapter,
   OnDemandFunding,
   TurboUnauthenticatedConfiguration,
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
-import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
@@ -706,7 +704,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [createTurboClient, getContentType, validateWalletState, isCancelled, uploadFileWithRetry]);
+  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);

@@ -2,11 +2,9 @@ import { useState, useMemo } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
-  ArconnectSigner,
-  SolanaWalletAdapter
+  ArconnectSigner
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
-import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../../store/useStore';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';

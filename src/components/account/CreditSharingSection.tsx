@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ArrowDown, ArrowUp, ChevronDown, X, Check } from 'lucide-react';
-import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner, SolanaWalletAdapter } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
-import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../../store/useStore';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { formatWalletAddress } from '../../utils';

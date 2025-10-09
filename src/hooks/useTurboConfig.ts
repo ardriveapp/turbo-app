@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { TurboUnauthenticatedConfiguration } from '@ardrive/turbo-sdk';
 import { useStore } from '../store/useStore';
 
 export const useTurboConfig = (tokenType?: string): any => {

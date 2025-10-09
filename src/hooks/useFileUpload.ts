@@ -3,11 +3,9 @@ import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
-  SolanaWalletAdapter,
   OnDemandFunding,
 } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
-import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
@@ -257,7 +255,7 @@ export function useFileUpload() {
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, createTurboClient]);
+  }, [address, walletType, createTurboClient]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],
@@ -369,7 +367,7 @@ export function useFileUpload() {
     setUploading(false);
     // Upload summary processed
     return { results, failedFiles: failedFileNames };
-  }, [uploadFile, validateWalletState]);
+  }, [uploadFile, validateWalletState, isCancelled]);
 
   const reset = useCallback(() => {
     setUploadProgress({});

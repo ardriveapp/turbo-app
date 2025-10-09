@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins, HardDrive, Share2, ArrowDown, Plus } from 'lucide-react';
+import { Coins, Share2, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
 import { useStore } from '../../store/useStore';

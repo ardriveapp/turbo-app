@@ -53,7 +53,6 @@ export default function UploadProgressSummary({
   totalCount,
   failedCount,
   activeUploads,
-  recentFiles,
   errors,
   totalSize,
   uploadedSize,
@@ -62,10 +61,8 @@ export default function UploadProgressSummary({
   compact = false,
   className = ''
 }: UploadProgressSummaryProps) {
-  const [showAllFiles, setShowAllFiles] = useState(false);
   const [showErrors, setShowErrors] = useState(true);
 
-  const inProgressCount = activeUploads.length;
   const successCount = uploadedCount - failedCount;
   const progressPercentage = totalCount > 0 ? Math.round((uploadedCount / totalCount) * 100) : 0;
 

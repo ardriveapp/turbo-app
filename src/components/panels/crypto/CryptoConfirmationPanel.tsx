@@ -7,7 +7,6 @@ import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForO
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import TurboLogo from '../../TurboLogo';
 import { useWallets } from '@privy-io/react-auth';
-import { useTurboConfig } from '../../../hooks/useTurboConfig';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;

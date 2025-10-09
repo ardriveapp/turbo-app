@@ -41,7 +41,7 @@ const isValidPromoCode = async (
 const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, onNext, targetAddress, targetWalletType }) => {
   const countries = useCountries();
   const wincForOneGiB = useWincForOneGiB();
-  const { address, walletType } = useStore();
+  const { address } = useStore();
 
   const {
     setPaymentIntent,

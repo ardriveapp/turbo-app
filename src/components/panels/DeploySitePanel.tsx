@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
-import { wincPerCredit, tokenLabels } from '../../constants';
+import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
