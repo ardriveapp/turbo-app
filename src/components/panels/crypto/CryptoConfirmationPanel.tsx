@@ -213,8 +213,6 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else if (walletType === 'solana' && window.solana && tokenType === 'solana') {
-          console.log('turboConfig', turboConfig)
-       
           const turboAuthenticated = TurboFactory.authenticated({ 
             token: 'solana',
             paymentServiceConfig: {
