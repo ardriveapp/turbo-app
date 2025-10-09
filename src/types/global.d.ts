@@ -21,7 +21,7 @@ interface Window {
     signTransaction(transaction: any): Promise<any>;
     signAllTransactions(transactions: any[]): Promise<any[]>;
     signMessage(message: Uint8Array): Promise<{ signature: Uint8Array }>;
-    publicKey?: { toString(): string };
+    publicKey: { toString(): string };
     isConnected?: boolean;
     isPhantom?: boolean;
   };

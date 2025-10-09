@@ -114,20 +114,10 @@ export default function BalanceCheckerPanel() {
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
-        const provider = window.solana;
-        const publicKey = new PublicKey((await provider.connect()).publicKey);
-
-        const walletAdapter: SolanaWalletAdapter = {
-          publicKey,
-          signMessage: async (message: Uint8Array) => {
-            const { signature } = await provider.signMessage(message);
-            return signature;
-          },
-        };
 
         return TurboFactory.authenticated({
           token: "solana",
-          walletAdapter,
+          walletAdapter: window.solana,
           ...turboConfig,
         });
         
