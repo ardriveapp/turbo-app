@@ -4,7 +4,7 @@ import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check, X, Users } from 'lucide-react';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
@@ -13,7 +13,6 @@ import PaymentConfirmationPanel from './fiat/PaymentConfirmationPanel';
 import PaymentSuccessPanel from './fiat/PaymentSuccessPanel';
 import { getPaymentIntent } from '../../services/paymentService';
 import { validateWalletAddress, getWalletTypeLabel } from '../../utils/addressValidation';
-import CopyButton from '../CopyButton';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 import { getTurboBalance } from '../../utils';
 

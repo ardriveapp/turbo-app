@@ -1,4 +1,4 @@
-import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Clock, Mail, Users } from 'lucide-react';
+import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Mail, Users } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import { tokenLabels, SupportedTokenType } from '../../../constants';
 import { useNavigate } from 'react-router-dom';

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ArrowDown, ArrowUp, ChevronDown, X, Check } from 'lucide-react';
-import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner, SolanaWalletAdapter } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import { ethers } from 'ethers';
-import { PublicKey } from '@solana/web3.js';
 import { useStore } from '../../store/useStore';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { formatWalletAddress } from '../../utils';
@@ -103,20 +102,10 @@ export default function CreditSharingSection() {
         if (!window.solana) {
           throw new Error('Solana wallet extension not found');
         }
-        const provider = window.solana;
-        const publicKey = new PublicKey((await provider.connect()).publicKey);
-
-        const walletAdapter: SolanaWalletAdapter = {
-          publicKey,
-          signMessage: async (message: Uint8Array) => {
-            const { signature } = await provider.signMessage(message);
-            return signature;
-          },
-        };
 
         return TurboFactory.authenticated({
           token: "solana",
-          walletAdapter,
+          walletAdapter: window.solana,
           ...turboConfig,
         });
         

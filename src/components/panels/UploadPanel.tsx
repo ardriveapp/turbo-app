@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { wincPerCredit, tokenLabels } from '../../constants';
+import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Loader2, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Zap } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -25,7 +25,6 @@ export default function UploadPanel() {
     updateUploadWithArNS,
     clearUploadHistory,
     jitPaymentEnabled,
-    jitMaxTokenAmount,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
   } = useStore();
@@ -42,15 +41,6 @@ export default function UploadPanel() {
   // JIT payment local state for this upload
   const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
 
-  // Determine the token type for JIT payment
-  // Arweave wallets must use ARIO for JIT (not AR)
-  // Ethereum wallets use Base-ETH for JIT
-  const jitTokenTypeForDefaults = walletType === 'arweave'
-    ? 'ario'
-    : walletType === 'ethereum'
-    ? 'base-eth'
-    : walletType;
-
   // Max will be auto-calculated by JitPaymentCard based on estimated cost
   const [localJitMax, setLocalJitMax] = useState(0);
 
@@ -60,8 +50,6 @@ export default function UploadPanel() {
   const {
     uploadMultipleFiles,
     uploading,
-    uploadProgress,
-    errors,
     reset: resetFileUpload,
     uploadedCount,
     totalFilesCount,

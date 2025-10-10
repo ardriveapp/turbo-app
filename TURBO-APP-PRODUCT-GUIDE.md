@@ -784,14 +784,6 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Ethereum provider accessible via `wallet.getEthereumProvider()`
 - ethers.BrowserProvider wrapper for transaction signing
 
-**Supported Operations for Email Users**
-- ✅ Buy Credits (Fiat) - Full support with Stripe
-- ✅ Buy Credits (Crypto) - Via embedded Ethereum wallet
-- ❌ Upload Files - Not supported (requires Arweave wallet)
-- ❌ Deploy Sites - Not supported (requires Arweave wallet)
-- ❌ Share Credits - Not supported (requires Arweave wallet)
-- ❌ ArNS Features - Limited (display only, no updates)
-
 **User Experience**
 - Seamless email-based authentication
 - No wallet extension installation needed
@@ -845,14 +837,6 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Base L2 network support for JIT payments
 - ArNS name display (read-only)
 
-**Supported Operations**
-- ✅ Buy Credits (Fiat & Crypto) - Full support
-- ✅ ArNS Name Display - Primary name resolution
-- ❌ Upload Files - Not supported (requires Arweave)
-- ❌ Deploy Sites - Not supported (requires Arweave)
-- ❌ Share Credits - Not supported (requires Arweave)
-- ❌ Update ArNS Records - Not supported (requires Arweave)
-
 **Technical Implementation**
 - TurboFactory.authenticated with ethers signer
 - Token type override for JIT: "ethereum" or "base-eth"
@@ -876,14 +860,6 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Payment address generation
 - Real-time balance updates
 
-**Supported Operations**
-- ✅ Buy Credits (Fiat & Crypto) - Full support
-- ❌ ArNS Name Display - Not supported
-- ❌ Upload Files - Not supported (requires Arweave)
-- ❌ Deploy Sites - Not supported (requires Arweave)
-- ❌ Share Credits - Not supported (requires Arweave)
-- ❌ Update ArNS Records - Not supported (requires Arweave)
-
 **Technical Implementation**
 - TurboFactory.authenticated with Solana wallet adapter
 - Token type: "solana" for standard operations
@@ -895,23 +871,6 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - SOL JIT payments implemented but not fully functional
 - Known limitation in current release (v0.4.2)
 - Ongoing development for full SOL JIT support
-
-### 🔗 Wallet Capability Matrix
-
-| Feature | Email (Privy) | Arweave (Wander) | Ethereum (MetaMask) | Solana (Phantom) |
-|---------|---------------|------------------|---------------------|------------------|
-| Buy Credits (Fiat) | ✅ | ✅ | ✅ | ✅ |
-| Buy Credits (Crypto) | ✅ (ETH) | ✅ | ✅ (ETH/Base-ETH) | ✅ (SOL) |
-| Upload Files | ❌ | ✅ | ❌ | ❌ |
-| Deploy Sites | ❌ | ✅ | ❌ | ❌ |
-| Share Credits | ❌ | ✅ | ❌ | ❌ |
-| ArNS Display | Limited | ✅ | ✅ | ❌ |
-| Update ArNS Records | ❌ | ✅ | ❌ | ❌ |
-| Gift Credits | ✅ | ✅ | ✅ | ✅ |
-| Check Balances | ✅ | ✅ | ✅ | ✅ |
-| JIT Payments | ❌ | ✅ (ARIO) | ✅ (Base-ETH) | 🚧 (In Progress) |
-
----
 
 ## Navigation & User Experience
 
@@ -1202,7 +1161,7 @@ interface JITConfig {
 2. Check current balance: `creditBalance >= requiredCredits + buffer`
 3. If insufficient:
    - Display JIT modal with cost breakdown
-   - Show token amount needed (ARIO or Base-ETH)
+   - Show token amount needed (ARIO, SOL or Base-ETH)
    - User confirms auto-top-up
 4. Create OnDemandFunding instance:
    ```typescript
@@ -1232,6 +1191,7 @@ const jitTokenType = walletType === 'arweave'
   ? 'ario'
   : walletType === 'ethereum'
   ? 'base-eth'
+  ? 'solana'
   : walletType; // Default to wallet type
 ```
 
@@ -1388,11 +1348,6 @@ interface DeveloperConfig {
 
 **Upload Failures**
 
-*Issue*: "Only Arweave wallets can upload files"
-- **Solution**: Disconnect current wallet and connect Wander wallet
-- **Reason**: File uploads require Arweave wallet for signing
-- **Workaround**: None - Arweave wallet is mandatory for uploads
-
 *Issue*: Upload fails with "Insufficient credits"
 - **Solution**: Buy more credits or enable JIT payments
 - **Check**: Credit balance in header shows available credits
@@ -1527,7 +1482,6 @@ interface DeveloperConfig {
 - GitHub Issues: [turbo-gateway-app](https://github.com/ardriveapp/turbo-gateway-app/issues)
 - Discord Community: [ar.io Discord](https://discord.gg/ardrive)
 - Twitter: [@ardriveapp](https://twitter.com/ardriveapp)
-- Developer Forums: [AR.IO Community](https://community.ar.io)
 
 **API Documentation**
 - Upload Service: https://upload.ardrive.io/api-docs
@@ -1536,9 +1490,8 @@ interface DeveloperConfig {
 
 **Contact Support**
 - Email: support@ardrive.io
-- Feature Requests: GitHub Discussions
+- Feature Requests: GitHub Issues, Discord or X
 - Bug Reports: GitHub Issues
-- Security Issues: security@ardrive.io
 
 ---
 

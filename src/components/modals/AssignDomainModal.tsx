@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Globe, X, Loader2, CheckCircle, AlertCircle, RefreshCw, ChevronDown, Check, ExternalLink } from 'lucide-react';
+import { Globe, X, Loader2, AlertCircle, RefreshCw, ChevronDown, Check, ExternalLink } from 'lucide-react';
 import { Listbox } from '@headlessui/react';
 import BaseModal from './BaseModal';
 import { useOwnedArNSNames } from '../../hooks/useOwnedArNSNames';
