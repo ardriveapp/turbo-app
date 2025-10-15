@@ -2,45 +2,70 @@ import { ARIO, ANT, AOProcess, ContractSigner, InjectedEthereumSigner, AoSigner 
 import { connect } from '@permaweb/aoconnect';
 import { ethers } from 'ethers';
 
-// ArDrive CU URL for ANT operations
-const ANT_AO_CU_URL = 'https://cu.ardrive.io';
-
-// Create dedicated ANT AO client (like reference app)
-const antAoClient = connect({
-  CU_URL: ANT_AO_CU_URL,
-  MU_URL: 'https://mu.ao-testnet.xyz', 
-  MODE: 'legacy' as const,
-});
+// Production AR.IO Process ID for comparison
+const PRODUCTION_PROCESS_ID = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE';
 
 /**
- * Get ARIO mainnet instance
+ * Get current developer configuration from store
  */
-export const getARIO = () => {
-  return ARIO.mainnet();
+const getCurrentConfig = () => {
+  if (typeof window !== 'undefined' && (window as any).__TURBO_STORE__) {
+    return (window as any).__TURBO_STORE__.getState().getCurrentConfig();
+  }
+  // Fallback to production defaults
+  return {
+    processId: PRODUCTION_PROCESS_ID,
+  };
 };
 
 /**
- * Get ANT instance following exact reference app pattern  
- * @param processId - The ANT process ID  
+ * Get ARIO instance with dynamic configuration based on developer mode
+ * Uses production mainnet or custom process ID based on configuration
+ */
+export const getARIO = () => {
+  const config = getCurrentConfig();
+
+  // If using production process ID, use mainnet shorthand
+  if (config.processId === PRODUCTION_PROCESS_ID) {
+    return ARIO.mainnet();
+  }
+
+  // Otherwise, initialize with custom process ID (for development/custom modes)
+  return ARIO.init({
+    processId: config.processId,
+  });
+};
+
+/**
+ * Get ANT instance with dynamic AO client configuration
+ * @param processId - The ANT process ID
  * @param signer - Optional signer for write operations
  * @param hyperbeamUrl - Optional hyperbeam URL
  */
 export const getANT = (processId: string, signer?: any, hyperbeamUrl?: string) => {
+  // Create AO client dynamically based on configuration
+  // For now, we use ArDrive CU for all environments (can be made configurable later)
+  const antAoClient = connect({
+    CU_URL: 'https://cu.ardrive.io',
+    MU_URL: 'https://mu.ao-testnet.xyz',
+    MODE: 'legacy' as const,
+  });
+
   const config: any = {
     process: new AOProcess({
       processId,
       ao: antAoClient,
     }),
   };
-  
+
   if (signer) {
     config.signer = signer;
   }
-  
+
   if (hyperbeamUrl) {
     config.hyperbeamUrl = hyperbeamUrl;
   }
-  
+
   return ANT.init(config);
 };
 

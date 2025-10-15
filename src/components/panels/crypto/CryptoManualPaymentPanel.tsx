@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { CheckCircle, Copy, AlertTriangle, RefreshCw } from 'lucide-react';
-import { tokenLabels, tokenNetworkLabels, errorSubmittingTransactionToTurbo, defaultPaymentServiceUrl, SupportedTokenType } from '../../../constants';
+import { tokenLabels, tokenNetworkLabels, errorSubmittingTransactionToTurbo, SupportedTokenType } from '../../../constants';
 import { TurboFactory } from '@ardrive/turbo-sdk/web';
-import { turboConfig } from '../../../constants';
+import { useTurboConfig } from '../../../hooks/useTurboConfig';
+import { useStore } from '../../../store/useStore';
 import useAddressState, { TransferTransactionResult } from '../../../hooks/useAddressState';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import CopyButton from '../../CopyButton';
@@ -24,14 +25,17 @@ export default function CryptoManualPaymentPanel({
 }: CryptoManualPaymentPanelProps) {
   const address = useAddressState();
   const { data: turboWallets } = useTurboWallets();
-  
+  const turboConfig = useTurboConfig();
+  const getCurrentConfig = useStore((state) => state.getCurrentConfig);
+  const config = getCurrentConfig();
+
   const [transferTransactionResult, setTransferTransactionResult] = useState<TransferTransactionResult>();
   const [transactionSubmitted, setTransactionSubmitted] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
   const [signingMessage, setSigningMessage] = useState<string>();
 
   const turboWallet = address && turboWallets ? turboWallets[tokenType] : undefined;
-  
+
   // Get unauthenticated Turbo client for submitting fund transactions
   const turboUnauthenticatedClient = TurboFactory.unauthenticated(turboConfig);
 
@@ -135,10 +139,10 @@ export default function CryptoManualPaymentPanel({
             <div className="space-y-4">
               <div className="bg-canvas rounded-lg p-4 border border-default">
                 <p className="text-sm text-link mb-2">
-                  This step sends {tokenLabels[tokenType]} to Turbo. 
+                  This step sends {tokenLabels[tokenType]} to Turbo.
                   You can verify the recipient is Turbo's wallet address{' '}
                   <a
-                    href={`${defaultPaymentServiceUrl}/info`}
+                    href={`${config.paymentServiceUrl}/info`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-turbo-red hover:text-turbo-red/80 underline"
