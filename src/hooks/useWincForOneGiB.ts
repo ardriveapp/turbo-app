@@ -84,7 +84,7 @@ export function useWincForAnyToken(token: string, amount: number) {
   const [wincForToken, setWincForToken] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const turboConfig = useTurboConfig();
+  const turboConfig = useTurboConfig(token); // Pass token to get proper gatewayUrl for dev mode
   
   useEffect(() => {
     if (amount <= 0) {

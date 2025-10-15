@@ -290,7 +290,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ## Key Dependencies
 
 ### Core Integration
-- `@ardrive/turbo-sdk`: v1.31.1-alpha.2 - Turbo services integration
+- `@ardrive/turbo-sdk`: v1.32.1-alpha.2 - Turbo services integration
 - `@ar.io/sdk`: v3.19.0-alpha.10 - ArNS name resolution and domain management
 - `@privy-io/react-auth`: Email authentication with embedded wallets
 - `wagmi`: v2.12.5 - Ethereum wallet integration and Web3 functionality
@@ -307,7 +307,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.4.0)
+### ✅ Completed Features (v0.4.5)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow

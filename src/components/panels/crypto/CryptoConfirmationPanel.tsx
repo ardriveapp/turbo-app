@@ -83,6 +83,7 @@ export default function CryptoConfirmationPanel({
             paymentServiceConfig: {
               url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
             },
+            gatewayUrl: turboConfig.tokenMap[tokenType] // Dev mode uses testnet RPC URLs
           });
 
           // Use SDK helper functions - returns BigNumber (which SDK expects)
@@ -197,6 +198,7 @@ export default function CryptoConfirmationPanel({
             paymentServiceConfig: {
               url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
             },
+            gatewayUrl: turboConfig.tokenMap[tokenType] // Dev mode uses testnet RPC URLs
           });
 
           const tokenAmount = ETHToTokenAmount(cryptoAmount); // Convert to wei

@@ -120,7 +120,17 @@ export async function calculateRequiredTokenAmount({
   // Fetch fresh pricing from Turbo SDK
   try {
     const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-    const turbo = TurboFactory.unauthenticated({ token: tokenType });
+
+    // Get current dev mode configuration from store
+    const { useStore } = await import('../store/useStore');
+    const turboConfig = useStore.getState().getCurrentConfig();
+
+    // Create TurboFactory with proper config including dev mode RPC URLs
+    const turbo = TurboFactory.unauthenticated({
+      token: tokenType,
+      paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+      gatewayUrl: turboConfig.tokenMap[tokenType]
+    });
 
     // Get the cost in tokens for uploading credits worth of data
     // Credits = Winc / wincPerCredit, so we need to figure out winc → bytes → tokens
