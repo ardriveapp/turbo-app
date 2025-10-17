@@ -131,7 +131,11 @@ export default function CryptoConfirmationPanel({
           
           // Network validation and auto-switching
           const network = await provider.getNetwork();
-          const expectedChainId = tokenType === 'ethereum' ? 1 : 8453; // Mainnet vs Base
+          // Dev mode uses testnets: Holesky (17000) for ETH, Base Sepolia (84532) for Base
+          const isDevMode = turboConfig.paymentServiceUrl?.includes('.dev');
+          const expectedChainId = tokenType === 'ethereum'
+            ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
+            : (isDevMode ? 84532 : 8453); // Base Sepolia : Base mainnet
           
           
           // Auto-switch network if needed
@@ -148,11 +152,10 @@ export default function CryptoConfirmationPanel({
                 provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
               } catch {
-                if (tokenType === 'base-eth') {
-                  throw new Error('Failed to switch to Base network. Please try again.');
-                } else {
-                  throw new Error('Failed to switch to Ethereum Mainnet. Please try again.');
-                }
+                const networkName = tokenType === 'base-eth'
+                  ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
+                  : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
+                throw new Error(`Failed to switch to ${networkName}. Please try again.`);
               }
             } else if (window.ethereum) {
               // Only attempt auto-switching for regular wallets
@@ -160,7 +163,7 @@ export default function CryptoConfirmationPanel({
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x2105' }], // Hex for 8453 (Base)
+                    params: [{ chainId: `0x${expectedChainId.toString(16)}` }], // Dynamic: Base Sepolia (0x14A34) or Base Mainnet (0x2105)
                   });
                   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -168,13 +171,14 @@ export default function CryptoConfirmationPanel({
                   provider = new ethers.BrowserProvider(window.ethereum);
                   signer = await provider.getSigner();
                 } catch {
-                  throw new Error(`Please switch to Base Network in your wallet for Base ETH payments.`);
+                  const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
+                  throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
                 }
               } else if (tokenType === 'ethereum') {
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x1' }], // Hex for 1 (Ethereum Mainnet)
+                    params: [{ chainId: `0x${expectedChainId.toString(16)}` }], // Dynamic: Holesky (0x4268) or Ethereum Mainnet (0x1)
                   });
                   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -182,7 +186,8 @@ export default function CryptoConfirmationPanel({
                   provider = new ethers.BrowserProvider(window.ethereum);
                   signer = await provider.getSigner();
                 } catch {
-                  throw new Error(`Please switch to Ethereum Mainnet in your wallet for ETH L1 payments.`);
+                  const networkName = isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet';
+                  throw new Error(`Please switch to ${networkName} in your wallet for ETH L1 payments.`);
                 }
               }
             }
