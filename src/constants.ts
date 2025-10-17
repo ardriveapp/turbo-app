@@ -1,4 +1,5 @@
 import { TurboUnauthenticatedConfiguration } from "@ardrive/turbo-sdk";
+import packageJson from '../package.json';
 
 // Use VITE_NODE_ENV to determine production mode
 const isProd = import.meta.env.VITE_NODE_ENV === 'production';
@@ -43,6 +44,10 @@ export const turboConfig: TurboUnauthenticatedConfiguration = getTurboConfig();
 export const wincPerCredit = 1_000_000_000_000;
 export const defaultDebounceMs = 500;
 export const ardriveAppUrl = "https://app.ardrive.io";
+
+// App metadata for tagging uploads
+export const APP_NAME = 'Turbo-App';
+export const APP_VERSION = packageJson.version;
 
 export const maxUSDAmount = 10000;
 export const maxARAmount = 200;
