@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useTurboCapture } from '../../hooks/useTurboCapture';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, APP_NAME, APP_VERSION } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Camera, CheckCircle, XCircle, Shield, ExternalLink, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Upload, Link } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Shield, ExternalLink, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Link } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -41,7 +41,8 @@ export default function CapturePanel() {
   const [arnsEnabled, setArnsEnabled] = useState(false);
   const [selectedArnsName, setSelectedArnsName] = useState<string>('');
   const [selectedUndername, setSelectedUndername] = useState<string>('');
-  const { names: userArnsNames, updateArNSRecord } = useOwnedArNSNames();
+  const [showUndername, setShowUndername] = useState(false);
+  const { updateArNSRecord } = useOwnedArNSNames();
 
   // Upload state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -113,7 +114,7 @@ export default function CapturePanel() {
       'Owner Address',
       'Content Type',
       'App Name',
-      'Captured URL',
+      'Original URL',
       'Data Caches',
       'Fast Finality Indexes',
       'Arweave URL'
@@ -129,7 +130,7 @@ export default function CapturePanel() {
                           'application/octet-stream';
 
       const appName = result.receipt?.tags?.find((tag: any) => tag.name === 'App-Name')?.value || 'Turbo-Gateway';
-      const capturedUrl = result.receipt?.tags?.find((tag: any) => tag.name === 'Captured-URL')?.value || '';
+      const capturedUrl = result.receipt?.tags?.find((tag: any) => tag.name === 'Original-URL')?.value || '';
 
       const fileSizeBytes = result.fileSize || 'Unknown';
       const fileSizeHuman = typeof fileSizeBytes === 'number' ? formatFileSize(fileSizeBytes) : 'Unknown';
@@ -192,13 +193,14 @@ export default function CapturePanel() {
       return;
     }
 
-    setCaptureMessage({ type: 'info', text: 'Capturing screenshot...' });
+    // Clear any previous messages (button text shows "Capturing...")
+    setCaptureMessage(null);
 
     try {
       await capture(urlInput);
       setShowConfirmModal(true);
       setCaptureMessage(null);
-    } catch (error) {
+    } catch {
       // Error already set by hook
     }
   };
@@ -235,31 +237,29 @@ export default function CapturePanel() {
     }
 
     try {
+      // Build capture-specific tags to be set during upload
+      const customTags = [
+        { name: 'App-Name', value: APP_NAME },
+        { name: 'App-Feature', value: 'Capture' },
+        { name: 'App-Version', value: APP_VERSION },
+        { name: 'Original-URL', value: captureResult.finalUrl },
+        { name: 'Title', value: captureResult.title },
+        { name: 'Viewport-Width', value: captureResult.viewport.width.toString() },
+        { name: 'Viewport-Height', value: captureResult.viewport.height.toString() },
+        { name: 'Captured-At', value: captureResult.capturedAt },
+      ];
+
       // Upload with special Turbo Capture tags
       const { results, failedFiles } = await uploadMultipleFiles([captureFile], {
         jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
         jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        customTags,
       });
 
       if (results.length > 0) {
-        // Add capture-specific metadata to results
-        const captureResults = results.map(result => ({
-          ...result,
-          // Add custom tags via receipt modification
-          receipt: {
-            ...result.receipt,
-            tags: [
-              ...(result.receipt?.tags || []),
-              { name: 'App-Name', value: 'Turbo-Capture' },
-              { name: 'Captured-URL', value: captureResult.finalUrl },
-              { name: 'Page-Title', value: captureResult.title },
-              { name: 'Captured-At', value: captureResult.capturedAt },
-            ]
-          }
-        }));
-
-        addUploadResults(captureResults);
+        // Results already have correct tags from upload
+        addUploadResults(results);
 
         // Handle ArNS assignment if enabled - actually update the ArNS record on-chain
         if (arnsEnabled && selectedArnsName && results[0]) {
@@ -427,6 +427,8 @@ export default function CapturePanel() {
           onNameChange={setSelectedArnsName}
           selectedUndername={selectedUndername}
           onUndernameChange={setSelectedUndername}
+          showUndername={showUndername}
+          onShowUndernameChange={setShowUndername}
         />
       )}
 
@@ -434,7 +436,7 @@ export default function CapturePanel() {
       {!uploading && hasValidUrl && (
         <button
           onClick={handleCapture}
-          disabled={isCapturing || !address}
+          disabled={isCapturing || !address || (arnsEnabled && !selectedArnsName) || (arnsEnabled && showUndername && !selectedUndername)}
           className="w-full py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Camera className="w-5 h-5" />
@@ -535,7 +537,7 @@ export default function CapturePanel() {
                 {uploadHistory.slice(0, uploadsToShow).map((result, index) => {
                   const status = uploadStatuses[result.id];
                   const isChecking = statusChecking[result.id];
-                  const isCapture = result.receipt?.tags?.find((tag: any) => tag.name === 'App-Name')?.value === 'Turbo-Capture';
+                  const isCapture = result.receipt?.tags?.find((tag: any) => tag.name === 'App-Feature')?.value === 'Capture';
 
                   const renderStatusIcon = (iconName: string) => {
                     switch (iconName) {
@@ -736,11 +738,11 @@ export default function CapturePanel() {
                           </div>
                         )}
 
-                        {/* Row 3: Captured URL (for captures only) */}
-                        {isCapture && result.receipt?.tags?.find((tag: any) => tag.name === 'Captured-URL')?.value && (
+                        {/* Row 3: Original URL (for captures only) */}
+                        {isCapture && result.receipt?.tags?.find((tag: any) => tag.name === 'Original-URL')?.value && (
                           <div className="text-xs text-link truncate flex items-center gap-1">
                             <Link className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate">{result.receipt?.tags?.find((tag: any) => tag.name === 'Captured-URL')?.value}</span>
+                            <span className="truncate">{result.receipt?.tags?.find((tag: any) => tag.name === 'Original-URL')?.value}</span>
                           </div>
                         )}
 

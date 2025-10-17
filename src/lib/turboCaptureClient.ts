@@ -137,7 +137,7 @@ export function createCaptureFile(screenshot: CaptureResult, originalUrl: string
 
     // Create File object
     return new File([blob], fileName, { type: 'image/png' });
-  } catch (error) {
+  } catch {
     // Fallback if URL parsing fails
     const timestamp = Date.now();
     const fileName = `capture-${timestamp}.png`;

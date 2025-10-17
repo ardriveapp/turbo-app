@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
+import { APP_NAME, APP_VERSION } from '../constants';
 
 interface UploadResult {
   id: string;
@@ -39,6 +40,27 @@ export interface UploadError {
   error: string;
   retryable: boolean;
 }
+
+/**
+ * Merges custom tags with default tags.
+ * Custom tags override defaults with the same name.
+ * Returns: [...customTags, ...non-overridden defaults]
+ */
+const mergeTags = (
+  defaultTags: Array<{ name: string; value: string }>,
+  customTags: Array<{ name: string; value: string }>
+): Array<{ name: string; value: string }> => {
+  // Create set of custom tag names for quick lookup
+  const customTagNames = new Set(customTags.map(t => t.name));
+
+  // Filter out default tags that are overridden by custom tags
+  const nonOverriddenDefaults = defaultTags.filter(
+    dt => !customTagNames.has(dt.name)
+  );
+
+  // Custom tags first, then non-overridden defaults
+  return [...customTags, ...nonOverriddenDefaults];
+};
 
 export function useFileUpload() {
   const { address, walletType } = useStore();
@@ -176,6 +198,7 @@ export function useFileUpload() {
       jitEnabled?: boolean;
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
+      customTags?: Array<{ name: string; value: string }>;
     }
   ) => {
     if (!address) {
@@ -214,10 +237,24 @@ export function useFileUpload() {
         file: file,  // Pass the File object directly
         fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
         dataItemOpts: {
-          tags: [
-            { name: 'Content-Type', value: file.type || 'application/octet-stream' },
-            { name: 'File-Name', value: file.name }
-          ]
+          tags: options?.customTags
+            ? mergeTags(
+                [
+                  { name: 'App-Name', value: APP_NAME },
+                  { name: 'App-Feature', value: 'File Upload' },
+                  { name: 'App-Version', value: APP_VERSION },
+                  { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                  { name: 'File-Name', value: file.name }
+                ],
+                options.customTags
+              )
+            : [
+                { name: 'App-Name', value: APP_NAME },
+                { name: 'App-Feature', value: 'File Upload' },
+                { name: 'App-Version', value: APP_VERSION },
+                { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                { name: 'File-Name', value: file.name }
+              ]
         },
         events: {
           // Overall progress (includes both signing and upload)
@@ -263,6 +300,7 @@ export function useFileUpload() {
       jitEnabled?: boolean;
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
+      customTags?: Array<{ name: string; value: string }>;
     }
   ) => {
     // Validate wallet state before any operations
