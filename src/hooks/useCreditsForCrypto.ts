@@ -12,7 +12,7 @@ export function useCreditsForCrypto(
   const cryptoWhenCreditsWereLastUpdatedRef = useRef<number | undefined>(
     undefined,
   );
-  const turboConfig = useTurboConfig();
+  const turboConfig = useTurboConfig(tokenType); // Pass token to get proper gatewayUrl for dev mode
 
   // Get credits for crypto amount when crypto amount has stopped debouncing
   useEffect(() => {

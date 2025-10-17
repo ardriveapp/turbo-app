@@ -6,13 +6,25 @@ import {
   TurboWincForFiatResponse,
   TwoDecimalCurrency,
 } from '@ardrive/turbo-sdk/web';
-import { defaultPaymentServiceUrl } from '../constants';
+
+/**
+ * Get current payment service URL from developer configuration
+ */
+const getPaymentServiceUrl = (): string => {
+  if (typeof window !== 'undefined' && (window as any).__TURBO_STORE__) {
+    const config = (window as any).__TURBO_STORE__.getState().getCurrentConfig();
+    return config.paymentServiceUrl;
+  }
+  // Fallback to production default
+  return 'https://payment.ardrive.io';
+};
 
 export const getTurboBalance = async (
   address: string,
   tokenType: string = 'arweave',
 ) => {
-  const url = `${defaultPaymentServiceUrl}/v1/account/balance/${tokenType}?address=${address}`;
+  const paymentServiceUrl = getPaymentServiceUrl();
+  const url = `${paymentServiceUrl}/v1/account/balance/${tokenType}?address=${address}`;
 
   const response = await fetch(url);
 
@@ -27,7 +39,8 @@ export const getWincForToken = async (
   amount: number,
   tokenType: string = 'arweave',
 ): Promise<{ winc: string }> => {
-  const url = `${defaultPaymentServiceUrl}/v1/price/${tokenType}/${amount}`;
+  const paymentServiceUrl = getPaymentServiceUrl();
+  const url = `${paymentServiceUrl}/v1/price/${tokenType}/${amount}`;
 
   const response = await fetch(url);
 
@@ -47,7 +60,8 @@ export const getWincForFiat = async ({
   promoCode?: string;
   destinationAddress?: string;
 }): Promise<TurboWincForFiatResponse> => {
-  const url = `${defaultPaymentServiceUrl}/v1/price/usd/${amount.amount}`;
+  const paymentServiceUrl = getPaymentServiceUrl();
+  const url = `${paymentServiceUrl}/v1/price/usd/${amount.amount}`;
   const queryString =
     promoCode && destinationAddress
       ? `?${new URLSearchParams({ promoCode, destinationAddress }).toString()}`
