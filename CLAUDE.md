@@ -77,8 +77,8 @@ This is a unified Turbo Gateway application consolidating three separate applica
 ```typescript
 // Available routes
 const routes = [
-  '/', '/topup', '/upload', '/deploy', '/share', '/gift', '/account',
-  '/domains', '/calculator', '/services-calculator', 
+  '/', '/topup', '/upload', '/capture', '/deploy', '/share', '/gift', '/account',
+  '/domains', '/calculator', '/services-calculator',
   '/balances', '/redeem', '/developer', '/gateway-info', '/deployments'
 ];
 ```
@@ -177,6 +177,25 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 - **Batch Upload**: Drag & drop with visual feedback and duplicate file prevention
 - **Upload History**: Persistent upload history in Zustand store with ArNS association tracking
 
+#### Webpage Capture System
+- **Integration**: Uses turbo-capture-service backend for full-page screenshot capture
+- **Dynamic Configuration**: Capture service URL configurable in Developer Resources (separate production/development URLs)
+- **Capture Flow**: URL input → Webpage capture (90s timeout) → Upload confirmation → Arweave upload
+- **Special Tags**: Captures include metadata tags for identification and tracking:
+  - `App-Name: "Turbo-Capture"` - Identifies captures in history
+  - `Captured-URL` - Original webpage URL
+  - `Page-Title` - Title of captured page
+  - `Captured-At` - ISO timestamp of capture
+- **File Naming**: `capture-{domain}-{timestamp}.png` with domain truncation at 50 characters
+- **ArNS Assignment**: Optional ArNS name/undername assignment matching Deploy Site UX
+  - Uses `ArNSAssociationPanel` for dropdown selection
+  - Calls AR.IO SDK `ant.setRecord()` for on-chain updates
+  - Only Arweave wallets can assign ArNS names (requires signing)
+- **Progressive Disclosure**: ArNS panel and upload button only appear after valid URL entry
+- **Unified History**: Captures appear in same history as regular uploads with camera icon badge
+- **Screenshot Service**: Configurable via `captureServiceUrl` in store configuration
+- **Cost Confirmation**: Pre-upload modal with JIT payment support matching upload flow
+
 #### Site Deployment
 - **Deploy Site Panel**: Complete site deployment with data export functionality
 - **ArNS Association**: Associate deployments with owned ArNS names
@@ -198,7 +217,8 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 #### Waffle Menu Services
 **Services** (login required):
 - Buy Credits (`topup`)
-- Upload Files (`upload`) 
+- Upload Files (`upload`)
+- Capture Page (`capture`)
 - Deploy Site (`deploy`)
 - Share Credits (`share`)
 - Send Gift (`gift`)
@@ -254,6 +274,7 @@ All service panels follow consistent styling:
 - `useCryptoForFiat`: Fiat to crypto conversion for payment amounts
 - `useFileUpload`: Multi-chain upload logic with proper signers
 - `useFolderUpload`: Folder upload with drag & drop support
+- `useTurboCapture`: Webpage capture state management and screenshot file creation
 - `usePrimaryArNSName`: Primary name fetching with cache management
 - `useOwnedArNSNames`: Fetch and manage owned ArNS names with ANT state tracking
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
@@ -346,14 +367,21 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.4.5)
+### ✅ Completed Features (v0.5.0)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - Crypto payments for Solana and Ethereum
-- File upload with progress tracking (Arweave wallets only)
+- File upload with progress tracking (Arweave, Ethereum, and Solana wallets)
+- **Webpage Capture system with turbo-capture-service integration**
+- **Full-page screenshot capture with 90-second timeout**
+- **Capture metadata tags (App-Name, Captured-URL, Page-Title, Captured-At)**
+- **Dynamic capture service URL configuration**
+- **ArNS assignment for captured pages matching Deploy Site UX**
+- **Progressive disclosure (ArNS/button show after valid URL entry)**
+- **Camera icon badge for captures in unified upload history**
 - Site deployment with data export functionality and ArNS association
 - **Proper upload cancellation with AbortController support**
 - **Improved upload progress display with single file view**
@@ -386,6 +414,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 | Buy Credits (Fiat) | ✅ | ✅ | ✅ |
 | Buy Credits (Crypto) | ✅ | ✅ | ✅ |
 | Upload Files | ✅ | ✅ | ✅ |
+| Capture Pages | ✅ | ✅ | ✅ |
 | Deploy Sites | ✅ | ✅ | ✅ |
 | Share Credits | ✅ | ✅ | ✅ |
 | ArNS Names | ✅ | ✅ | ❌ |
@@ -403,6 +432,31 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **Cancellation**: Properly implement AbortController for each upload to allow user cancellation
 - **Error Handling**: Per-file error states with user-friendly messages
 - **Duplicate Prevention**: Check `uploadHistory` to prevent re-uploading the same file
+
+### Webpage Capture Development
+- **API Client**: `turboCaptureClient.ts` provides interface to turbo-capture-service
+  - `captureScreenshot()`: Captures full-page screenshot with 90-second timeout
+  - `createCaptureFile()`: Converts base64 screenshot to File object with proper naming
+  - `getCaptureServiceUrl()`: Dynamically reads capture service URL from store configuration
+- **React Hook**: Use `useTurboCapture` for capture state management
+  - Returns: `capture()`, `reset()`, `isCapturing`, `error`, `result`, `captureFile`
+  - Handles screenshot capture and File object creation automatically
+- **Capture Tags**: Always include these metadata tags for identification:
+  ```typescript
+  { name: 'App-Name', value: 'Turbo-Capture' },
+  { name: 'Captured-URL', value: captureResult.finalUrl },
+  { name: 'Page-Title', value: captureResult.title },
+  { name: 'Captured-At', value: captureResult.capturedAt }
+  ```
+- **ArNS Integration**: For ArNS assignment on captures:
+  1. First call `updateArNSRecord()` from `useOwnedArNSNames` hook (on-chain update via AR.IO SDK)
+  2. Then call `updateUploadWithArNS()` from store (local state update)
+  3. Only Arweave wallets can update ArNS records (requires ANT signing)
+- **History Display**: Check for `App-Name: "Turbo-Capture"` tag to display camera icon badge
+- **Configuration**: Capture service URL is configurable in Developer Resources
+  - Production: `https://vilenarios.com/local/capture`
+  - Development: Same as production (single service)
+  - Store manages URL via `captureServiceUrl` in `DeveloperConfig`
 
 ### Privy Wallet Support
 When creating Turbo clients, check for Privy embedded wallets first:

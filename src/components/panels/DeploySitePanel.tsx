@@ -1061,7 +1061,6 @@ export default function DeploySitePanel() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <Zap className="w-12 h-12 text-turbo-red mx-auto mb-2" />
             <p className="text-lg font-medium mb-2">
               Drop site folder here or click to browse
             </p>

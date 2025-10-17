@@ -7,7 +7,7 @@ import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import {
   ArrowRight, Zap, Github, FileCode, Database, Rss,
   CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info,
-  Package, Cloud, Server, Wallet, Brain
+  Package, Cloud, Server, Wallet, Brain, Camera
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -84,10 +84,11 @@ const LandingPage = () => {
         };
       case 'upload':
       case 'deploy':
+      case 'capture':
         return {
           text: 'text-turbo-red',
           bg: 'bg-turbo-red/10',
-          border: 'border-turbo-red', 
+          border: 'border-turbo-red',
           button: 'bg-turbo-red text-white hover:bg-turbo-red/90'
         };
       case 'domains':
@@ -136,9 +137,9 @@ const LandingPage = () => {
       loginText: 'Upload Files',
       connectText: 'Connect Wallet to Upload'
     },
-    { 
-      name: 'Deploy', 
-      icon: Zap, 
+    {
+      name: 'Deploy',
+      icon: Zap,
       title: 'Deploy Sites to the Permaweb',
       description: 'Deploy complete websites with automatic manifest creation and permanent hosting. Perfect for static sites, SPAs, and documentation.',
       benefits: ['Permanent hosting', 'Automatic manifests', 'Custom fallback pages', 'Domain name assignment'],
@@ -146,9 +147,19 @@ const LandingPage = () => {
       loginText: 'Deploy Site',
       connectText: 'Connect Wallet to Deploy'
     },
-    { 
-      name: 'Share', 
-      icon: Users, 
+    {
+      name: 'Capture',
+      icon: Camera,
+      title: 'Capture & Archive Webpages',
+      description: 'Preserve any webpage as a full-page screenshot on Arweave. Perfect for archiving content, preserving evidence, or creating permanent snapshots of the web.',
+      benefits: ['Full-page screenshots', 'Permanent web archival', 'ArNS domain assignment'],
+      action: 'capture',
+      loginText: 'Capture Webpage',
+      connectText: 'Connect Wallet to Capture'
+    },
+    {
+      name: 'Share',
+      icon: Users,
       title: 'Share Credits Between Wallets',
       description: 'Delegate credits to other wallets for collaborative uploads and payments. Set time-based expiration and revoke anytime.',
       benefits: ['Wallet-to-wallet sharing', 'Time-based expiration', 'Revoke anytime'],

@@ -286,7 +286,7 @@ export default function UploadPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-4 sm:mb-6">
-        <div className="w-10 h-10 from-turbo-red/5 to-turbo-red/3 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
           <Upload className="w-5 h-5 text-turbo-red" />
         </div>
         <div>
