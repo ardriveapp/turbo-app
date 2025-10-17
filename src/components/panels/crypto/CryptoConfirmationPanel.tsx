@@ -170,9 +170,51 @@ export default function CryptoConfirmationPanel({
                   // Create fresh provider after switch
                   provider = new ethers.BrowserProvider(window.ethereum);
                   signer = await provider.getSigner();
-                } catch {
-                  const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
-                  throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
+                } catch (switchError: any) {
+                  // Error 4902 means the network doesn't exist in MetaMask - add it first
+                  if (switchError.code === 4902) {
+                    try {
+                      const networkParams = isDevMode ? {
+                        chainId: '0x14a34', // 84532
+                        chainName: 'Base Sepolia',
+                        nativeCurrency: {
+                          name: 'Sepolia Ether',
+                          symbol: 'ETH',
+                          decimals: 18,
+                        },
+                        rpcUrls: ['https://sepolia.base.org'],
+                        blockExplorerUrls: ['https://sepolia.basescan.org'],
+                      } : {
+                        chainId: '0x2105', // 8453
+                        chainName: 'Base',
+                        nativeCurrency: {
+                          name: 'Ether',
+                          symbol: 'ETH',
+                          decimals: 18,
+                        },
+                        rpcUrls: ['https://mainnet.base.org'],
+                        blockExplorerUrls: ['https://basescan.org'],
+                      };
+
+                      await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [networkParams],
+                      });
+
+                      // Wait for network to be added and switched
+                      await new Promise(resolve => setTimeout(resolve, 1000));
+
+                      // Create fresh provider after adding network
+                      provider = new ethers.BrowserProvider(window.ethereum);
+                      signer = await provider.getSigner();
+                    } catch {
+                      const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
+                      throw new Error(`Failed to add ${networkName} to MetaMask. Please add it manually.`);
+                    }
+                  } else {
+                    const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
+                    throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
+                  }
                 }
               } else if (tokenType === 'ethereum') {
                 try {

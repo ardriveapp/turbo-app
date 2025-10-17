@@ -51,6 +51,13 @@ Commands that can be run without user approval:
 - `npm run type-check` - TypeScript type checking
 - `npm run lint` - ESLint validation
 
+### Development vs Production Modes
+The app supports both production and development modes controlled by `VITE_NODE_ENV`:
+- **Production** (`VITE_NODE_ENV=production`): Uses mainnet endpoints, production Stripe keys, production process IDs
+- **Development** (default or `VITE_NODE_ENV=development`): Uses testnet/devnet endpoints, test Stripe keys, dev process IDs
+- **Dynamic Configuration**: The store supports runtime configuration switching via `configMode` state (production/development/custom)
+- Development mode uses testnet chain IDs for ETH/Base payments and devnet RPC URLs for all crypto operations
+
 ## Architecture Overview
 
 ### Application Structure
@@ -111,32 +118,64 @@ creditBalance, paymentState, UI state
 ```
 
 #### Turbo SDK Integration
-Environment-based configuration with proper type safety:
+Environment-based configuration with proper type safety using the `useTurboConfig` hook:
 ```typescript
-const turboConfig: TurboUnauthenticatedConfiguration = {
-  paymentServiceConfig: { url: defaultPaymentServiceUrl },
-  uploadServiceConfig: { url: uploadServiceUrl },
-  processId: arioProcessId, // Different for prod/dev
-};
+// Centralized configuration via hook
+const turboConfig = useTurboConfig(tokenType); // Returns config based on current store mode
+
+// Store manages three configuration modes:
+// - 'production': Mainnet endpoints and process IDs
+// - 'development': Testnet/devnet endpoints and process IDs
+// - 'custom': User-defined endpoints for advanced testing
+
+// Configuration includes:
+// - paymentServiceUrl: Payment processing endpoint
+// - uploadServiceUrl: File upload endpoint
+// - processId: AR.IO process ID (different per environment)
+// - tokenMap: RPC URLs for each supported crypto token
+// - stripeKey: Environment-specific Stripe public key
 ```
+
+**Supported Crypto Tokens**:
+- `arweave` (AR), `ario` (ARIO), `ethereum` (ETH L1), `base-eth` (ETH on Base L2)
+- `solana` (SOL), `kyve` (KYVE), `matic` (MATIC), `pol` (POL)
+- Each token has network-specific RPC URLs configured in the token map
+- Processing times vary: Solana/Base (fast), Polygon (medium), Arweave/Ethereum (slow)
 
 ### Service Architecture
 
 #### Payment Integration
 - **Stripe Elements**: Hosted checkout with success/cancel callbacks
-- **Gift Payment Flow**: Multi-step payment process with confirmation panels
-- **Fiat Payments**: Complete fiat payment panels (PaymentDetailsPanel, PaymentConfirmationPanel, PaymentSuccessPanel)
-- **Gift Fiat Flow**: Dedicated gift payment panels (GiftPaymentDetailsPanel, GiftPaymentConfirmationPanel, GiftPaymentSuccessPanel)
-- **Crypto Payments**: Solana and Ethereum crypto payments with conversion calculations
-- **Real-time Conversion**: USD/crypto to credits with debouncing (500ms)
-- **Balance Refresh**: Custom events trigger balance updates
+- **Fiat Payments**: Complete 3-panel flow in `src/components/panels/fiat/`
+  - `PaymentDetailsPanel.tsx`: Amount selection and customer information entry
+  - `PaymentConfirmationPanel.tsx`: Order review and payment processing
+  - `PaymentSuccessPanel.tsx`: Confirmation with receipt display
+- **Gift Fiat Flow**: Dedicated 3-panel gift flow in `src/components/panels/fiat/`
+  - `GiftPaymentDetailsPanel.tsx`: Gift amount and recipient information
+  - `GiftPaymentConfirmationPanel.tsx`: Gift order review
+  - `GiftPaymentSuccessPanel.tsx`: Gift code generation and sharing
+- **Crypto Payments**: Multi-token crypto payment flow in `src/components/panels/crypto/`
+  - `CryptoConfirmationPanel.tsx`: Token selection and amount confirmation
+  - `CryptoManualPaymentPanel.tsx`: Payment address display and instructions
+  - Supports 8 crypto tokens with network-specific handling
+- **Payment Target System**: Allows funding any wallet address without authentication
+  - `paymentTargetAddress` / `paymentTargetType` separate from connected wallet
+  - Enables unauthenticated credit purchases for any address
+- **Real-time Conversion**: USD/crypto to credits with debouncing (500ms via `useDebounce`)
+- **Balance Refresh**: Custom event system (`refresh-balance`) for cross-component updates
+- **Just-in-Time (JIT) Payments**: Opt-in automatic crypto top-ups with configurable limits per token
 
 #### File Upload System
-- **Multi-wallet Support**: Only Arweave wallets can upload files
-- **Progress Tracking**: Real-time progress bars with error handling
-- **Cost Calculator**: Real-time pricing display with GiB estimates
-- **Receipt System**: Transaction IDs with Arweave explorer links
-- **Batch Upload**: Drag & drop with visual feedback
+- **Wallet Support**: Arweave, Ethereum (via Privy), and Solana wallets can upload files
+  - Arweave: Uses `ArconnectSigner` from `window.arweaveWallet`
+  - Ethereum: Uses `EthereumSigner` with ethers.js BrowserProvider (MetaMask or Privy embedded wallet)
+  - Solana: Uses `SolanaWalletAdapter` for Phantom/Solflare wallets
+- **Upload Cancellation**: Proper AbortController support for canceling in-progress uploads
+- **Progress Tracking**: Real-time progress bars with single file view and error handling per file
+- **Cost Calculator**: Real-time pricing display with GiB estimates via `useWincForOneGiB` hook
+- **Receipt System**: Transaction IDs with Arweave explorer links and upload status caching
+- **Batch Upload**: Drag & drop with visual feedback and duplicate file prevention
+- **Upload History**: Persistent upload history in Zustand store with ArNS association tracking
 
 #### Site Deployment
 - **Deploy Site Panel**: Complete site deployment with data export functionality
@@ -355,10 +394,15 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ## Development Best Practices
 
 ### File Upload Development
-- Only Arweave wallets (`window.arweaveWallet`) can upload files
-- Use `useFileUpload` hook for proper multi-chain signer creation
-- Progress tracking includes both signing and upload phases
-- Error handling includes per-file error states
+- **Multi-Wallet Support**: Arweave, Ethereum, and Solana wallets can all upload files
+- **Signer Creation**: Use `useFileUpload` hook for proper multi-chain signer creation:
+  - Arweave: `ArconnectSigner` via `window.arweaveWallet`
+  - Ethereum: `EthereumSigner` via ethers.js with MetaMask or Privy embedded wallet
+  - Solana: Custom `SolanaWalletAdapter` for Phantom/Solflare
+- **Progress Tracking**: Includes both signing and upload phases with real-time updates
+- **Cancellation**: Properly implement AbortController for each upload to allow user cancellation
+- **Error Handling**: Per-file error states with user-friendly messages
+- **Duplicate Prevention**: Check `uploadHistory` to prevent re-uploading the same file
 
 ### Privy Wallet Support
 When creating Turbo clients, check for Privy embedded wallets first:
@@ -386,12 +430,32 @@ if (privyWallet) {
   - Future enhancement: Allow users to configure TTL per deployment
 
 ### State Management
-- Persistent state: wallet info, ArNS cache, upload history, deploy history
-- Ephemeral state: balances, payment flows, UI state
-- Custom events for cross-component communication (`refresh-balance`)
-- Cache durations:
-  - Primary ArNS name: 24 hours
-  - Owned ArNS names: 6 hours
+The Zustand store (`src/store/useStore.ts`) uses selective persistence:
+
+**Persistent State** (survives refresh via localStorage):
+- `address`, `walletType`: Connected wallet information
+- `arnsNamesCache`: Primary ArNS name lookup cache (24-hour expiry)
+- `ownedArnsCache`: Owned ArNS names with ANT state (6-hour expiry)
+- `uploadHistory`: Complete upload history with receipts and ArNS associations
+- `deployHistory`: Deployment history with manifest and ArNS update tracking
+- `uploadStatusCache`: Upload status cache (1-hour for confirmed, 24-hour for finalized)
+- `configMode`, `customConfig`: Developer configuration settings
+- `jitPaymentEnabled`, `jitMaxTokenAmount`, `jitBufferMultiplier`: JIT payment preferences
+
+**Ephemeral State** (cleared on refresh):
+- `creditBalance`: Current credit balance
+- `paymentAmount`, `paymentIntent`, `paymentInformation`: Active payment flow state
+- `cryptoTopupValue`, `cryptoManualTopup`, `cryptoTopupResponse`: Crypto payment state
+- `showResumeTransactionPanel`: UI state for pending transactions
+- `paymentTargetAddress`, `paymentTargetType`: Target wallet for current payment
+
+**Custom Events**:
+- `refresh-balance`: Dispatched after successful payments to trigger balance updates across components
+
+**Cache Expiry Logic**:
+- Primary ArNS names: 24 hours (`getArNSName` helper checks timestamp)
+- Owned ArNS names: 6 hours (`getOwnedArNSNames` helper checks timestamp)
+- Upload status: 1 hour (confirmed), 24 hours (finalized)
 
 ### React Router Patterns
 - Use `useNavigate()` hook for programmatic navigation
@@ -419,6 +483,29 @@ When showing API endpoints in JSX, escape curly braces:
 
 ### TypeScript Patterns
 - Use strict types for wallet types: `'arweave' | 'ethereum' | 'solana' | null`
-- Proper interfaces for API responses (many use `any` currently)
-- PageType union for routing
+- Crypto token types: Use `SupportedTokenType` from constants (8 supported tokens)
+- Configuration mode: `ConfigMode = 'production' | 'development' | 'custom'`
+- Proper interfaces for API responses (some use `any` - improvement opportunity)
 - Consistent error handling with user-friendly messages
+
+### Developer Configuration System
+The app includes a powerful runtime configuration system for testing:
+
+**Configuration Modes** (`src/store/useStore.ts`):
+- **Production**: Mainnet endpoints, production Stripe key, production process ID
+- **Development**: Testnet/devnet endpoints, test Stripe key, dev process ID
+- **Custom**: User-defined configuration for advanced testing
+
+**Accessing Configuration**:
+```typescript
+const { getCurrentConfig, setConfigMode, updateTokenMap } = useStore();
+const config = getCurrentConfig(); // Returns DeveloperConfig based on current mode
+const turboConfig = useTurboConfig(tokenType); // Hook that uses current config
+```
+
+**Token Map**: Each crypto token has a dedicated RPC URL that can be customized:
+- Production uses mainnet RPCs (Ethereum, Solana, Base, Polygon, etc.)
+- Development uses testnet/devnet RPCs (Holesky, Devnet, Sepolia, Amoy, etc.)
+- Custom mode allows overriding individual token RPC URLs
+
+**Window Exposure**: The store is exposed as `window.__TURBO_STORE__` for runtime debugging and configuration changes
