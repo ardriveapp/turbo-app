@@ -247,6 +247,7 @@ export default function DeploySitePanel() {
   const [arnsEnabled, setArnsEnabled] = useState(false);
   const [selectedArnsName, setSelectedArnsName] = useState('');
   const [selectedUndername, setSelectedUndername] = useState('');
+  const [showUndername, setShowUndername] = useState(false);
   const [arnsUpdateCancelled, setArnsUpdateCancelled] = useState(false);
   const [showDeployResults, setShowDeployResults] = useState(true);
   const [deploySuccessInfo, setDeploySuccessInfo] = useState<{manifestId: string; arnsConfigured: boolean; arnsName?: string; undername?: string; arnsTransactionId?: string} | null>(null);
@@ -254,6 +255,7 @@ export default function DeploySitePanel() {
   const [currentDeployResult, setCurrentDeployResult] = useState<any>(null);
   const [postDeployArNSName, setPostDeployArNSName] = useState('');
   const [postDeployUndername, setPostDeployUndername] = useState('');
+  const [postDeployShowUndername, setPostDeployShowUndername] = useState(false);
   const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
   const [postDeployArNSUpdating, setPostDeployArNSUpdating] = useState(false);
   // Post-deployment ArNS enabled state (disabled by default, user can enable)
@@ -1273,6 +1275,8 @@ export default function DeploySitePanel() {
           onNameChange={setSelectedArnsName}
           selectedUndername={selectedUndername}
           onUndernameChange={setSelectedUndername}
+          showUndername={showUndername}
+          onShowUndernameChange={setShowUndername}
         />
       )}
 
@@ -1301,7 +1305,7 @@ export default function DeploySitePanel() {
       {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
         <button
           onClick={() => setShowConfirmModal(true)}
-          disabled={deploying || (arnsEnabled && !selectedArnsName)}
+          disabled={deploying || (arnsEnabled && !selectedArnsName) || (arnsEnabled && showUndername && !selectedUndername)}
           className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {deploying ? (
@@ -1481,6 +1485,7 @@ export default function DeploySitePanel() {
                 // Reset post-deploy ArNS state
                 setPostDeployArNSName('');
                 setPostDeployUndername('');
+                setPostDeployShowUndername(false);
                 setPostDeployArNSEnabled(false);
               }}
               className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas hover:border-turbo-red/50 transition-colors"
@@ -1565,6 +1570,8 @@ export default function DeploySitePanel() {
             onNameChange={setPostDeployArNSName}
             selectedUndername={postDeployUndername}
             onUndernameChange={setPostDeployUndername}
+            showUndername={postDeployShowUndername}
+            onShowUndernameChange={setPostDeployShowUndername}
           />
           
           {/* Connect Domain Action - Only show when enabled and name selected */}
@@ -1618,6 +1625,7 @@ export default function DeploySitePanel() {
                       // Reset ArNS panel state
                       setPostDeployArNSName('');
                       setPostDeployUndername('');
+                      setPostDeployShowUndername(false);
                       setPostDeployArNSEnabled(false);
                       
                       // Clear any existing messages since the success card will show the domain
@@ -1637,7 +1645,7 @@ export default function DeploySitePanel() {
                   }
                   setPostDeployArNSUpdating(false);
                 }}
-                disabled={!postDeployArNSName || postDeployArNSUpdating}
+                disabled={!postDeployArNSName || postDeployArNSUpdating || (postDeployShowUndername && !postDeployUndername)}
                 className="w-full py-3 px-4 bg-turbo-yellow text-black rounded-lg hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
               >
                 {postDeployArNSUpdating ? (
