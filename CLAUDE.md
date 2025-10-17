@@ -176,16 +176,49 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 - **Receipt System**: Transaction IDs with Arweave explorer links and upload status caching
 - **Batch Upload**: Drag & drop with visual feedback and duplicate file prevention
 - **Upload History**: Persistent upload history in Zustand store with ArNS association tracking
+- **Upload Tagging**: All uploads include standardized metadata tags for identification and tracking (see Upload Tagging System below)
+
+#### Upload Tagging System
+All uploads (File Upload, Deploy Site, Webpage Capture) include standardized metadata tags:
+
+**Common Tags** (all features):
+- `App-Name: 'Turbo-App'` - Application identifier (from `APP_NAME` constant in `constants.ts`)
+- `App-Feature: 'File Upload' | 'Deploy Site' | 'Capture'` - Feature that created the upload
+- `App-Version: '0.5.0'` - Application version (from `APP_VERSION` constant in `constants.ts`)
+
+**Feature-Specific Tags**:
+
+*File Upload*:
+- `Content-Type` - MIME type of uploaded file
+- `File-Name` - Original filename
+
+*Deploy Site*:
+- `Content-Type` - MIME type (or `application/x.arweave-manifest+json` for manifests)
+- `File-Path` - Relative path within site structure
+- `Type: 'manifest'` - Added to manifest uploads only
+
+*Webpage Capture*:
+- `Content-Type: 'image/png'` - Screenshot is always PNG format
+- `File-Name` - Generated filename: `capture-{domain}-{timestamp}.png`
+- `Original-URL` - URL of captured webpage (final URL after redirects)
+- `Title` - Page title from captured webpage
+- `Viewport-Width` - Screenshot viewport width in pixels
+- `Viewport-Height` - Screenshot viewport height in pixels
+- `Captured-At` - ISO timestamp of capture
+
+**Tag Implementation**:
+- Common tags defined as constants in `src/constants.ts` (`APP_NAME`, `APP_VERSION`)
+- Common tags added first, then feature-specific tags
+- Tags used for filtering uploads by feature (e.g., `App-Feature === 'Capture'` shows only webpage captures)
+- Tags exported in CSV downloads for data analysis
 
 #### Webpage Capture System
 - **Integration**: Uses turbo-capture-service backend for full-page screenshot capture
 - **Dynamic Configuration**: Capture service URL configurable in Developer Resources (separate production/development URLs)
 - **Capture Flow**: URL input → Webpage capture (90s timeout) → Upload confirmation → Arweave upload
-- **Special Tags**: Captures include metadata tags for identification and tracking:
-  - `App-Name: "Turbo-Capture"` - Identifies captures in history
-  - `Captured-URL` - Original webpage URL
-  - `Page-Title` - Title of captured page
-  - `Captured-At` - ISO timestamp of capture
+- **Metadata Tags**: Captures include standardized tags plus capture-specific metadata:
+  - **Common Tags** (all features): `App-Name: 'Turbo-App'`, `App-Feature: 'Capture'`, `App-Version: '0.5.0'`
+  - **Capture-Specific Tags**: `Original-URL`, `Title`, `Viewport-Width`, `Viewport-Height`, `Captured-At`
 - **File Naming**: `capture-{domain}-{timestamp}.png` with domain truncation at 50 characters
 - **ArNS Assignment**: Optional ArNS name/undername assignment matching Deploy Site UX
   - Uses `ArNSAssociationPanel` for dropdown selection
@@ -377,7 +410,9 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - File upload with progress tracking (Arweave, Ethereum, and Solana wallets)
 - **Webpage Capture system with turbo-capture-service integration**
 - **Full-page screenshot capture with 90-second timeout**
-- **Capture metadata tags (App-Name, Captured-URL, Page-Title, Captured-At)**
+- **Standardized upload tagging across all features (File Upload, Deploy Site, Capture)**
+- **Common metadata tags (App-Name, App-Feature, App-Version) plus feature-specific tags**
+- **Capture tags include viewport dimensions (Viewport-Width, Viewport-Height)**
 - **Dynamic capture service URL configuration**
 - **ArNS assignment for captured pages matching Deploy Site UX**
 - **Progressive disclosure (ArNS/button show after valid URL entry)**
@@ -424,6 +459,10 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ### File Upload Development
 - **Multi-Wallet Support**: Arweave, Ethereum, and Solana wallets can all upload files
+- **Standardized Tags**: All uploads include common tags (`App-Name`, `App-Feature`, `App-Version`) plus feature-specific tags
+  - File uploads: `App-Feature: 'File Upload'`, plus `Content-Type` and `File-Name`
+  - Deploy site: `App-Feature: 'Deploy Site'`, plus `Content-Type`, `File-Path`, and `Type: 'manifest'` for manifests
+  - Import constants: `import { APP_NAME, APP_VERSION } from '../constants';`
 - **Signer Creation**: Use `useFileUpload` hook for proper multi-chain signer creation:
   - Arweave: `ArconnectSigner` via `window.arweaveWallet`
   - Ethereum: `EthereumSigner` via ethers.js with MetaMask or Privy embedded wallet
@@ -441,18 +480,30 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **React Hook**: Use `useTurboCapture` for capture state management
   - Returns: `capture()`, `reset()`, `isCapturing`, `error`, `result`, `captureFile`
   - Handles screenshot capture and File object creation automatically
-- **Capture Tags**: Always include these metadata tags for identification:
+- **Capture Tags**: All captures include standardized tags for identification and tracking:
   ```typescript
-  { name: 'App-Name', value: 'Turbo-Capture' },
-  { name: 'Captured-URL', value: captureResult.finalUrl },
-  { name: 'Page-Title', value: captureResult.title },
+  // Common tags (required for all features)
+  { name: 'App-Name', value: APP_NAME },  // 'Turbo-App'
+  { name: 'App-Feature', value: 'Capture' },
+  { name: 'App-Version', value: APP_VERSION },  // '0.5.0'
+
+  // Capture-specific tags
+  { name: 'Original-URL', value: captureResult.finalUrl },
+  { name: 'Title', value: captureResult.title },
+  { name: 'Viewport-Width', value: captureResult.viewport.width.toString() },
+  { name: 'Viewport-Height', value: captureResult.viewport.height.toString() },
   { name: 'Captured-At', value: captureResult.capturedAt }
   ```
+  - Import constants: `import { APP_NAME, APP_VERSION } from '../../constants';`
+  - CaptureResult includes `viewport: { width: number; height: number }`
 - **ArNS Integration**: For ArNS assignment on captures:
   1. First call `updateArNSRecord()` from `useOwnedArNSNames` hook (on-chain update via AR.IO SDK)
   2. Then call `updateUploadWithArNS()` from store (local state update)
   3. Only Arweave wallets can update ArNS records (requires ANT signing)
-- **History Display**: Check for `App-Name: "Turbo-Capture"` tag to display camera icon badge
+- **History Display**: Check for `App-Feature: 'Capture'` tag to display camera icon badge
+  ```typescript
+  const isCapture = result.receipt?.tags?.find((tag: any) => tag.name === 'App-Feature')?.value === 'Capture';
+  ```
 - **Configuration**: Capture service URL is configurable in Developer Resources
   - Production: `https://vilenarios.com/local/capture`
   - Development: Same as production (single service)
