@@ -77,8 +77,8 @@ This is a unified Turbo Gateway application consolidating three separate applica
 ```typescript
 // Available routes
 const routes = [
-  '/', '/topup', '/upload', '/deploy', '/share', '/gift', '/account',
-  '/domains', '/calculator', '/services-calculator', 
+  '/', '/topup', '/upload', '/capture', '/deploy', '/share', '/gift', '/account',
+  '/domains', '/calculator', '/services-calculator',
   '/balances', '/redeem', '/developer', '/gateway-info', '/deployments'
 ];
 ```
@@ -176,6 +176,58 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 - **Receipt System**: Transaction IDs with Arweave explorer links and upload status caching
 - **Batch Upload**: Drag & drop with visual feedback and duplicate file prevention
 - **Upload History**: Persistent upload history in Zustand store with ArNS association tracking
+- **Upload Tagging**: All uploads include standardized metadata tags for identification and tracking (see Upload Tagging System below)
+
+#### Upload Tagging System
+All uploads (File Upload, Deploy Site, Webpage Capture) include standardized metadata tags:
+
+**Common Tags** (all features):
+- `App-Name: 'Turbo-App'` - Application identifier (from `APP_NAME` constant in `constants.ts`)
+- `App-Feature: 'File Upload' | 'Deploy Site' | 'Capture'` - Feature that created the upload
+- `App-Version: '0.5.0'` - Application version (from `APP_VERSION` constant in `constants.ts`)
+
+**Feature-Specific Tags**:
+
+*File Upload*:
+- `Content-Type` - MIME type of uploaded file
+- `File-Name` - Original filename
+
+*Deploy Site*:
+- `Content-Type` - MIME type (or `application/x.arweave-manifest+json` for manifests)
+- `File-Path` - Relative path within site structure
+- `Type: 'manifest'` - Added to manifest uploads only
+
+*Webpage Capture*:
+- `Content-Type: 'image/png'` - Screenshot is always PNG format
+- `File-Name` - Generated filename: `capture-{domain}-{timestamp}.png`
+- `Original-URL` - URL of captured webpage (final URL after redirects)
+- `Title` - Page title from captured webpage
+- `Viewport-Width` - Screenshot viewport width in pixels
+- `Viewport-Height` - Screenshot viewport height in pixels
+- `Captured-At` - ISO timestamp of capture
+
+**Tag Implementation**:
+- Common tags defined as constants in `src/constants.ts` (`APP_NAME`, `APP_VERSION`)
+- Common tags added first, then feature-specific tags
+- Tags used for filtering uploads by feature (e.g., `App-Feature === 'Capture'` shows only webpage captures)
+- Tags exported in CSV downloads for data analysis
+
+#### Webpage Capture System
+- **Integration**: Uses turbo-capture-service backend for full-page screenshot capture
+- **Dynamic Configuration**: Capture service URL configurable in Developer Resources (separate production/development URLs)
+- **Capture Flow**: URL input → Webpage capture (90s timeout) → Upload confirmation → Arweave upload
+- **Metadata Tags**: Captures include standardized tags plus capture-specific metadata:
+  - **Common Tags** (all features): `App-Name: 'Turbo-App'`, `App-Feature: 'Capture'`, `App-Version: '0.5.0'`
+  - **Capture-Specific Tags**: `Original-URL`, `Title`, `Viewport-Width`, `Viewport-Height`, `Captured-At`
+- **File Naming**: `capture-{domain}-{timestamp}.png` with domain truncation at 50 characters
+- **ArNS Assignment**: Optional ArNS name/undername assignment matching Deploy Site UX
+  - Uses `ArNSAssociationPanel` for dropdown selection
+  - Calls AR.IO SDK `ant.setRecord()` for on-chain updates
+  - Only Arweave wallets can assign ArNS names (requires signing)
+- **Progressive Disclosure**: ArNS panel and upload button only appear after valid URL entry
+- **Unified History**: Captures appear in same history as regular uploads with camera icon badge
+- **Screenshot Service**: Configurable via `captureServiceUrl` in store configuration
+- **Cost Confirmation**: Pre-upload modal with JIT payment support matching upload flow
 
 #### Site Deployment
 - **Deploy Site Panel**: Complete site deployment with data export functionality
@@ -198,7 +250,8 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 #### Waffle Menu Services
 **Services** (login required):
 - Buy Credits (`topup`)
-- Upload Files (`upload`) 
+- Upload Files (`upload`)
+- Capture Page (`capture`)
 - Deploy Site (`deploy`)
 - Share Credits (`share`)
 - Send Gift (`gift`)
@@ -254,6 +307,7 @@ All service panels follow consistent styling:
 - `useCryptoForFiat`: Fiat to crypto conversion for payment amounts
 - `useFileUpload`: Multi-chain upload logic with proper signers
 - `useFolderUpload`: Folder upload with drag & drop support
+- `useTurboCapture`: Webpage capture state management and screenshot file creation
 - `usePrimaryArNSName`: Primary name fetching with cache management
 - `useOwnedArNSNames`: Fetch and manage owned ArNS names with ANT state tracking
 - `useArNSPricing`: ArNS domain pricing calculations and affordable options
@@ -346,14 +400,23 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.4.5)
+### ✅ Completed Features (v0.5.0)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - Crypto payments for Solana and Ethereum
-- File upload with progress tracking (Arweave wallets only)
+- File upload with progress tracking (Arweave, Ethereum, and Solana wallets)
+- **Webpage Capture system with turbo-capture-service integration**
+- **Full-page screenshot capture with 90-second timeout**
+- **Standardized upload tagging across all features (File Upload, Deploy Site, Capture)**
+- **Common metadata tags (App-Name, App-Feature, App-Version) plus feature-specific tags**
+- **Capture tags include viewport dimensions (Viewport-Width, Viewport-Height)**
+- **Dynamic capture service URL configuration**
+- **ArNS assignment for captured pages matching Deploy Site UX**
+- **Progressive disclosure (ArNS/button show after valid URL entry)**
+- **Camera icon badge for captures in unified upload history**
 - Site deployment with data export functionality and ArNS association
 - **Proper upload cancellation with AbortController support**
 - **Improved upload progress display with single file view**
@@ -386,6 +449,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 | Buy Credits (Fiat) | ✅ | ✅ | ✅ |
 | Buy Credits (Crypto) | ✅ | ✅ | ✅ |
 | Upload Files | ✅ | ✅ | ✅ |
+| Capture Pages | ✅ | ✅ | ✅ |
 | Deploy Sites | ✅ | ✅ | ✅ |
 | Share Credits | ✅ | ✅ | ✅ |
 | ArNS Names | ✅ | ✅ | ❌ |
@@ -395,6 +459,10 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ### File Upload Development
 - **Multi-Wallet Support**: Arweave, Ethereum, and Solana wallets can all upload files
+- **Standardized Tags**: All uploads include common tags (`App-Name`, `App-Feature`, `App-Version`) plus feature-specific tags
+  - File uploads: `App-Feature: 'File Upload'`, plus `Content-Type` and `File-Name`
+  - Deploy site: `App-Feature: 'Deploy Site'`, plus `Content-Type`, `File-Path`, and `Type: 'manifest'` for manifests
+  - Import constants: `import { APP_NAME, APP_VERSION } from '../constants';`
 - **Signer Creation**: Use `useFileUpload` hook for proper multi-chain signer creation:
   - Arweave: `ArconnectSigner` via `window.arweaveWallet`
   - Ethereum: `EthereumSigner` via ethers.js with MetaMask or Privy embedded wallet
@@ -403,6 +471,43 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **Cancellation**: Properly implement AbortController for each upload to allow user cancellation
 - **Error Handling**: Per-file error states with user-friendly messages
 - **Duplicate Prevention**: Check `uploadHistory` to prevent re-uploading the same file
+
+### Webpage Capture Development
+- **API Client**: `turboCaptureClient.ts` provides interface to turbo-capture-service
+  - `captureScreenshot()`: Captures full-page screenshot with 90-second timeout
+  - `createCaptureFile()`: Converts base64 screenshot to File object with proper naming
+  - `getCaptureServiceUrl()`: Dynamically reads capture service URL from store configuration
+- **React Hook**: Use `useTurboCapture` for capture state management
+  - Returns: `capture()`, `reset()`, `isCapturing`, `error`, `result`, `captureFile`
+  - Handles screenshot capture and File object creation automatically
+- **Capture Tags**: All captures include standardized tags for identification and tracking:
+  ```typescript
+  // Common tags (required for all features)
+  { name: 'App-Name', value: APP_NAME },  // 'Turbo-App'
+  { name: 'App-Feature', value: 'Capture' },
+  { name: 'App-Version', value: APP_VERSION },  // '0.5.0'
+
+  // Capture-specific tags
+  { name: 'Original-URL', value: captureResult.finalUrl },
+  { name: 'Title', value: captureResult.title },
+  { name: 'Viewport-Width', value: captureResult.viewport.width.toString() },
+  { name: 'Viewport-Height', value: captureResult.viewport.height.toString() },
+  { name: 'Captured-At', value: captureResult.capturedAt }
+  ```
+  - Import constants: `import { APP_NAME, APP_VERSION } from '../../constants';`
+  - CaptureResult includes `viewport: { width: number; height: number }`
+- **ArNS Integration**: For ArNS assignment on captures:
+  1. First call `updateArNSRecord()` from `useOwnedArNSNames` hook (on-chain update via AR.IO SDK)
+  2. Then call `updateUploadWithArNS()` from store (local state update)
+  3. Only Arweave wallets can update ArNS records (requires ANT signing)
+- **History Display**: Check for `App-Feature: 'Capture'` tag to display camera icon badge
+  ```typescript
+  const isCapture = result.receipt?.tags?.find((tag: any) => tag.name === 'App-Feature')?.value === 'Capture';
+  ```
+- **Configuration**: Capture service URL is configurable in Developer Resources
+  - Production: `https://vilenarios.com/local/capture`
+  - Development: Same as production (single service)
+  - Store manages URL via `captureServiceUrl` in `DeveloperConfig`
 
 ### Privy Wallet Support
 When creating Turbo clients, check for Privy embedded wallets first:

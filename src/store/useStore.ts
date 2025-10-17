@@ -9,6 +9,7 @@ const PRESET_CONFIGS = {
   production: {
     paymentServiceUrl: 'https://payment.ardrive.io',
     uploadServiceUrl: 'https://upload.ardrive.io',
+    captureServiceUrl: 'https://vilenarios.com/local/capture',
     gatewayUrl: 'https://turbo.ardrive.io',
     stripeKey: 'pk_live_51JUAtwC8apPOWkDLMQqNF9sPpfneNSPnwX8YZ8y1FNDl6v94hZIwzgFSYl27bWE4Oos8CLquunUswKrKcaDhDO6m002Yj9AeKj',
     processId: 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
@@ -26,6 +27,7 @@ const PRESET_CONFIGS = {
   development: {
     paymentServiceUrl: 'https://payment.ardrive.dev',
     uploadServiceUrl: 'https://upload.ardrive.dev',
+    captureServiceUrl: 'https://vilenarios.com/local/capture',
     gatewayUrl: 'https://turbo.ardrive.dev',
     stripeKey: 'pk_test_51JUAtwC8apPOWkDLh2FPZkQkiKZEkTo6wqgLCtQoClL6S4l2jlbbc5MgOdwOUdU9Tn93NNvqAGbu115lkJChMikG00XUfTmo2z',
     processId: 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
@@ -89,6 +91,7 @@ export type ConfigMode = 'production' | 'development' | 'custom';
 export interface DeveloperConfig {
   paymentServiceUrl: string;
   uploadServiceUrl: string;
+  captureServiceUrl: string;
   gatewayUrl: string;
   stripeKey: string;
   processId: string;

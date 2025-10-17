@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import TopUpPage from './pages/TopUpPage';
 import UploadPage from './pages/UploadPage';
+import CapturePage from './pages/CapturePage';
 import ShareCreditsPage from './pages/ShareCreditsPage';
 import GiftPage from './pages/GiftPage';
 import DomainsPage from './pages/DomainsPage';
@@ -54,6 +55,7 @@ function AppRoutes() {
           <Route index element={<LandingPage />} />
           <Route path="topup" element={<TopUpPage />} />
           <Route path="upload" element={<UploadPage />} />
+          <Route path="capture" element={<CapturePage />} />
           <Route path="deploy" element={<DeploySitePage />} />
           <Route path="deployments" element={<RecentDeploymentsPage />} />
           <Route path="share" element={<ShareCreditsPage />} />
