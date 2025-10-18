@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Globe, ExternalLink, AlertCircle, Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import { Listbox } from '@headlessui/react';
 import { useOwnedArNSNames } from '../hooks/useOwnedArNSNames';
+import { sanitizeUndername, hasInvalidCharacters } from '../utils/undernames';
 
 interface ArNSAssociationPanelProps {
   enabled: boolean;
@@ -10,6 +11,8 @@ interface ArNSAssociationPanelProps {
   onNameChange: (name: string) => void;
   selectedUndername?: string;
   onUndernameChange: (undername: string) => void;
+  showUndername?: boolean;
+  onShowUndernameChange?: (show: boolean) => void;
 }
 
 export default function ArNSAssociationPanel({
@@ -18,10 +21,22 @@ export default function ArNSAssociationPanel({
   selectedName,
   onNameChange,
   selectedUndername,
-  onUndernameChange
+  onUndernameChange,
+  showUndername: externalShowUndername,
+  onShowUndernameChange
 }: ArNSAssociationPanelProps) {
   const { names, loading, loadingDetails, fetchOwnedNames, fetchNameDetails } = useOwnedArNSNames();
-  const [showUndername, setShowUndername] = useState(false);
+  const [internalShowUndername, setInternalShowUndername] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const showUndername = externalShowUndername !== undefined ? externalShowUndername : internalShowUndername;
+  const setShowUndername = (value: boolean) => {
+    if (onShowUndernameChange) {
+      onShowUndernameChange(value);
+    } else {
+      setInternalShowUndername(value);
+    }
+  };
 
   const selectedNameRecord = names.find(name => name.name === selectedName);
   const currentTarget = selectedNameRecord?.currentTarget;
@@ -44,6 +59,7 @@ export default function ArNSAssociationPanel({
     if (selectedUndername) {
       setShowUndername(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUndername]);
 
   // Clear undername when ArNS name changes
@@ -53,6 +69,7 @@ export default function ArNSAssociationPanel({
       onUndernameChange('');
       setShowUndername(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedName, onUndernameChange]);
   return (
     <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6 mb-6">
@@ -262,15 +279,41 @@ export default function ArNSAssociationPanel({
                       <input
                         type="text"
                         value={selectedUndername || ''}
-                        onChange={(e) => onUndernameChange(e.target.value)}
-                        placeholder="blog, docs, app..."
-                        className="w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:ring-2 focus:ring-turbo-yellow text-sm"
+                        onChange={(e) => {
+                          // Allow free typing - no sanitization on change
+                          onUndernameChange(e.target.value);
+                        }}
+                        onBlur={(e) => {
+                          // Sanitize when user leaves the field
+                          const sanitized = sanitizeUndername(e.target.value);
+                          if (sanitized !== e.target.value) {
+                            onUndernameChange(sanitized);
+                          }
+                        }}
+                        placeholder="my_blog, docs, app..."
+                        className={`w-full px-3 py-2 bg-surface border rounded-lg text-fg-muted focus:ring-2 text-sm transition-colors ${
+                          selectedUndername && hasInvalidCharacters(selectedUndername)
+                            ? 'border-yellow-500 focus:ring-yellow-500'
+                            : 'border-default focus:ring-turbo-yellow'
+                        }`}
                       />
-                      {selectedUndername && (
-                        <p className="text-xs text-link mt-1">
-                          Will {selectedNameRecord?.undernames?.includes(selectedUndername) ? 'update existing' : 'create new'} undername: {selectedUndername}_{selectedName}.ar.io
-                        </p>
-                      )}
+                      <p className="text-xs mt-1">
+                        {selectedUndername ? (
+                          hasInvalidCharacters(selectedUndername) ? (
+                            <span className="text-yellow-500">
+                              Will be sanitized to: {sanitizeUndername(selectedUndername)}_{selectedName}.ar.io
+                            </span>
+                          ) : (
+                            <span className="text-link">
+                              Will {selectedNameRecord?.undernames?.includes(selectedUndername) ? 'update existing' : 'create new'} undername: {selectedUndername}_{selectedName}.ar.io
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-link">
+                            Lowercase letters, numbers, hyphens, and underscores. Cannot start/end with - or _.
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
                 )}

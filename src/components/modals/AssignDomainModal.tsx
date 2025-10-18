@@ -4,6 +4,7 @@ import { Listbox } from '@headlessui/react';
 import BaseModal from './BaseModal';
 import { useOwnedArNSNames } from '../../hooks/useOwnedArNSNames';
 import { useStore } from '../../store/useStore';
+import { sanitizeUndername, hasInvalidCharacters } from '../../utils/undernames';
 
 interface AssignDomainModalProps {
   onClose: () => void;
@@ -307,10 +308,41 @@ export default function AssignDomainModal({
                       <input
                         type="text"
                         value={selectedUndername || ''}
-                        onChange={(e) => setSelectedUndername(e.target.value)}
-                        placeholder="blog, docs, app..."
-                        className="w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:ring-2 focus:ring-turbo-yellow text-sm"
+                        onChange={(e) => {
+                          // Allow free typing - no sanitization on change
+                          setSelectedUndername(e.target.value);
+                        }}
+                        onBlur={(e) => {
+                          // Sanitize when user leaves the field
+                          const sanitized = sanitizeUndername(e.target.value);
+                          if (sanitized !== e.target.value) {
+                            setSelectedUndername(sanitized);
+                          }
+                        }}
+                        placeholder="my_blog, docs, app..."
+                        className={`w-full px-3 py-2 bg-surface border rounded-lg text-fg-muted focus:ring-2 text-sm transition-colors ${
+                          selectedUndername && hasInvalidCharacters(selectedUndername)
+                            ? 'border-yellow-500 focus:ring-yellow-500'
+                            : 'border-default focus:ring-turbo-yellow'
+                        }`}
                       />
+                      <p className="text-xs mt-1">
+                        {selectedUndername ? (
+                          hasInvalidCharacters(selectedUndername) ? (
+                            <span className="text-yellow-500">
+                              Will be sanitized to: {sanitizeUndername(selectedUndername)}_{selectedArnsName}.ar.io
+                            </span>
+                          ) : (
+                            <span className="text-link">
+                              Will create: {selectedUndername}_{selectedArnsName}.ar.io
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-link">
+                            Lowercase letters, numbers, hyphens, and underscores. Cannot start/end with - or _.
+                          </span>
+                        )}
+                      </p>
                     </div>
                   )}
                   </div>
@@ -384,7 +416,7 @@ export default function AssignDomainModal({
           
           <button
             onClick={handleAssignDomain}
-            disabled={!selectedArnsName || isAssigning || walletType === 'solana'}
+            disabled={!selectedArnsName || isAssigning || walletType === 'solana' || (undernameMode === 'new' && !selectedUndername) || (undernameMode === 'existing' && !selectedUndername)}
             className="px-6 py-3 rounded-lg bg-turbo-yellow text-black font-bold hover:bg-turbo-yellow/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isAssigning ? (

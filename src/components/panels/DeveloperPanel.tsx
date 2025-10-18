@@ -285,7 +285,7 @@ console.log('Folder manifest ID:', folderUpload.id);`,
           <div className="bg-surface rounded-lg p-4 border border-default">
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-medium text-fg-muted">Gateway Services API</h5>
-              <a href="https://vilenarios.com/api-docs" target="_blank" rel="noopener noreferrer">
+              <a href="https://turbo-gateway.com/api-docs" target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-4 h-4 text-link hover:text-turbo-purple transition-colors" />
               </a>
             </div>
@@ -309,6 +309,23 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                 <span className="px-2 py-1 bg-turbo-purple/20 text-turbo-purple text-xs font-semibold rounded">POST</span>
                 <code className="text-sm text-fg-muted">/graphql</code>
                 <span className="text-xs text-link">GraphQL query interface</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Capture Service API */}
+          <div className="bg-surface rounded-lg p-4 border border-default">
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="font-medium text-fg-muted">Capture Service API</h5>
+              <a href={`${currentConfig.captureServiceUrl}/api-docs/`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 text-link hover:text-turbo-purple transition-colors" />
+              </a>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-1 bg-turbo-purple/20 text-turbo-purple text-xs font-semibold rounded">POST</span>
+                <code className="text-sm text-fg-muted">/screenshot</code>
+                <span className="text-xs text-link">Capture full-page screenshot</span>
               </div>
             </div>
           </div>
@@ -504,6 +521,26 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                       {currentConfig.uploadServiceUrl}
                     </code>
                     <CopyButton textToCopy={currentConfig.uploadServiceUrl} />
+                  </div>
+                )}
+              </div>
+
+              {/* Capture Service URL */}
+              <div>
+                <label className="block text-sm font-medium text-link mb-2">Capture Service URL</label>
+                {configMode === 'custom' ? (
+                  <input
+                    type="text"
+                    value={currentConfig.captureServiceUrl}
+                    onChange={(e) => updateCustomConfig('captureServiceUrl', e.target.value)}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-purple focus:border-transparent"
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
+                      {currentConfig.captureServiceUrl}
+                    </code>
+                    <CopyButton textToCopy={currentConfig.captureServiceUrl} />
                   </div>
                 )}
               </div>

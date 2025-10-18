@@ -40,7 +40,8 @@
       "Read(//mnt/c/source/turbo-gateway/Code/turbo-app/src/pages/**)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "WebFetch(domain:docs.privy.io)"
+      "WebFetch(domain:docs.privy.io)",
+      "Read(//c/Source/turbo-gateway/Code/turbo-app/src/**)"
     ],
     "deny": [],
     "ask": []

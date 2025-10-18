@@ -10,6 +10,7 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
+import { APP_NAME, APP_VERSION } from '../constants';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -283,9 +284,11 @@ export function useFolderUpload() {
           fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
           dataItemOpts: {
             tags: [
+              { name: 'App-Name', value: APP_NAME },
+              { name: 'App-Feature', value: 'Deploy Site' },
+              { name: 'App-Version', value: APP_VERSION },
               { name: 'Content-Type', value: getContentType(file) },
-              { name: 'File-Path', value: file.webkitRelativePath || file.name },
-              { name: 'App-Name', value: 'Turbo-Deploy' }
+              { name: 'File-Path', value: file.webkitRelativePath || file.name }
             ]
           },
           events: {
@@ -647,8 +650,10 @@ export function useFolderUpload() {
         fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
         dataItemOpts: {
           tags: [
+            { name: 'App-Name', value: APP_NAME },
+            { name: 'App-Feature', value: 'Deploy Site' },
+            { name: 'App-Version', value: APP_VERSION },
             { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-            { name: 'App-Name', value: 'Turbo-Deploy' },
             { name: 'Type', value: 'manifest' }
           ]
         }

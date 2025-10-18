@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Camera, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
@@ -19,6 +19,7 @@ import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 const accountServices = [
   { name: 'Buy Credits', page: 'topup' as const, icon: CreditCard },
   { name: 'Upload Files', page: 'upload' as const, icon: Upload },
+  { name: 'Capture Page', page: 'capture' as const, icon: Camera },
   { name: 'Deploy Site', page: 'deploy' as const, icon: Zap },
   { name: 'Share Credits', page: 'share' as const, icon: Share2 },
   { name: 'Send Gift', page: 'gift' as const, icon: Gift },
@@ -48,6 +49,7 @@ const getServiceActiveColor = (page: string): string => {
     
     // Upload/Deployment services -> Red theme
     case 'upload':
+    case 'capture':
     case 'deploy':
       return 'text-turbo-red';
     
