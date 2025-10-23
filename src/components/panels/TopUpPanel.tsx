@@ -6,6 +6,7 @@ import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabel
 import { useStore } from '../../store/useStore';
 import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
+import { useCryptoBalance } from '../../hooks/useCryptoBalance';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
 import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
@@ -399,6 +400,72 @@ export default function TopUpPanel() {
     setFiatFlowStep('amount');
   }, [address, clearAllPaymentState]);
 
+  // Token button component with balance display
+  const TokenButton = ({ tokenType }: { tokenType: SupportedTokenType }) => {
+    // Only fetch balance for supported tokens (ETH, Base-ETH, SOL)
+    const supportedBalanceTokens: SupportedTokenType[] = ['ethereum', 'base-eth', 'solana'];
+    const shouldFetchBalance = address && supportedBalanceTokens.includes(tokenType);
+
+    const { balance, loading, error } = useCryptoBalance(
+      shouldFetchBalance ? address : null,
+      tokenType
+    );
+
+    return (
+      <button
+        key={tokenType}
+        onClick={() => {
+          setSelectedTokenType(tokenType);
+          setErrorMessage('');
+        }}
+        className={`p-4 rounded-lg border transition-all text-left ${
+          selectedTokenType === tokenType
+            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="font-bold text-lg">
+            {tokenLabels[tokenType as keyof typeof tokenLabels]}
+          </div>
+          <div className="flex items-center gap-2">
+            {tokenType === 'base-eth' && (
+              <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-xs font-medium">
+                Lower Fees
+              </div>
+            )}
+            {tokenType === 'ethereum' && (
+              <div className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-md text-xs font-medium">
+                Higher Fees
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Balance display for supported tokens */}
+        {shouldFetchBalance && (
+          <div className="mb-2 text-xs">
+            {loading ? (
+              <span className="text-link">Loading balance...</span>
+            ) : error ? (
+              <span className="text-link">Balance unavailable</span>
+            ) : balance ? (
+              <span className="text-fg-muted font-medium">Balance: {balance} {tokenLabels[tokenType].replace(/\s*\([^)]*\)/, '')}</span>
+            ) : (
+              <span className="text-link">—</span>
+            )}
+          </div>
+        )}
+
+        <div className="text-sm font-medium opacity-90 mb-1">
+          {tokenNetworkLabels[tokenType]}
+        </div>
+        <div className="text-xs opacity-75">
+          {tokenNetworkDescriptions[tokenType]}
+        </div>
+      </button>
+    );
+  };
 
   // Render fiat flow screens
   if (paymentMethod === 'fiat' && fiatFlowStep !== 'amount') {
@@ -708,40 +775,7 @@ export default function TopUpPanel() {
             ) : (
               <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {getAvailableTokens().map((tokenType) => (
-                  <button 
-                    key={tokenType}
-                    onClick={() => {
-                      setSelectedTokenType(tokenType);
-                      setErrorMessage('');
-                    }}
-                    className={`p-4 rounded-lg border transition-all text-left ${
-                      selectedTokenType === tokenType
-                        ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-bold text-lg">
-                        {tokenLabels[tokenType as keyof typeof tokenLabels]}
-                      </div>
-                      {tokenType === 'base-eth' && (
-                        <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-xs font-medium">
-                          Lower Fees
-                        </div>
-                      )}
-                      {tokenType === 'ethereum' && (
-                        <div className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-md text-xs font-medium">
-                          Higher Fees
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-sm font-medium opacity-90 mb-1">
-                      {tokenNetworkLabels[tokenType]}
-                    </div>
-                    <div className="text-xs opacity-75">
-                      {tokenNetworkDescriptions[tokenType]}
-                    </div>
-                  </button>
+                  <TokenButton key={tokenType} tokenType={tokenType} />
                 ))}
               </div>
             )}

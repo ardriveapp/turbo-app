@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { mainnet } from 'wagmi/chains';
+import { mainnet, base } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -12,10 +12,12 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 // Configure Wagmi for Ethereum wallets
+// Supports both Ethereum mainnet and Base for balance queries
 const wagmiConfig = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, base],
   transports: {
     [mainnet.id]: http(),
+    [base.id]: http(),
   },
   connectors: [
     injected(), // MetaMask and other injected wallets
