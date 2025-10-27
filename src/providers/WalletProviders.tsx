@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { mainnet } from 'wagmi/chains';
+import { mainnet, polygon, polygonAmoy } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -13,9 +13,11 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 // Configure Wagmi for Ethereum wallets
 const wagmiConfig = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, polygon, polygonAmoy],
   transports: {
     [mainnet.id]: http(),
+    [polygon.id]: http('https://polygon-bor-rpc.publicnode.com'),
+    [polygonAmoy.id]: http('https://rpc-amoy.polygon.technology'),
   },
   connectors: [
     injected(), // MetaMask and other injected wallets

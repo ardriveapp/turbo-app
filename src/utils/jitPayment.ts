@@ -20,7 +20,6 @@ export function getTokenConverter(tokenType: SupportedTokenType): ((amount: numb
     'base-eth': 18,
     solana: 9,
     kyve: 18,
-    matic: 18,
     pol: 18,
   };
 
@@ -39,7 +38,6 @@ export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType):
     'base-eth': 18,
     solana: 9,
     kyve: 18,
-    matic: 18,
     pol: 18,
   };
 
@@ -66,7 +64,6 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
     ethereum: 6,
     arweave: 4,
     kyve: 2,
-    matic: 2,
     pol: 2,
   };
 
@@ -210,7 +207,6 @@ export function getDefaultMaxTokenAmount(tokenType: SupportedTokenType): number 
     arweave: 0,
     ethereum: 0,
     kyve: 0,
-    matic: 0,
     pol: 0,
   };
 

@@ -142,7 +142,6 @@ export default function TopUpPanel() {
       case 'base-eth': return [0.01, 0.05, 0.1, 0.25];
       case 'solana': return [0.05, 0.1, 0.25, 0.5];
       case 'kyve': return [100, 500, 1000, 2000];
-      case 'matic': return [10, 50, 100, 250];
       case 'pol': return [10, 50, 100, 250];
       default: return [0.01, 0.05, 0.1, 0.25];
     }
@@ -314,7 +313,7 @@ export default function TopUpPanel() {
       case 'arweave':
         return ['arweave', 'ario'];
       case 'ethereum':
-        return ['ethereum', 'base-eth'];
+        return ['ethereum', 'base-eth', 'pol'];
       case 'solana':
         return ['solana'];
       default:
@@ -340,6 +339,8 @@ export default function TopUpPanel() {
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Ethereum L1 (higher fees)';
       case 'base-eth':
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Base L2 (lower fees)';
+      case 'pol':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with POL on Polygon network';
       case 'solana':
         return 'Connect a Solana wallet (like Phantom) to pay with SOL tokens';
       default:
@@ -706,7 +707,7 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : (
-              <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : getAvailableTokens().length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {getAvailableTokens().map((tokenType) => (
                   <button 
                     key={tokenType}

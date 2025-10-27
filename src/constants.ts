@@ -54,30 +54,28 @@ export const maxARAmount = 200;
 export const minUSDAmount = 5;
 
 // Crypto token configuration - matching reference app
-export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'matic', 'pol'] as const;
+export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'pol'] as const;
 export type SupportedTokenType = typeof supportedCryptoTokens[number];
 
 // Currency labels matching reference app
 export const tokenLabels: Record<SupportedTokenType, string> = {
   arweave: 'AR',
-  ario: 'ARIO', 
+  ario: 'ARIO',
   ethereum: 'ETH (L1)',
   'base-eth': 'ETH (Base)', // Base network ETH
   solana: 'SOL',
   kyve: 'KYVE',
-  matic: 'MATIC',
   pol: 'POL',
 } as const;
 
 // Detailed network labels for UI contexts
 export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
   arweave: 'Arweave Network',
-  ario: 'AR.IO Network', 
+  ario: 'AR.IO Network',
   ethereum: 'Ethereum Mainnet (L1)',
   'base-eth': 'Base Network (L2)',
   solana: 'Solana Network',
   kyve: 'KYVE Network',
-  matic: 'Polygon Network',
   pol: 'Polygon Network',
 } as const;
 
@@ -89,7 +87,6 @@ export const tokenNetworkDescriptions: Record<SupportedTokenType, string> = {
   'base-eth': 'ETH on Base Layer 2 network',
   solana: 'Native SOL tokens on the Solana blockchain',
   kyve: 'KYVE tokens on the KYVE network',
-  matic: 'MATIC tokens on the Polygon network',
   pol: 'POL tokens on the Polygon network',
 } as const;
 
@@ -124,18 +121,13 @@ export const tokenProcessingTimes: Record<SupportedTokenType, {
     speed: 'fast',
     description: 'Solana transactions confirm quickly'
   },
-  kyve: { 
-    time: '5-15 minutes', 
+  kyve: {
+    time: '5-15 minutes',
     speed: 'medium',
     description: 'KYVE network processing time'
   },
-  matic: { 
-    time: '2-5 minutes', 
-    speed: 'fast',
-    description: 'Polygon network is optimized for speed'
-  },
-  pol: { 
-    time: '2-5 minutes', 
+  pol: {
+    time: '2-5 minutes',
     speed: 'fast',
     description: 'Polygon network is optimized for speed'
   },
@@ -154,7 +146,6 @@ export const BUTTON_VALUES = {
   ethereum: [0.01, 0.05, 0.1, 0.25],
   solana: [0.05, 0.1, 0.25, 0.5],
   kyve: [100, 500, 1000, 2000],
-  matic: [10, 50, 100, 250],
   pol: [10, 50, 100, 250],
   'base-eth': [0.01, 0.05, 0.1, 0.25],
 } as const;

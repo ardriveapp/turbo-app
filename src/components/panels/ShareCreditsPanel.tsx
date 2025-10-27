@@ -46,14 +46,26 @@ export default function ShareCreditsPanel() {
         // Check if this is a Privy embedded wallet
         const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 
+        // Detect token type from current network
+        let tokenType: 'ethereum' | 'base-eth' | 'pol' = 'ethereum';
+
         if (privyWallet) {
           // Use Privy embedded wallet
           const provider = await privyWallet.getEthereumProvider();
           const ethersProvider = new ethers.BrowserProvider(provider);
           const ethersSigner = await ethersProvider.getSigner();
 
+          // Detect network
+          try {
+            const { getTokenTypeFromChainId } = await import('../../utils');
+            const network = await ethersProvider.getNetwork();
+            tokenType = getTokenTypeFromChainId(Number(network.chainId));
+          } catch (error) {
+            console.warn('Failed to detect network, defaulting to ethereum:', error);
+          }
+
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenType,
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -67,8 +79,17 @@ export default function ShareCreditsPanel() {
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const ethersSigner = await ethersProvider.getSigner();
 
+          // Detect network
+          try {
+            const { getTokenTypeFromChainId } = await import('../../utils');
+            const network = await ethersProvider.getNetwork();
+            tokenType = getTokenTypeFromChainId(Number(network.chainId));
+          } catch (error) {
+            console.warn('Failed to detect network, defaulting to ethereum:', error);
+          }
+
           return TurboFactory.authenticated({
-            token: "ethereum",
+            token: tokenType,
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },

@@ -1,4 +1,4 @@
-import { tokenToBaseMap, TurboFactory, ETHToTokenAmount, SOLToTokenAmount, ARToTokenAmount, ARIOToTokenAmount } from "@ardrive/turbo-sdk/web";
+import { tokenToBaseMap, TurboFactory, ETHToTokenAmount, SOLToTokenAmount, ARToTokenAmount, ARIOToTokenAmount, POLToTokenAmount } from "@ardrive/turbo-sdk/web";
 import { useState, useEffect } from "react";
 import { useTurboConfig } from "./useTurboConfig";
 
@@ -51,10 +51,10 @@ const getAmountByTokenType = (amount: number, token: string) => {
       return SOLToTokenAmount(amount);  // Converts to lamports
     case 'ario':
       return ARIOToTokenAmount(amount); // Proper ARIO token conversion
+    case 'pol':
+      return POLToTokenAmount(amount); // Proper POL token conversion
     // For now, these tokens use base amounts - may need specific converters later
     case 'kyve':
-    case 'matic':
-    case 'pol':
       return amount * 1e18; // Most ERC20 tokens use 18 decimals
     default:
       return amount;

@@ -1,4 +1,4 @@
-import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount, POLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
@@ -59,11 +59,10 @@ export default function CryptoConfirmationPanel({
   };
 
   // Determine if user can pay directly or needs manual payment
-  // Base ETH now supported via local SDK patch
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) || // Both ETH types work
-    (walletType === 'solana' && tokenType === 'solana') // Keep trying direct payment
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol')) ||
+    (walletType === 'solana' && tokenType === 'solana')
   );
 
   const handlePayment = async () => {
@@ -106,8 +105,8 @@ export default function CryptoConfirmationPanel({
             tokenType,
             transactionId: result.id,
           });
-        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth')) {
-          // ETH L1/Base ETH direct payment via Ethereum wallet
+        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol')) {
+          // ETH L1/Base ETH/POL direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
 
           // Check if this is a Privy embedded wallet
@@ -128,16 +127,21 @@ export default function CryptoConfirmationPanel({
           } else {
             throw new Error('No Ethereum wallet available');
           }
-          
+
           // Network validation and auto-switching
           const network = await provider.getNetwork();
-          // Dev mode uses testnets: Holesky (17000) for ETH, Base Sepolia (84532) for Base
+          // Dev mode uses testnets: Holesky (17000) for ETH, Base Sepolia (84532) for Base, Amoy (80002) for POL
+          // POL is the native token on Polygon network (like ETH on Ethereum)
           const isDevMode = turboConfig.paymentServiceUrl?.includes('.dev');
           const expectedChainId = tokenType === 'ethereum'
             ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
-            : (isDevMode ? 84532 : 8453); // Base Sepolia : Base mainnet
-          
-          
+            : tokenType === 'base-eth'
+            ? (isDevMode ? 84532 : 8453) // Base Sepolia : Base mainnet
+            : tokenType === 'pol'
+            ? (isDevMode ? 80002 : 137) // Amoy testnet : Polygon mainnet
+            : 1; // Default to Ethereum mainnet
+
+
           // Auto-switch network if needed
           if (Number(network.chainId) !== expectedChainId) {
             if (privyWallet) {
@@ -154,6 +158,8 @@ export default function CryptoConfirmationPanel({
               } catch {
                 const networkName = tokenType === 'base-eth'
                   ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
+                  : tokenType === 'pol'
+                  ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
                   : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
                 throw new Error(`Failed to switch to ${networkName}. Please try again.`);
               }
@@ -216,7 +222,66 @@ export default function CryptoConfirmationPanel({
                     throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
                   }
                 }
+              } else if (tokenType === 'pol') {
+                // POL: Switch to Polygon network (Amoy testnet or Polygon mainnet)
+                try {
+                  await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: `0x${expectedChainId.toString(16)}` }], // Amoy (0x13882) or Polygon Mainnet (0x89)
+                  });
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                  // Create fresh provider after switch
+                  provider = new ethers.BrowserProvider(window.ethereum);
+                  signer = await provider.getSigner();
+                } catch (switchError: any) {
+                  // Error 4902 means the network doesn't exist in MetaMask - add it first
+                  if (switchError.code === 4902) {
+                    try {
+                      const networkParams = isDevMode ? {
+                        chainId: '0x13882', // 80002
+                        chainName: 'Polygon Amoy Testnet',
+                        nativeCurrency: {
+                          name: 'POL',
+                          symbol: 'POL',
+                          decimals: 18,
+                        },
+                        rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                        blockExplorerUrls: ['https://amoy.polygonscan.com'],
+                      } : {
+                        chainId: '0x89', // 137
+                        chainName: 'Polygon Mainnet',
+                        nativeCurrency: {
+                          name: 'POL',
+                          symbol: 'POL',
+                          decimals: 18,
+                        },
+                        rpcUrls: ['https://polygon-rpc.com'],
+                        blockExplorerUrls: ['https://polygonscan.com'],
+                      };
+
+                      await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [networkParams],
+                      });
+
+                      // Wait for network to be added and switched
+                      await new Promise(resolve => setTimeout(resolve, 1000));
+
+                      // Create fresh provider after adding network
+                      provider = new ethers.BrowserProvider(window.ethereum);
+                      signer = await provider.getSigner();
+                    } catch {
+                      const networkName = isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet';
+                      throw new Error(`Failed to add ${networkName} to MetaMask. Please add it manually.`);
+                    }
+                  } else {
+                    const networkName = isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet';
+                    throw new Error(`Please switch to ${networkName} in your wallet for POL payments.`);
+                  }
+                }
               } else if (tokenType === 'ethereum') {
+                // ETH: Switch to Ethereum network (Holesky testnet or Ethereum mainnet)
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -229,26 +294,40 @@ export default function CryptoConfirmationPanel({
                   signer = await provider.getSigner();
                 } catch {
                   const networkName = isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet';
-                  throw new Error(`Please switch to ${networkName} in your wallet for ETH L1 payments.`);
+                  throw new Error(`Please switch to ${networkName} in your wallet for ETH payments.`);
                 }
               }
             }
           }
-          
-          
-          // ETH L1/Base ETH direct payment using walletAdapter (native SDK support)
-          const turbo = TurboFactory.authenticated({
-            token: tokenType,
+
+
+          // ETH/Base ETH/POL payment using walletAdapter
+          // POL is the native token on Polygon network
+          const turboConfig_forSDK: any = {
+            token: tokenType, // 'ethereum', 'base-eth', or 'pol'
             walletAdapter: {
               getSigner: () => signer as any,
             },
             paymentServiceConfig: {
               url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
-            },
-            gatewayUrl: turboConfig.tokenMap[tokenType] // Dev mode uses testnet RPC URLs
-          });
+            }
+          };
 
-          const tokenAmount = ETHToTokenAmount(cryptoAmount); // Convert to wei
+          // Add gatewayUrl for all tokens EXCEPT POL mainnet (SDK defaults to https://polygon-rpc.com/ for POL)
+          if (tokenType === 'pol' && !isDevMode) {
+            // POL mainnet: Don't pass gatewayUrl - SDK uses https://polygon-rpc.com/ by default
+            // (POL is the native token on Polygon Mainnet, like ETH on Ethereum)
+          } else {
+            // All other tokens: Pass their respective RPC URLs
+            turboConfig_forSDK.gatewayUrl = turboConfig.tokenMap[tokenType];
+          }
+
+          const turbo = TurboFactory.authenticated(turboConfig_forSDK);
+
+          // Convert to smallest unit (wei for ETH/Base, POL for Polygon)
+          const tokenAmount = tokenType === 'pol'
+            ? POLToTokenAmount(cryptoAmount)
+            : ETHToTokenAmount(cryptoAmount);
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
@@ -389,7 +468,12 @@ export default function CryptoConfirmationPanel({
               {/* Token Amount Breakdown */}
               <div className="flex justify-between py-2 text-sm text-link border-t border-default">
                 <div>Token Amount:</div>
-                <div>{quote.tokenAmount.toFixed(tokenType === 'ethereum' || tokenType === 'base-eth' ? 6 : tokenType === 'solana' ? 4 : 8)} {tokenLabels[tokenType]}</div>
+                <div>{quote.tokenAmount.toFixed(
+                  tokenType === 'ethereum' || tokenType === 'base-eth' ? 6
+                  : tokenType === 'solana' ? 4
+                  : tokenType === 'pol' ? 2
+                  : 8
+                )} {tokenLabels[tokenType]}</div>
               </div>
               <div className="flex justify-between py-2 text-sm text-link">
                 <div>Network:</div>
