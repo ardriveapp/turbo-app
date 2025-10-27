@@ -150,14 +150,28 @@ export function useFolderUpload() {
         // Check if this is a Privy embedded wallet
         const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 
+        // Detect token type from current network if not overridden
+        let detectedTokenType: 'ethereum' | 'base-eth' | 'pol' = 'ethereum';
+
         if (privyWallet) {
           // Use Privy embedded wallet
           const provider = await privyWallet.getEthereumProvider();
           const ethersProvider = new ethers.BrowserProvider(provider);
           const ethersSigner = await ethersProvider.getSigner();
 
+          // Detect network if no override provided
+          if (!tokenTypeOverride) {
+            try {
+              const { getTokenTypeFromChainId } = await import('../utils');
+              const network = await ethersProvider.getNetwork();
+              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
+            } catch (error) {
+              console.warn('Failed to detect network, defaulting to ethereum:', error);
+            }
+          }
+
           return TurboFactory.authenticated({
-            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || detectedTokenType) as any,
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
@@ -172,8 +186,19 @@ export function useFolderUpload() {
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const ethersSigner = await ethersProvider.getSigner();
 
+          // Detect network if no override provided
+          if (!tokenTypeOverride) {
+            try {
+              const { getTokenTypeFromChainId } = await import('../utils');
+              const network = await ethersProvider.getNetwork();
+              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
+            } catch (error) {
+              console.warn('Failed to detect network, defaulting to ethereum:', error);
+            }
+          }
+
           return TurboFactory.authenticated({
-            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
+            token: (tokenTypeOverride || detectedTokenType) as any,
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },

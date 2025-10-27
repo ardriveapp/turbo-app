@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { mainnet } from 'wagmi/chains';
-import { injected, walletConnect } from 'wagmi/connectors';
+import { mainnet, polygon, polygonAmoy } from 'wagmi/chains';
+import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
@@ -13,15 +13,14 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 // Configure Wagmi for Ethereum wallets
 const wagmiConfig = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, polygon, polygonAmoy],
   transports: {
     [mainnet.id]: http(),
+    [polygon.id]: http('https://polygon-bor-rpc.publicnode.com'),
+    [polygonAmoy.id]: http('https://rpc-amoy.polygon.technology'),
   },
   connectors: [
-    injected(),
-    walletConnect({ 
-      projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
-    }),
+    injected(), // MetaMask and other injected wallets
   ],
 });
 
@@ -62,11 +61,6 @@ export function WalletProviders({ children }: WalletProvidersProps) {
           accentColor: '#FE0230', // Turbo red
           showWalletLoginFirst: false,
         },
-        // Only set WalletConnect project ID if it's actually configured
-        ...(import.meta.env.VITE_WALLETCONNECT_PROJECT_ID &&
-            import.meta.env.VITE_WALLETCONNECT_PROJECT_ID !== 'YOUR_WALLETCONNECT_PROJECT_ID'
-            ? { walletConnectCloudProjectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID }
-            : {}),
       }}
     >
       <WagmiProvider config={wagmiConfig}>

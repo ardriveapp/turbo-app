@@ -99,8 +99,10 @@ The app supports email authentication and three wallet ecosystems:
 
 **Ethereum (MetaMask)**
 - Direct connection via Wagmi v2 (not through Privy)
-- Supports mainnet via HTTP transport
+- Supports multiple EVM networks: Ethereum Mainnet, Base, and Polygon
+- Wagmi chains configured: `mainnet`, `polygon`, `polygonAmoy`
 - Uses `ethers.BrowserProvider` for signing
+- **Network Auto-Detection**: Automatically detects current network and uses appropriate token (ETH, Base-ETH, or POL)
 
 **Solana (Phantom/Solflare)**
 - Uses `@solana/wallet-adapter` with Phantom and Solflare
@@ -141,6 +143,18 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 - `solana` (SOL), `kyve` (KYVE), `matic` (MATIC), `pol` (POL)
 - Each token has network-specific RPC URLs configured in the token map
 - Processing times vary: Solana/Base (fast), Polygon (medium), Arweave/Ethereum (slow)
+
+**POL (Polygon) Token Support**:
+- Fully integrated for payments, uploads, deployments, and credit sharing
+- Uses Ethereum wallet infrastructure (MetaMask) with Polygon network
+- **Chain IDs**: 137 (Polygon Mainnet), 80002 (Amoy Testnet)
+- **RPC URLs**:
+  - Mainnet: `https://polygon-bor-rpc.publicnode.com`
+  - Testnet: `https://rpc-amoy.polygon.technology`
+- **Auto Network Detection**: `getTokenTypeFromChainId()` utility in `utils/index.ts` automatically detects token type from chain ID
+- **Network Switching**: Automatic network switching with MetaMask's `wallet_switchEthereumChain` and `wallet_addEthereumChain`
+- **JIT Payments**: NOT supported (only ARIO, SOL, Base-ETH support JIT per Turbo SDK)
+- **Turbo SDK Integration**: Uses `POLToTokenAmount()` helper for token amount conversion
 
 ### Service Architecture
 
@@ -444,16 +458,19 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **ArNS Updates**: Requires Arweave wallet for ANT operations and signing
 
 ### 🔄 Wallet Capability Matrix
-| Feature | Arweave | Ethereum | Solana |
-|---------|---------|----------|--------|
-| Buy Credits (Fiat) | ✅ | ✅ | ✅ |
-| Buy Credits (Crypto) | ✅ | ✅ | ✅ |
-| Upload Files | ✅ | ✅ | ✅ |
-| Capture Pages | ✅ | ✅ | ✅ |
-| Deploy Sites | ✅ | ✅ | ✅ |
-| Share Credits | ✅ | ✅ | ✅ |
-| ArNS Names | ✅ | ✅ | ❌ |
+| Feature | Arweave | Ethereum/Base/Polygon | Solana |
+|---------|---------|----------------------|--------|
+| Buy Credits (Fiat) | ✅ | ✅ (all networks) | ✅ |
+| Buy Credits (Crypto) | ✅ AR/ARIO | ✅ ETH/Base-ETH/POL | ✅ SOL |
+| Upload Files | ✅ | ✅ (all networks) | ✅ |
+| Capture Pages | ✅ | ✅ (all networks) | ✅ |
+| Deploy Sites | ✅ | ✅ (all networks) | ✅ |
+| Share Credits | ✅ | ✅ (all networks) | ✅ |
+| ArNS Names | ✅ | ✅ (all networks) | ❌ |
 | Update ArNS Records | ✅ | ❌ | ❌ |
+| JIT Payments | ✅ ARIO only | ✅ Base-ETH only | ✅ |
+
+**Note**: Ethereum wallet (MetaMask) automatically detects current network (Ethereum Mainnet, Base, or Polygon) and uses the appropriate token (ETH, Base-ETH, or POL) for all operations.
 
 ## Development Best Practices
 
@@ -522,6 +539,33 @@ if (privyWallet) {
   // Use ethersSigner for Turbo client
 }
 ```
+
+### POL (Polygon) Development
+When implementing features that use Ethereum wallets, the app automatically detects the current network and uses the appropriate token:
+
+**Network Detection Pattern:**
+```typescript
+import { getTokenTypeFromChainId } from '../utils';
+
+// Detect token type from current network
+const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+const network = await ethersProvider.getNetwork();
+const tokenType = getTokenTypeFromChainId(Number(network.chainId));
+// Returns: 'ethereum' | 'base-eth' | 'pol'
+```
+
+**Implementation Locations:**
+- `src/hooks/useFileUpload.ts` - Detects network for file uploads
+- `src/hooks/useFolderUpload.ts` - Detects network for site deployments
+- `src/components/panels/ShareCreditsPanel.tsx` - Detects network for credit sharing
+- `src/components/panels/crypto/CryptoConfirmationPanel.tsx` - Handles POL payments with network switching
+
+**Key Points:**
+- POL uses same Ethereum wallet infrastructure (MetaMask)
+- Network detection happens automatically before Turbo client creation
+- `createTurboClient()` accepts `tokenTypeOverride` parameter for JIT payment scenarios
+- POL does NOT support JIT payments (only ARIO, SOL, and Base-ETH support JIT)
+- Use `POLToTokenAmount()` from Turbo SDK for token amount conversions
 
 ### ArNS Development
 - Use `useOwnedArNSNames` hook for fetching and managing owned ArNS names

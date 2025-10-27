@@ -16,11 +16,10 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
-      ethereum: 'https://api.mainnet.ethereumpow.org',
+      ethereum: 'https://ethereum.publicnode.com',
       'base-eth': 'https://mainnet.base.org',
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
       kyve: 'https://api.kyve.network',
-      matic: 'https://polygon-bor-rpc.publicnode.com',
       pol: 'https://polygon-bor-rpc.publicnode.com',
     } as Record<SupportedTokenType, string>,
   },
@@ -38,7 +37,6 @@ const PRESET_CONFIGS = {
       'base-eth': 'https://sepolia.base.org',
       solana: 'https://api.devnet.solana.com',
       kyve: 'https://api.korellia.kyve.network',
-      matic: 'https://rpc-amoy.polygon.technology',
       pol: 'https://rpc-amoy.polygon.technology',
     } as Record<SupportedTokenType, string>,
   },
@@ -263,7 +261,6 @@ export const useStore = create<StoreState>()(
         arweave: 0,
         ethereum: 0,
         kyve: 0,
-        matic: 0,
         pol: 0,
       },
       jitBufferMultiplier: 1.1, // Default 10% buffer

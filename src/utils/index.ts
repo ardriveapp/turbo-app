@@ -118,6 +118,10 @@ export const getExplorerUrl = (txid: string, token: string) => {
       return `https://viewblock.io/arweave/tx/${txid}`;
     case 'ethereum':
       return `https://etherscan.io/tx/${txid}`;
+    case 'base-eth':
+      return `https://basescan.org/tx/${txid}`;
+    case 'pol':
+      return `https://polygonscan.com/tx/${txid}`;
     case 'solana':
       return `https://solscan.io/tx/${txid}`;
   }
@@ -216,6 +220,35 @@ export const getDisplayArNSName = (name: string, showOriginal = false): string =
     return `${decoded} (${name})`;
   }
   return decoded;
+};
+
+/**
+ * Detect the appropriate token type based on the current Ethereum network chainId
+ * This is used for Ethereum wallets to determine whether to use ETH, Base-ETH, or POL
+ */
+export const getTokenTypeFromChainId = (chainId: number): 'ethereum' | 'base-eth' | 'pol' => {
+  // Ethereum Mainnet and Holesky testnet
+  if (chainId === 1 || chainId === 17000) {
+    return 'ethereum';
+  }
+  // Base and Base Sepolia
+  if (chainId === 8453 || chainId === 84532) {
+    return 'base-eth';
+  }
+  // Polygon and Amoy testnet
+  if (chainId === 137 || chainId === 80002) {
+    return 'pol';
+  }
+  // Default to ethereum for unknown chains
+  return 'ethereum';
+};
+
+/**
+ * Get the current chain ID from an Ethereum provider
+ */
+export const getCurrentChainId = async (provider: any): Promise<number> => {
+  const network = await provider.getNetwork();
+  return Number(network.chainId);
 };
 
 // Export address validation utilities

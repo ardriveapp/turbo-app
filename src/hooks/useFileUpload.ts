@@ -9,7 +9,7 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
-import { APP_NAME, APP_VERSION } from '../constants';
+import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 
 interface UploadResult {
   id: string;
@@ -208,14 +208,39 @@ export function useFileUpload() {
     const fileName = file.name;
     setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
-    // Determine the token type for JIT payment
+    // Determine the token type for JIT payment and uploads
     // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
+    // Ethereum wallets: detect from current network (ETH L1, Base, or Polygon)
+    let jitTokenType: SupportedTokenType | null = null;
+
+    if (walletType === 'arweave') {
+      jitTokenType = 'ario';
+    } else if (walletType === 'ethereum') {
+      // Detect token type from current network chainId
+      try {
+        const { ethers } = await import('ethers');
+        const { getTokenTypeFromChainId } = await import('../utils');
+
+        // Check if this is a Privy embedded wallet
+        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+        if (privyWallet) {
+          const provider = await privyWallet.getEthereumProvider();
+          const ethersProvider = new ethers.BrowserProvider(provider);
+          const network = await ethersProvider.getNetwork();
+          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+        } else if (window.ethereum) {
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          const network = await ethersProvider.getNetwork();
+          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+        }
+      } catch (error) {
+        console.warn('Failed to detect network, defaulting to ethereum:', error);
+        jitTokenType = 'ethereum';
+      }
+    } else if (walletType === 'solana') {
+      jitTokenType = 'solana';
+    }
 
     // Create funding mode if JIT enabled and supported
     let fundingMode: OnDemandFunding | undefined = undefined;

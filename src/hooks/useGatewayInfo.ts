@@ -10,7 +10,7 @@ interface UploadServiceInfo {
     arweave: string;
     ethereum: string;
     solana: string;
-    matic: string;
+    pol: string;
     kyve: string;
   };
   gateway: string;

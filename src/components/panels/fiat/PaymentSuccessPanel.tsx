@@ -2,7 +2,6 @@ import { CheckCircle, ExternalLink, Upload, Zap, Globe, Share2, Mail, Users } fr
 import { useStore } from '../../../store/useStore';
 import { tokenLabels, SupportedTokenType } from '../../../constants';
 import { useNavigate } from 'react-router-dom';
-import { getWalletTypeLabel } from '../../../utils/addressValidation';
 import CopyButton from '../../CopyButton';
 
 interface PaymentSuccessPanelProps {
@@ -12,9 +11,11 @@ interface PaymentSuccessPanelProps {
   tokenType?: SupportedTokenType;
   transactionId?: string;
   creditsReceived?: number;
-  // Target wallet details
+  // Target wallet details (legacy fiat flow)
   targetAddress?: string;
-  targetWalletType?: 'arweave' | 'ethereum' | 'solana';
+  // Cross-wallet top-up fields (from SDK v1.34.0+)
+  owner?: string; // Who paid
+  recipient?: string; // Who received credits
 }
 
 const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
@@ -24,7 +25,8 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
   transactionId,
   creditsReceived,
   targetAddress,
-  targetWalletType
+  owner,
+  recipient
 }) => {
   const { paymentIntentResult, creditBalance, address } = useStore();
   const navigate = useNavigate();
@@ -88,22 +90,33 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
           </p>
         </div>
 
-        {/* Show recipient info if funding another wallet */}
-        {targetAddress && targetAddress !== address && (
+        {/* Show cross-wallet top-up info if sending to a different address */}
+        {((recipient && owner && recipient !== owner) || (targetAddress && targetAddress !== address)) && (
           <div className="mb-6 bg-turbo-green/10 border border-turbo-green/20 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-turbo-green mb-2">
+            {/* Highlighted recipient address */}
+            <div className="flex items-center gap-2 text-turbo-green mb-3">
               <Users className="w-4 h-4" />
-              <span className="font-medium text-sm">Credits delivered to:</span>
+              <span className="font-medium text-sm">Credits sent to:</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <code className="text-sm text-turbo-green font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
-                {targetAddress}
+                {recipient || targetAddress}
               </code>
-              <CopyButton textToCopy={targetAddress} />
+              <CopyButton textToCopy={recipient || targetAddress || ''} />
             </div>
-            <div className="text-xs text-turbo-green/80 mt-2">
-              {getWalletTypeLabel(targetWalletType || 'unknown')} wallet
-            </div>
+
+            {/* Smaller text showing who paid */}
+            {owner && (
+              <div className="pt-3 border-t border-turbo-green/20">
+                <div className="text-xs text-link/70 mb-1">Paid from your wallet:</div>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs text-link/80 font-mono break-all flex-1">
+                    {owner}
+                  </code>
+                  <CopyButton textToCopy={owner} />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
