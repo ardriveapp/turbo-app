@@ -1,12 +1,14 @@
 import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount, POLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useState } from 'react';
-import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle } from 'lucide-react';
+import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import {  tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
 import useTurboWallets from '../../../hooks/useTurboWallets';
 import TurboLogo from '../../TurboLogo';
 import { useWallets } from '@privy-io/react-auth';
+import { getWalletTypeLabel } from '../../../utils/addressValidation';
+import CopyButton from '../../CopyButton';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -21,12 +23,17 @@ export default function CryptoConfirmationPanel({
   onBack,
   onPaymentComplete
 }: CryptoConfirmationPanelProps) {
-  const { address, walletType } = useStore();
+  const { address, walletType, paymentTargetAddress, paymentTargetType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
 
   const turboConfig = useStore((state) => state.getCurrentConfig());
+
+  // Cross-wallet top-up: Use target address if different from connected wallet
+  const turboCreditDestinationAddress = paymentTargetAddress && paymentTargetAddress !== address
+    ? paymentTargetAddress
+    : undefined;
   
   // Use comprehensive hook for all token types
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
@@ -97,6 +104,7 @@ export default function CryptoConfirmationPanel({
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
+            turboCreditDestinationAddress,
           });
 
           onPaymentComplete({
@@ -331,6 +339,7 @@ export default function CryptoConfirmationPanel({
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
+            turboCreditDestinationAddress,
           });
 
           onPaymentComplete({
@@ -340,7 +349,7 @@ export default function CryptoConfirmationPanel({
             transactionId: result.id,
           });
         } else if (walletType === 'solana' && window.solana && tokenType === 'solana') {
-          const turboAuthenticated = TurboFactory.authenticated({ 
+          const turboAuthenticated = TurboFactory.authenticated({
             token: 'solana',
             paymentServiceConfig: {
               url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
@@ -348,12 +357,12 @@ export default function CryptoConfirmationPanel({
             walletAdapter: window.solana,
             gatewayUrl: turboConfig.tokenMap.solana
           });
-          
-          const result = await turboAuthenticated.topUpWithTokens({ 
-            tokenAmount: SOLToTokenAmount(cryptoAmount) // Convert to lamports
 
+          const result = await turboAuthenticated.topUpWithTokens({
+            tokenAmount: SOLToTokenAmount(cryptoAmount), // Convert to lamports
+            turboCreditDestinationAddress,
           });
-          
+
           onPaymentComplete({
             ...result,
             quote,
@@ -447,6 +456,25 @@ export default function CryptoConfirmationPanel({
           </div>
         ) : quote ? (
           <>
+            {/* Show recipient info if funding another wallet */}
+            {paymentTargetAddress && paymentTargetAddress !== address && (
+              <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-400 mb-2">
+                  <Users className="w-4 h-4" />
+                  <span className="font-medium text-sm">Credits will be delivered to:</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm text-blue-400 font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+                    {paymentTargetAddress}
+                  </code>
+                  <CopyButton textToCopy={paymentTargetAddress} />
+                </div>
+                <div className="text-xs text-blue-300 mt-2">
+                  {getWalletTypeLabel(paymentTargetType || 'unknown')} wallet
+                </div>
+              </div>
+            )}
+
             {/* Order Summary */}
             <div className="bg-canvas p-6 rounded-lg mb-6">
               <div className="flex items-center gap-3 mb-4">
