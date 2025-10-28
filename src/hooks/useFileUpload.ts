@@ -286,7 +286,12 @@ export function useFileUpload() {
           onProgress: ({ totalBytes, processedBytes }: { totalBytes: number; processedBytes: number }) => {
             const percentage = Math.round((processedBytes / totalBytes) * 100);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
-            // Upload progress tracked
+            // Update active uploads array with progress
+            setActiveUploads(prev => prev.map(upload =>
+              upload.name === fileName
+                ? { ...upload, progress: percentage }
+                : upload
+            ));
           },
           onError: (error: any) => {
             // Upload error occurred
