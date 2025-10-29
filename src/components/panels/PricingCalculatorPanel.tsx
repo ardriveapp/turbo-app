@@ -427,7 +427,7 @@ export default function PricingCalculatorPanel() {
                         value={selectedCurrencyInfo}
                         onChange={(currency) => setSelectedCurrency(currency.value)}
                       >
-                        <div className="relative w-full sm:w-40">
+                        <div className="relative w-full sm:w-48">
                           <Listbox.Button className="relative w-full rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{selectedCurrencyInfo.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
