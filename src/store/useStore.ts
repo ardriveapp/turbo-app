@@ -387,8 +387,20 @@ export const useStore = create<StoreState>()(
       },
       // Developer configuration actions
       setConfigMode: (mode) => {
+        const { configMode: currentMode, customConfig } = get();
         set({ configMode: mode });
-        if (mode !== 'custom') {
+
+        if (mode === 'custom') {
+          // When switching TO custom mode, initialize with current preset values
+          const currentPresetConfig = currentMode !== 'custom' ? PRESET_CONFIGS[currentMode] : PRESET_CONFIGS.production;
+          // Only initialize if customConfig is empty or matches a preset (not user-modified)
+          const isUnmodified = JSON.stringify(customConfig) === JSON.stringify(PRESET_CONFIGS.production) ||
+                               JSON.stringify(customConfig) === JSON.stringify(PRESET_CONFIGS.development);
+          if (isUnmodified) {
+            set({ customConfig: currentPresetConfig });
+          }
+        } else {
+          // When switching AWAY from custom mode, update customConfig to the new preset
           set({ customConfig: PRESET_CONFIGS[mode] });
         }
       },

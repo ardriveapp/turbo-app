@@ -327,7 +327,7 @@ export function useFileUpload() {
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, createTurboClient]);
+  }, [address, walletType, wallets, createTurboClient]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],

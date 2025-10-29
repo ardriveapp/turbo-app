@@ -4,7 +4,9 @@ import { Listbox, Transition } from '@headlessui/react';
 import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard, ChevronDown, Check } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
+import { useCryptoPriceForWinc, useWincForCrypto } from '../../hooks/useCryptoPrice';
 import { useStore } from '../../store/useStore';
+import { SupportedTokenType, tokenLabels } from '../../constants';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
 export default function PricingCalculatorPanel() {
@@ -20,16 +22,71 @@ export default function PricingCalculatorPanel() {
     { value: 'GiB', label: 'GiB' },
     { value: 'TiB', label: 'TiB' },
   ] as const;
+
+  // Currency options
+  type CurrencyType = 'usd' | SupportedTokenType;
+  const currencies: Array<{ value: CurrencyType; label: string; symbol: string }> = [
+    { value: 'usd', label: 'USD', symbol: '$' },
+    { value: 'arweave', label: tokenLabels.arweave, symbol: 'AR' },
+    { value: 'ario', label: tokenLabels.ario, symbol: 'ARIO' },
+    { value: 'ethereum', label: tokenLabels.ethereum, symbol: 'ETH' },
+    { value: 'base-eth', label: tokenLabels['base-eth'], symbol: 'ETH' },
+    { value: 'solana', label: tokenLabels.solana, symbol: 'SOL' },
+    { value: 'pol', label: tokenLabels.pol, symbol: 'POL' },
+  ];
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('usd');
+
   const [dollarAmount, setDollarAmount] = useState(10);
   const [dollarAmountInput, setDollarAmountInput] = useState('10'); // String for display
   
+  // Helper to convert crypto display amount to smallest unit (bigint)
+  const getTokenSmallestUnit = (tokenType: SupportedTokenType, amount: number): bigint => {
+    let decimals: number;
+    switch (tokenType) {
+      case 'arweave':
+        decimals = 12; // winston
+        break;
+      case 'ario':
+        decimals = 6; // mARIO - 1 ARIO = 1,000,000 mARIO
+        break;
+      case 'ethereum':
+      case 'base-eth':
+      case 'pol':
+        decimals = 18; // wei
+        break;
+      case 'solana':
+        decimals = 9; // lamports
+        break;
+      case 'kyve':
+        decimals = 6; // ukyve
+        break;
+      default:
+        decimals = 12;
+    }
+    // Convert to smallest unit: amount * 10^decimals
+    const multiplier = BigInt(10 ** decimals);
+    const wholePart = BigInt(Math.floor(amount));
+    const fractionalPart = amount - Math.floor(amount);
+    const fractionalBigInt = BigInt(Math.round(fractionalPart * Number(multiplier)));
+    return wholePart * multiplier + fractionalBigInt;
+  };
+
   // Get conversion rates
   const wincForOneGiB = useWincForOneGiB();
   const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
   const wincLoading = !wincForOneGiB;
   const creditsLoading = !creditsForOneUSD;
-  
-  // Calculate storage in GiB
+
+  // For Budget to Storage mode with crypto: convert crypto amount to winc
+  const cryptoAmountInSmallestUnit = selectedCurrency !== 'usd' && inputType === 'dollars'
+    ? getTokenSmallestUnit(selectedCurrency as SupportedTokenType, dollarAmount)
+    : undefined;
+  const wincFromCrypto = useWincForCrypto(
+    cryptoAmountInSmallestUnit,
+    selectedCurrency as SupportedTokenType
+  );
+
+  // Calculate storage in GiB (must be defined before being used)
   const getStorageInGiB = () => {
     switch (storageUnit) {
       case 'MiB':
@@ -40,6 +97,37 @@ export default function PricingCalculatorPanel() {
         return storageAmount;
     }
   };
+
+  // Calculate winc needed for storage (Storage to Cost mode)
+  const calculateWincNeeded = () => {
+    if (!wincForOneGiB) return undefined;
+    const storageInGiB = getStorageInGiB();
+    return storageInGiB * Number(wincForOneGiB);
+  };
+
+  // Calculate winc from budget amount (Budget to Storage mode)
+  const calculateWincFromBudget = () => {
+    if (selectedCurrency === 'usd') {
+      // USD: convert to credits then to winc
+      if (!creditsForOneUSD) return undefined;
+      const credits = dollarAmount * creditsForOneUSD;
+      return credits * 1e12; // Convert credits to winc
+    } else {
+      // Crypto: we'll use the hook to get winc from crypto amount
+      // This is a placeholder - the actual winc will come from useWincForCrypto
+      return undefined;
+    }
+  };
+
+  // Get crypto price based on current mode
+  const wincForCryptoPrice = inputType === 'storage' ? calculateWincNeeded() : calculateWincFromBudget();
+  const cryptoPrice = useCryptoPriceForWinc(
+    selectedCurrency !== 'usd' ? wincForCryptoPrice : undefined,
+    selectedCurrency as SupportedTokenType
+  );
+
+  // Get selected currency info
+  const selectedCurrencyInfo = currencies.find(c => c.value === selectedCurrency) || currencies[0];
   
   // Calculate storage in bytes for display
   const getStorageInBytes = () => {
@@ -57,13 +145,35 @@ export default function PricingCalculatorPanel() {
     return dollarsNeeded;
   };
   
-  // Calculate storage for dollar amount
-  const calculateStorageForDollars = () => {
-    if (!wincForOneGiB || !creditsForOneUSD) return 0;
-    const credits = dollarAmount * creditsForOneUSD;
-    const winc = credits * 1e12;
+  // Calculate storage for budget amount (works for USD and crypto)
+  const calculateStorageForBudget = () => {
+    if (!wincForOneGiB) return 0;
+
+    let winc: number;
+    if (selectedCurrency === 'usd') {
+      // USD: convert to credits then to winc
+      if (!creditsForOneUSD) return 0;
+      const credits = dollarAmount * creditsForOneUSD;
+      winc = credits * 1e12;
+    } else {
+      // Crypto: use winc from crypto conversion
+      if (!wincFromCrypto) return 0;
+      winc = wincFromCrypto;
+    }
+
     const gib = winc / Number(wincForOneGiB);
     return gib;
+  };
+
+  // Calculate USD equivalent of budget amount (for crypto budgets)
+  const calculateBudgetUSDEquivalent = () => {
+    if (selectedCurrency === 'usd') return dollarAmount;
+
+    // For crypto: convert winc to credits to USD
+    if (!wincFromCrypto || !creditsForOneUSD) return 0;
+    const credits = wincFromCrypto / 1e12;
+    const usd = credits / creditsForOneUSD;
+    return usd;
   };
   
   // Format number with commas
@@ -154,9 +264,9 @@ export default function PricingCalculatorPanel() {
             {/* Input Side */}
             <div>
               {inputType === 'storage' ? (
-                <>
+                <div className="flex flex-col h-full">
                   <h4 className="text-lg font-bold text-fg-muted mb-4">Enter Storage Amount</h4>
-                  <div className="bg-surface rounded-lg p-6">
+                  <div className="bg-surface rounded-lg p-6 flex-1 flex flex-col">
                     <label className="block text-sm font-medium text-link mb-3">
                       How much data do you need to store?
                     </label>
@@ -194,8 +304,8 @@ export default function PricingCalculatorPanel() {
                         className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
-                      <Listbox 
-                        value={storageUnits.find(unit => unit.value === storageUnit)} 
+                      <Listbox
+                        value={storageUnits.find(unit => unit.value === storageUnit)}
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
@@ -241,45 +351,49 @@ export default function PricingCalculatorPanel() {
                         </div>
                       </Listbox>
                     </div>
-                    
+
                     {/* Common storage sizes */}
-                    <div className="text-xs text-link mb-2">Quick select:</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[
-                        { amount: 100, unit: 'MiB', label: '100 MiB' },
-                        { amount: 500, unit: 'MiB', label: '500 MiB' },
-                        { amount: 1, unit: 'GiB', label: '1 GiB' },
-                        { amount: 10, unit: 'GiB', label: '10 GiB' },
-                        { amount: 100, unit: 'GiB', label: '100 GiB' },
-                        { amount: 1, unit: 'TiB', label: '1 TiB' },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() => {
-                            setStorageAmount(preset.amount);
-                            setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
-                          }}
-                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                    <div className="mt-auto">
+                      <div className="text-xs text-link mb-2">Quick select:</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { amount: 100, unit: 'MiB', label: '100 MiB' },
+                          { amount: 500, unit: 'MiB', label: '500 MiB' },
+                          { amount: 1, unit: 'GiB', label: '1 GiB' },
+                          { amount: 10, unit: 'GiB', label: '10 GiB' },
+                          { amount: 100, unit: 'GiB', label: '100 GiB' },
+                          { amount: 1, unit: 'TiB', label: '1 TiB' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            onClick={() => {
+                              setStorageAmount(preset.amount);
+                              setStorageAmountInput(preset.amount.toString());
+                              setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
+                            }}
+                            className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <>
+                <div className="flex flex-col h-full">
                   <h4 className="text-lg font-bold text-fg-muted mb-4">Enter Your Budget</h4>
-                  <div className="bg-surface rounded-lg p-6">
+                  <div className="bg-surface rounded-lg p-6 flex-1 flex flex-col">
                     <label className="block text-sm font-medium text-link mb-3">
                       How much do you want to spend?
                     </label>
-                    <div className="flex gap-3 items-center mb-4">
-                      <span className="text-fg-muted text-2xl font-bold">$</span>
+
+                    {/* Amount Input with Currency Selector */}
+                    <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
                       <input
                         type="number"
                         min="0"
-                        step="0.01"
+                        step={selectedCurrency === 'usd' ? "0.01" : "0.000001"}
                         value={dollarAmountInput}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -306,45 +420,191 @@ export default function PricingCalculatorPanel() {
                             setDollarAmount(numValue);
                           }
                         }}
-                        className="flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
+                        className="w-full sm:flex-1 rounded-lg border border-default bg-canvas px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
                         placeholder="Enter amount"
                       />
-                      <span className="text-link text-lg">USD</span>
+                      <Listbox
+                        value={selectedCurrencyInfo}
+                        onChange={(currency) => setSelectedCurrency(currency.value)}
+                      >
+                        <div className="relative w-full sm:w-40">
+                          <Listbox.Button className="relative w-full rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+                            <span className="block truncate">{selectedCurrencyInfo.label}</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                              {currencies.map((currency) => (
+                                <Listbox.Option
+                                  key={currency.value}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
+                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                    }`
+                                  }
+                                  value={currency}
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                        {currency.label}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                                          <Check className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
                     </div>
-                    
-                    {/* Quick amounts */}
-                    <div className="text-xs text-link mb-2">Quick select:</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[5, 10, 25, 50, 100, 250].map((amount) => (
-                        <button
-                          key={amount}
-                          onClick={() => setDollarAmount(amount)}
-                          className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
-                        >
-                          ${amount}
-                        </button>
-                      ))}
+
+                    {/* Quick amounts - show based on currency */}
+                    <div className="mt-auto">
+                      <div className="text-xs text-link mb-2">Quick select:</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {selectedCurrency === 'usd' ? (
+                          [5, 10, 25, 50, 100, 250].map((amount) => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                setDollarAmount(amount);
+                                setDollarAmountInput(amount.toString());
+                              }}
+                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                            >
+                              ${amount}
+                            </button>
+                          ))
+                        ) : selectedCurrency === 'arweave' || selectedCurrency === 'ario' ? (
+                          [10, 25, 50, 100, 250, 500].map((amount) => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                setDollarAmount(amount);
+                                setDollarAmountInput(amount.toString());
+                              }}
+                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                            >
+                              {amount} {selectedCurrencyInfo.symbol}
+                            </button>
+                          ))
+                        ) : selectedCurrency === 'solana' ? (
+                          [0.1, 0.25, 0.5, 1, 2.5, 5].map((amount) => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                setDollarAmount(amount);
+                                setDollarAmountInput(amount.toString());
+                              }}
+                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                            >
+                              {amount} {selectedCurrencyInfo.symbol}
+                            </button>
+                          ))
+                        ) : (
+                          [0.01, 0.025, 0.05, 0.1, 0.25, 0.5].map((amount) => (
+                            <button
+                              key={amount}
+                              onClick={() => {
+                                setDollarAmount(amount);
+                                setDollarAmountInput(amount.toString());
+                              }}
+                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                            >
+                              {amount} {selectedCurrencyInfo.symbol}
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
 
             {/* Results Side */}
-            <div>
+            <div className="flex flex-col h-full">
               <h4 className="text-lg font-bold text-fg-muted mb-4">
                 {inputType === 'storage' ? 'Cost Breakdown' : 'Storage Breakdown'}
               </h4>
-              
+
               {inputType === 'storage' ? (
-                <div className="space-y-4">
-                  {/* Primary Result */}
+                <div className="space-y-4 flex-1 flex flex-col justify-between">
+                  {/* Primary Result with Currency Selector */}
                   <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-                    <div className="text-sm text-link mb-1">Total Cost</div>
-                    <div className="text-4xl font-bold text-fg-muted">
-                      ${formatNumber(calculateStorageCost())}
+                    <div className="flex items-center justify-between mb-3 min-h-[28px]">
+                      <div className="text-sm text-link">Total Cost</div>
+                      <Listbox
+                        value={selectedCurrencyInfo}
+                        onChange={(currency) => setSelectedCurrency(currency.value)}
+                      >
+                        <div className="relative">
+                          <Listbox.Button className="relative rounded-lg border border-default bg-surface pl-3 pr-10 py-1 text-sm font-medium text-fg-muted hover:bg-canvas focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+                            <span className="block truncate">{selectedCurrencyInfo.label}</span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                              <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute right-0 z-10 mt-1 max-h-60 w-48 overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                              {currencies.map((currency) => (
+                                <Listbox.Option
+                                  key={currency.value}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
+                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                    }`
+                                  }
+                                  value={currency}
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate text-sm font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                        {currency.label}
+                                      </span>
+                                      {selected ? (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                                          <Check className="h-4 w-4" aria-hidden="true" />
+                                        </span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
                     </div>
-                    <div className="text-sm text-link mt-2">USD</div>
+                    {selectedCurrency === 'usd' ? (
+                      <div className="text-4xl font-bold text-fg-muted">
+                        ${formatNumber(calculateStorageCost())}
+                      </div>
+                    ) : cryptoPrice !== undefined ? (
+                      <div className="text-4xl font-bold text-fg-muted">
+                        {formatNumber(cryptoPrice, 6)} {selectedCurrencyInfo.symbol}
+                      </div>
+                    ) : (
+                      <div className="text-2xl text-link py-2">Loading price...</div>
+                    )}
                   </div>
 
                   {/* Secondary Info */}
@@ -361,18 +621,25 @@ export default function PricingCalculatorPanel() {
                         {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)}
                       </span>
                     </div>
+                    {selectedCurrency !== 'usd' && (
+                      <div className="flex justify-between items-center pt-2 border-t border-default">
+                        <span className="text-sm text-link">USD Equivalent</span>
+                        <span className="text-base font-medium text-fg-muted">
+                          ≈ ${formatNumber(calculateStorageCost())}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 flex-1 flex flex-col justify-between">
                   {/* Primary Result */}
                   <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-                    <div className="text-sm text-link mb-1">Storage You Get</div>
-                    <div className="text-4xl font-bold text-fg-muted">
-                      {formatNumber(calculateStorageForDollars())} GiB
+                    <div className="flex items-center justify-between mb-3 min-h-[28px]">
+                      <div className="text-sm text-link">Storage You Get</div>
                     </div>
-                    <div className="text-sm text-link mt-2">
-                      = {formatBytes(calculateStorageForDollars() * 1024 * 1024 * 1024)}
+                    <div className="text-4xl font-bold text-fg-muted">
+                      {formatBytes(calculateStorageForBudget() * 1024 * 1024 * 1024)}
                     </div>
                   </div>
 
@@ -381,15 +648,28 @@ export default function PricingCalculatorPanel() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-link">Your Budget</span>
                       <span className="text-lg font-medium text-fg-muted">
-                        ${formatNumber(dollarAmount)}
+                        {selectedCurrency === 'usd' ? `$${formatNumber(dollarAmount)}` : `${formatNumber(dollarAmount, 6)} ${selectedCurrencyInfo.symbol}`}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-link">Credits You'll Get</span>
                       <span className="text-lg font-medium text-fg-muted">
-                        {formatNumber(dollarAmount * creditsForOneUSD)}
+                        {selectedCurrency === 'usd'
+                          ? formatNumber(dollarAmount * creditsForOneUSD)
+                          : wincFromCrypto
+                            ? formatNumber(wincFromCrypto / 1e12)
+                            : '0'
+                        }
                       </span>
                     </div>
+                    {selectedCurrency !== 'usd' && (
+                      <div className="flex justify-between items-center pt-2 border-t border-default">
+                        <span className="text-sm text-link">USD Equivalent</span>
+                        <span className="text-base font-medium text-fg-muted">
+                          ≈ ${formatNumber(calculateBudgetUSDEquivalent())}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
