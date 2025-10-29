@@ -265,8 +265,8 @@ export default function GatewayInfoPanel() {
       <div className="space-y-4">
         <h4 className="text-lg font-bold text-fg-muted">Related Services</h4>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a 
-            href={currentConfig.gatewayUrl}
+          <a
+            href={currentConfig.uploadServiceUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors border border-default hover:border-link/50"

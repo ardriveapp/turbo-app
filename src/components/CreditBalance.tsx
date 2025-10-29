@@ -8,18 +8,19 @@ export function CreditBalance() {
   const { address, getCurrentConfig } = useStore();
   
   const { data: balance, isLoading } = useQuery({
-    queryKey: ['balance', address, getCurrentConfig().gatewayUrl],
+    queryKey: ['balance', address, getCurrentConfig().paymentServiceUrl],
     queryFn: async () => {
       if (!address) return null;
-      
+
       const config = getCurrentConfig();
-      const turbo = TurboFactory.authenticated({
-        privateKey: undefined,
-        token: 'ethereum',
-        gatewayUrl: config.gatewayUrl,
+      const turbo = TurboFactory.unauthenticated({
+        token: 'arweave',
+        paymentServiceConfig: {
+          url: config.paymentServiceUrl,
+        },
       });
-      
-      const { winc } = await turbo.getBalance();
+
+      const { winc } = await turbo.getBalance(address);
       return winc;
     },
     enabled: !!address,

@@ -109,10 +109,10 @@ export function useGatewayInfo() {
         let pricingData = null;
         let arweaveNodeData = null;
 
-        // Fetch upload service info from configured gateway
+        // Fetch upload service info from upload service URL
         try {
           const config = getCurrentConfig();
-          const uploadResponse = await fetch(config.gatewayUrl);
+          const uploadResponse = await fetch(config.uploadServiceUrl);
           uploadData = await uploadResponse.json();
           setUploadServiceInfo(uploadData);
         } catch (err) {
@@ -278,7 +278,7 @@ export function useGatewayInfo() {
       // Fetch upload service info
       try {
         const config = getCurrentConfig();
-        const uploadResponse = await fetch(config.gatewayUrl);
+        const uploadResponse = await fetch(config.uploadServiceUrl);
         uploadData = await uploadResponse.json();
         setUploadServiceInfo(uploadData);
       } catch (err) {

@@ -19,6 +19,18 @@ const getPaymentServiceUrl = (): string => {
   return 'https://payment.ardrive.io';
 };
 
+/**
+ * Get current AR.IO gateway URL from developer configuration
+ */
+const getArioGatewayUrl = (): string => {
+  if (typeof window !== 'undefined' && (window as any).__TURBO_STORE__) {
+    const config = (window as any).__TURBO_STORE__.getState().getCurrentConfig();
+    return config.arioGatewayUrl;
+  }
+  // Fallback to production default
+  return 'https://turbo-gateway.com';
+};
+
 export const getTurboBalance = async (
   address: string,
   tokenType: string = 'arweave',
@@ -133,9 +145,12 @@ export const getGatewayBaseUrl = (): string => {
   const protocol = window.location.protocol;
   const port = window.location.port;
 
-  // Local development - use turbo-gateway.com
+  // Get configured AR.IO gateway from store
+  const configuredGateway = getArioGatewayUrl();
+
+  // Local development - use configured AR.IO gateway
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://turbo-gateway.com';
+    return configuredGateway;
   }
 
   // Check if we're on a subdomain-based ArNS gateway (e.g., turbo.ar.io, turbo.vilenarios.com)
@@ -147,7 +162,7 @@ export const getGatewayBaseUrl = (): string => {
 
     // Special case: ar.io cannot serve transaction content
     if (baseGateway === 'ar.io') {
-      return 'https://turbo-gateway.com';
+      return configuredGateway;
     }
 
     // For other gateways that can serve content (vilenarios.com, arweave.net, etc.)
@@ -165,8 +180,8 @@ export const getArweaveUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
 
   // The gateway base URL already handles all the logic:
-  // - localhost -> turbo-gateway.com
-  // - turbo.ar.io -> turbo-gateway.com (ar.io cannot serve content)
+  // - localhost -> configured AR.IO gateway (default: turbo-gateway.com)
+  // - turbo.ar.io -> configured AR.IO gateway (ar.io cannot serve content)
   // - turbo.vilenarios.com -> vilenarios.com (can serve content)
   // - turbo-gateway.com -> turbo-gateway.com
   return `${gatewayBase}/${txId}`;
@@ -176,7 +191,7 @@ export const getArweaveRawUrl = (txId: string): string => {
   const gatewayBase = getGatewayBaseUrl();
 
   // The gateway base URL already handles the logic for which domain to use
-  // ar.io -> turbo-gateway.com (cannot serve content)
+  // ar.io -> configured AR.IO gateway (cannot serve content)
   // vilenarios.com -> vilenarios.com (can serve content)
   // turbo-gateway.com -> turbo-gateway.com (can serve content)
   return `${gatewayBase}/raw/${txId}`;
