@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
-import { formatWalletAddress } from '../utils';
+import { formatWalletAddress, getTurboBalance } from '../utils';
 import TurboLogo from './TurboLogo';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
@@ -87,37 +87,16 @@ const Header = () => {
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
-    if (!address) {
+    if (!address || !walletType) {
       setCredits('0');
       return;
     }
-    
+
     setLoadingBalance(true);
     try {
-      // For balance checking, let the SDK handle address conversion
-      // Use authenticated client when possible for better address handling
-      let turbo;
-      let addressToUse = address;
-      
-      try {
-        // Try to create authenticated client which handles native address conversion
-        if (walletType === 'arweave' && window.arweaveWallet) {
-          const signer = new ArconnectSigner(window.arweaveWallet);
-          turbo = TurboFactory.authenticated({ ...turboConfig, signer });
-          addressToUse = address;
-        } else {
-          // Fallback to unauthenticated client
-          turbo = TurboFactory.unauthenticated(turboConfig);
-          addressToUse = address;
-        }
-      } catch {
-        // If authentication fails, use unauthenticated
-        turbo = TurboFactory.unauthenticated(turboConfig);
-        addressToUse = address;
-      }
-      
-      const balance = await turbo.getBalance(addressToUse);
-      
+      // Use utility function that properly handles all wallet types
+      const balance = await getTurboBalance(address, walletType);
+
       // Convert winc to credits and format with smart precision
       const creditsAmount = Number(balance.winc) / 1e12;
       setCreditBalance(creditsAmount);
@@ -154,7 +133,7 @@ const Header = () => {
       setLoadingBalance(false);
       setIsRefreshing(false);
     }
-  }, [address, walletType, setCreditBalance, turboConfig]);
+  }, [address, walletType, setCreditBalance]);
 
   useEffect(() => {
     fetchBalance();

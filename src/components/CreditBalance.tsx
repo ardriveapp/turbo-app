@@ -2,28 +2,20 @@ import React from 'react';
 import { Coins } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useQuery } from '@tanstack/react-query';
-import { TurboFactory } from '@ardrive/turbo-sdk/web';
+import { getTurboBalance } from '@/utils';
 
 export function CreditBalance() {
-  const { address, getCurrentConfig } = useStore();
-  
+  const { address, walletType, getCurrentConfig } = useStore();
+
   const { data: balance, isLoading } = useQuery({
-    queryKey: ['balance', address, getCurrentConfig().paymentServiceUrl],
+    queryKey: ['balance', address, walletType, getCurrentConfig().paymentServiceUrl],
     queryFn: async () => {
-      if (!address) return null;
+      if (!address || !walletType) return null;
 
-      const config = getCurrentConfig();
-      const turbo = TurboFactory.unauthenticated({
-        token: 'arweave',
-        paymentServiceConfig: {
-          url: config.paymentServiceUrl,
-        },
-      });
-
-      const { winc } = await turbo.getBalance(address);
-      return winc;
+      const result = await getTurboBalance(address, walletType);
+      return result.winc;
     },
-    enabled: !!address,
+    enabled: !!address && !!walletType,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 

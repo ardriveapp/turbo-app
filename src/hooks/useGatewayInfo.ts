@@ -162,7 +162,10 @@ export function useGatewayInfo() {
           
           // Step 1: Get how much winc you get when you PAY Turbo $10 USD (includes their 23% fee)
           console.log('💳 Getting Turbo payment rate (includes processing fees)...');
-          const turboPaymentRate = await turbo.getWincForFiat({ amount: USD(10), promoCodes: [] });
+          const turboPaymentRate = await turbo.getWincForFiat({
+            amount: USD(10),
+            promoCodes: []
+          });
           const turboWincPer10USD = Number(turboPaymentRate.winc);
           const turboWincPer1USD = turboWincPer10USD / 10;
           
@@ -322,7 +325,10 @@ export function useGatewayInfo() {
       // Fetch pricing information
       try {
         const turbo = TurboFactory.unauthenticated(turboConfig);
-        const wincFor1USD = await turbo.getWincForFiat({ amount: USD(1), promoCodes: [] });
+        const wincFor1USD = await turbo.getWincForFiat({
+          amount: USD(1),
+          promoCodes: []
+        });
         
         // Try to get base gateway rate for comparison
         let basePrice = undefined;

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Coins, Share2, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { TurboFactory } from '@ardrive/turbo-sdk/web';
+import { getTurboBalance } from '../../utils';
 import { useStore } from '../../store/useStore';
-import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { wincPerCredit } from '../../constants';
 
@@ -15,21 +14,19 @@ interface BalanceData {
 }
 
 export default function BalanceCardsGrid() {
-  const { address } = useStore();
+  const { address, walletType } = useStore();
   const navigate = useNavigate();
-  const turboConfig = useTurboConfig();
   const wincForOneGiB = useWincForOneGiB();
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchBalanceData = async () => {
-      if (!address) return;
-      
+      if (!address || !walletType) return;
+
       setLoading(true);
       try {
-        const turbo = TurboFactory.unauthenticated(turboConfig);
-        const balance = await turbo.getBalance(address);
+        const balance = await getTurboBalance(address, walletType);
         
         const {
           winc,
@@ -56,7 +53,7 @@ export default function BalanceCardsGrid() {
     };
 
     fetchBalanceData();
-  }, [address, turboConfig, wincForOneGiB]);
+  }, [address, walletType, wincForOneGiB]);
 
   if (!balanceData && !loading) {
     return null;

@@ -9,6 +9,7 @@ import TurboLogo from '../../TurboLogo';
 import { useWallets } from '@privy-io/react-auth';
 import { getWalletTypeLabel } from '../../../utils/addressValidation';
 import CopyButton from '../../CopyButton';
+import { useTurboConfig } from '../../../hooks/useTurboConfig';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -27,8 +28,11 @@ export default function CryptoConfirmationPanel({
   const { wallets } = useWallets(); // Get Privy wallets
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
+  const [failedTxId, setFailedTxId] = useState<string>();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const turboConfig = useStore((state) => state.getCurrentConfig());
+  const turboConfigForRetry = useTurboConfig(tokenType);
 
   // Cross-wallet top-up: Use target address if different from connected wallet
   const turboCreditDestinationAddress = paymentTargetAddress && paymentTargetAddress !== address
@@ -408,6 +412,13 @@ export default function CryptoConfirmationPanel({
         } else if (error.message.includes('gas')) {
           setPaymentError('Transaction gas estimation failed. Please try again or check your wallet settings.');
         } else {
+          // Try to extract transaction ID from error message
+          const txIdMatch = error.message.match(/turbo\.submitFundTransaction\([^)]*\)['"]:\s*(\S+)/);
+          if (txIdMatch && txIdMatch[1]) {
+            setFailedTxId(txIdMatch[1]);
+          } else {
+            setFailedTxId(undefined);
+          }
           setPaymentError(`Payment failed: ${error.message}`);
         }
       } else {
@@ -415,6 +426,52 @@ export default function CryptoConfirmationPanel({
       }
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Retry failed transaction
+  const retryTransaction = async () => {
+    if (!failedTxId) return;
+
+    setIsRetrying(true);
+    setPaymentError('⏳ Waiting for blockchain confirmation (3 seconds)...');
+
+    // Wait a bit for the transaction to be confirmed on-chain
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    setPaymentError('🔄 Submitting transaction to Turbo...');
+
+    try {
+      // Use properly formatted turbo config with correct token type
+      const turbo = TurboFactory.unauthenticated({
+        ...turboConfigForRetry,
+        token: tokenType as any,
+      });
+
+      console.log('Retrying submitFundTransaction with txId:', failedTxId);
+      const response = await turbo.submitFundTransaction({
+        txId: failedTxId,
+      });
+      console.log('Retry response:', response);
+
+      if (response.status === 'failed') {
+        setPaymentError('Transaction retry failed. The blockchain transaction may not be confirmed yet. Please wait a minute and try again, or contact support if the issue persists.');
+        setIsRetrying(false);
+      } else {
+        setFailedTxId(undefined);
+        setPaymentError(undefined);
+        onPaymentComplete(response);
+      }
+    } catch (e: unknown) {
+      console.error('Retry error:', e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+
+      if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+        setPaymentError(`Transaction not found yet. The blockchain transaction (${failedTxId}) needs to be confirmed before Turbo can process it. Please wait 1-2 minutes and try again.`);
+      } else {
+        setPaymentError(`Retry failed: ${errorMessage}`);
+      }
+      setIsRetrying(false);
     }
   };
 
@@ -578,7 +635,19 @@ export default function CryptoConfirmationPanel({
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-red-400 text-sm">{paymentError}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-red-400 text-sm break-words">{paymentError}</div>
+                    {failedTxId && (
+                      <button
+                        onClick={retryTransaction}
+                        disabled={isRetrying}
+                        className="mt-3 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                        {isRetrying ? 'Retrying...' : 'Retry Transaction'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
