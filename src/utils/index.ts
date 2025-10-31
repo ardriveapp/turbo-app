@@ -242,7 +242,7 @@ export const getDisplayArNSName = (name: string, showOriginal = false): string =
  * This is used for Ethereum wallets to determine whether to use ETH, Base-ETH, or POL
  */
 export const getTokenTypeFromChainId = (chainId: number): 'ethereum' | 'base-eth' | 'pol' => {
-  // Ethereum Mainnet and Holesky testnet
+  // Ethereum Mainnet and Sepolia testnet
   if (chainId === 1 || chainId === 17000) {
     return 'ethereum';
   }
