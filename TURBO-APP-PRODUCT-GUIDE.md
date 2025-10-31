@@ -114,22 +114,28 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 3. **Payment Success**: Confirmation with balance update and next steps
 
 **Crypto Payments**
-- Solana and Ethereum payment address generation
-- Base network support for Ethereum (Base-ETH)
+- Direct wallet payments via MetaMask, Phantom, Solflare
+- Automatic network switching for correct blockchain
 - Real-time cryptocurrency to credits conversion with live rates
-- QR codes for mobile wallet scanning
-- Payment monitoring with transaction verification
-- Support for ARIO, SOL, ETH, Base-ETH, KYVE, MATIC, POL tokens
+- Support for 11 token types:
+  - **Native Tokens**: AR, ARIO, ETH, Base-ETH, SOL, KYVE, POL
+  - **Stablecoins**: USDC on Ethereum, USDC on Base, USDC on Polygon
+- Transaction retry mechanism for failed payments
+- Network-specific processing times (instant to 30 minutes)
 
 ### 📤 Upload Files
 
 **Just-in-Time (JIT) Payment System**
 - Automatic credit top-up during upload if balance is insufficient
-- Configurable per token type: ARIO (200 default), SOL (0.15 default), Base-ETH (0.01 default)
+- Configurable per token type with defaults:
+  - ARIO: 200 tokens (~$20)
+  - SOL: 0.15 tokens (~$22.50)
+  - Base-ETH: 0.01 tokens (~$25)
+  - Base-USDC: 25 tokens (~$25)
 - Buffer multiplier (1.1x default) to prevent failed uploads
 - Opt-in system with persistent preferences
 - Seamless user experience without manual top-up interruptions
-- Support for Arweave (ARIO) and Ethereum (Base-ETH) networks
+- Support for ARIO, SOL, Base-ETH, and Base-USDC (fast-confirming networks only)
 - OnDemandFunding integration with Turbo SDK
 
 **File Upload Interface**
@@ -159,8 +165,43 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - ArNS assignment during upload for permanent links
 
 **Wallet Requirements**
-- Only Arweave wallets (Wander) can upload files
-- Ethereum and Solana wallets can only purchase credits
+- Arweave, Ethereum, and Solana wallets can upload files
+- All wallet types support file uploads with proper signers
+- Email authentication users can upload via embedded Ethereum wallet
+
+### 📸 Capture Webpages
+
+**Webpage Capture System**
+- Full-page screenshot capture of any public webpage
+- Integration with turbo-capture-service backend
+- 90-second timeout for complete page rendering
+- PNG format screenshots with viewport metadata
+
+**Capture Features**
+- URL input with validation
+- Progressive disclosure: ArNS and upload options appear after capture
+- Optional ArNS name/undername assignment (Arweave wallets only)
+- Automatic file naming: `capture-{domain}-{timestamp}.png`
+- Standardized metadata tags for organization
+- Unified upload history with camera icon badge
+
+**Capture Metadata Tags**
+All captures include standardized tags:
+- Common: `App-Name`, `App-Feature: 'Capture'`, `App-Version`
+- Capture-specific: `Original-URL`, `Title`, `Viewport-Width`, `Viewport-Height`, `Captured-At`
+
+**Capture Workflow**
+1. **URL Entry**: Enter public webpage URL to capture
+2. **Screenshot Capture**: Service captures full-page screenshot (90s timeout)
+3. **Preview**: Review captured image with metadata
+4. **ArNS Assignment** (Optional): Associate with owned ArNS name/undername
+5. **Upload Confirmation**: Confirm cost and upload to Arweave
+6. **Receipt**: Receive transaction ID and Arweave link
+
+**Configuration**
+- Capture service URL configurable in Developer Resources
+- Separate production/development URLs supported
+- Dynamic configuration via store settings
 
 ### 🌐 Deploy Sites
 
@@ -176,7 +217,7 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Same JIT payment system as file uploads
 - Automatic credit top-up if balance insufficient
 - Buffer multiplier to ensure successful deployment
-- Support for ARIO and Base-ETH tokens
+- Support for ARIO, SOL, Base-ETH, and Base-USDC tokens
 - Seamless deployment without manual credit management
 
 **ArNS Integration**
@@ -399,13 +440,27 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 ### 🪙 Crypto Payment System
 
 **Supported Cryptocurrencies**
-- **Arweave (AR)**: Native Arweave token
-- **ARIO**: AR.IO token on Arweave network
-- **Ethereum (ETH)**: Ethereum mainnet
-- **Base-ETH**: Ethereum on Base L2 network
-- **Solana (SOL)**: Solana mainnet
-- **KYVE**: KYVE network token
-- **MATIC/POL**: Polygon network tokens
+
+*Native Blockchain Tokens*:
+- **Arweave (AR)**: Native Arweave token (slow, 10-60 min)
+- **ARIO**: AR.IO token on AO/Arweave (medium, 5-15 min, JIT enabled)
+- **Ethereum (ETH L1)**: Ethereum mainnet (slow, 10-30 min)
+- **Base-ETH**: Ethereum on Base L2 (fast, instant-3 min, JIT enabled)
+- **Solana (SOL)**: Solana mainnet (fast, instant-2 min, JIT enabled)
+- **KYVE**: KYVE network token (medium)
+- **POL**: Polygon network (fast, 2-5 min)
+
+*Stablecoins (pegged to $1 USD)*:
+- **USDC on Ethereum**: USDC on Ethereum L1 (slow, 10-30 min)
+- **USDC on Base**: USDC on Base L2 (fast, instant-3 min, JIT enabled)
+- **USDC on Polygon**: USDC on Polygon (fast, 2-5 min)
+
+**Payment Features**
+- Direct wallet payments through MetaMask, Phantom, Solflare, Wander
+- Automatic network detection and switching
+- Network validation before transaction
+- Transaction retry mechanism for failed payments
+- Processing time indicators per token type
 
 **Crypto Confirmation Panel**
 - Payment address generation for selected cryptocurrency
@@ -415,16 +470,6 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Payment instructions: amount, address, network
 - Payment monitoring with status updates
 - Transaction verification with blockchain explorers
-
-**Crypto Manual Payment Panel**
-- Detailed payment instructions step-by-step
-- Payment address with copy button
-- Exact amount to send with buffer warnings
-- Network/chain selection guidance
-- Transaction verification process
-- Status tracking: pending → confirmed → completed
-- Error handling with retry mechanisms
-- Support link for payment issues
 
 **Token Gateway Configuration**
 - Configurable RPC endpoints per token type
@@ -559,9 +604,10 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 10. **Completion**: Receive manifest ID, ArNS URL, and success confirmation
 
 **Wallet Requirements**
-- Only Arweave wallets (Wander) can deploy sites
-- ArconnectSigner required for ANT updates
-- Ethereum and Solana wallets cannot deploy
+- Arweave, Ethereum, and Solana wallets can deploy sites
+- All wallet types support site deployment with proper signers
+- ArconnectSigner required for ArNS/ANT updates (Arweave wallets only)
+- Email authentication users can deploy via embedded Ethereum wallet
 
 ---
 
@@ -831,18 +877,37 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - ethers.BrowserProvider for transaction signing
 
 **Wallet Features**
-- Fiat and crypto payment support
+- Fiat and crypto payment support (ETH, Base-ETH, POL, USDC variants)
 - Embedded wallet detection for Privy users
-- Automatic provider switching
-- Base L2 network support for JIT payments
+- Automatic network detection and switching
+- Multi-network support: Ethereum L1, Base L2, Polygon
+- USDC stablecoin payments on all three networks
 - ArNS name display (read-only)
+- JIT payments for Base-ETH and Base-USDC
+
+**Network Auto-Switching**
+- Detects current MetaMask network before payment
+- Automatically switches to correct network per token:
+  - USDC/ETH → Ethereum Mainnet (chain ID 1)
+  - USDC on Base/Base-ETH → Base Mainnet (chain ID 8453)
+  - USDC on Polygon/POL → Polygon Mainnet (chain ID 137)
+- Adds networks to MetaMask if not already configured
+- 1-second wait after switch for provider refresh
+- Clear error messages if switch fails
+
+**Supported Token Types**
+- **Ethereum L1**: ETH, USDC (slower, 10-30 min confirmations)
+- **Base L2**: Base-ETH, Base-USDC (fast, instant-3 min, JIT enabled)
+- **Polygon**: POL, Polygon-USDC (fast, 2-5 min)
 
 **Technical Implementation**
 - TurboFactory.authenticated with ethers signer
-- Token type override for JIT: "ethereum" or "base-eth"
+- Token type override for JIT: "ethereum", "base-eth", "pol", "usdc", "base-usdc", "polygon-usdc"
 - Dynamic turboConfig based on token type
 - Proper gateway URL mapping from tokenMap
+- Network validation before transactions
 - Privy embedded wallet fallback support
+- USDC uses 6 decimals (not 18 like ETH)
 
 ### 👻 Solana Integration (Phantom / Solflare)
 
@@ -866,11 +931,7 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 - Custom adapter wrapping Phantom/Solflare
 - Proper error handling for connection issues
 - Payment monitoring with transaction verification
-
-**JIT Payment Status**
-- SOL JIT payments implemented but not fully functional
-- Known limitation in current release (v0.4.2)
-- Ongoing development for full SOL JIT support
+- JIT payments fully supported for SOL
 
 ## Navigation & User Experience
 
@@ -881,6 +942,7 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 *Services Section* (Login Required):
 - Buy Credits (`/topup`)
 - Upload Files (`/upload`)
+- Capture Page (`/capture`)
 - Deploy Site (`/deploy`)
 - Share Credits (`/share`)
 - Send Gift (`/gift`)
@@ -1139,9 +1201,10 @@ JIT payments allow users to upload files or deploy sites without manually toppin
 **Implementation Details**
 
 *Supported Networks*:
-- **Arweave (ARIO)**: Primary JIT network
-- **Ethereum (Base-ETH)**: Base L2 network for lower fees
-- **Solana (SOL)**: In development, not fully functional
+- **Arweave (ARIO)**: Primary JIT network for Arweave uploads
+- **Ethereum (Base-ETH)**: Base L2 network for lower fees and fast confirmation
+- **Ethereum (Base-USDC)**: USDC stablecoin on Base L2 for predictable pricing
+- **Solana (SOL)**: Fast confirmation times on Solana network
 
 *Configuration* (via JitPaymentCard component):
 ```typescript
@@ -1151,6 +1214,7 @@ interface JITConfig {
     ario: 200,                          // ~$20 worth
     solana: 0.15,                       // ~$22.50 worth
     'base-eth': 0.01,                   // ~$25 worth
+    'base-usdc': 25,                    // $25 exact (stablecoin)
   };
   bufferMultiplier: 1.1;                // 10% buffer to prevent failures
 }
@@ -1280,8 +1344,10 @@ interface DeveloperConfig {
     'base-eth': string;
     solana: string;
     kyve: string;
-    matic: string;
     pol: string;
+    usdc: string;                     // USDC on Ethereum L1
+    'base-usdc': string;              // USDC on Base L2
+    'polygon-usdc': string;           // USDC on Polygon
   };
 }
 ```
@@ -1305,7 +1371,7 @@ interface DeveloperConfig {
 
 *Development*:
 - payment.ardrive.dev, upload.ardrive.dev, turbo.ardrive.dev
-- Testnet RPC endpoints (Holesky, Sepolia, Devnet)
+- Testnet RPC endpoints (Eth Sepolia, Base Sepolia etc.)
 - Test Stripe publishable key
 - Development AR.IO process ID
 
@@ -1526,7 +1592,7 @@ Whether you're uploading files, managing domains, sharing credits, deploying web
 
 ---
 
-*Last Updated: Version 0.4.2 | October 2025*
+*Last Updated: Version 0.7.0 | October 2025*
 
 *For the latest features, technical implementation details, and development guidelines, please refer to:*
 - `CLAUDE.md` - Development and architecture guide
