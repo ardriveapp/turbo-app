@@ -170,16 +170,16 @@ export default function CryptoConfirmationPanel({
                 provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
               } catch {
-                const networkName = tokenType === 'base-eth'
+                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc')
                   ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
-                  : tokenType === 'pol'
+                  : (tokenType === 'pol' || tokenType === 'polygon-usdc')
                   ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
                   : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
                 throw new Error(`Failed to switch to ${networkName}. Please try again.`);
               }
             } else if (window.ethereum) {
               // Only attempt auto-switching for regular wallets
-              if (tokenType === 'base-eth') {
+              if (tokenType === 'base-eth' || tokenType === 'base-usdc') {
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -233,10 +233,11 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
-                    throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
+                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : 'ETH';
+                    throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
-              } else if (tokenType === 'pol') {
+              } else if (tokenType === 'pol' || tokenType === 'polygon-usdc') {
                 // POL: Switch to Polygon network (Amoy testnet or Polygon mainnet)
                 try {
                   await window.ethereum.request({
@@ -291,11 +292,12 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet';
-                    throw new Error(`Please switch to ${networkName} in your wallet for POL payments.`);
+                    const tokenName = tokenType === 'polygon-usdc' ? 'USDC' : 'POL';
+                    throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
-              } else if (tokenType === 'ethereum') {
-                // ETH: Switch to Ethereum network (Holesky testnet or Ethereum mainnet)
+              } else if (tokenType === 'ethereum' || tokenType === 'usdc') {
+                // ETH/USDC: Switch to Ethereum network (Holesky testnet or Ethereum mainnet)
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -308,7 +310,8 @@ export default function CryptoConfirmationPanel({
                   signer = await provider.getSigner();
                 } catch {
                   const networkName = isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet';
-                  throw new Error(`Please switch to ${networkName} in your wallet for ETH payments.`);
+                  const tokenName = tokenType === 'usdc' ? 'USDC' : 'ETH';
+                  throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                 }
               }
             }
