@@ -9,6 +9,7 @@ import TurboLogo from '../../TurboLogo';
 import { useWallets } from '@privy-io/react-auth';
 import { getWalletTypeLabel } from '../../../utils/addressValidation';
 import CopyButton from '../../CopyButton';
+import { useTurboConfig } from '../../../hooks/useTurboConfig';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -27,8 +28,11 @@ export default function CryptoConfirmationPanel({
   const { wallets } = useWallets(); // Get Privy wallets
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
+  const [failedTxId, setFailedTxId] = useState<string>();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const turboConfig = useStore((state) => state.getCurrentConfig());
+  const turboConfigForRetry = useTurboConfig(tokenType);
 
   // Cross-wallet top-up: Use target address if different from connected wallet
   const turboCreditDestinationAddress = paymentTargetAddress && paymentTargetAddress !== address
@@ -66,9 +70,10 @@ export default function CryptoConfirmationPanel({
   };
 
   // Determine if user can pay directly or needs manual payment
+  // SDK v1.35.0-alpha.2 officially supports USDC direct wallet payments
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) ||
     (walletType === 'solana' && tokenType === 'solana')
   );
 
@@ -113,8 +118,8 @@ export default function CryptoConfirmationPanel({
             tokenType,
             transactionId: result.id,
           });
-        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol')) {
-          // ETH L1/Base ETH/POL direct payment via Ethereum wallet
+        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) {
+          // ETH L1/Base ETH/POL/USDC direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
 
           // Check if this is a Privy embedded wallet
@@ -140,12 +145,13 @@ export default function CryptoConfirmationPanel({
           const network = await provider.getNetwork();
           // Dev mode uses testnets: Holesky (17000) for ETH, Base Sepolia (84532) for Base, Amoy (80002) for POL
           // POL is the native token on Polygon network (like ETH on Ethereum)
+          // USDC tokens use the same networks as their corresponding native tokens
           const isDevMode = turboConfig.paymentServiceUrl?.includes('.dev');
-          const expectedChainId = tokenType === 'ethereum'
+          const expectedChainId = (tokenType === 'ethereum' || tokenType === 'usdc')
             ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
-            : tokenType === 'base-eth'
+            : (tokenType === 'base-eth' || tokenType === 'base-usdc')
             ? (isDevMode ? 84532 : 8453) // Base Sepolia : Base mainnet
-            : tokenType === 'pol'
+            : (tokenType === 'pol' || tokenType === 'polygon-usdc')
             ? (isDevMode ? 80002 : 137) // Amoy testnet : Polygon mainnet
             : 1; // Default to Ethereum mainnet
 
@@ -164,16 +170,16 @@ export default function CryptoConfirmationPanel({
                 provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
               } catch {
-                const networkName = tokenType === 'base-eth'
+                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc')
                   ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
-                  : tokenType === 'pol'
+                  : (tokenType === 'pol' || tokenType === 'polygon-usdc')
                   ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
                   : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
                 throw new Error(`Failed to switch to ${networkName}. Please try again.`);
               }
             } else if (window.ethereum) {
               // Only attempt auto-switching for regular wallets
-              if (tokenType === 'base-eth') {
+              if (tokenType === 'base-eth' || tokenType === 'base-usdc') {
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -227,10 +233,11 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
-                    throw new Error(`Please switch to ${networkName} in your wallet for Base ETH payments.`);
+                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : 'ETH';
+                    throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
-              } else if (tokenType === 'pol') {
+              } else if (tokenType === 'pol' || tokenType === 'polygon-usdc') {
                 // POL: Switch to Polygon network (Amoy testnet or Polygon mainnet)
                 try {
                   await window.ethereum.request({
@@ -285,11 +292,12 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet';
-                    throw new Error(`Please switch to ${networkName} in your wallet for POL payments.`);
+                    const tokenName = tokenType === 'polygon-usdc' ? 'USDC' : 'POL';
+                    throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
-              } else if (tokenType === 'ethereum') {
-                // ETH: Switch to Ethereum network (Holesky testnet or Ethereum mainnet)
+              } else if (tokenType === 'ethereum' || tokenType === 'usdc') {
+                // ETH/USDC: Switch to Ethereum network (Holesky testnet or Ethereum mainnet)
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -302,7 +310,8 @@ export default function CryptoConfirmationPanel({
                   signer = await provider.getSigner();
                 } catch {
                   const networkName = isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet';
-                  throw new Error(`Please switch to ${networkName} in your wallet for ETH payments.`);
+                  const tokenName = tokenType === 'usdc' ? 'USDC' : 'ETH';
+                  throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                 }
               }
             }
@@ -332,10 +341,16 @@ export default function CryptoConfirmationPanel({
 
           const turbo = TurboFactory.authenticated(turboConfig_forSDK);
 
-          // Convert to smallest unit (wei for ETH/Base, POL for Polygon)
-          const tokenAmount = tokenType === 'pol'
-            ? POLToTokenAmount(cryptoAmount)
-            : ETHToTokenAmount(cryptoAmount);
+          // Convert to smallest unit (wei for ETH/Base, POL for Polygon, 6 decimals for USDC)
+          let tokenAmount;
+          if (tokenType === 'pol') {
+            tokenAmount = POLToTokenAmount(cryptoAmount);
+          } else if (tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc') {
+            // USDC uses 6 decimals
+            tokenAmount = (cryptoAmount * 1e6).toString();
+          } else {
+            tokenAmount = ETHToTokenAmount(cryptoAmount);
+          }
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
@@ -408,6 +423,13 @@ export default function CryptoConfirmationPanel({
         } else if (error.message.includes('gas')) {
           setPaymentError('Transaction gas estimation failed. Please try again or check your wallet settings.');
         } else {
+          // Try to extract transaction ID from error message
+          const txIdMatch = error.message.match(/turbo\.submitFundTransaction\([^)]*\)['"]:\s*(\S+)/);
+          if (txIdMatch && txIdMatch[1]) {
+            setFailedTxId(txIdMatch[1]);
+          } else {
+            setFailedTxId(undefined);
+          }
           setPaymentError(`Payment failed: ${error.message}`);
         }
       } else {
@@ -415,6 +437,52 @@ export default function CryptoConfirmationPanel({
       }
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Retry failed transaction
+  const retryTransaction = async () => {
+    if (!failedTxId) return;
+
+    setIsRetrying(true);
+    setPaymentError('⏳ Waiting for blockchain confirmation (3 seconds)...');
+
+    // Wait a bit for the transaction to be confirmed on-chain
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    setPaymentError('🔄 Submitting transaction to Turbo...');
+
+    try {
+      // Use properly formatted turbo config with correct token type
+      const turbo = TurboFactory.unauthenticated({
+        ...turboConfigForRetry,
+        token: tokenType as any,
+      });
+
+      console.log('Retrying submitFundTransaction with txId:', failedTxId);
+      const response = await turbo.submitFundTransaction({
+        txId: failedTxId,
+      });
+      console.log('Retry response:', response);
+
+      if (response.status === 'failed') {
+        setPaymentError('Transaction retry failed. The blockchain transaction may not be confirmed yet. Please wait a minute and try again, or contact support if the issue persists.');
+        setIsRetrying(false);
+      } else {
+        setFailedTxId(undefined);
+        setPaymentError(undefined);
+        onPaymentComplete(response);
+      }
+    } catch (e: unknown) {
+      console.error('Retry error:', e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+
+      if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+        setPaymentError(`Transaction not found yet. The blockchain transaction (${failedTxId}) needs to be confirmed before Turbo can process it. Please wait 1-2 minutes and try again.`);
+      } else {
+        setPaymentError(`Retry failed: ${errorMessage}`);
+      }
+      setIsRetrying(false);
     }
   };
 
@@ -500,6 +568,7 @@ export default function CryptoConfirmationPanel({
                   tokenType === 'ethereum' || tokenType === 'base-eth' ? 6
                   : tokenType === 'solana' ? 4
                   : tokenType === 'pol' ? 2
+                  : (tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc') ? 2
                   : 8
                 )} {tokenLabels[tokenType]}</div>
               </div>
@@ -578,7 +647,19 @@ export default function CryptoConfirmationPanel({
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-red-400 text-sm">{paymentError}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-red-400 text-sm break-words">{paymentError}</div>
+                    {failedTxId && (
+                      <button
+                        onClick={retryTransaction}
+                        disabled={isRetrying}
+                        className="mt-3 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                        {isRetrying ? 'Retrying...' : 'Retry Transaction'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

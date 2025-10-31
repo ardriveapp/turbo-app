@@ -256,6 +256,7 @@ export function useFileUpload() {
       const turbo = await createTurboClient(jitTokenType || undefined);
 
       // Starting upload for file
+      console.log(`Starting upload for ${fileName} (${file.size} bytes)`);
 
       // Upload file using the proper uploadFile method for browsers
       const uploadResult = await turbo.uploadFile({
@@ -283,18 +284,27 @@ export function useFileUpload() {
         },
         events: {
           // Overall progress (includes both signing and upload)
-          onProgress: ({ totalBytes, processedBytes }: { totalBytes: number; processedBytes: number }) => {
+          onProgress: (progressData: { totalBytes: number; processedBytes: number; step?: string }) => {
+            const { totalBytes, processedBytes, step } = progressData;
             const percentage = Math.round((processedBytes / totalBytes) * 100);
+            console.log(`Upload progress for ${fileName}: ${percentage}% (${processedBytes}/${totalBytes} bytes, step: ${step || 'unknown'})`);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
-            // Upload progress tracked
+            // Update active uploads array with progress
+            setActiveUploads(prev => prev.map(upload =>
+              upload.name === fileName
+                ? { ...upload, progress: percentage }
+                : upload
+            ));
           },
           onError: (error: any) => {
             // Upload error occurred
+            console.error(`Upload error for ${fileName}:`, error);
             const errorMessage = error?.message || 'Upload failed';
             setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
           },
           onSuccess: () => {
             // Upload completed successfully
+            console.log(`Upload success for ${fileName}`);
             setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
           }
         }
@@ -317,7 +327,7 @@ export function useFileUpload() {
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, createTurboClient]);
+  }, [address, walletType, wallets, createTurboClient]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],

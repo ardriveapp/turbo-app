@@ -10,7 +10,7 @@ const PRESET_CONFIGS = {
     paymentServiceUrl: 'https://payment.ardrive.io',
     uploadServiceUrl: 'https://upload.ardrive.io',
     captureServiceUrl: 'https://vilenarios.com/local/capture',
-    gatewayUrl: 'https://turbo.ardrive.io',
+    arioGatewayUrl: 'https://turbo-gateway.com',
     stripeKey: 'pk_live_51JUAtwC8apPOWkDLMQqNF9sPpfneNSPnwX8YZ8y1FNDl6v94hZIwzgFSYl27bWE4Oos8CLquunUswKrKcaDhDO6m002Yj9AeKj',
     processId: 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
     tokenMap: {
@@ -21,23 +21,29 @@ const PRESET_CONFIGS = {
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
       kyve: 'https://api.kyve.network',
       pol: 'https://polygon-bor-rpc.publicnode.com',
+      'usdc': 'https://cloudflare-eth.com',
+      'base-usdc': 'https://mainnet.base.org',
+      'polygon-usdc': 'https://polygon-bor-rpc.publicnode.com',
     } as Record<SupportedTokenType, string>,
   },
   development: {
     paymentServiceUrl: 'https://payment.ardrive.dev',
     uploadServiceUrl: 'https://upload.ardrive.dev',
     captureServiceUrl: 'https://vilenarios.com/local/capture',
-    gatewayUrl: 'https://turbo.ardrive.dev',
+    arioGatewayUrl: 'https://turbo-gateway.com',
     stripeKey: 'pk_test_51JUAtwC8apPOWkDLh2FPZkQkiKZEkTo6wqgLCtQoClL6S4l2jlbbc5MgOdwOUdU9Tn93NNvqAGbu115lkJChMikG00XUfTmo2z',
     processId: 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
-      ethereum: 'https://ethereum-holesky-rpc.publicnode.com',
+      ethereum: 'https://eth-sepolia.public.blastapi.io',
       'base-eth': 'https://sepolia.base.org',
       solana: 'https://api.devnet.solana.com',
       kyve: 'https://api.korellia.kyve.network',
       pol: 'https://rpc-amoy.polygon.technology',
+      'usdc': 'https://eth-sepolia.public.blastapi.io',
+      'base-usdc': 'https://sepolia.base.org',
+      'polygon-usdc': 'https://rpc-amoy.polygon.technology',
     } as Record<SupportedTokenType, string>,
   },
 } as const;
@@ -90,7 +96,7 @@ export interface DeveloperConfig {
   paymentServiceUrl: string;
   uploadServiceUrl: string;
   captureServiceUrl: string;
-  gatewayUrl: string;
+  arioGatewayUrl: string;
   stripeKey: string;
   processId: string;
   tokenMap: Record<SupportedTokenType, string>;
@@ -258,10 +264,13 @@ export const useStore = create<StoreState>()(
         ario: 200,      // 200 ARIO ≈ $20
         solana: 0.15,   // 0.15 SOL ≈ $22.50
         'base-eth': 0.01, // 0.01 ETH ≈ $25
+        'base-usdc': 25,  // 25 USDC = $25 (stablecoin)
         arweave: 0,
         ethereum: 0,
         kyve: 0,
         pol: 0,
+        'usdc': 0,        // Not supported for JIT (too slow)
+        'polygon-usdc': 0, // Not supported for JIT (too slow)
       },
       jitBufferMultiplier: 1.1, // Default 10% buffer
       // Actions
@@ -387,8 +396,20 @@ export const useStore = create<StoreState>()(
       },
       // Developer configuration actions
       setConfigMode: (mode) => {
+        const { configMode: currentMode, customConfig } = get();
         set({ configMode: mode });
-        if (mode !== 'custom') {
+
+        if (mode === 'custom') {
+          // When switching TO custom mode, initialize with current preset values
+          const currentPresetConfig = currentMode !== 'custom' ? PRESET_CONFIGS[currentMode] : PRESET_CONFIGS.production;
+          // Only initialize if customConfig is empty or matches a preset (not user-modified)
+          const isUnmodified = JSON.stringify(customConfig) === JSON.stringify(PRESET_CONFIGS.production) ||
+                               JSON.stringify(customConfig) === JSON.stringify(PRESET_CONFIGS.development);
+          if (isUnmodified) {
+            set({ customConfig: currentPresetConfig });
+          }
+        } else {
+          // When switching AWAY from custom mode, update customConfig to the new preset
           set({ customConfig: PRESET_CONFIGS[mode] });
         }
       },

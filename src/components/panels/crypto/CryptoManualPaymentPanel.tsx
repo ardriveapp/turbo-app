@@ -32,7 +32,9 @@ export default function CryptoManualPaymentPanel({
   const [transferTransactionResult, setTransferTransactionResult] = useState<TransferTransactionResult>();
   const [transactionSubmitted, setTransactionSubmitted] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
+  const [failedTxId, setFailedTxId] = useState<string>();
   const [signingMessage, setSigningMessage] = useState<string>();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const turboWallet = address && turboWallets ? turboWallets[tokenType] : undefined;
 
@@ -79,10 +81,53 @@ export default function CryptoManualPaymentPanel({
         }
       } catch (e: unknown) {
         console.error(e);
-        setPaymentError(errorSubmittingTransactionToTurbo);
+        // Try to extract transaction ID from error message
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        const txIdMatch = errorMessage.match(/turbo\.submitFundTransaction\([^)]*\)['"]:\s*(\S+)/);
+
+        if (txIdMatch && txIdMatch[1]) {
+          setFailedTxId(txIdMatch[1]);
+          setPaymentError(errorMessage);
+        } else {
+          setFailedTxId(undefined);
+          setPaymentError(errorSubmittingTransactionToTurbo);
+        }
       } finally {
         setSigningMessage(undefined);
       }
+    }
+  };
+
+  // Retry failed transaction
+  const retryTransaction = async () => {
+    if (!failedTxId) return;
+
+    setIsRetrying(true);
+    setPaymentError(undefined);
+    setSigningMessage('Retrying transaction submission...');
+
+    try {
+      const response = await turboUnauthenticatedClient.submitFundTransaction({
+        txId: failedTxId,
+      });
+
+      if (response.status === 'failed') {
+        setPaymentError('Transaction retry failed. Please contact support.');
+      } else {
+        setTransactionSubmitted(true);
+        setFailedTxId(undefined);
+        // Auto-complete after successful submission
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+      }
+    } catch (e: unknown) {
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      setPaymentError(`Retry failed: ${errorMessage}`);
+    } finally {
+      setIsRetrying(false);
+      setSigningMessage(undefined);
     }
   };
 
@@ -298,7 +343,19 @@ export default function CryptoManualPaymentPanel({
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="text-red-400 text-sm">{paymentError}</div>
+            <div className="flex-1">
+              <div className="text-red-400 text-sm">{paymentError}</div>
+              {failedTxId && (
+                <button
+                  onClick={retryTransaction}
+                  disabled={isRetrying}
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                  {isRetrying ? 'Retrying...' : 'Retry Transaction'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

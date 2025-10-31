@@ -2,10 +2,10 @@ import { SupportedTokenType } from '../constants';
 
 /**
  * Check if a wallet type supports just-in-time (on-demand) payments
- * Currently supported: ARIO, SOL, Base-ETH
+ * Currently supported: ARIO, SOL, Base-ETH, Base-USDC
  */
 export function supportsJitPayment(tokenType: SupportedTokenType | null): boolean {
-  return tokenType === 'ario' || tokenType === 'solana' || tokenType === 'base-eth';
+  return tokenType === 'ario' || tokenType === 'solana' || tokenType === 'base-eth' || tokenType === 'base-usdc';
 }
 
 /**
@@ -21,6 +21,9 @@ export function getTokenConverter(tokenType: SupportedTokenType): ((amount: numb
     solana: 9,
     kyve: 18,
     pol: 18,
+    'usdc': 6,        // USDC uses 6 decimals
+    'base-usdc': 6,   // USDC uses 6 decimals
+    'polygon-usdc': 6, // USDC uses 6 decimals
   };
 
   const decimals = TOKEN_DECIMALS[tokenType];
@@ -39,6 +42,9 @@ export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType):
     solana: 9,
     kyve: 18,
     pol: 18,
+    'usdc': 6,        // USDC uses 6 decimals
+    'base-usdc': 6,   // USDC uses 6 decimals
+    'polygon-usdc': 6, // USDC uses 6 decimals
   };
 
   const decimals = TOKEN_DECIMALS[tokenType];
@@ -65,6 +71,9 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
     arweave: 4,
     kyve: 2,
     pol: 2,
+    'usdc': 2,        // 10.50 USDC (stablecoin, dollars and cents)
+    'base-usdc': 2,   // 10.50 USDC (stablecoin, dollars and cents)
+    'polygon-usdc': 2, // 10.50 USDC (stablecoin, dollars and cents)
   };
 
   return amount.toFixed(precision[tokenType]);
@@ -204,10 +213,13 @@ export function getDefaultMaxTokenAmount(tokenType: SupportedTokenType): number 
     ario: 200,      // 200 ARIO ≈ $20 at $0.10/ARIO
     solana: 0.15,   // 0.15 SOL ≈ $22.50 at $150/SOL
     'base-eth': 0.01, // 0.01 ETH ≈ $25 at $2500/ETH
+    'base-usdc': 25,  // 25 USDC = $25 (stablecoin)
     arweave: 0,
     ethereum: 0,
     kyve: 0,
     pol: 0,
+    'usdc': 0,        // Not supported for JIT (too slow)
+    'polygon-usdc': 0, // Not supported for JIT (too slow)
   };
 
   return defaults[tokenType] || 0;

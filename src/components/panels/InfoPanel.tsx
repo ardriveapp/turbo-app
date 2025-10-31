@@ -5,22 +5,22 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import Faq from '../Faq';
 
 export default function InfoPanel() {
-  const { address } = useStore();
+  const { address, walletType } = useStore();
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const wincForOneGiB = useWincForOneGiB();
 
   useEffect(() => {
-    if (!address) return;
-    
+    if (!address || !walletType) return;
+
     setLoading(true);
-    getTurboBalance(address)
+    getTurboBalance(address, walletType)
       .then((result) => {
         setBalance(wincToCredits(result.winc));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [address]);
+  }, [address, walletType]);
 
   const estimatedStorage = wincForOneGiB 
     ? (balance * 1_000_000_000_000) / Number(wincForOneGiB) 

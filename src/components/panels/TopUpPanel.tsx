@@ -143,6 +143,9 @@ export default function TopUpPanel() {
       case 'solana': return [0.05, 0.1, 0.25, 0.5];
       case 'kyve': return [100, 500, 1000, 2000];
       case 'pol': return [10, 50, 100, 250];
+      case 'usdc': return [10, 25, 50, 100];
+      case 'base-usdc': return [10, 25, 50, 100];
+      case 'polygon-usdc': return [10, 25, 50, 100];
       default: return [0.01, 0.05, 0.1, 0.25];
     }
   };
@@ -313,7 +316,7 @@ export default function TopUpPanel() {
       case 'arweave':
         return ['arweave', 'ario'];
       case 'ethereum':
-        return ['ethereum', 'base-eth', 'pol'];
+        return ['ethereum', 'base-eth', 'pol', 'usdc', 'base-usdc', 'polygon-usdc'];
       case 'solana':
         return ['solana'];
       default:
@@ -341,6 +344,12 @@ export default function TopUpPanel() {
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Base L2 (lower fees)';
       case 'pol':
         return 'Connect an Ethereum wallet (like MetaMask) to pay with POL on Polygon network';
+      case 'usdc':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with USDC on Ethereum L1';
+      case 'base-usdc':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with USDC on Base L2';
+      case 'polygon-usdc':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with USDC on Polygon network';
       case 'solana':
         return 'Connect a Solana wallet (like Phantom) to pay with SOL tokens';
       default:
@@ -707,10 +716,92 @@ export default function TopUpPanel() {
                   </div>
                 </div>
               </div>
+            ) : walletType === 'ethereum' ? (
+              // Custom layout for Ethereum wallet with ETH tokens and USDC tokens
+              <div className="space-y-4">
+                {/* ETH Tokens Row */}
+                <div className="grid grid-cols-3 gap-2">
+                  {(['ethereum', 'base-eth', 'pol'] as const).map((tokenType) => (
+                    <button
+                      key={tokenType}
+                      onClick={() => {
+                        setSelectedTokenType(tokenType);
+                        setErrorMessage('');
+                      }}
+                      className={`p-3 rounded-lg border transition-all text-left ${
+                        selectedTokenType === tokenType
+                          ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                          : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-bold text-base">
+                          {tokenLabels[tokenType]}
+                        </div>
+                        {tokenType === 'base-eth' && (
+                          <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                            Low Fee
+                          </div>
+                        )}
+                        {tokenType === 'ethereum' && (
+                          <div className="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                            High Fee
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs font-medium opacity-90 mb-0.5">
+                        {tokenNetworkLabels[tokenType]}
+                      </div>
+                      <div className="text-[11px] opacity-75 line-clamp-2">
+                        {tokenNetworkDescriptions[tokenType]}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* USDC Stablecoins Row */}
+                <div>
+                  <div className="text-xs font-medium text-link mb-2 px-1">Stablecoins (pegged to $1 USD)</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => (
+                      <button
+                        key={tokenType}
+                        onClick={() => {
+                          setSelectedTokenType(tokenType);
+                          setErrorMessage('');
+                        }}
+                        className={`p-3 rounded-lg border transition-all text-left ${
+                          selectedTokenType === tokenType
+                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="font-bold text-base">
+                            {tokenLabels[tokenType]}
+                          </div>
+                          {tokenType === 'base-usdc' && (
+                            <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                              Fast
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs font-medium opacity-90 mb-0.5">
+                          {tokenNetworkLabels[tokenType]}
+                        </div>
+                        <div className="text-[11px] opacity-75 line-clamp-2">
+                          {tokenNetworkDescriptions[tokenType]}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             ) : (
+              // Default layout for other wallet types (Arweave, Solana)
               <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : getAvailableTokens().length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {getAvailableTokens().map((tokenType) => (
-                  <button 
+                  <button
                     key={tokenType}
                     onClick={() => {
                       setSelectedTokenType(tokenType);
@@ -726,16 +817,6 @@ export default function TopUpPanel() {
                       <div className="font-bold text-lg">
                         {tokenLabels[tokenType as keyof typeof tokenLabels]}
                       </div>
-                      {tokenType === 'base-eth' && (
-                        <div className="bg-green-500/20 text-green-400 px-2 py-1 rounded-md text-xs font-medium">
-                          Lower Fees
-                        </div>
-                      )}
-                      {tokenType === 'ethereum' && (
-                        <div className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-md text-xs font-medium">
-                          Higher Fees
-                        </div>
-                      )}
                     </div>
                     <div className="text-sm font-medium opacity-90 mb-1">
                       {tokenNetworkLabels[tokenType]}

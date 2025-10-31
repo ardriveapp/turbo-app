@@ -1,6 +1,6 @@
 {
   "name": "turbo-gateway-app",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "Unified Turbo Gateway Application",
   "scripts": {
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@ar.io/sdk": "^3.19.0-alpha.10",
-    "@ardrive/turbo-sdk": "^1.34.0-alpha.1",
+    "@ardrive/turbo-sdk": "^1.35.0-alpha.2",
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
     "@permaweb/aoconnect": "^0.0.69",

@@ -545,22 +545,22 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                 )}
               </div>
 
-              {/* Gateway URL */}
+              {/* AR.IO Gateway URL */}
               <div>
-                <label className="block text-sm font-medium text-link mb-2">Gateway URL</label>
+                <label className="block text-sm font-medium text-link mb-2">AR.IO Gateway URL</label>
                 {configMode === 'custom' ? (
                   <input
                     type="text"
-                    value={currentConfig.gatewayUrl}
-                    onChange={(e) => updateCustomConfig('gatewayUrl', e.target.value)}
+                    value={currentConfig.arioGatewayUrl}
+                    onChange={(e) => updateCustomConfig('arioGatewayUrl', e.target.value)}
                     className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-purple focus:border-transparent"
                   />
                 ) : (
                   <div className="flex items-center gap-2">
                     <code className="flex-1 px-3 py-2 bg-black/40 rounded-lg text-sm text-fg-muted font-mono">
-                      {currentConfig.gatewayUrl}
+                      {currentConfig.arioGatewayUrl}
                     </code>
-                    <CopyButton textToCopy={currentConfig.gatewayUrl} />
+                    <CopyButton textToCopy={currentConfig.arioGatewayUrl} />
                   </div>
                 )}
               </div>

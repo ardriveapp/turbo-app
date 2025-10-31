@@ -53,6 +53,10 @@ const getAmountByTokenType = (amount: number, token: string) => {
       return ARIOToTokenAmount(amount); // Proper ARIO token conversion
     case 'pol':
       return POLToTokenAmount(amount); // Proper POL token conversion
+    case 'usdc':
+    case 'base-usdc':
+    case 'polygon-usdc':
+      return amount * 1e6; // USDC uses 6 decimals
     // For now, these tokens use base amounts - may need specific converters later
     case 'kyve':
       return amount * 1e18; // Most ERC20 tokens use 18 decimals
@@ -85,7 +89,7 @@ export function useWincForAnyToken(token: string, amount: number) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const turboConfig = useTurboConfig(token); // Pass token to get proper gatewayUrl for dev mode
-  
+
   useEffect(() => {
     if (amount <= 0) {
       setWincForToken(undefined);
@@ -95,24 +99,42 @@ export function useWincForAnyToken(token: string, amount: number) {
 
     setError(null);
     setLoading(true);
-    
+
     const fetchPricing = async () => {
       try {
         // Convert to proper token units (wei for ETH, lamports for SOL, etc.)
         const tokenAmount = getAmountByTokenType(amount, token);
-        
+
         if (!tokenAmount) {
           throw new Error(`Unsupported token type: ${token}`);
         }
-        
-        // Use direct API call like reference app
-        const paymentServiceUrl = turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io';
-        const result = await getWincForToken(+tokenAmount, token, paymentServiceUrl);
-        
-        if (result.winc && Number(result.winc) > 0) {
-          setWincForToken(result.winc);
+
+        // For USDC tokens, use SDK method instead of direct API (API might not support USDC yet)
+        if (token === 'usdc' || token === 'base-usdc' || token === 'polygon-usdc') {
+          const turbo = TurboFactory.unauthenticated({
+            token: token as any,
+            paymentServiceConfig: turboConfig.paymentServiceConfig,
+            gatewayUrl: turboConfig.gatewayUrl,
+          });
+
+          // Use getWincForToken method (converts token amount to winc)
+          const result = await turbo.getWincForToken({ tokenAmount: tokenAmount.toString() });
+
+          if (result.winc && Number(result.winc) > 0) {
+            setWincForToken(result.winc);
+          } else {
+            throw new Error(`No pricing data available for ${token}`);
+          }
         } else {
-          throw new Error(`No pricing data available for ${token}`);
+          // Use direct API call for other tokens
+          const paymentServiceUrl = turboConfig.paymentServiceConfig?.url || 'https://payment.ardrive.io';
+          const result = await getWincForToken(+tokenAmount, token, paymentServiceUrl);
+
+          if (result.winc && Number(result.winc) > 0) {
+            setWincForToken(result.winc);
+          } else {
+            throw new Error(`No pricing data available for ${token}`);
+          }
         }
       } catch (err) {
         console.warn(`Pricing failed for ${token}:`, err);
