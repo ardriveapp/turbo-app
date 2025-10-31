@@ -54,7 +54,7 @@ export const maxARAmount = 200;
 export const minUSDAmount = 5;
 
 // Crypto token configuration - matching reference app
-export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'pol'] as const;
+export const supportedCryptoTokens = ['arweave', 'ario', 'ethereum', 'base-eth', 'solana', 'kyve', 'pol', 'usdc', 'base-usdc', 'polygon-usdc'] as const;
 export type SupportedTokenType = typeof supportedCryptoTokens[number];
 
 // Currency labels matching reference app
@@ -66,6 +66,9 @@ export const tokenLabels: Record<SupportedTokenType, string> = {
   solana: 'SOL',
   kyve: 'KYVE',
   pol: 'POL',
+  'usdc': 'USDC (ETH)',
+  'base-usdc': 'USDC (Base)',
+  'polygon-usdc': 'USDC (Polygon)',
 } as const;
 
 // Detailed network labels for UI contexts
@@ -77,6 +80,9 @@ export const tokenNetworkLabels: Record<SupportedTokenType, string> = {
   solana: 'Solana Network',
   kyve: 'KYVE Network',
   pol: 'Polygon Network',
+  'usdc': 'USDC on Ethereum',
+  'base-usdc': 'USDC on Base',
+  'polygon-usdc': 'USDC on Polygon',
 } as const;
 
 // Network descriptions for user clarity
@@ -88,6 +94,9 @@ export const tokenNetworkDescriptions: Record<SupportedTokenType, string> = {
   solana: 'Native SOL tokens on the Solana blockchain',
   kyve: 'KYVE tokens on the KYVE network',
   pol: 'POL tokens on the Polygon network',
+  'usdc': 'USDC stablecoin on Ethereum mainnet',
+  'base-usdc': 'USDC stablecoin on Base Layer 2',
+  'polygon-usdc': 'USDC stablecoin on Polygon network',
 } as const;
 
 // Token processing time expectations for user communication
@@ -130,6 +139,21 @@ export const tokenProcessingTimes: Record<SupportedTokenType, {
     time: '2-5 minutes',
     speed: 'fast',
     description: 'Polygon network is optimized for speed'
+  },
+  'usdc': {
+    time: '10-30 minutes',
+    speed: 'slow',
+    description: 'USDC on Ethereum L1 requires multiple confirmations'
+  },
+  'base-usdc': {
+    time: 'near instant-3 minutes',
+    speed: 'fast',
+    description: 'USDC on Base L2 offers faster confirmation times'
+  },
+  'polygon-usdc': {
+    time: '2-5 minutes',
+    speed: 'fast',
+    description: 'USDC on Polygon network is optimized for speed'
   },
 } as const;
 

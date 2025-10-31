@@ -2,7 +2,6 @@ import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Camera, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
 import { formatWalletAddress, getTurboBalance } from '../utils';
@@ -10,7 +9,6 @@ import TurboLogo from './TurboLogo';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
 import { useNavigate } from 'react-router-dom';
-import { useTurboConfig } from '../hooks/useTurboConfig';
 import { usePrivyWallet } from '../hooks/usePrivyWallet';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
@@ -72,7 +70,6 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode } = useStore();
-  const turboConfig = useTurboConfig();
   const { isPrivyUser, privyLogout } = usePrivyWallet();
   const { exportWallet } = usePrivy();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names

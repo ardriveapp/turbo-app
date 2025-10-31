@@ -70,6 +70,10 @@ export default function CryptoConfirmationPanel({
   };
 
   // Determine if user can pay directly or needs manual payment
+  // NOTE: USDC tokens require manual payment due to Turbo SDK v1.35.0-alpha.1 bug
+  // Bug: signerFromAdapter() in factory.js has hardcoded ethTokens = ['ethereum', 'base-eth', 'matic', 'pol']
+  // Missing: 'usdc', 'base-usdc', 'polygon-usdc'
+  // Once SDK adds USDC to ethTokens set, add USDC tokens to the ethereum check below
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
     (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol')) ||

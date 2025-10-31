@@ -21,6 +21,9 @@ const PRESET_CONFIGS = {
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
       kyve: 'https://api.kyve.network',
       pol: 'https://polygon-bor-rpc.publicnode.com',
+      'usdc': 'https://cloudflare-eth.com',
+      'base-usdc': 'https://mainnet.base.org',
+      'polygon-usdc': 'https://polygon-bor-rpc.publicnode.com',
     } as Record<SupportedTokenType, string>,
   },
   development: {
@@ -33,11 +36,14 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
-      ethereum: 'https://ethereum-holesky-rpc.publicnode.com',
+      ethereum: 'https://eth-sepolia.public.blastapi.io',
       'base-eth': 'https://sepolia.base.org',
       solana: 'https://api.devnet.solana.com',
       kyve: 'https://api.korellia.kyve.network',
       pol: 'https://rpc-amoy.polygon.technology',
+      'usdc': 'https://eth-sepolia.public.blastapi.io',
+      'base-usdc': 'https://sepolia.base.org',
+      'polygon-usdc': 'https://rpc-amoy.polygon.technology',
     } as Record<SupportedTokenType, string>,
   },
 } as const;
@@ -258,10 +264,13 @@ export const useStore = create<StoreState>()(
         ario: 200,      // 200 ARIO ≈ $20
         solana: 0.15,   // 0.15 SOL ≈ $22.50
         'base-eth': 0.01, // 0.01 ETH ≈ $25
+        'base-usdc': 25,  // 25 USDC = $25 (stablecoin)
         arweave: 0,
         ethereum: 0,
         kyve: 0,
         pol: 0,
+        'usdc': 0,        // Not supported for JIT (too slow)
+        'polygon-usdc': 0, // Not supported for JIT (too slow)
       },
       jitBufferMultiplier: 1.1, // Default 10% buffer
       // Actions
