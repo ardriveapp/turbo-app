@@ -12,7 +12,7 @@ export default function Footer() {
               © {currentYear} PDS Inc.
             </div>
             <a 
-              href="https://github.com/ardriveapp/turbo-gateway-app"
+              href="https://github.com/ardriveapp/turbo-app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-link/60 hover:text-link transition-colors cursor-pointer flex-shrink-0" 
@@ -25,7 +25,7 @@ export default function Footer() {
           {/* Social Icons */}
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <a
-              href="https://twitter.com/ardriveapp"
+              href="https://twitter.com/ar_io_network"
               target="_blank"
               rel="noopener noreferrer"
               className="text-link hover:text-fg-muted transition-colors"
@@ -34,7 +34,7 @@ export default function Footer() {
               <Twitter className="w-4 h-4" />
             </a>
             <a
-              href="https://github.com/ardriveapp/turbo-gateway-app"
+              href="https://github.com/ardriveapp/turbo-app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-link hover:text-fg-muted transition-colors"
@@ -43,7 +43,7 @@ export default function Footer() {
               <Github className="w-4 h-4" />
             </a>
             <a
-              href="https://discord.gg/ardrive"
+              href="https://discord.com/invite/HGG52EtTc2"
               target="_blank"
               rel="noopener noreferrer"
               className="text-link hover:text-fg-muted transition-colors"

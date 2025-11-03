@@ -4,10 +4,12 @@ import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
+import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
+import { useCreditsForFiat } from '../hooks/useCreditsForFiat';
 import {
   ArrowRight, Zap, Github, FileCode, Database, Rss,
   CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info,
-  Package, Cloud, Server, Wallet, Brain, Camera
+  Package, Cloud, Server, Wallet, Brain, Camera, Phone, BookOpen, Calculator
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -20,6 +22,15 @@ const LandingPage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  // Get pricing data (matches pricing calculator logic)
+  const wincForOneGiB = useWincForOneGiB();
+  const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
+
+  // Convert winc to USD: winc -> credits -> dollars
+  const pricePerGiB = wincForOneGiB && creditsForOneUSD
+    ? ((Number(wincForOneGiB) / 1e12) / creditsForOneUSD).toFixed(2)
+    : '...';
 
   // Handle touch gestures for mobile swiping
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -222,66 +233,62 @@ const LandingPage = () => {
   return (
     <div className="space-y-12 px-4 sm:px-0">
       {/* Hero Section */}
-      <div className="flex w-full flex-col items-center rounded-xl border border-default bg-gradient-to-b from-canvas to-surface/30 px-8 sm:px-12 py-12">
+      <div className="flex w-full flex-col items-center rounded-xl border border-default bg-gradient-to-b from-canvas to-surface/30 px-8 sm:px-12 py-10">
         {/* Small badge */}
-        <a 
+        <a
           href="https://ar.io"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-surface/80 backdrop-blur text-fg-muted px-3 py-1.5 rounded-full text-xs font-semibold mb-6 border border-default hover:border-turbo-purple/50 transition-colors group"
+          className="inline-flex items-center gap-2 bg-surface/80 backdrop-blur text-fg-muted px-3 py-1.5 rounded-full text-xs font-semibold mb-4 border border-default hover:border-turbo-purple/50 transition-colors group"
         >
           <img src="/ar.io-logo-white.png" alt="AR.IO" className="h-4 w-auto" />
           <span className="group-hover:text-turbo-red transition-colors">Powered by AR.IO</span>
         </a>
-        
+
         {/* Main headline with gradient */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-center max-w-5xl leading-tight">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center max-w-5xl leading-tight">
           <span className="bg-gradient-to-r from-fg-muted via-fg-muted to-turbo-red bg-clip-text text-transparent">
             The fastest way to upload, download, and index
           </span>
-          <span className="text-fg-muted block mt-2">on Arweave.</span>
+          <span className="text-fg-muted"> on Arweave.</span>
         </h1>
-        
+
         {/* Subheadline */}
-        <p className="mt-6 text-lg sm:text-xl text-center max-w-3xl text-link/90 leading-relaxed">
+        <p className="mt-5 text-base sm:text-lg text-center max-w-3xl text-link/90 leading-relaxed">
           Turbo is a streamlined permaweb service provider with built-in fiat and crypto payments. Top up instantly and ship fast with SDKs designed for developers.
         </p>
-        
+
         {/* CTA Section */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-          <button
+        <div className="mt-7 flex flex-col sm:flex-row items-center gap-4">
+          <a
+            href="https://cal.com/kempsterrrr/ar-io-ecosystem-intro"
+            target="_blank"
+            rel="noopener noreferrer"
             className="group relative rounded-lg bg-turbo-red px-8 py-4 font-bold text-white hover:bg-turbo-red/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2 text-lg"
-            onClick={() => {
-              if (loggedIn) {
-                navigate('/upload');
-              } else {
-                setShowWalletModal(true);
-              }
-            }}
           >
-            <Upload className="w-5 h-5" />
-            <span>{loggedIn ? 'Upload Files' : 'Try Turbo'}</span>
-          </button>
-          
+            <Phone className="w-5 h-5" />
+            <span>Book a Demo</span>
+          </a>
+
           <a
             href="https://docs.ar.io/build/upload/bundling-services"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-link hover:text-fg-muted font-medium flex items-center gap-1 group"
+            className="rounded-lg border border-default px-8 py-4 font-medium flex items-center gap-2 hover:bg-surface hover:border-fg-muted transition-all group"
           >
-            Start Building
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <BookOpen className="w-5 h-5" />
+            <span>Read the Docs</span>
           </a>
         </div>
-        
+
         {/* Free tier callout */}
-        <div className="mt-4 text-sm text-link/70">
+        <div className="mt-3 text-sm text-link/70">
           <Check className="w-4 h-4 text-green-500 inline mr-1" />
           Files under 100 KiB are completely FREE
         </div>
-        
+
         {/* Terminal snippet - more integrated */}
-        <div className="mt-12 w-full max-w-2xl">
+        <div className="mt-8 w-full max-w-2xl">
           <div className="text-xs text-link/60 uppercase tracking-wider mb-2 text-center">Quick Start</div>
           <div className="bg-black border border-white/20 rounded-lg overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between bg-black px-3 py-2 border-b border-white/20">
@@ -293,7 +300,7 @@ const LandingPage = () => {
               <div className="flex-1 text-center">
                 <span className="text-[10px] text-white/50 font-mono uppercase tracking-wider">bash</span>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   navigator.clipboard.writeText('npm i @ardrive/turbo-sdk');
                   setCopied(true);
@@ -322,6 +329,23 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Subtle Try it Out link */}
+          <div className="mt-3 text-center">
+            <button
+              onClick={() => {
+                if (loggedIn) {
+                  navigate('/upload');
+                } else {
+                  setShowWalletModal(true);
+                }
+              }}
+              className="text-sm text-link hover:text-fg-muted underline decoration-link/40 hover:decoration-fg-muted inline-flex items-center gap-1.5 group transition-colors"
+            >
+              <span>or try uploading a file</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
 
         {showWalletModal && (
@@ -336,72 +360,109 @@ const LandingPage = () => {
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-3 text-fg-muted">How does it work?</h2>
           <p className="text-lg text-link/80 max-w-3xl mx-auto">
-            Turbo abstracts Arweave complexity with instant payments and reliable, permanent settlement and access, backed by the AR.IO Network.
+            Turbo abstracts Arweave complexity with instant funding, streamlined uploads, and verifiable on-chain settlement — all distributed through the AR.IO Network.
           </p>
         </div>
         
         <div className="grid md:grid-cols-4 gap-6">
           {/* Step 1: Fund */}
           <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-purple/50 transition-colors group">
-            <div className="text-2xl font-bold text-fg-muted mb-2">1</div>
-            <h3 className="text-xl font-bold text-fg-muted mb-3">Fund</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-2xl font-bold text-fg-muted">1.</div>
+              <h3 className="text-xl font-bold text-fg-muted">Fund</h3>
+            </div>
             <p className="text-sm text-link">
-              Purchase Turbo Credits instantly with credit cards or topup with crypto like ETH, SOL, ARIO and more.
+              Buy Turbo Credits instantly with a card or crypto like ETH, SOL, ARIO, Stablecoins and more — ready to upload in seconds.
             </p>
           </div>
-          
+
           {/* Step 2: Bundle */}
           <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-purple/50 transition-colors group">
-            <div className="text-2xl font-bold text-fg-muted mb-2">2</div>
-            <h3 className="text-xl font-bold text-fg-muted mb-3">Upload </h3>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-2xl font-bold text-fg-muted">2.</div>
+              <h3 className="text-xl font-bold text-fg-muted">Upload</h3>
+            </div>
             <p className="text-sm text-link">
-              Upload your data using the Turbo SDK and any Arweave, Ethereum or Solana wallet.
+              Use the Turbo SDK with your favorite Arweave, Ethereum, or Solana wallet to upload data directly to the Permaweb.
             </p>
           </div>
-          
+
           {/* Step 3: Settle */}
           <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-purple/50 transition-colors group">
-            <div className="text-2xl font-bold text-fg-muted mb-2">3</div>
-            <h3 className="text-xl font-bold text-fg-muted mb-3">Settle</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-2xl font-bold text-fg-muted">3.</div>
+              <h3 className="text-xl font-bold text-fg-muted">Settle</h3>
+            </div>
             <p className="text-sm text-link">
-              Your files are bundled up settled to the Arweave blockchain. Time stamped, tamper proof and with a clear record of provenance.
+              Your files are bundled and permanently stored on Arweave — timestamped, tamper-proof, and verifiable forever.
             </p>
           </div>
-          
+
           {/* Step 4: Access */}
           <div className="bg-surface/50 border border-default rounded-xl p-6 hover:border-turbo-purple/50 transition-colors group">
-            <div className="text-2xl font-bold text-fg-muted mb-2">4</div>
-            <h3 className="text-xl font-bold text-fg-muted mb-3">Access</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="text-2xl font-bold text-fg-muted">4.</div>
+              <h3 className="text-xl font-bold text-fg-muted">Access</h3>
+            </div>
             <p className="text-sm text-link">
-              Data becomes instantly accessible with CDN-level performance through the decentralized AR.IO Network.
+              Access your data instantly with CDN-level performance through the decentralized AR.IO Network.
             </p>
           </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href="https://cal.com/kempsterrrr/ar-io-ecosystem-intro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative rounded-lg bg-turbo-red px-8 py-4 font-bold text-white hover:bg-turbo-red/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2 text-lg"
+          >
+            <Phone className="w-5 h-5" />
+            <span>Book a Demo</span>
+          </a>
+
+          <button
+            className="rounded-lg border border-default px-8 py-4 font-medium flex items-center gap-2 hover:bg-surface hover:border-fg-muted transition-all group"
+            onClick={() => {
+              if (loggedIn) {
+                navigate('/upload');
+              } else {
+                setShowWalletModal(true);
+              }
+            }}
+          >
+            <Upload className="w-5 h-5" />
+            <span>Try it Out</span>
+          </button>
         </div>
       </div>
 
-      {/* Turbo by the Numbers */}
+      {/* Pricing Section */}
       <div className="mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-fg-muted mb-2">Turbo by the Numbers</h2>
-          <p className="text-link/80">Real performance metrics from production infrastructure</p>
+          <h2 className="text-2xl font-bold text-fg-muted mb-2">Transparent Pricing</h2>
+          <p className="text-link/80">Pay-as-you-go storage with no subscriptions</p>
         </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">20B+</div>
-            <div className="text-sm text-link">Files uploaded to Arweave</div>
+
+        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="bg-gradient-to-br from-turbo-green/10 to-turbo-green/5 rounded-lg border-2 border-turbo-green/50 p-8 text-center">
+            <div className="text-4xl font-bold text-turbo-green mb-2">FREE</div>
+            <div className="text-lg text-fg-muted font-medium mb-1">Files under 100 KiB</div>
+            <div className="text-sm text-link">No credit card required</div>
           </div>
-          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">200+</div>
-            <div className="text-sm text-link">TiB of data stored</div>
-          </div>
-          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">~860</div>
-            <div className="text-sm text-link">Files per second</div>
-          </div>
-          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
-            <div className="text-3xl font-bold text-turbo-red mb-1">99.9%</div>
-            <div className="text-sm text-link">Gateway uptime</div>
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-8 text-center">
+            <div className="text-4xl font-bold text-turbo-red mb-2">${pricePerGiB}</div>
+            <div className="text-lg text-fg-muted font-medium mb-1">Per GiB</div>
+            <div className="text-sm text-link mb-4">Larger files & bulk storage</div>
+            <button
+              onClick={() => navigate('/calculator')}
+              className="inline-flex items-center gap-1 text-sm text-link hover:text-fg-muted font-medium group"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              <span>Calculate custom costs</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         </div>
       </div>
@@ -681,6 +742,56 @@ const LandingPage = () => {
         </div>
       </div>
 
+      {/* CTA Section after Features */}
+      <div className="mb-12 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href="https://cal.com/kempsterrrr/ar-io-ecosystem-intro"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative rounded-lg bg-turbo-red px-8 py-4 font-bold text-white hover:bg-turbo-red/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center gap-2 text-lg"
+        >
+          <Phone className="w-5 h-5" />
+          <span>Book a Demo</span>
+        </a>
+
+        <a
+          href="https://docs.ar.io/build/upload/bundling-services"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border border-default px-8 py-4 font-medium flex items-center gap-2 hover:bg-surface hover:border-fg-muted transition-all group"
+        >
+          <BookOpen className="w-5 h-5" />
+          <span>Read the Docs</span>
+        </a>
+      </div>
+
+      {/* Turbo by the Numbers */}
+      <div className="mb-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-fg-muted mb-2">Turbo by the Numbers</h2>
+          <p className="text-link/80">Real performance metrics from production infrastructure</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">20B+</div>
+            <div className="text-sm text-link">Files uploaded to Arweave</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">200+</div>
+            <div className="text-sm text-link">TiB of data stored</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">~860</div>
+            <div className="text-sm text-link">Files per second</div>
+          </div>
+          <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-6 text-center">
+            <div className="text-3xl font-bold text-turbo-red mb-1">99.9%</div>
+            <div className="text-sm text-link">Gateway uptime</div>
+          </div>
+        </div>
+      </div>
+
       {/* Build Section */}
       <section>
         <h2 className="text-2xl font-bold mb-6 text-fg-muted">Build</h2>
@@ -953,6 +1064,24 @@ const LandingPage = () => {
             <ArrowRight className="w-5 h-5 text-link group-hover:translate-x-1 transition-transform" />
           </a>
         </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="bg-gradient-to-r from-turbo-red/10 to-turbo-blue/10 rounded-lg border border-default p-8 sm:p-12 text-center">
+        <h2 className="text-3xl font-bold mb-4 text-fg-muted">Ready to Build on Arweave?</h2>
+        <p className="text-lg text-link max-w-2xl mx-auto mb-8">
+          Talk to our team about custom integrations, enterprise solutions, or technical guidance.
+          We'll help you choose the right architecture for permanent data storage at scale.
+        </p>
+        <a
+          href="https://cal.com/kempsterrrr/ar-io-ecosystem-intro"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg bg-turbo-red px-8 py-4 font-bold text-white hover:bg-turbo-red/90 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl text-lg"
+        >
+          <Phone className="w-5 h-5" />
+          <span>Book a Demo</span>
+        </a>
       </section>
 
     </div>

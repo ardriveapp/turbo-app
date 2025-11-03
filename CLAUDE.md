@@ -654,7 +654,7 @@ const turboConfig = useTurboConfig(tokenType); // Hook that uses current config
 
 **Token Map**: Each crypto token has a dedicated RPC URL that can be customized:
 - Production uses mainnet RPCs (Ethereum, Solana, Base, Polygon, etc.)
-- Development uses testnet/devnet RPCs (Holesky, Devnet, Sepolia, Amoy, etc.)
+- Development uses testnet/devnet RPCs (Eth Sepolia, Base Sepolia, Amoy, etc.)
 - Custom mode allows overriding individual token RPC URLs
 
 **Window Exposure**: The store is exposed as `window.__TURBO_STORE__` for runtime debugging and configuration changes
