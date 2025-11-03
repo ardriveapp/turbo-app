@@ -1545,9 +1545,9 @@ interface DeveloperConfig {
 - [Privy Documentation](https://docs.privy.io) - Email authentication and embedded wallets
 
 **Community Support**
-- GitHub Issues: [turbo-gateway-app](https://github.com/ardriveapp/turbo-gateway-app/issues)
-- Discord Community: [ar.io Discord](https://discord.gg/ardrive)
-- Twitter: [@ardriveapp](https://twitter.com/ardriveapp)
+- GitHub Issues: [turbo-gateway-app](https://github.com/ardriveapp/turbo-app/issues)
+- Discord Community: [ar.io Discord](https://discord.com/invite/HGG52EtTc2)
+- Twitter: [@ar_io_network](https://twitter.com/ar_io_network)
 
 **API Documentation**
 - Upload Service: https://upload.ardrive.io/api-docs
