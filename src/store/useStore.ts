@@ -110,7 +110,7 @@ interface StoreState {
   
   // ArNS state
   arnsNamesCache: Record<string, { name: string; logo?: string; timestamp: number }>;
-  ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}>; timestamp: number }>;
+  ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>; timestamp: number }>;
   
   // Upload history state
   uploadHistory: UploadResult[];
@@ -167,8 +167,8 @@ interface StoreState {
   setCreditBalance: (balance: number) => void;
   setArNSName: (address: string, name: string, logo?: string) => void;
   getArNSName: (address: string) => { name: string; logo?: string } | null;
-  setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}>) => void;
-  getOwnedArNSNames: (address: string) => Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]}> | null;
+  setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>) => void;
+  getOwnedArNSNames: (address: string) => Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}> | null;
   addUploadResults: (results: UploadResult[]) => void;
   updateUploadWithArNS: (uploadId: string, arnsName: string, undername?: string, arnsTransactionId?: string) => void;
   clearUploadHistory: () => void;

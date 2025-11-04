@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Globe, X, Loader2, AlertCircle, RefreshCw, ChevronDown, Check, ExternalLink } from 'lucide-react';
+import { Globe, X, Loader2, AlertCircle, RefreshCw, ChevronDown, Check, ExternalLink, ChevronRight } from 'lucide-react';
 import { Listbox } from '@headlessui/react';
 import BaseModal from './BaseModal';
 import { useOwnedArNSNames } from '../../hooks/useOwnedArNSNames';
@@ -27,12 +27,18 @@ export default function AssignDomainModal({
   const [selectedArnsName, setSelectedArnsName] = useState(existingArnsName || '');
   const [selectedUndername, setSelectedUndername] = useState(existingUndername || '');
   const [undernameMode, setUndernameMode] = useState<'none' | 'new' | 'existing'>(
-    existingUndername 
+    existingUndername
       ? (names.find(n => n.name === existingArnsName)?.undernames?.includes(existingUndername) ? 'existing' : 'new')
       : 'none'
   );
   const [isAssigning, setIsAssigning] = useState(false);
   const [error, setError] = useState<string>();
+
+  // TTL settings
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [ttlMode, setTTLMode] = useState<'existing' | 'custom'>('existing');
+  const [customTTLInput, setCustomTTLInput] = useState<string>('600');
+  const [customTTL, setCustomTTL] = useState<number | undefined>(undefined);
 
   // Auto-fetch names when modal opens
   useEffect(() => {
@@ -48,10 +54,42 @@ export default function AssignDomainModal({
     }
   }, [undernameMode]);
 
+  // Computed values
   const selectedNameRecord = names.find(name => name.name === selectedArnsName);
   const displayName = selectedNameRecord?.displayName || selectedArnsName;
   const isExistingUndername = selectedUndername && selectedNameRecord?.undernames?.includes(selectedUndername);
   const isNewUndername = selectedUndername && !isExistingUndername;
+
+  // Get current TTL (either for undername or base name)
+  const currentTTL = selectedUndername && selectedNameRecord?.undernameTTLs?.[selectedUndername]
+    ? selectedNameRecord.undernameTTLs[selectedUndername]
+    : selectedNameRecord?.ttl || 600;
+
+  // Format TTL for display
+  const formatTTL = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h`;
+  };
+
+  // Handle TTL mode changes
+  useEffect(() => {
+    if (ttlMode === 'existing') {
+      setCustomTTL(undefined); // Use existing TTL
+    } else {
+      const ttlValue = parseInt(customTTLInput);
+      if (!isNaN(ttlValue) && ttlValue >= 60 && ttlValue <= 86400) {
+        setCustomTTL(ttlValue);
+      }
+    }
+  }, [ttlMode, customTTLInput]);
+
+  // Update customTTLInput when current TTL changes
+  useEffect(() => {
+    if (currentTTL && ttlMode === 'existing') {
+      setCustomTTLInput(currentTTL.toString());
+    }
+  }, [currentTTL, ttlMode]);
 
   const handleAssignDomain = async () => {
     if (!selectedArnsName) {
@@ -66,7 +104,8 @@ export default function AssignDomainModal({
       const result = await updateArNSRecord(
         selectedArnsName,
         manifestId,
-        selectedUndername || undefined
+        selectedUndername || undefined,
+        customTTL
       );
       
       if (result.success) {
@@ -377,6 +416,121 @@ export default function AssignDomainModal({
                     {!selectedUndername && selectedNameRecord?.currentTarget && (
                       <div className="text-xs text-link">
                         Currently points to: {selectedNameRecord.currentTarget.substring(0, 6)}...
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Advanced Settings */}
+                {selectedArnsName && (
+                  <div className="border-t border-turbo-yellow/20 pt-4">
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-turbo-yellow transition-colors w-full"
+                    >
+                      <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+                      Advanced Settings
+                    </button>
+
+                    {showAdvanced && (
+                      <div className="mt-4 space-y-4 bg-surface/30 rounded-lg p-4 border border-turbo-yellow/10">
+                        <div>
+                          <div className="text-sm font-medium text-fg-muted mb-3">
+                            TTL (Time to Live)
+                          </div>
+
+                          {/* TTL Mode Selection */}
+                          <div className="space-y-3">
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name="ttl-mode"
+                                checked={ttlMode === 'existing'}
+                                onChange={() => setTTLMode('existing')}
+                                className="mt-0.5 w-4 h-4 bg-surface border-2 border-default rounded-full checked:bg-canvas checked:border-turbo-yellow transition-colors"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm text-fg-muted group-hover:text-turbo-yellow transition-colors">
+                                  Keep existing TTL
+                                </div>
+                                <div className="text-xs text-link mt-0.5">
+                                  Preserve current setting ({formatTTL(currentTTL)} / {currentTTL} seconds)
+                                </div>
+                              </div>
+                            </label>
+
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name="ttl-mode"
+                                checked={ttlMode === 'custom'}
+                                onChange={() => setTTLMode('custom')}
+                                className="mt-0.5 w-4 h-4 bg-surface border-2 border-default rounded-full checked:bg-canvas checked:border-turbo-yellow transition-colors"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm text-fg-muted group-hover:text-turbo-yellow transition-colors">
+                                  Set custom TTL
+                                </div>
+                                {ttlMode === 'custom' && (
+                                  <div className="mt-3 space-y-2">
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="number"
+                                        min="60"
+                                        max="86400"
+                                        value={customTTLInput}
+                                        onChange={(e) => setCustomTTLInput(e.target.value)}
+                                        className="flex-1 px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted text-sm focus:border-turbo-yellow focus:outline-none focus:ring-1 focus:ring-turbo-yellow"
+                                        placeholder="600"
+                                      />
+                                      <span className="px-3 py-2 bg-surface/50 border border-default rounded-lg text-link text-sm flex items-center">
+                                        seconds
+                                      </span>
+                                    </div>
+
+                                    {/* Quick Select Buttons */}
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setCustomTTLInput('300')}
+                                        className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      >
+                                        5 min
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setCustomTTLInput('600')}
+                                        className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      >
+                                        10 min
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setCustomTTLInput('900')}
+                                        className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      >
+                                        15 min
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setCustomTTLInput('3600')}
+                                        className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      >
+                                        1 hour
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+
+                          {/* Help Text */}
+                          <div className="mt-3 text-xs text-link bg-turbo-yellow/5 rounded p-3 border border-turbo-yellow/20">
+                            <div className="font-medium text-fg-muted mb-1">What is TTL?</div>
+                            TTL controls how long AR.IO gateways cache your content before checking for updates. Lower values (5-10 min) are better for frequently updated content, while higher values (1 hour+) work well for static sites and reduce network requests.
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

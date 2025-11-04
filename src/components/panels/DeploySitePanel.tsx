@@ -247,6 +247,7 @@ export default function DeploySitePanel() {
   const [arnsEnabled, setArnsEnabled] = useState(false);
   const [selectedArnsName, setSelectedArnsName] = useState('');
   const [selectedUndername, setSelectedUndername] = useState('');
+  const [customTTL, setCustomTTL] = useState<number | undefined>(undefined);
   const [showUndername, setShowUndername] = useState(false);
   const [arnsUpdateCancelled, setArnsUpdateCancelled] = useState(false);
   const [showDeployResults, setShowDeployResults] = useState(true);
@@ -260,6 +261,7 @@ export default function DeploySitePanel() {
   const [postDeployArNSUpdating, setPostDeployArNSUpdating] = useState(false);
   // Post-deployment ArNS enabled state (disabled by default, user can enable)
   const [postDeployArNSEnabled, setPostDeployArNSEnabled] = useState(false);
+  const [postDeployCustomTTL, setPostDeployCustomTTL] = useState<number | undefined>(undefined);
   // Domain assignment modal state
   const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
 
@@ -903,7 +905,8 @@ export default function DeploySitePanel() {
             const arnsResult = await updateArNSRecord(
               selectedArnsName,
               result.manifestId,
-              selectedUndername || undefined
+              selectedUndername || undefined,
+              customTTL
             );
             
             // Add ArNS update to deploy history
@@ -1275,6 +1278,8 @@ export default function DeploySitePanel() {
           onNameChange={setSelectedArnsName}
           selectedUndername={selectedUndername}
           onUndernameChange={setSelectedUndername}
+          customTTL={customTTL}
+          onCustomTTLChange={setCustomTTL}
           showUndername={showUndername}
           onShowUndernameChange={setShowUndername}
         />
@@ -1572,6 +1577,8 @@ export default function DeploySitePanel() {
             onUndernameChange={setPostDeployUndername}
             showUndername={postDeployShowUndername}
             onShowUndernameChange={setPostDeployShowUndername}
+            customTTL={postDeployCustomTTL}
+            onCustomTTLChange={setPostDeployCustomTTL}
           />
           
           {/* Connect Domain Action - Only show when enabled and name selected */}
@@ -1589,7 +1596,7 @@ export default function DeploySitePanel() {
                       undername: postDeployUndername 
                     });
                     
-                    const result = await updateArNSRecord(postDeployArNSName, deploySuccessInfo.manifestId, postDeployUndername || undefined);
+                    const result = await updateArNSRecord(postDeployArNSName, deploySuccessInfo.manifestId, postDeployUndername || undefined, postDeployCustomTTL);
                     console.log('Post-deployment ArNS update result:', result);
                     
                     if (result.success) {

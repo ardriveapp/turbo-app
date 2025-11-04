@@ -141,6 +141,7 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 **Supported Crypto Tokens**:
 - `arweave` (AR), `ario` (ARIO), `ethereum` (ETH L1), `base-eth` (ETH on Base L2)
 - `solana` (SOL), `kyve` (KYVE), `matic` (MATIC), `pol` (POL)
+- `usdc` (USDC on Ethereum), `base-usdc` (USDC on Base), `polygon-usdc` (USDC on Polygon)
 - Each token has network-specific RPC URLs configured in the token map
 - Processing times vary: Solana/Base (fast), Polygon (medium), Arweave/Ethereum (slow)
 
@@ -153,8 +154,21 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
   - Testnet: `https://rpc-amoy.polygon.technology`
 - **Auto Network Detection**: `getTokenTypeFromChainId()` utility in `utils/index.ts` automatically detects token type from chain ID
 - **Network Switching**: Automatic network switching with MetaMask's `wallet_switchEthereumChain` and `wallet_addEthereumChain`
-- **JIT Payments**: NOT supported (only ARIO, SOL, Base-ETH support JIT per Turbo SDK)
+- **JIT Payments**: NOT supported (only ARIO, SOL, Base-ETH, Base-USDC support JIT per Turbo SDK)
 - **Turbo SDK Integration**: Uses `POLToTokenAmount()` helper for token amount conversion
+
+**USDC (Stablecoin) Token Support**:
+- Fully integrated USDC stablecoin support across three networks
+- **Token Types**: `usdc` (Ethereum), `base-usdc` (Base), `polygon-usdc` (Polygon)
+- **Network Auto-Detection**: Automatically detects current network for USDC payments
+- **Automatic Network Switching**: Prompts MetaMask to switch to correct network for selected USDC type
+- **Chain IDs**:
+  - Ethereum: 1 (Mainnet)
+  - Base: 8453 (Mainnet), 84532 (Sepolia Testnet)
+  - Polygon: 137 (Mainnet), 80002 (Amoy Testnet)
+- **JIT Payments**: Base-USDC supports JIT with 25 USDC default (~$25)
+- **Transaction Retry**: Built-in retry mechanism using React Query for failed transactions
+- **Turbo SDK Integration**: Uses SDK v1.35.0-alpha.2 with native USDC support
 
 ### Service Architecture
 
@@ -171,10 +185,15 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
 - **Crypto Payments**: Multi-token crypto payment flow in `src/components/panels/crypto/`
   - `CryptoConfirmationPanel.tsx`: Token selection and amount confirmation
   - `CryptoManualPaymentPanel.tsx`: Payment address display and instructions
-  - Supports 8 crypto tokens with network-specific handling
+  - Supports 11 crypto tokens with network-specific handling
 - **Payment Target System**: Allows funding any wallet address without authentication
   - `paymentTargetAddress` / `paymentTargetType` separate from connected wallet
   - Enables unauthenticated credit purchases for any address
+- **Cross-Wallet Top-Up**: Fund any wallet address without connecting that wallet
+  - Separate `paymentTargetAddress` from connected wallet
+  - Support for all wallet types (Arweave, Ethereum, Solana)
+  - Use cases: Gift credits, pre-fund wallets, top up team member accounts
+  - Independent of authentication state with target address validation
 - **Real-time Conversion**: USD/crypto to credits with debouncing (500ms via `useDebounce`)
 - **Balance Refresh**: Custom event system (`refresh-balance`) for cross-component updates
 - **Just-in-Time (JIT) Payments**: Opt-in automatic crypto top-ups with configurable limits per token
@@ -198,7 +217,7 @@ All uploads (File Upload, Deploy Site, Webpage Capture) include standardized met
 **Common Tags** (all features):
 - `App-Name: 'Turbo-App'` - Application identifier (from `APP_NAME` constant in `constants.ts`)
 - `App-Feature: 'File Upload' | 'Deploy Site' | 'Capture'` - Feature that created the upload
-- `App-Version: '0.5.0'` - Application version (from `APP_VERSION` constant in `constants.ts`)
+- `App-Version` - Application version dynamically from package.json (via `APP_VERSION` constant in `constants.ts`)
 
 **Feature-Specific Tags**:
 
@@ -289,6 +308,12 @@ All uploads (File Upload, Deploy Site, Webpage Capture) include standardized met
 
 ### Component Patterns
 
+#### Footer Component
+- Displays copyright and version information
+- Shows dynamic app version from package.json
+- Consistent across all pages via Layout component
+- Dark theme styling matching brand colors
+
 #### Service Panel Design Pattern
 All service panels follow consistent styling:
 ```jsx
@@ -333,6 +358,7 @@ All service panels follow consistent styling:
 - `useTurboWallets`: Turbo wallet management
 - `useUploadStatus`: Upload status tracking
 - `usePrivyWallet`: Privy wallet detection and logout management
+- `useWalletAccountListener`: Monitors wallet account changes across all wallet types
 
 ### Styling System
 
@@ -397,7 +423,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 ## Key Dependencies
 
 ### Core Integration
-- `@ardrive/turbo-sdk`: v1.32.1-alpha.2 - Turbo services integration
+- `@ardrive/turbo-sdk`: v1.35.0-alpha.2 - Turbo services integration with USDC support
 - `@ar.io/sdk`: v3.19.0-alpha.10 - ArNS name resolution and domain management
 - `@privy-io/react-auth`: Email authentication with embedded wallets
 - `wagmi`: v2.12.5 - Ethereum wallet integration and Web3 functionality
@@ -414,7 +440,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.5.0)
+### ✅ Completed Features (v0.7.1)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
@@ -425,7 +451,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - **Webpage Capture system with turbo-capture-service integration**
 - **Full-page screenshot capture with 90-second timeout**
 - **Standardized upload tagging across all features (File Upload, Deploy Site, Capture)**
-- **Common metadata tags (App-Name, App-Feature, App-Version) plus feature-specific tags**
+- **Common metadata tags (App-Name, App-Feature, App-Version from package.json) plus feature-specific tags**
 - **Capture tags include viewport dimensions (Viewport-Width, Viewport-Height)**
 - **Dynamic capture service URL configuration**
 - **ArNS assignment for captured pages matching Deploy Site UX**
@@ -450,6 +476,20 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Improved mobile views and responsive design
 - Sticky top header navigation
 - Optimized TTL settings for ArNS records (600s default)
+- USDC support across Ethereum, Base, and Polygon networks
+- Cross-wallet top-up functionality allowing funding any wallet
+- Transaction retry mechanism for improved payment reliability
+- Dynamic APP_VERSION from package.json
+
+### Recent Development (v0.6.0 - v0.7.1)
+- **USDC Integration** (v0.7.0): Full support for USDC stablecoins on Ethereum, Base, and Polygon
+- **Cross-Wallet Top-Up** (v0.6.0): Fund any wallet address without connecting that wallet
+- **Transaction Retry**: React Query-based retry mechanism for failed payments
+- **Cryptocurrency Pricing**: Added crypto pricing to storage calculator
+- **POL Support**: Polygon (POL) payment integration
+- **Landing Page Enhancements** (v0.7.1): Improved CTAs and UX
+- **Testnet Updates**: Migrated references from Holesky to Sepolia testnet
+- **Dynamic Versioning**: APP_VERSION now reads from package.json
 
 ### ⚠️ Known Limitations
 - **Crypto Payments**: Solana and Ethereum crypto payments implemented but need improved UX and additional testing
@@ -468,7 +508,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 | Share Credits | ✅ | ✅ (all networks) | ✅ |
 | ArNS Names | ✅ | ✅ (all networks) | ❌ |
 | Update ArNS Records | ✅ | ❌ | ❌ |
-| JIT Payments | ✅ ARIO only | ✅ Base-ETH only | ✅ |
+| JIT Payments | ✅ ARIO only | ✅ Base-ETH, Base-USDC | ✅ |
 
 **Note**: Ethereum wallet (MetaMask) automatically detects current network (Ethereum Mainnet, Base, or Polygon) and uses the appropriate token (ETH, Base-ETH, or POL) for all operations.
 
@@ -502,7 +542,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
   // Common tags (required for all features)
   { name: 'App-Name', value: APP_NAME },  // 'Turbo-App'
   { name: 'App-Feature', value: 'Capture' },
-  { name: 'App-Version', value: APP_VERSION },  // '0.5.0'
+  { name: 'App-Version', value: APP_VERSION },  // Dynamic from package.json
 
   // Capture-specific tags
   { name: 'Original-URL', value: captureResult.finalUrl },
@@ -564,8 +604,35 @@ const tokenType = getTokenTypeFromChainId(Number(network.chainId));
 - POL uses same Ethereum wallet infrastructure (MetaMask)
 - Network detection happens automatically before Turbo client creation
 - `createTurboClient()` accepts `tokenTypeOverride` parameter for JIT payment scenarios
-- POL does NOT support JIT payments (only ARIO, SOL, and Base-ETH support JIT)
+- POL does NOT support JIT payments (only ARIO, SOL, Base-ETH, and Base-USDC support JIT)
 - Use `POLToTokenAmount()` from Turbo SDK for token amount conversions
+
+### USDC (Stablecoin) Development
+USDC stablecoins are supported on three networks with automatic network detection:
+
+**Network Detection Pattern:**
+```typescript
+import { getTokenTypeFromChainId } from '../utils';
+
+// Detect USDC token type from current network
+const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+const network = await ethersProvider.getNetwork();
+const tokenType = getTokenTypeFromChainId(Number(network.chainId));
+// For USDC-capable chains returns: 'usdc' | 'base-usdc' | 'polygon-usdc'
+```
+
+**Implementation Locations:**
+- `src/components/panels/crypto/CryptoConfirmationPanel.tsx` - Handles USDC payments with network switching
+- `src/hooks/useCreditsForCrypto.ts` - USDC to credits conversion
+- `src/hooks/useCryptoForFiat.ts` - Fiat to USDC conversion
+
+**Key Points:**
+- USDC uses Ethereum wallet infrastructure (MetaMask) across all three networks
+- Network switching prompts user via MetaMask's `wallet_switchEthereumChain`
+- Base-USDC supports JIT payments with 25 USDC default (~$25)
+- Ethereum and Polygon USDC do NOT support JIT payments
+- Transaction retry mechanism handles temporary failures using React Query
+- All USDC types use 6 decimal places for token amounts
 
 ### ArNS Development
 - Use `useOwnedArNSNames` hook for fetching and managing owned ArNS names
@@ -632,7 +699,7 @@ When showing API endpoints in JSX, escape curly braces:
 
 ### TypeScript Patterns
 - Use strict types for wallet types: `'arweave' | 'ethereum' | 'solana' | null`
-- Crypto token types: Use `SupportedTokenType` from constants (8 supported tokens)
+- Crypto token types: Use `SupportedTokenType` from constants (11 supported tokens including USDC variants)
 - Configuration mode: `ConfigMode = 'production' | 'development' | 'custom'`
 - Proper interfaces for API responses (some use `any` - improvement opportunity)
 - Consistent error handling with user-friendly messages

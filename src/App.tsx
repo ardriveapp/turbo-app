@@ -19,6 +19,7 @@ import RecentDeploymentsPage from './pages/RecentDeploymentsPage';
 import AccountPage from './pages/AccountPage';
 import { useStore } from './store/useStore';
 import { WalletProviders } from './providers/WalletProviders';
+import { useWalletAccountListener } from './hooks/useWalletAccountListener';
 
 // Payment callback handler component
 function PaymentCallbackHandler() {
@@ -45,7 +46,8 @@ function PaymentCallbackHandler() {
 }
 
 function AppRoutes() {
-  
+  // Listen for wallet account changes across all wallet types
+  useWalletAccountListener();
 
   return (
     <>
