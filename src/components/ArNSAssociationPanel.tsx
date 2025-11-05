@@ -107,10 +107,10 @@ export default function ArNSAssociationPanel({
 
   // Update customTTLInput when current TTL changes (e.g., when switching names/undernames)
   useEffect(() => {
-    if (currentTTL && ttlMode === 'existing') {
+    if (currentTTL) {
       setCustomTTLInput(currentTTL.toString());
     }
-  }, [currentTTL, ttlMode]);
+  }, [currentTTL]);
   return (
     <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6 mb-6">
       <div className="flex items-start gap-3 mb-4">

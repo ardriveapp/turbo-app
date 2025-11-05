@@ -38,7 +38,6 @@ export default function AssignDomainModal({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [ttlMode, setTTLMode] = useState<'existing' | 'custom'>('existing');
   const [customTTLInput, setCustomTTLInput] = useState<string>('600');
-  const [customTTL, setCustomTTL] = useState<number | undefined>(undefined);
 
   // Auto-fetch names when modal opens
   useEffect(() => {
@@ -72,18 +71,6 @@ export default function AssignDomainModal({
     return `${Math.floor(seconds / 3600)}h`;
   };
 
-  // Handle TTL mode changes
-  useEffect(() => {
-    if (ttlMode === 'existing') {
-      setCustomTTL(undefined); // Use existing TTL
-    } else {
-      const ttlValue = parseInt(customTTLInput);
-      if (!isNaN(ttlValue) && ttlValue >= 60 && ttlValue <= 86400) {
-        setCustomTTL(ttlValue);
-      }
-    }
-  }, [ttlMode, customTTLInput]);
-
   // Update customTTLInput when current TTL changes
   useEffect(() => {
     if (currentTTL && ttlMode === 'existing') {
@@ -97,15 +84,39 @@ export default function AssignDomainModal({
       return;
     }
 
+    // Validate and sanitize TTL input before proceeding
+    let validatedTTL: number | undefined;
+    if (ttlMode === 'custom') {
+      const trimmedInput = customTTLInput.trim();
+      if (trimmedInput === '') {
+        setError('Please enter a TTL value');
+        return;
+      }
+
+      const parsedTTL = parseInt(trimmedInput, 10);
+      if (isNaN(parsedTTL)) {
+        setError('TTL must be a valid number');
+        return;
+      }
+
+      if (parsedTTL < 60 || parsedTTL > 86400) {
+        setError('TTL must be between 60 seconds (1 minute) and 86400 seconds (24 hours)');
+        return;
+      }
+
+      validatedTTL = parsedTTL;
+    }
+    // If ttlMode === 'existing', validatedTTL remains undefined (uses existing TTL)
+
     setIsAssigning(true);
     setError(undefined);
-    
+
     try {
       const result = await updateArNSRecord(
         selectedArnsName,
         manifestId,
         selectedUndername || undefined,
-        customTTL
+        validatedTTL
       );
       
       if (result.success) {
