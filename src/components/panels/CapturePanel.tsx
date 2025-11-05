@@ -42,6 +42,7 @@ export default function CapturePanel() {
   const [selectedArnsName, setSelectedArnsName] = useState<string>('');
   const [selectedUndername, setSelectedUndername] = useState<string>('');
   const [showUndername, setShowUndername] = useState(false);
+  const [customTTL, setCustomTTL] = useState<number | undefined>(undefined);
   const { updateArNSRecord } = useOwnedArNSNames();
 
   // Upload state
@@ -268,7 +269,8 @@ export default function CapturePanel() {
             const arnsResult = await updateArNSRecord(
               selectedArnsName,
               results[0].id,
-              selectedUndername || undefined
+              selectedUndername || undefined,
+              customTTL
             );
 
             if (arnsResult.success) {
@@ -429,6 +431,8 @@ export default function CapturePanel() {
           onUndernameChange={setSelectedUndername}
           showUndername={showUndername}
           onShowUndernameChange={setShowUndername}
+          customTTL={customTTL}
+          onCustomTTLChange={setCustomTTL}
         />
       )}
 

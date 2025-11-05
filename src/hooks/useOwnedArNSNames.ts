@@ -27,6 +27,8 @@ interface ArNSName {
   currentTarget?: string; // Current transaction ID (fetched on-demand)
   lastUpdated?: Date;
   undernames?: string[];  // Available undernames (fetched on-demand)
+  ttl?: number;           // TTL in seconds for base name (@)
+  undernameTTLs?: Record<string, number>; // TTL for each undername
 }
 
 interface ArNSUpdateResult {
@@ -140,7 +142,8 @@ export function useOwnedArNSNames() {
   const updateArNSRecord = useCallback(async (
     name: string,
     manifestId: string,
-    undername?: string
+    undername?: string,
+    customTTL?: number
   ): Promise<ArNSUpdateResult> => {
     const { walletType } = useStore.getState();
     
@@ -161,20 +164,36 @@ export function useOwnedArNSNames() {
       // Initialize ANT with custom CU URL and proper signer
       const ant = getANT(nameRecord.processId, aoSigner) as any;
 
+      // Determine TTL to use: custom > existing > default (600)
+      let ttlToUse: number;
+      if (customTTL !== undefined) {
+        // User explicitly set a custom TTL
+        ttlToUse = customTTL;
+      } else if (undername && nameRecord.undernameTTLs?.[undername]) {
+        // Preserve existing undername TTL
+        ttlToUse = nameRecord.undernameTTLs[undername];
+      } else if (!undername && nameRecord.ttl) {
+        // Preserve existing base name TTL
+        ttlToUse = nameRecord.ttl;
+      } else {
+        // Default for new records
+        ttlToUse = 600;
+      }
+
       let result;
       if (undername) {
         // Update undername record
         result = await ant.setRecord({
           undername,
           transactionId: manifestId,
-          ttlSeconds: 600
+          ttlSeconds: ttlToUse
         }, WRITE_OPTIONS);
       } else {
         // Update base name record (@)
         result = await ant.setRecord({
           undername: '@',
           transactionId: manifestId,
-          ttlSeconds: 600
+          ttlSeconds: ttlToUse
         }, WRITE_OPTIONS);
       }
       
@@ -269,14 +288,26 @@ export function useOwnedArNSNames() {
       console.log('Fetching ANT details on-demand for:', name);
       const ant = getANT(nameRecord.processId);
       const state = await ant.getState();
-      
+
       const currentTarget = state.Records?.['@']?.transactionId;
+      const ttl = state.Records?.['@']?.ttlSeconds;
       const undernames = Object.keys(state.Records || {}).filter(key => key !== '@');
-      
+
+      // Extract TTL for each undername
+      const undernameTTLs: Record<string, number> = {};
+      undernames.forEach(undername => {
+        const ttlSeconds = state.Records?.[undername]?.ttlSeconds;
+        if (ttlSeconds !== undefined) {
+          undernameTTLs[undername] = ttlSeconds;
+        }
+      });
+
       const updatedName: ArNSName = {
         ...nameRecord,
         currentTarget: currentTarget || undefined,
-        undernames
+        ttl: ttl || 600, // Default to 600 if not set
+        undernames,
+        undernameTTLs
       };
       
       // Update local state
@@ -298,7 +329,9 @@ export function useOwnedArNSNames() {
             name: nameRecord.name,
             processId: nameRecord.processId,
             currentTarget: currentTarget || undefined,
-            undernames
+            undernames,
+            ttl: ttl || 600,
+            undernameTTLs
           };
         } else {
           // Add new cache entry
@@ -306,7 +339,9 @@ export function useOwnedArNSNames() {
             name: nameRecord.name,
             processId: nameRecord.processId,
             currentTarget: currentTarget || undefined,
-            undernames
+            undernames,
+            ttl: ttl || 600,
+            undernameTTLs
           }];
         }
         
@@ -352,40 +387,56 @@ export function useOwnedArNSNames() {
     try {
       const ant = getANT(nameRecord.processId);
       const freshState = await ant.getState();
-      
+
       const updatedTarget = freshState.Records?.['@']?.transactionId;
+      const updatedTTL = freshState.Records?.['@']?.ttlSeconds;
       const updatedUndernames = Object.keys(freshState.Records || {}).filter(key => key !== '@');
-      
+
+      // Extract TTL for each undername
+      const updatedUndernameTTLs: Record<string, number> = {};
+      updatedUndernames.forEach(undername => {
+        const ttlSeconds = freshState.Records?.[undername]?.ttlSeconds;
+        if (ttlSeconds !== undefined) {
+          updatedUndernameTTLs[undername] = ttlSeconds;
+        }
+      });
+
       // Update local state
-      setNames(prevNames => prevNames.map(prevName => 
-        prevName.name === name 
+      setNames(prevNames => prevNames.map(prevName =>
+        prevName.name === name
           ? {
               ...prevName,
               currentTarget: updatedTarget,
-              undernames: updatedUndernames
+              ttl: updatedTTL || 600,
+              undernames: updatedUndernames,
+              undernameTTLs: updatedUndernameTTLs
             }
           : prevName
       ));
       
       // Update cache
       const cachedNames = getOwnedArNSNames(address) || [];
-      const updatedCacheNames = cachedNames.map(cachedName => 
-        cachedName.name === name 
+      const updatedCacheNames = cachedNames.map(cachedName =>
+        cachedName.name === name
           ? {
               ...cachedName,
               currentTarget: updatedTarget,
-              undernames: updatedUndernames
+              ttl: updatedTTL || 600,
+              undernames: updatedUndernames,
+              undernameTTLs: updatedUndernameTTLs
             }
           : cachedName
       );
-      
+
       // If the name wasn't in cache, add it
       if (!cachedNames.find(n => n.name === name)) {
         updatedCacheNames.push({
           name: nameRecord.name,
           processId: nameRecord.processId,
           currentTarget: updatedTarget,
-          undernames: updatedUndernames
+          ttl: updatedTTL || 600,
+          undernames: updatedUndernames,
+          undernameTTLs: updatedUndernameTTLs
         });
       }
       
