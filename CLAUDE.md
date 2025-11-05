@@ -440,7 +440,7 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.7.1)
+### ✅ Completed Features (v0.7.2)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
@@ -481,7 +481,8 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Transaction retry mechanism for improved payment reliability
 - Dynamic APP_VERSION from package.json
 
-### Recent Development (v0.6.0 - v0.7.1)
+### Recent Development (v0.6.0 - v0.7.2)
+- **TTL Preservation & Configuration** (v0.7.2): ArNS record TTL management with preservation and custom settings
 - **USDC Integration** (v0.7.0): Full support for USDC stablecoins on Ethereum, Base, and Polygon
 - **Cross-Wallet Top-Up** (v0.6.0): Fund any wallet address without connecting that wallet
 - **Transaction Retry**: React Query-based retry mechanism for failed payments
