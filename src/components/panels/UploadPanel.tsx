@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { wincPerCredit } from '../../constants';
+import { wincPerCredit, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Wallet } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -13,6 +13,7 @@ import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
 import { JitPaymentCard } from '../JitPaymentCard';
+import { JitTokenSelector } from '../JitTokenSelector';
 import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
 
 export default function UploadPanel() {
@@ -43,6 +44,24 @@ export default function UploadPanel() {
 
   // Max will be auto-calculated by JitPaymentCard based on estimated cost
   const [localJitMax, setLocalJitMax] = useState(0);
+
+  // Selected JIT token (default based on wallet type)
+  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
+    if (walletType === 'ethereum') return 'base-usdc'; // BASE-USDC with x402 default
+    if (walletType === 'arweave') return 'ario';
+    if (walletType === 'solana') return 'solana';
+    return 'base-eth'; // Fallback
+  });
+
+  // Update selectedJitToken when wallet type changes
+  useEffect(() => {
+    if (walletType === 'ethereum') setSelectedJitToken('base-usdc');
+    else if (walletType === 'arweave') setSelectedJitToken('ario');
+    else if (walletType === 'solana') setSelectedJitToken('solana');
+  }, [walletType]);
+
+  // Track if JIT section is expanded (for users with sufficient credits)
+  const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
 
   // Fixed 10% buffer for SDK (not exposed to user)
   const FIXED_BUFFER_MULTIPLIER = 1.1;
@@ -197,6 +216,16 @@ export default function UploadPanel() {
   const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
   const totalCost = calculateUploadCost(totalFileSize);
 
+  // Auto-enable JIT when user has insufficient credits
+  useEffect(() => {
+    if (showConfirmModal && totalCost !== null) {
+      const creditsNeeded = Math.max(0, totalCost - creditBalance);
+      if (creditsNeeded > 0) {
+        setLocalJitEnabled(true); // Auto-enable for insufficient credits
+      }
+    }
+  }, [showConfirmModal, totalCost, creditBalance]);
+
   const handleUpload = () => {
     if (!address) {
       setUploadMessage({ type: 'error', text: 'Please connect your wallet to upload files' });
@@ -207,32 +236,24 @@ export default function UploadPanel() {
 
   const handleConfirmUpload = async () => {
     setShowConfirmModal(false);
+    setJitSectionExpanded(false); // Reset for next upload
     setUploadMessage(null);
 
     // Save JIT preferences to store
     setJitPaymentEnabled(localJitEnabled);
 
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
-
-    // Save max token amount to store for future use
-    if (jitTokenType) {
-      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    // Save max token amount to store for future use (using selected token)
+    if (selectedJitToken) {
+      setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
     // Only enable JIT if the upload actually costs credits (not free tier)
     const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
 
-    // Convert max token amount to smallest unit for SDK
+    // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
-    if (shouldEnableJit && jitTokenType && supportsJitPayment(jitTokenType)) {
-      const converter = getTokenConverter(jitTokenType);
+    if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
+      const converter = getTokenConverter(selectedJitToken);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -241,6 +262,7 @@ export default function UploadPanel() {
         jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
         jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        selectedJitToken: selectedJitToken, // Pass selected token for x402
       });
       
       if (results.length > 0) {
@@ -844,7 +866,10 @@ export default function UploadPanel() {
 
       {/* Upload Confirmation Modal */}
       {showConfirmModal && files.length > 0 && (
-        <BaseModal onClose={() => setShowConfirmModal(false)}>
+        <BaseModal onClose={() => {
+          setShowConfirmModal(false);
+          setJitSectionExpanded(false); // Reset JIT section when modal closes
+        }}>
           <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -891,45 +916,106 @@ export default function UploadPanel() {
               </div>
             </div>
 
-            {/* JIT Payment Card */}
+            {/* JIT Payment Section */}
             {(() => {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
+              const hasSufficientCredits = creditsNeeded === 0;
+              const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
-              // Determine the token type for JIT payment
-              // Arweave wallets must use ARIO for JIT (not AR)
-              // Ethereum wallets use Base-ETH for JIT
-              const jitTokenType = walletType === 'arweave'
-                ? 'ario'
-                : walletType === 'ethereum'
-                ? 'base-eth'
-                : walletType;
-              const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+              // Auto-expand if insufficient credits, otherwise respect user's toggle
+              const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
 
               return (
                 <>
-                  {showJitOption && jitTokenType && (
-                    <div className="mb-4">
-                      <JitPaymentCard
-                        creditsNeeded={creditsNeeded}
-                        totalCost={typeof totalCost === 'number' ? totalCost : 0}
-                        currentBalance={creditBalance}
-                        tokenType={jitTokenType}
-                        enabled={localJitEnabled}
-                        onEnabledChange={setLocalJitEnabled}
-                        maxTokenAmount={localJitMax}
-                        onMaxTokenAmountChange={setLocalJitMax}
-                      />
-                    </div>
+                  {/* JIT Section - Always show for wallets that support JIT */}
+                  {canUseJit && (
+                    <>
+                      {/* Collapsed header when user has sufficient credits */}
+                      {hasSufficientCredits && !jitSectionExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setJitSectionExpanded(true);
+                            setLocalJitEnabled(true); // Auto-enable JIT when expanding
+                          }}
+                          className="w-full mb-4 p-3 bg-fg-muted/5 hover:bg-fg-muted/10 border border-default hover:border-fg-muted/30 rounded-lg transition-all text-left group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Wallet className="w-4 h-4 text-fg-muted" />
+                              <span className="text-sm font-medium text-fg-muted">
+                                Pay with crypto instead?
+                              </span>
+                            </div>
+                            <ChevronDown className="w-4 h-4 text-link group-hover:text-fg-muted transition-colors" />
+                          </div>
+                          <p className="text-xs text-link mt-1 ml-6">
+                            {walletType === 'ethereum'
+                              ? 'Use BASE-USDC (x402), BASE-ETH, or ARIO for this upload'
+                              : walletType === 'arweave'
+                              ? 'Use ARIO tokens for this upload'
+                              : walletType === 'solana'
+                              ? 'Use SOL tokens for this upload'
+                              : 'Use crypto for this upload'
+                            }
+                          </p>
+                        </button>
+                      )}
+
+                      {/* Expanded JIT section */}
+                      {isExpanded && (
+                        <div className="mb-4">
+                          {/* Collapse button when user has sufficient credits */}
+                          {hasSufficientCredits && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setJitSectionExpanded(false);
+                                setLocalJitEnabled(false); // Disable JIT when collapsing
+                              }}
+                              className="w-full mb-3 p-2 bg-surface hover:bg-canvas border border-default rounded-lg transition-all flex items-center justify-between group"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Wallet className="w-4 h-4 text-fg-muted" />
+                                <span className="text-sm font-medium text-fg-muted">
+                                  Pay with crypto
+                                </span>
+                              </div>
+                              <ChevronUp className="w-4 h-4 text-link group-hover:text-fg-muted transition-colors" />
+                            </button>
+                          )}
+
+                          {/* JIT Token Selector - shown for Ethereum wallets */}
+                          {walletType === 'ethereum' && (
+                            <JitTokenSelector
+                              walletType={walletType}
+                              selectedToken={selectedJitToken}
+                              onTokenSelect={setSelectedJitToken}
+                            />
+                          )}
+
+                          {/* JIT Payment Card */}
+                          <JitPaymentCard
+                            creditsNeeded={creditsNeeded}
+                            totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                            currentBalance={creditBalance}
+                            tokenType={selectedJitToken}
+                            maxTokenAmount={localJitMax}
+                            onMaxTokenAmountChange={setLocalJitMax}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* Insufficient credits warning */}
+                  {/* Insufficient credits warning - only when not using JIT */}
                   {creditsNeeded > 0 && !localJitEnabled && (
                     <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                         <span>
                           Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                          {!showJitOption && (
+                          {!canUseJit && (
                             <>
                               {' '}
                               <a href="/topup" className="underline hover:text-red-300 transition-colors">

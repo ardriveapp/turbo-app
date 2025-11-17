@@ -158,8 +158,6 @@ function DeployConfirmationModal({
               totalCost={totalCost}
               currentBalance={currentBalance}
               tokenType={jitTokenType}
-              enabled={jitEnabled}
-              onEnabledChange={onJitEnabledChange}
               maxTokenAmount={jitMaxTokenAmount}
               onMaxTokenAmountChange={onJitMaxTokenAmountChange}
             />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Coins, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { SupportedTokenType, tokenLabels } from '../constants';
 import {
   calculateRequiredTokenAmount,
@@ -11,17 +11,14 @@ interface JitPaymentCardProps {
   totalCost: number;
   currentBalance: number;
   tokenType: SupportedTokenType;
-  enabled: boolean;
-  onEnabledChange: (enabled: boolean) => void;
   maxTokenAmount: number; // Human-readable amount (e.g., 0.15 SOL, 200 ARIO)
   onMaxTokenAmountChange: (amount: number) => void;
 }
 
 export function JitPaymentCard({
   creditsNeeded,
+  totalCost,
   tokenType,
-  enabled,
-  onEnabledChange,
   maxTokenAmount,
   onMaxTokenAmountChange,
 }: JitPaymentCardProps) {
@@ -39,8 +36,12 @@ export function JitPaymentCard({
   useEffect(() => {
     const calculate = async () => {
       try {
+        // Use totalCost if user has sufficient credits (creditsNeeded = 0)
+        // Use creditsNeeded if insufficient (creditsNeeded > 0)
+        const creditsToConvert = creditsNeeded > 0 ? creditsNeeded : totalCost;
+
         const cost = await calculateRequiredTokenAmount({
-          creditsNeeded,
+          creditsNeeded: creditsToConvert,
           tokenType,
           bufferMultiplier: BUFFER_MULTIPLIER,
         });
@@ -58,51 +59,17 @@ export function JitPaymentCard({
       }
     };
 
-    if (creditsNeeded > 0) {
+    // Calculate if there's any cost (either insufficient or wanting to pay with crypto)
+    if (creditsNeeded > 0 || totalCost > 0) {
       calculate();
     }
-  }, [creditsNeeded, tokenType, onMaxTokenAmountChange]);
+  }, [creditsNeeded, totalCost, tokenType, onMaxTokenAmountChange]);
 
   return (
-    <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-lg border border-turbo-red/30 p-3">
-      {/* Header */}
-      <div className="flex items-start gap-2.5 mb-2.5">
-        <div className="w-7 h-7 bg-turbo-red/20 rounded flex items-center justify-center flex-shrink-0">
-          <Coins className="w-3.5 h-3.5 text-turbo-red" />
-        </div>
-        <div className="flex-1">
-          <div className="text-sm font-medium text-fg-muted mb-0.5">Insufficient Credits</div>
-          <div className="text-xs text-link">
-            You need{' '}
-            <span className="text-fg-muted font-medium">
-              {creditsNeeded.toFixed(6)} more credits
-            </span>{' '}
-            to complete this upload.
-          </div>
-        </div>
-      </div>
-
-      {/* Toggle */}
-      <label className="flex items-center gap-2.5 p-2.5 bg-surface/50 rounded-lg cursor-pointer hover:bg-surface transition-colors">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) => onEnabledChange(e.target.checked)}
-          className="w-4 h-4 rounded border-default text-turbo-green focus:ring-turbo-green focus:ring-offset-0"
-        />
-        <div className="flex-1">
-          <div className="text-sm font-medium text-fg-muted">
-            Auto-pay with {tokenLabel}
-          </div>
-          <div className="text-xs text-link mt-0.5">
-            Automatically top up using crypto if credits run out
-          </div>
-        </div>
-      </label>
-
-      {/* Cost display when enabled */}
-      {enabled && estimatedCost && (
-        <div className="mt-2.5 p-2.5 bg-surface rounded-lg border border-default/30">
+    <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-lg border border-default p-3">
+      {/* Cost display */}
+      {estimatedCost && (
+        <>
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-xs text-link">Estimated cost:</span>
             <div className="text-right">
@@ -121,7 +88,7 @@ export function JitPaymentCard({
             </div>
           </div>
 
-          <div className="text-xs text-link">
+          <div className="text-xs text-link mb-2">
             Up to ~{formatTokenAmount(maxTokenAmount, tokenType)} {tokenLabel} with safety margin
           </div>
 
@@ -161,7 +128,7 @@ export function JitPaymentCard({
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

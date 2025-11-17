@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
+import { useX402Upload } from './useX402Upload';
 
 interface UploadResult {
   id: string;
@@ -65,6 +66,7 @@ const mergeTags = (
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
+  const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -199,6 +201,7 @@ export function useFileUpload() {
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
       customTags?: Array<{ name: string; value: string }>;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     if (!address) {
@@ -249,6 +252,51 @@ export function useFileUpload() {
         maxTokenAmount: options.jitMaxTokenAmount || 0,
         topUpBufferMultiplier: options.jitBufferMultiplier || 1.1,
       });
+    }
+
+    // Try x402 first if BASE-USDC is selected and JIT is enabled
+    if (
+      options?.jitEnabled &&
+      options.selectedJitToken === 'base-usdc'
+    ) {
+      try {
+        console.log('Attempting x402 upload for', fileName);
+
+        // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
+        const maxUsdc = options.jitMaxTokenAmount ? options.jitMaxTokenAmount / 1_000_000 : 10; // Default 10 USDC
+
+        const result = await uploadFileWithX402(file, {
+          maxUsdcAmount: maxUsdc,
+          onProgress: (progress) => {
+            setUploadProgress((prev) => ({ ...prev, [fileName]: progress }));
+          },
+          tags: options?.customTags,
+        });
+
+        // Add metadata and return
+        setUploadProgress((prev) => ({ ...prev, [fileName]: 100 }));
+        return {
+          ...result,
+          timestamp: Date.now(),
+          fileName: file.name,
+          fileSize: file.size,
+          contentType: file.type || 'application/octet-stream',
+        };
+      } catch (x402Error) {
+        console.error('x402 upload failed:', x402Error);
+
+        // Show user-friendly error with fallback suggestion
+        const errorMsg = `x402 payment failed: ${
+          x402Error instanceof Error ? x402Error.message : 'Unknown error'
+        }.
+
+Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment through the Turbo SDK.`;
+
+        setErrors((prev) => ({ ...prev, [fileName]: errorMsg }));
+
+        // Throw error to stop upload - user must choose different approach
+        throw new Error(errorMsg);
+      }
     }
 
     try {
@@ -327,7 +375,7 @@ export function useFileUpload() {
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, createTurboClient]);
+  }, [address, walletType, wallets, createTurboClient, uploadFileWithX402]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],
@@ -336,6 +384,7 @@ export function useFileUpload() {
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
       customTags?: Array<{ name: string; value: string }>;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     // Validate wallet state before any operations

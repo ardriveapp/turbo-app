@@ -67,7 +67,7 @@ export const tokenLabels: Record<SupportedTokenType, string> = {
   kyve: 'KYVE',
   pol: 'POL',
   'usdc': 'USDC (ETH)',
-  'base-usdc': 'USDC (Base)',
+  'base-usdc': 'BASE-USDC with x402',
   'polygon-usdc': 'USDC (Polygon)',
 } as const;
 
@@ -154,6 +154,24 @@ export const tokenProcessingTimes: Record<SupportedTokenType, {
     time: '2-5 minutes',
     speed: 'fast',
     description: 'USDC on Polygon network is optimized for speed'
+  },
+} as const;
+
+// x402 payment protocol configuration
+export const X402_CONFIG = {
+  enabled: true,
+  maxRetries: 1,
+  supportedNetworks: {
+    production: 'base' as const,
+    development: 'base-sepolia' as const,
+  },
+  chainIds: {
+    production: 8453, // Base Mainnet
+    development: 84532, // Base Sepolia
+  },
+  usdcAddresses: {
+    production: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base Mainnet USDC
+    development: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia USDC
   },
 } as const;
 

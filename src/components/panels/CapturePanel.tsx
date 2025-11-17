@@ -918,8 +918,6 @@ export default function CapturePanel() {
                         totalCost={typeof totalCost === 'number' ? totalCost : 0}
                         currentBalance={creditBalance}
                         tokenType={jitTokenType}
-                        enabled={localJitEnabled}
-                        onEnabledChange={setLocalJitEnabled}
                         maxTokenAmount={localJitMax}
                         onMaxTokenAmountChange={setLocalJitMax}
                       />
