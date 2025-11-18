@@ -59,9 +59,79 @@ export function useX402Upload() {
           throw new Error('No Ethereum wallet found');
         }
 
-        const ethersProvider = new ethers.BrowserProvider(ethProvider);
-        const ethersSigner = await ethersProvider.getSigner();
-        const userAddress = await ethersSigner.getAddress();
+        let ethersProvider = new ethers.BrowserProvider(ethProvider);
+        let ethersSigner = await ethersProvider.getSigner();
+        let userAddress = await ethersSigner.getAddress();
+
+        // Check and switch network if needed
+        const network = await ethersProvider.getNetwork();
+        const currentChainId = Number(network.chainId);
+
+        if (currentChainId !== chainId) {
+          console.log(`Network mismatch. Current: ${currentChainId}, Expected: ${chainId}`);
+
+          // Only attempt auto-switching for regular wallets (not Privy)
+          if (window.ethereum && !privyWallet) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: `0x${chainId.toString(16)}` }],
+              });
+              console.log(`Switched to chain ID ${chainId}`);
+
+              // Wait for network switch to complete
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              // Create fresh provider and signer after switch
+              ethersProvider = new ethers.BrowserProvider(window.ethereum);
+              ethersSigner = await ethersProvider.getSigner();
+            } catch (switchError: any) {
+              // Error 4902 means the network doesn't exist in MetaMask - add it first
+              if (switchError.code === 4902) {
+                const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
+                const rpcUrl = isProd
+                  ? 'https://mainnet.base.org'
+                  : 'https://sepolia.base.org';
+                const blockExplorerUrl = isProd
+                  ? 'https://basescan.org'
+                  : 'https://sepolia.basescan.org';
+
+                try {
+                  await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: `0x${chainId.toString(16)}`,
+                      chainName: networkName,
+                      nativeCurrency: {
+                        name: 'Ethereum',
+                        symbol: 'ETH',
+                        decimals: 18,
+                      },
+                      rpcUrls: [rpcUrl],
+                      blockExplorerUrls: [blockExplorerUrl],
+                    }],
+                  });
+                  console.log(`Added and switched to ${networkName}`);
+
+                  // Wait for network add/switch to complete
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                  // Create fresh provider and signer after add
+                  ethersProvider = new ethers.BrowserProvider(window.ethereum);
+                  ethersSigner = await ethersProvider.getSigner();
+                } catch (addError) {
+                  throw new Error(`Failed to add ${networkName} to your wallet. Please add it manually.`);
+                }
+              } else {
+                const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
+                throw new Error(`Please switch to ${networkName} in your wallet for X402 payments.`);
+              }
+            }
+          } else {
+            const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
+            throw new Error(`Please switch to ${networkName} in your wallet for X402 payments.`);
+          }
+        }
 
         // Create MetaMask signer for arbundles
         console.log('Creating data signer for x402 upload...');
