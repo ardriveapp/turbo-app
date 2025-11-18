@@ -45,6 +45,7 @@ export function JitPaymentCard({
           tokenType,
           bufferMultiplier: BUFFER_MULTIPLIER,
         });
+
         setEstimatedCost({
           tokenAmountReadable: cost.tokenAmountReadable,
           estimatedUSD: cost.estimatedUSD,
@@ -60,7 +61,11 @@ export function JitPaymentCard({
     };
 
     // Calculate if there's any cost (either insufficient or wanting to pay with crypto)
-    if (creditsNeeded > 0 || totalCost > 0) {
+    // Must check for null explicitly since totalCost can be null while loading
+    const hasCost = (typeof creditsNeeded === 'number' && creditsNeeded > 0) ||
+                    (typeof totalCost === 'number' && totalCost > 0);
+
+    if (hasCost) {
       calculate();
     }
   }, [creditsNeeded, totalCost, tokenType, onMaxTokenAmountChange]);

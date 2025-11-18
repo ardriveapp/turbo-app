@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
@@ -77,6 +77,13 @@ export function useFileUpload() {
   const [activeUploads, setActiveUploads] = useState<ActiveUpload[]>([]);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [uploadErrors, setUploadErrors] = useState<UploadError[]>([]);
+
+  // Cache Turbo client to avoid re-authentication on every upload
+  const turboClientCache = useRef<{
+    client: TurboAuthenticatedClient;
+    address: string;
+    tokenType: string;
+  } | null>(null);
   const [totalSize, setTotalSize] = useState<number>(0);
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
@@ -118,6 +125,18 @@ export function useFileUpload() {
 
     // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
     const effectiveTokenType = tokenTypeOverride || walletType;
+
+    // Check if we can reuse cached client (same address and token type)
+    if (
+      turboClientCache.current &&
+      turboClientCache.current.address === address &&
+      turboClientCache.current.tokenType === effectiveTokenType
+    ) {
+      console.log('✅ Reusing cached Turbo client (no re-authentication needed)');
+      return turboClientCache.current.client;
+    }
+
+    console.log('Creating new Turbo client (will request signature for authentication)');
     const config = getCurrentConfig();
     const turboConfig = {
       paymentServiceConfig: { url: config.paymentServiceUrl },
@@ -135,12 +154,23 @@ export function useFileUpload() {
         }
         // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({
+        const arweaveClient = TurboFactory.authenticated({
           ...turboConfig,
           signer,
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
+
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: arweaveClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return arweaveClient;
         
       case 'ethereum':
         // Check if this is a Privy embedded wallet
@@ -152,13 +182,24 @@ export function useFileUpload() {
           const ethersProvider = new ethers.BrowserProvider(provider);
           const ethersSigner = await ethersProvider.getSigner();
 
-          return TurboFactory.authenticated({
+          const privyClient = TurboFactory.authenticated({
             token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
             ...turboConfig,
           });
+
+          // Cache the client
+          if (address && effectiveTokenType) {
+            turboClientCache.current = {
+              client: privyClient,
+              address: address,
+              tokenType: effectiveTokenType,
+            };
+          }
+
+          return privyClient;
         } else {
           // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
           if (!window.ethereum) {
@@ -169,25 +210,47 @@ export function useFileUpload() {
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const ethersSigner = await ethersProvider.getSigner();
 
-          return TurboFactory.authenticated({
+          const ethereumClient = TurboFactory.authenticated({
             token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
             ...turboConfig,
           });
+
+          // Cache the client
+          if (address && effectiveTokenType) {
+            turboClientCache.current = {
+              client: ethereumClient,
+              address: address,
+              tokenType: effectiveTokenType,
+            };
+          }
+
+          return ethereumClient;
         }
-        
+
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
 
-        return TurboFactory.authenticated({
+        const solanaClient = TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
           ...turboConfig,
         });
+
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: solanaClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return solanaClient;
         
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
@@ -255,12 +318,14 @@ export function useFileUpload() {
     }
 
     // Try x402 first if BASE-USDC is selected and JIT is enabled
+    console.log(`[JIT] selectedJitToken: ${options?.selectedJitToken}, jitEnabled: ${options?.jitEnabled}`);
+
     if (
       options?.jitEnabled &&
       options.selectedJitToken === 'base-usdc'
     ) {
       try {
-        console.log('Attempting x402 upload for', fileName);
+        console.log('[X402] Using x402 flow for BASE-USDC upload:', fileName);
 
         // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
         const maxUsdc = options.jitMaxTokenAmount ? options.jitMaxTokenAmount / 1_000_000 : 10; // Default 10 USDC
@@ -297,6 +362,9 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         // Throw error to stop upload - user must choose different approach
         throw new Error(errorMsg);
       }
+    } else if (options?.jitEnabled && jitTokenType) {
+      // Regular JIT path (not x402)
+      console.log(`[JIT] Using regular JIT flow with ${jitTokenType} for ${fileName}`);
     }
 
     try {

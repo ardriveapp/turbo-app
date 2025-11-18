@@ -57,9 +57,10 @@ export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType):
  */
 export function formatTokenAmount(amount: number, tokenType: SupportedTokenType): string {
   // For very small amounts, use higher precision to avoid showing 0.0000
-  if (amount < 0.0001 && amount > 0) {
-    // Use up to 8 decimal places for very small amounts
-    return amount.toFixed(8).replace(/\.?0+$/, ''); // Remove trailing zeros
+  // Increased threshold to 0.01 to catch small USDC amounts like 0.003734
+  if (amount < 0.01 && amount > 0) {
+    // Use up to 6 decimal places for very small amounts (USDC has 6 decimals)
+    return amount.toFixed(6).replace(/\.?0+$/, ''); // Remove trailing zeros
   }
 
   // Standard precision for normal amounts

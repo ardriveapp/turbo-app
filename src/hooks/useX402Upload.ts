@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { createData } from 'arbundles';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
@@ -27,23 +27,31 @@ export function useX402Upload() {
   const { wallets } = useWallets();
   const [uploading, setUploading] = useState(false);
 
+  // Reuse MetaMask signer across uploads (only authorize once per session)
+  const dataSignerRef = useRef<{ signer: MetaMaskSigner; address: string } | null>(null);
+
   const uploadFileWithX402 = useCallback(
     async (file: File, options: X402UploadOptions): Promise<X402UploadResult> => {
       setUploading(true);
 
       try {
         const config = getCurrentConfig();
-        const x402Url = config.x402UploadUrl;
+        // Derive x402 URL from base upload URL if in custom mode
+        // This ensures custom upload URLs work for X402 without separate configuration
+        const x402Url = configMode === 'custom'
+          ? `${config.uploadServiceUrl}/x402/data-item/signed`
+          : config.x402UploadUrl;
 
         // Determine network (Base Mainnet or Sepolia)
-        const isProd = configMode === 'production';
-        const networkKey = isProd
+        // Only development mode uses Sepolia testnet, production and custom use Mainnet
+        const useMainnet = configMode !== 'development';
+        const networkKey = useMainnet
           ? X402_CONFIG.supportedNetworks.production
           : X402_CONFIG.supportedNetworks.development;
-        const chainId = isProd
+        const chainId = useMainnet
           ? X402_CONFIG.chainIds.production
           : X402_CONFIG.chainIds.development;
-        const usdcAddress = isProd
+        const usdcAddress = useMainnet
           ? X402_CONFIG.usdcAddresses.production
           : X402_CONFIG.usdcAddresses.development;
 
@@ -88,11 +96,11 @@ export function useX402Upload() {
             } catch (switchError: any) {
               // Error 4902 means the network doesn't exist in MetaMask - add it first
               if (switchError.code === 4902) {
-                const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
-                const rpcUrl = isProd
+                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
+                const rpcUrl = useMainnet
                   ? 'https://mainnet.base.org'
                   : 'https://sepolia.base.org';
-                const blockExplorerUrl = isProd
+                const blockExplorerUrl = useMainnet
                   ? 'https://basescan.org'
                   : 'https://sepolia.basescan.org';
 
@@ -123,20 +131,29 @@ export function useX402Upload() {
                   throw new Error(`Failed to add ${networkName} to your wallet. Please add it manually.`);
                 }
               } else {
-                const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
+                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
                 throw new Error(`Please switch to ${networkName} in your wallet for X402 payments.`);
               }
             }
           } else {
-            const networkName = isProd ? 'Base Network' : 'Base Sepolia testnet';
+            const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
             throw new Error(`Please switch to ${networkName} in your wallet for X402 payments.`);
           }
         }
 
-        // Create MetaMask signer for arbundles
-        console.log('Creating data signer for x402 upload...');
-        const dataSigner = new MetaMaskSigner(ethersSigner, userAddress);
-        await dataSigner.setPublicKey(); // One-time public key derivation
+        // Create or reuse MetaMask signer for arbundles
+        // Only create new signer if address changed or first time
+        let dataSigner: MetaMaskSigner;
+        if (dataSignerRef.current && dataSignerRef.current.address === userAddress) {
+          console.log('Reusing existing data signer (already authorized)');
+          dataSigner = dataSignerRef.current.signer;
+        } else {
+          console.log('Creating new data signer for x402 upload...');
+          dataSigner = new MetaMaskSigner(ethersSigner, userAddress);
+          await dataSigner.setPublicKey(); // One-time public key derivation (user approves once)
+          dataSignerRef.current = { signer: dataSigner, address: userAddress };
+          console.log('Data signer created and cached for session');
+        }
 
         // Read file
         console.log(`Reading file: ${file.name} (${file.size} bytes)`);
@@ -225,7 +242,7 @@ export function useX402Upload() {
           const domain = {
             name: 'USD Coin',
             version: '2',
-            chainId: chainId,
+            chainId: chainId, // ethers.js will handle the conversion
             verifyingContract: usdcAddress,
           };
 
@@ -241,8 +258,10 @@ export function useX402Upload() {
           };
 
           console.log('Signing payment authorization (approve in wallet)...');
+          console.log('Domain:', domain);
+          console.log('Authorization:', authorization);
           const signature = await ethersSigner.signTypedData(domain, types, authorization);
-          console.log('Payment authorized!');
+          console.log('Payment authorized! Signature:', signature);
 
           const paymentPayload = {
             x402Version: 1,
@@ -251,7 +270,9 @@ export function useX402Upload() {
             payload: { signature, authorization },
           };
 
+          console.log('Payment payload:', JSON.stringify(paymentPayload, null, 2));
           const paymentHeader = btoa(JSON.stringify(paymentPayload));
+          console.log('Payment header (base64):', paymentHeader.substring(0, 100) + '...');
 
           // Retry upload with payment (uploadData is already Uint8Array from earlier)
           console.log('Retrying upload with x402 payment...');

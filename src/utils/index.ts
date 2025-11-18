@@ -267,7 +267,7 @@ export const getCurrentChainId = async (provider: any): Promise<number> => {
 };
 
 // Export address validation utilities
-export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong } from './addressValidation';
+export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong, resolveEthereumAddress } from './addressValidation';
 export type { WalletAddressType, AddressValidationResult } from './addressValidation';
 
 // Export AR.IO configuration helpers

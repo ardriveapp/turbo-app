@@ -67,7 +67,7 @@ export const tokenLabels: Record<SupportedTokenType, string> = {
   kyve: 'KYVE',
   pol: 'POL',
   'usdc': 'USDC (ETH)',
-  'base-usdc': 'BASE-USDC with x402',
+  'base-usdc': 'USDC (Base) with x402',
   'polygon-usdc': 'USDC (Polygon)',
 } as const;
 
