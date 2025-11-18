@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
+import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useX402Upload } from './useX402Upload';
 
@@ -415,7 +416,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
           onError: (error: any) => {
             // Upload error occurred
             console.error(`Upload error for ${fileName}:`, error);
-            const errorMessage = error?.message || 'Upload failed';
+            const errorMessage = formatUploadError(error?.message || 'Upload failed');
             setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
           },
           onSuccess: () => {
@@ -439,7 +440,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
       setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      const errorMessage = formatUploadError(error instanceof Error ? error : 'Upload failed');
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
@@ -521,12 +522,16 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
 
         // Add to recent files as error
+        // Format error for user display
+        const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
+        const rawError = error instanceof Error ? error.message : 'Unknown error';
+
         setRecentFiles(prev => [
           {
             name: file.name,
             size: file.size,
             status: 'error' as const,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             timestamp: Date.now()
           },
           ...prev
@@ -537,14 +542,13 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
           ...prev,
           {
             fileName: file.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             retryable: true
           }
         ]);
 
         // Failed to upload file
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setErrors(prev => ({ ...prev, [file.name]: errorMessage }));
+        setErrors(prev => ({ ...prev, [file.name]: userFriendlyError }));
         failedFileNames.push(file.name);
         setFailedFiles(prev => [...prev, file]);
         setFailedCount(prev => prev + 1);
