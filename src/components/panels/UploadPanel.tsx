@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
+import { useFreeUploadLimit, isFileFree, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
 import { wincPerCredit, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Wallet } from 'lucide-react';
@@ -29,6 +30,10 @@ export default function UploadPanel() {
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
   } = useStore();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
+
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -204,9 +209,9 @@ export default function UploadPanel() {
 
 
   const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier: Files under 100KiB
+    if (isFileFree(bytes, freeUploadLimitBytes)) return 0; // Free tier: Files under bundler's free limit
     if (!wincForOneGiB) return null;
-    
+
     const gibSize = bytes / (1024 * 1024 * 1024);
     const wincCost = gibSize * Number(wincForOneGiB);
     const creditCost = wincCost / wincPerCredit;
@@ -247,8 +252,10 @@ export default function UploadPanel() {
       setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
-    // Only enable JIT if the upload actually costs credits (not free tier)
-    const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
+    // Only enable JIT if the user has insufficient credits to cover the cost
+    // Calculate credits needed (0 if user has sufficient credits)
+    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+    const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
 
     // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
@@ -373,7 +380,10 @@ export default function UploadPanel() {
                   Drop files here or click to browse
                 </p>
                 <p className="text-sm text-link">
-                  Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
+                  {freeUploadLimitBytes > 0 ? (
+                    <>Files under {formatFreeLimit(freeUploadLimitBytes)} are <span className="text-turbo-green font-semibold">FREE</span> • </>
+                  ) : null}
+                  Max 10GiB per file
                 </p>
               </div>
               <input
@@ -439,7 +449,7 @@ export default function UploadPanel() {
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {files.map((file, index) => {
                   const cost = calculateUploadCost(file.size);
-                  const isFree = file.size < 100 * 1024;
+                  const isFree = isFileFree(file.size, freeUploadLimitBytes);
 
                   return (
                     <div key={index} className="bg-surface/50 rounded p-3">
@@ -791,7 +801,7 @@ export default function UploadPanel() {
                     <div className="flex items-center gap-2 text-sm text-link">
                       <span>
                         {(() => {
-                          if (result.fileSize && result.fileSize < 100 * 1024) {
+                          if (result.fileSize && isFileFree(result.fileSize, freeUploadLimitBytes)) {
                             return <span className="text-turbo-green">FREE</span>;
                           } else if (wincForOneGiB && result.winc) {
                             const credits = Number(result.winc) / wincPerCredit;
