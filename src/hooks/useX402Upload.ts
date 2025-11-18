@@ -98,7 +98,7 @@ export function useX402Upload() {
 
         // Try upload first
         console.log('Attempting x402 upload...');
-        let uploadResponse = await fetch(`${x402Url}/v1/tx`, {
+        let uploadResponse = await fetch(x402Url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/octet-stream',
@@ -185,7 +185,7 @@ export function useX402Upload() {
 
           // Retry upload with payment (uploadData is already Uint8Array from earlier)
           console.log('Retrying upload with x402 payment...');
-          uploadResponse = await fetch(`${x402Url}/v1/tx`, {
+          uploadResponse = await fetch(x402Url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/octet-stream',
