@@ -17,10 +17,11 @@ export interface TokenBalanceResult {
 }
 
 /**
- * Hook to fetch and monitor wallet balance for JIT payment tokens
+ * Hook to fetch and monitor wallet balance for crypto payments
  *
  * Supports:
- * - ARIO (Arweave wallets)
+ * - AR (Arweave native token)
+ * - ARIO (Arweave AO token)
  * - SOL (Solana wallets)
  * - BASE-ETH (Ethereum wallets on Base network)
  * - BASE-USDC (Ethereum wallets on Base network)
@@ -72,6 +73,53 @@ export function useTokenBalance(
       throw new Error('Unable to fetch ARIO balance. Please try again.');
     }
   }, [configMode]);
+
+  /**
+   * Fetch AR balance using Arweave SDK
+   * AR is the native token on Arweave, balance is in winston (1 AR = 1e12 winston)
+   */
+  const fetchArBalance = useCallback(async (arweaveAddress: string): Promise<{ readable: number; smallest: number }> => {
+    try {
+      // Import Arweave SDK dynamically
+      const Arweave = (await import('arweave')).default;
+
+      const config = getCurrentConfig();
+      const arweaveConfig: any = {
+        host: 'arweave.net',
+        port: 443,
+        protocol: 'https',
+      };
+
+      // Use custom gateway if configured (for devnet)
+      if (configMode === 'development' && config.tokenMap['arweave']) {
+        try {
+          const url = new URL(config.tokenMap['arweave']);
+          arweaveConfig.host = url.hostname;
+          arweaveConfig.port = url.port || 443;
+          arweaveConfig.protocol = url.protocol.replace(':', '');
+        } catch {
+          // Fall back to mainnet if URL parsing fails
+        }
+      }
+
+      const arweave = Arweave.init(arweaveConfig);
+
+      // Get AR balance in winston
+      const balanceInWinston = await arweave.wallets.getBalance(arweaveAddress);
+      const balanceInWinstonNumber = Number(balanceInWinston);
+
+      // Convert winston to AR (1 AR = 1e12 winston)
+      const balanceInAr = balanceInWinstonNumber / 1e12;
+
+      return {
+        readable: balanceInAr,
+        smallest: balanceInWinstonNumber,
+      };
+    } catch (err) {
+      console.error('Failed to fetch AR balance:', err);
+      throw new Error('Unable to fetch AR balance. Please try again.');
+    }
+  }, [getCurrentConfig, configMode]);
 
   /**
    * Fetch SOL balance using Solana web3.js
@@ -207,6 +255,10 @@ export function useTokenBalance(
       let result: { readable: number; smallest: number };
 
       switch (tokenType) {
+        case 'arweave':
+          result = await fetchArBalance(address);
+          break;
+
         case 'ario':
           result = await fetchArioBalance(address);
           break;
@@ -246,7 +298,7 @@ export function useTokenBalance(
     } finally {
       setLoading(false);
     }
-  }, [address, tokenType, walletType, fetchArioBalance, fetchSolBalance, fetchBaseEthBalance, fetchBaseUsdcBalance]);
+  }, [address, tokenType, walletType, fetchArBalance, fetchArioBalance, fetchSolBalance, fetchBaseEthBalance, fetchBaseUsdcBalance]);
 
   // Fetch balance on mount and when dependencies change (only if enabled)
   useEffect(() => {
