@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import { getArweaveUrl, getArweaveRawUrl } from '../utils';
 import { useUploadStatus } from '../hooks/useUploadStatus';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
+import { useFreeUploadLimit, isFileFree } from '../hooks/useFreeUploadLimit';
 import { wincPerCredit } from '../constants';
 import CopyButton from '../components/CopyButton';
 import ReceiptModal from '../components/modals/ReceiptModal';
@@ -24,6 +25,9 @@ export default function RecentDeploymentsPage() {
     getStatusIcon
   } = useUploadStatus();
   const wincForOneGiB = useWincForOneGiB();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
 
   // Memoize deployment grouping to prevent lag - exact same as DeploySitePanel
   const deploymentGroups = useMemo(() => {
@@ -713,7 +717,7 @@ export default function RecentDeploymentsPage() {
                                   {/* Row 3: Cost + Deploy Timestamp */}
                                   <div className="flex items-center gap-2 text-sm text-link">
                                     <span>
-                                      {file.size < 100 * 1024 ? (
+                                      {isFileFree(file.size, freeUploadLimitBytes) ? (
                                         <span className="text-turbo-green">FREE</span>
                                       ) : wincForOneGiB ? (
                                         `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`

@@ -5,12 +5,14 @@ import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, Cred
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useCryptoPriceForWinc, useWincForCrypto } from '../../hooks/useCryptoPrice';
+import { useFreeUploadLimit, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
 import { useStore } from '../../store/useStore';
 import { SupportedTokenType, tokenLabels } from '../../constants';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
 export default function PricingCalculatorPanel() {
   const { address, creditBalance } = useStore();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
   const [storageAmount, setStorageAmount] = useState(1);
@@ -218,12 +220,14 @@ export default function PricingCalculatorPanel() {
       <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Free Tier Notice */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-fg-muted/10 text-fg-muted px-4 py-2 rounded-lg text-sm font-medium">
-            <Zap className="w-4 h-4" />
-            Files under 100 KiB are FREE!
+        {freeUploadLimitBytes > 0 && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-fg-muted/10 text-fg-muted px-4 py-2 rounded-lg text-sm font-medium">
+              <Zap className="w-4 h-4" />
+              Files under {formatFreeLimit(freeUploadLimitBytes)} are FREE!
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Calculator Mode Toggle */}
         <div className="flex justify-center mb-6">

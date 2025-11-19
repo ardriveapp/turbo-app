@@ -110,14 +110,17 @@ interface StoreState {
   address: string | null;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   creditBalance: number;
-  
+
+  // Bundler configuration state
+  freeUploadLimitBytes: number; // Free upload limit from bundler (defaults to 0)
+
   // ArNS state
   arnsNamesCache: Record<string, { name: string; logo?: string; timestamp: number }>;
   ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>; timestamp: number }>;
-  
+
   // Upload history state
   uploadHistory: UploadResult[];
-  
+
   // Deploy history state
   deployHistory: DeployResult[];
   
@@ -168,6 +171,7 @@ interface StoreState {
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
   setCreditBalance: (balance: number) => void;
+  setFreeUploadLimitBytes: (limitBytes: number) => void;
   setArNSName: (address: string, name: string, logo?: string) => void;
   getArNSName: (address: string) => { name: string; logo?: string } | null;
   setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>) => void;
@@ -236,6 +240,7 @@ export const useStore = create<StoreState>()(
       address: null,
       walletType: null,
       creditBalance: 0,
+      freeUploadLimitBytes: 0, // Default to 0 bytes (no free tier)
       arnsNamesCache: {},
       ownedArnsCache: {},
       uploadHistory: [],
@@ -280,6 +285,7 @@ export const useStore = create<StoreState>()(
       setAddress: (address, type) => set({ address, walletType: type }),
       clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {}, ownedArnsCache: {} }),
       setCreditBalance: (balance) => set({ creditBalance: balance }),
+      setFreeUploadLimitBytes: (limitBytes) => set({ freeUploadLimitBytes: limitBytes }),
       setArNSName: (address, name, logo) => {
         const cache = get().arnsNamesCache;
         set({ 
@@ -462,6 +468,7 @@ export const useStore = create<StoreState>()(
       partialize: (state) => ({
         address: state.address,
         walletType: state.walletType,
+        freeUploadLimitBytes: state.freeUploadLimitBytes,
         arnsNamesCache: state.arnsNamesCache,
         ownedArnsCache: state.ownedArnsCache,
         uploadHistory: state.uploadHistory,

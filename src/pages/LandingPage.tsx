@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../hooks/useCreditsForFiat';
+import { useFreeUploadLimit, formatFreeLimit } from '../hooks/useFreeUploadLimit';
 import {
   ArrowRight, Zap, Github, FileCode, Database, Rss,
   CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info,
@@ -15,6 +16,7 @@ import {
 const LandingPage = () => {
   const { address } = useStore();
   const navigate = useNavigate();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const loggedIn = address !== null;
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -282,10 +284,12 @@ const LandingPage = () => {
         </div>
 
         {/* Free tier callout */}
-        <div className="mt-3 text-sm text-link/70">
-          <Check className="w-4 h-4 text-green-500 inline mr-1" />
-          Files under 100 KiB are completely FREE
-        </div>
+        {freeUploadLimitBytes > 0 && (
+          <div className="mt-3 text-sm text-link/70">
+            <Check className="w-4 h-4 text-green-500 inline mr-1" />
+            Files under {formatFreeLimit(freeUploadLimitBytes)} are completely FREE
+          </div>
+        )}
 
         {/* Terminal snippet - more integrated */}
         <div className="mt-8 w-full max-w-2xl">
@@ -446,11 +450,13 @@ const LandingPage = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          <div className="bg-gradient-to-br from-turbo-green/10 to-turbo-green/5 rounded-lg border-2 border-turbo-green/50 p-8 text-center">
-            <div className="text-4xl font-bold text-turbo-green mb-2">FREE</div>
-            <div className="text-lg text-fg-muted font-medium mb-1">Files under 100 KiB</div>
-            <div className="text-sm text-link">No credit card required</div>
-          </div>
+          {freeUploadLimitBytes > 0 && (
+            <div className="bg-gradient-to-br from-turbo-green/10 to-turbo-green/5 rounded-lg border-2 border-turbo-green/50 p-8 text-center">
+              <div className="text-4xl font-bold text-turbo-green mb-2">FREE</div>
+              <div className="text-lg text-fg-muted font-medium mb-1">Files under {formatFreeLimit(freeUploadLimitBytes)}</div>
+              <div className="text-sm text-link">No credit card required</div>
+            </div>
+          )}
           <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-8 text-center">
             <div className="text-4xl font-bold text-turbo-red mb-2">${pricePerGiB}</div>
             <div className="text-lg text-fg-muted font-medium mb-1">Per GiB</div>

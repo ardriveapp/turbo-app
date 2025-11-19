@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { 
-  ArrowRight, 
-  Zap, 
-  Code2, 
-  Upload, 
+import {
+  ArrowRight,
+  Zap,
+  Code2,
+  Upload,
   CreditCard,
   Globe,
   Gift,
@@ -11,8 +11,10 @@ import {
   Terminal
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { useFreeUploadLimit, formatFreeLimit } from '@/hooks/useFreeUploadLimit';
 
 export function HomePage() {
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const { address } = useStore();
   
   return (
@@ -86,7 +88,7 @@ export function HomePage() {
           <Upload className="w-8 h-8 text-turbo-red mb-4" />
           <h3 className="text-lg font-semibold mb-2 text-fg-muted">Upload Files</h3>
           <p className="text-link mb-4">
-            Drag & drop uploads with instant confirmation. Files under 100KiB are free.
+            Drag & drop uploads with instant confirmation. {freeUploadLimitBytes > 0 && `Files under ${formatFreeLimit(freeUploadLimitBytes)} are free.`}
           </p>
           <div className="text-turbo-red flex items-center gap-1 group-hover:gap-2 transition-all">
             Start uploading <ArrowRight className="w-4 h-4" />
