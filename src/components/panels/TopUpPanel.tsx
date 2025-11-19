@@ -1550,7 +1550,7 @@ export default function TopUpPanel() {
           className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
             (paymentMethod === 'fiat' && (
-              !paymentTargetAddress || // Must have valid target address (either connected wallet or entered)
+              (!paymentTargetAddress && !address) || // Must have either a target address or connected wallet
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
             )) ||
