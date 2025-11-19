@@ -4,7 +4,7 @@ import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check, MapPin } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
@@ -54,6 +54,7 @@ export default function TopUpPanel() {
   const [targetAddressError, setTargetAddressError] = useState('');
   const [targetBalance, setTargetBalance] = useState<number | null>(null);
   const [loadingTargetBalance, setLoadingTargetBalance] = useState(false);
+  const [isRecipientExpanded, setIsRecipientExpanded] = useState(false);
 
   // Wallet modal state
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -127,8 +128,14 @@ export default function TopUpPanel() {
       return '0 storage';
     }
   };
-  
-  
+
+  // Truncate address for display
+  const truncateAddress = (addr: string) => {
+    if (!addr) return '';
+    if (addr.length <= 16) return addr;
+    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  };
+
   // Helper function to get token amount for USD amount
 
   const presetAmounts = [10, 25, 50, 100, 250, 500];
@@ -604,80 +611,119 @@ export default function TopUpPanel() {
         {/* For logged-in users with fiat - show editable recipient field */}
         {paymentMethod === 'fiat' && address && (
           <div className="mb-6">
-            <div className="bg-surface rounded-lg p-4 border border-default">
-              <label className="block text-sm font-medium text-link mb-3">
-                Recipient Wallet Address
-              </label>
-              <input
-                type="text"
-                value={targetAddressInput || address}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setTargetAddressInput(value);
-                  setTargetAddressError('');
-                  setTargetBalance(null);
-
-                  // If user clears to match their address, set target to their wallet
-                  if (value === address) {
-                    setPaymentTarget(address, walletType);
-                  }
-                }}
-                onBlur={() => {
-                  const trimmed = targetAddressInput.trim();
-                  if (trimmed && trimmed !== address) {
-                    // Validating a different address
-                    const validation = validateWalletAddress(trimmed);
-                    if (validation.isValid && validation.type !== 'unknown') {
-                      setPaymentTarget(trimmed, validation.type);
-                      setTargetAddressError('');
-                    } else {
-                      setTargetAddressError(validation.error || 'Invalid address');
-                      setTargetBalance(null);
-                    }
-                  } else if (!trimmed) {
-                    // Reset to connected wallet if cleared
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  } else {
-                    // It's their own address
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  }
-                }}
-                onFocus={() => {
-                  // If showing connected address, clear input for easy editing
-                  if (!targetAddressInput) {
-                    setTargetAddressInput(address || '');
-                  }
-                }}
-                placeholder="Enter Arweave, Ethereum, or Solana address"
-                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
-                  targetAddressError
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-default focus:border-fg-muted'
-                }`}
-              />
-              {targetAddressError && (
-                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
-              )}
-              {paymentTargetAddress && !targetAddressError && (
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-turbo-green" />
-                    <span className="text-xs text-turbo-green">
-                      {paymentTargetAddress === address
-                        ? 'Credits will be added to your wallet'
-                        : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
-                      }
-                    </span>
+            {!isRecipientExpanded ? (
+              // Collapsed state - summary button
+              <button
+                onClick={() => setIsRecipientExpanded(true)}
+                className="w-full bg-surface rounded-lg p-4 border border-default hover:border-link/50 transition-colors flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-link" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-fg-muted">
+                      Buying for: {truncateAddress(paymentTargetAddress || address)}
+                      {(!paymentTargetAddress || paymentTargetAddress === address) && (
+                        <span className="text-link ml-2">(You)</span>
+                      )}
+                    </div>
+                    {paymentTargetAddress && paymentTargetAddress !== address && (
+                      <div className="text-xs text-link mt-0.5">
+                        {getWalletTypeLabel(paymentTargetType || 'unknown')} address
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
+                <ChevronDown className="w-5 h-5 text-link group-hover:text-fg-muted transition-colors" />
+              </button>
+            ) : (
+              // Expanded state - full input field
+              <div className="bg-surface rounded-lg border border-default">
+                <button
+                  onClick={() => setIsRecipientExpanded(false)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-canvas/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-link" />
+                    <span className="text-sm font-medium text-link">Recipient Wallet Address</span>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-link rotate-180 transition-transform" />
+                </button>
+                <div className="px-4 pb-4">
+                  <input
+                    type="text"
+                    value={targetAddressInput || address}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTargetAddressInput(value);
+                      setTargetAddressError('');
+                      setTargetBalance(null);
+
+                      // If user clears to match their address, set target to their wallet
+                      if (value === address) {
+                        setPaymentTarget(address, walletType);
+                      }
+                    }}
+                    onBlur={() => {
+                      const trimmed = targetAddressInput.trim();
+                      if (trimmed && trimmed !== address) {
+                        // Validating a different address
+                        const validation = validateWalletAddress(trimmed);
+                        if (validation.isValid && validation.type !== 'unknown') {
+                          setPaymentTarget(trimmed, validation.type);
+                          setTargetAddressError('');
+                        } else {
+                          setTargetAddressError(validation.error || 'Invalid address');
+                          setTargetBalance(null);
+                        }
+                      } else if (!trimmed) {
+                        // Reset to connected wallet if cleared
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      } else {
+                        // It's their own address
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      // If showing connected address, clear input for easy editing
+                      if (!targetAddressInput) {
+                        setTargetAddressInput(address || '');
+                      }
+                    }}
+                    placeholder="Enter Arweave, Ethereum, or Solana address"
+                    className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                      targetAddressError
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-default focus:border-fg-muted'
+                    }`}
+                  />
+                  {targetAddressError && (
+                    <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+                  )}
+                  {paymentTargetAddress && !targetAddressError && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-turbo-green" />
+                        <span className="text-xs text-turbo-green">
+                          {paymentTargetAddress === address
+                            ? 'Credits will be added to your wallet'
+                            : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3 text-xs text-link/70">
+                    Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -834,83 +880,119 @@ export default function TopUpPanel() {
         {/* Recipient Wallet Address for Crypto - Only if wallet is connected */}
         {paymentMethod === 'crypto' && address && (
           <div className="mb-6">
-            <div className="bg-surface rounded-lg p-4 border border-default">
-              <label className="block text-sm font-medium text-link mb-3">
-                Recipient Wallet Address (Optional)
-              </label>
-              <input
-                type="text"
-                value={targetAddressInput || address}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setTargetAddressInput(value);
-                  setTargetAddressError('');
-                  setTargetBalance(null);
-
-                  // If user clears to match their address, set target to their wallet
-                  if (value === address) {
-                    setPaymentTarget(address, walletType);
-                  }
-                }}
-                onBlur={() => {
-                  const trimmed = targetAddressInput.trim();
-                  if (trimmed && trimmed !== address) {
-                    // Validating a different address
-                    const validation = validateWalletAddress(trimmed);
-                    if (validation.isValid && validation.type !== 'unknown') {
-                      setPaymentTarget(trimmed, validation.type);
-                      setTargetAddressError('');
-                    } else {
-                      setTargetAddressError(validation.error || 'Invalid address');
-                      setTargetBalance(null);
-                    }
-                  } else if (!trimmed) {
-                    // Reset to connected wallet if cleared
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  } else {
-                    // It's their own address
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  }
-                }}
-                onFocus={() => {
-                  // If showing connected address, clear input for easy editing
-                  if (!targetAddressInput) {
-                    setTargetAddressInput(address || '');
-                  }
-                }}
-                placeholder="Enter Arweave, Ethereum, or Solana address"
-                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
-                  targetAddressError
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-default focus:border-fg-muted'
-                }`}
-              />
-              {targetAddressError && (
-                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
-              )}
-              {paymentTargetAddress && !targetAddressError && (
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-turbo-green" />
-                    <span className="text-xs text-turbo-green">
-                      {paymentTargetAddress === address
-                        ? 'Credits will be added to your wallet'
-                        : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
-                      }
-                    </span>
+            {!isRecipientExpanded ? (
+              // Collapsed state - summary button
+              <button
+                onClick={() => setIsRecipientExpanded(true)}
+                className="w-full bg-surface rounded-lg p-4 border border-default hover:border-link/50 transition-colors flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-link" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-fg-muted">
+                      Buying for: {truncateAddress(paymentTargetAddress || address)}
+                      {(!paymentTargetAddress || paymentTargetAddress === address) && (
+                        <span className="text-link ml-2">(You)</span>
+                      )}
+                    </div>
+                    {paymentTargetAddress && paymentTargetAddress !== address && (
+                      <div className="text-xs text-link mt-0.5">
+                        {getWalletTypeLabel(paymentTargetType || 'unknown')} address
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="mt-3 text-xs text-link/70">
-                Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                <ChevronDown className="w-5 h-5 text-link group-hover:text-fg-muted transition-colors" />
+              </button>
+            ) : (
+              // Expanded state - full input field
+              <div className="bg-surface rounded-lg border border-default">
+                <button
+                  onClick={() => setIsRecipientExpanded(false)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-canvas/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-link" />
+                    <span className="text-sm font-medium text-link">Recipient Wallet Address</span>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-link rotate-180 transition-transform" />
+                </button>
+                <div className="px-4 pb-4">
+                  <input
+                    type="text"
+                    value={targetAddressInput || address}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTargetAddressInput(value);
+                      setTargetAddressError('');
+                      setTargetBalance(null);
+
+                      // If user clears to match their address, set target to their wallet
+                      if (value === address) {
+                        setPaymentTarget(address, walletType);
+                      }
+                    }}
+                    onBlur={() => {
+                      const trimmed = targetAddressInput.trim();
+                      if (trimmed && trimmed !== address) {
+                        // Validating a different address
+                        const validation = validateWalletAddress(trimmed);
+                        if (validation.isValid && validation.type !== 'unknown') {
+                          setPaymentTarget(trimmed, validation.type);
+                          setTargetAddressError('');
+                        } else {
+                          setTargetAddressError(validation.error || 'Invalid address');
+                          setTargetBalance(null);
+                        }
+                      } else if (!trimmed) {
+                        // Reset to connected wallet if cleared
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      } else {
+                        // It's their own address
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      // If showing connected address, clear input for easy editing
+                      if (!targetAddressInput) {
+                        setTargetAddressInput(address || '');
+                      }
+                    }}
+                    placeholder="Enter Arweave, Ethereum, or Solana address"
+                    className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                      targetAddressError
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-default focus:border-fg-muted'
+                    }`}
+                  />
+                  {targetAddressError && (
+                    <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+                  )}
+                  {paymentTargetAddress && !targetAddressError && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-turbo-green" />
+                        <span className="text-xs text-turbo-green">
+                          {paymentTargetAddress === address
+                            ? 'Credits will be added to your wallet'
+                            : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3 text-xs text-link/70">
+                    Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
