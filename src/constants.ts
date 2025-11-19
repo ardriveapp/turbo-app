@@ -67,7 +67,7 @@ export const tokenLabels: Record<SupportedTokenType, string> = {
   kyve: 'KYVE',
   pol: 'POL',
   'usdc': 'USDC (ETH)',
-  'base-usdc': 'USDC (Base) with x402',
+  'base-usdc': 'USDC (Base)',
   'polygon-usdc': 'USDC (Polygon)',
 } as const;
 
@@ -172,6 +172,30 @@ export const X402_CONFIG = {
   usdcAddresses: {
     production: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base Mainnet USDC
     development: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia USDC
+  },
+} as const;
+
+// Ethereum network configuration
+export const ETHEREUM_CONFIG = {
+  chainIds: {
+    production: 1, // Ethereum Mainnet
+    development: 11155111, // Sepolia Testnet
+  },
+  usdcAddresses: {
+    production: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // Ethereum Mainnet USDC
+    development: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', // Sepolia USDC
+  },
+} as const;
+
+// Polygon network configuration
+export const POLYGON_CONFIG = {
+  chainIds: {
+    production: 137, // Polygon Mainnet
+    development: 80002, // Amoy Testnet
+  },
+  usdcAddresses: {
+    production: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Polygon Mainnet USDC (native)
+    development: '0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582', // Amoy USDC
   },
 } as const;
 

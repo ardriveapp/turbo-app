@@ -952,6 +952,16 @@ export default function DeploySitePanel() {
     }
   }, [deployHistory, recentDeploymentEntries, initializeFromCache]);
 
+  // Auto-enable JIT when user has insufficient credits
+  useEffect(() => {
+    if (showConfirmModal && totalCost !== null) {
+      const creditsNeeded = Math.max(0, totalCost - creditBalance);
+      if (creditsNeeded > 0) {
+        setLocalJitEnabled(true); // Auto-enable for insufficient credits
+      }
+    }
+  }, [showConfirmModal, totalCost, creditBalance]);
+
   // ArNS names are fetched automatically when user connects (in useOwnedArNSNames hook)
 
   const handleConfirmDeploy = async () => {
@@ -1126,16 +1136,6 @@ export default function DeploySitePanel() {
   const totalFileSize = calculateTotalSize();
   const totalCost = calculateTotalCost();
   const folderName = selectedFolder?.[0]?.webkitRelativePath?.split('/')[0] || '';
-
-  // Auto-enable JIT when user has insufficient credits
-  useEffect(() => {
-    if (showConfirmModal && totalCost !== null) {
-      const creditsNeeded = Math.max(0, totalCost - creditBalance);
-      if (creditsNeeded > 0) {
-        setLocalJitEnabled(true); // Auto-enable for insufficient credits
-      }
-    }
-  }, [showConfirmModal, totalCost, creditBalance]);
 
   return (
     <div className="px-4 sm:px-6">
