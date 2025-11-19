@@ -17,7 +17,9 @@ import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
 import { JitPaymentCard } from '../JitPaymentCard';
+import { JitTokenSelector } from '../JitTokenSelector';
 import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
+import { SupportedTokenType } from '../../constants';
 
 export default function CapturePanel() {
   const {
@@ -62,6 +64,27 @@ export default function CapturePanel() {
   const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
   const [localJitMax, setLocalJitMax] = useState(0);
   const FIXED_BUFFER_MULTIPLIER = 1.1;
+
+  // Selected JIT token (default based on wallet type)
+  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
+    if (walletType === 'ethereum') return 'base-usdc'; // BASE-USDC with x402 default
+    if (walletType === 'arweave') return 'ario';
+    if (walletType === 'solana') return 'solana';
+    return 'base-eth'; // Fallback
+  });
+
+  // Update selectedJitToken when wallet type changes
+  useEffect(() => {
+    if (walletType === 'ethereum') setSelectedJitToken('base-usdc');
+    else if (walletType === 'arweave') setSelectedJitToken('ario');
+    else if (walletType === 'solana') setSelectedJitToken('solana');
+  }, [walletType]);
+
+  // Track if JIT section is expanded (for users with sufficient credits)
+  const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
+
+  // Track if user has sufficient crypto balance for JIT payment
+  const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
 
   const wincForOneGiB = useWincForOneGiB();
   const {
@@ -222,22 +245,17 @@ export default function CapturePanel() {
     // Save JIT preferences
     setJitPaymentEnabled(localJitEnabled);
 
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
-
-    if (jitTokenType) {
-      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    // Save max token amount to store for future use (using selected token)
+    if (selectedJitToken) {
+      setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
     const totalCost = calculateUploadCost(captureFile.size);
     const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
 
     let jitMaxTokenAmountSmallest = 0;
-    if (shouldEnableJit && jitTokenType && supportsJitPayment(jitTokenType)) {
-      const converter = getTokenConverter(jitTokenType);
+    if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
+      const converter = getTokenConverter(selectedJitToken);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -906,35 +924,80 @@ export default function CapturePanel() {
             {/* JIT Payment Card */}
             {(() => {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
-              const jitTokenType = walletType === 'arweave'
-                ? 'ario'
-                : walletType === 'ethereum'
-                ? 'base-eth'
-                : walletType;
-              const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+              const hasSufficientCredits = creditsNeeded === 0;
+              const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
+              const showJitOption = creditsNeeded > 0 && canUseJit;
+
+              // Auto-expand if insufficient credits, otherwise respect user's toggle
+              const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
 
               return (
                 <>
-                  {showJitOption && jitTokenType && (
+                  {/* JIT Payment Section - Collapsible for users with sufficient credits */}
+                  {hasSufficientCredits && canUseJit && (
+                    <button
+                      onClick={() => setJitSectionExpanded(!jitSectionExpanded)}
+                      className="w-full mb-3 p-2.5 bg-surface/30 rounded-lg border border-default/30 text-xs text-link hover:text-fg-muted transition-colors flex items-center justify-between"
+                    >
+                      <span>Pay with crypto instead?</span>
+                      {jitSectionExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Show JIT options when expanded or when insufficient credits */}
+                  {isExpanded && canUseJit && (
                     <div className="mb-4">
+                      {/* JIT Token Selector - shown for Ethereum wallets */}
+                      {walletType === 'ethereum' && (
+                        <div className="mb-3">
+                          <JitTokenSelector
+                            walletType={walletType}
+                            selectedToken={selectedJitToken}
+                            onTokenSelect={setSelectedJitToken}
+                          />
+                        </div>
+                      )}
+
+                      {/* JIT Payment Card */}
                       <JitPaymentCard
                         creditsNeeded={creditsNeeded}
                         totalCost={typeof totalCost === 'number' ? totalCost : 0}
                         currentBalance={creditBalance}
-                        tokenType={jitTokenType}
+                        tokenType={selectedJitToken}
                         maxTokenAmount={localJitMax}
                         onMaxTokenAmountChange={setLocalJitMax}
+                        walletAddress={address}
+                        walletType={walletType}
+                        onBalanceValidation={setJitBalanceSufficient}
                       />
+
+                      {/* Enable JIT toggle */}
+                      <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={localJitEnabled}
+                          onChange={(e) => setLocalJitEnabled(e.target.checked)}
+                          className="w-4 h-4 rounded border-default bg-canvas text-turbo-red focus:ring-turbo-red focus:ring-offset-0"
+                        />
+                        <span className="text-xs text-link">
+                          Enable automatic crypto top-up for this capture
+                        </span>
+                      </label>
                     </div>
                   )}
 
+                  {/* Insufficient credits warning - when NOT using JIT */}
                   {creditsNeeded > 0 && !localJitEnabled && (
                     <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                         <span>
                           Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                          {!showJitOption && (
+                          {!canUseJit && (
                             <>
                               {' '}
                               <a href="/topup" className="underline hover:text-red-300 transition-colors">
@@ -943,6 +1006,23 @@ export default function CapturePanel() {
                               to continue.
                             </>
                           )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insufficient crypto balance warning - when using JIT */}
+                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && (
+                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          Insufficient crypto balance in your wallet.
+                          Please add funds to your wallet or{' '}
+                          <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                            buy credits
+                          </a>{' '}
+                          instead.
                         </span>
                       </div>
                     </div>
@@ -972,7 +1052,10 @@ export default function CapturePanel() {
                     </button>
                     <button
                       onClick={handleConfirmUpload}
-                      disabled={creditsNeeded > 0 && !localJitEnabled}
+                      disabled={
+                        (creditsNeeded > 0 && !localJitEnabled) ||
+                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
+                      }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
                       {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}

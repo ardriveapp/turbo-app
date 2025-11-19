@@ -68,6 +68,9 @@ export default function UploadPanel() {
   // Track if JIT section is expanded (for users with sufficient credits)
   const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
 
+  // Track if user has sufficient crypto balance for JIT payment
+  const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
+
   // Fixed 10% buffer for SDK (not exposed to user)
   const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
@@ -1012,6 +1015,9 @@ export default function UploadPanel() {
                             tokenType={selectedJitToken}
                             maxTokenAmount={localJitMax}
                             onMaxTokenAmountChange={setLocalJitMax}
+                            walletAddress={address}
+                            walletType={walletType}
+                            onBalanceValidation={setJitBalanceSufficient}
                           />
                         </div>
                       )}
@@ -1034,6 +1040,23 @@ export default function UploadPanel() {
                               to continue.
                             </>
                           )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insufficient crypto balance warning - when using JIT */}
+                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && (
+                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          Insufficient crypto balance in your wallet.
+                          Please add funds to your wallet or{' '}
+                          <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                            buy credits
+                          </a>{' '}
+                          instead.
                         </span>
                       </div>
                     </div>
@@ -1063,7 +1086,10 @@ export default function UploadPanel() {
                     </button>
                     <button
                       onClick={handleConfirmUpload}
-                      disabled={creditsNeeded > 0 && !localJitEnabled}
+                      disabled={
+                        (creditsNeeded > 0 && !localJitEnabled) ||
+                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
+                      }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
                       {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}

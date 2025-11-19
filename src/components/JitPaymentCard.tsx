@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { SupportedTokenType, tokenLabels } from '../constants';
 import {
   calculateRequiredTokenAmount,
   formatTokenAmount,
 } from '../utils/jitPayment';
+import { useTokenBalance } from '../hooks/useTokenBalance';
 
 interface JitPaymentCardProps {
   creditsNeeded: number;
@@ -13,6 +14,9 @@ interface JitPaymentCardProps {
   tokenType: SupportedTokenType;
   maxTokenAmount: number; // Human-readable amount (e.g., 0.15 SOL, 200 ARIO)
   onMaxTokenAmountChange: (amount: number) => void;
+  walletAddress: string | null;
+  walletType: 'arweave' | 'ethereum' | 'solana' | null;
+  onBalanceValidation?: (hasSufficientBalance: boolean) => void;
 }
 
 export function JitPaymentCard({
@@ -21,6 +25,9 @@ export function JitPaymentCard({
   tokenType,
   maxTokenAmount,
   onMaxTokenAmountChange,
+  walletAddress,
+  walletType,
+  onBalanceValidation,
 }: JitPaymentCardProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState<{
@@ -31,6 +38,14 @@ export function JitPaymentCard({
   const tokenLabel = tokenLabels[tokenType];
   const BUFFER_MULTIPLIER = 1.1; // Fixed 10% buffer for SDK
   const MAX_MULTIPLIER = 1.5; // Max is 1.5x estimated cost
+
+  // Fetch wallet balance for the selected token
+  const {
+    balance: tokenBalance,
+    loading: balanceLoading,
+    error: balanceError,
+    isNetworkError,
+  } = useTokenBalance(tokenType, walletType, walletAddress);
 
   // Calculate estimated cost and auto-set max
   useEffect(() => {
@@ -70,6 +85,42 @@ export function JitPaymentCard({
     }
   }, [creditsNeeded, totalCost, tokenType, onMaxTokenAmountChange]);
 
+  // Validate balance vs. required amount
+  useEffect(() => {
+    // If we don't have estimated cost yet, we're still calculating - allow proceeding
+    if (!estimatedCost) {
+      onBalanceValidation?.(true);
+      return;
+    }
+
+    // Network errors (wrong chain) should BLOCK proceeding
+    if (isNetworkError) {
+      onBalanceValidation?.(false);
+      return;
+    }
+
+    // Other errors (RPC issues, etc.) - allow proceeding to not block user
+    // This handles temporary RPC errors, rate limiting, etc.
+    if (balanceError) {
+      onBalanceValidation?.(true);
+      return;
+    }
+
+    // Check if user has enough tokens (with buffer)
+    // Even during loading (refresh), use the last known balance
+    const requiredAmount = estimatedCost.tokenAmountReadable;
+    const hasSufficientBalance = tokenBalance >= requiredAmount;
+
+    onBalanceValidation?.(hasSufficientBalance);
+  }, [tokenBalance, estimatedCost, balanceLoading, balanceError, isNetworkError, onBalanceValidation]);
+
+  // Calculate shortfall if insufficient
+  const shortfall = estimatedCost && tokenBalance < estimatedCost.tokenAmountReadable
+    ? estimatedCost.tokenAmountReadable - tokenBalance
+    : 0;
+
+  const hasSufficientBalance = estimatedCost ? tokenBalance >= estimatedCost.tokenAmountReadable : true;
+
   return (
     <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-lg border border-default p-3">
       {/* Cost display */}
@@ -91,6 +142,47 @@ export function JitPaymentCard({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Balance Display */}
+          <div className="mb-3 mt-3">
+            {balanceLoading ? (
+              <div className="flex items-center gap-2 p-2 bg-surface/50 rounded border border-default">
+                <Loader2 className="w-4 h-4 text-link animate-spin" />
+                <span className="text-xs text-link">Checking wallet balance...</span>
+              </div>
+            ) : balanceError ? (
+              <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-amber-400 font-medium">Unable to fetch balance</div>
+                  <div className="text-xs text-amber-400/70 mt-0.5">{balanceError}</div>
+                </div>
+              </div>
+            ) : hasSufficientBalance ? (
+              <div className="flex items-center gap-2 p-2 bg-turbo-green/10 rounded border border-turbo-green/20">
+                <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-turbo-green font-medium">
+                    Your Balance: {formatTokenAmount(tokenBalance, tokenType)} {tokenLabel}
+                  </div>
+                  <div className="text-xs text-turbo-green/70">Sufficient funds available</div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded border border-red-500/20">
+                <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-red-400 font-medium">
+                    Your Balance: {formatTokenAmount(tokenBalance, tokenType)} {tokenLabel}
+                  </div>
+                  <div className="text-xs text-red-400 flex items-center gap-1 mt-0.5">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                    <span>Need {formatTokenAmount(shortfall, tokenType)} {tokenLabel} more</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="text-xs text-link mb-2">

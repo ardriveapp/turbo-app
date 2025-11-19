@@ -175,6 +175,11 @@ export const X402_CONFIG = {
   },
 } as const;
 
+// ERC-20 ABI for token balance checking
+export const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+] as const;
+
 // Preset amounts for each token type
 // Error messages matching reference app
 export const valueStringError = `Error: Unable to fetch credit estimate`;
