@@ -40,25 +40,27 @@ export function useTokenBalance(
   const [isNetworkError, setIsNetworkError] = useState(false);
 
   /**
-   * Fetch ARIO balance using Turbo SDK
-   * ARIO is an AO token, so we query the balance from the connected wallet's address
+   * Fetch ARIO balance using AR.IO SDK
+   * ARIO is an AO token, so we query the balance from the ARIO process
    */
   const fetchArioBalance = useCallback(async (arweaveAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      // Import Turbo SDK dynamically
-      const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-      const config = getCurrentConfig();
+      // Import AR.IO SDK dynamically
+      const { ARIO, ARIO_TESTNET_PROCESS_ID } = await import('@ar.io/sdk');
 
-      // Create authenticated Turbo client using wallet address
-      const turbo = TurboFactory.unauthenticated({
-        token: 'ario',
-        paymentServiceConfig: { url: config.paymentServiceUrl },
+      // Create ARIO client (mainnet or testnet based on config mode)
+      // Use testnet for development, mainnet for production
+      const ario = configMode === 'development'
+        ? ARIO.init({ processId: ARIO_TESTNET_PROCESS_ID })
+        : ARIO.mainnet();
+
+      // Get ARIO token balance for the wallet address
+      const balanceInSmallest = await ario.getBalance({
+        address: arweaveAddress,
       });
 
-      // Get ARIO balance for the wallet address
-      const balanceResult = await turbo.getBalance(arweaveAddress);
-      const balanceInSmallest = Number(balanceResult.winc); // mARIO (6 decimals)
-      const balanceInArio = balanceInSmallest / 1_000_000; // Convert mARIO to ARIO
+      // Convert mARIO to ARIO (1 ARIO = 1,000,000 mARIO)
+      const balanceInArio = balanceInSmallest / 1_000_000;
 
       return {
         readable: balanceInArio,
@@ -68,7 +70,7 @@ export function useTokenBalance(
       console.error('Failed to fetch ARIO balance:', err);
       throw new Error('Unable to fetch ARIO balance. Please try again.');
     }
-  }, [getCurrentConfig]);
+  }, [configMode]);
 
   /**
    * Fetch SOL balance using Solana web3.js
