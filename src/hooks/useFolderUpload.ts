@@ -10,7 +10,7 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
-import { APP_NAME, APP_VERSION } from '../constants';
+import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -368,6 +368,7 @@ export function useFolderUpload() {
       jitEnabled?: boolean;
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     // Validate wallet state before any operations
@@ -397,14 +398,12 @@ export function useFolderUpload() {
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
+    // Use selectedJitToken if provided, otherwise default based on wallet type
+    const jitTokenType = manifestOptions?.selectedJitToken || (
+      walletType === 'arweave' ? 'ario' :
+      walletType === 'ethereum' ? 'base-eth' :
+      walletType
+    );
 
     // Create funding mode if JIT enabled and supported
     let fundingMode: OnDemandFunding | undefined = undefined;
@@ -416,7 +415,7 @@ export function useFolderUpload() {
     }
 
     try {
-      // Creating Turbo client for folder deployment
+      // Creating Turbo client for folder deployment (using selected JIT token)
       const turbo = await createTurboClient(jitTokenType || undefined);
       
       // Starting folder deployment

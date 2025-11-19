@@ -961,7 +961,7 @@ export default function UploadPanel() {
                           </div>
                           <p className="text-xs text-link mt-1 ml-6">
                             {walletType === 'ethereum'
-                              ? 'Use BASE-USDC (x402), BASE-ETH, or ARIO for this upload'
+                              ? 'Use BASE-USDC (x402) or BASE-ETH for this upload'
                               : walletType === 'arweave'
                               ? 'Use ARIO tokens for this upload'
                               : walletType === 'solana'

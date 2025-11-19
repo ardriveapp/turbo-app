@@ -187,9 +187,9 @@ const Header = () => {
       
       {/* Dev Mode Indicator */}
       {configMode !== 'production' && (
-        <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/20">
-          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-          <span className="text-xs text-amber-400 font-medium uppercase">
+        <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-turbo-purple/10 rounded-full border border-turbo-purple/20">
+          <div className="w-2 h-2 bg-turbo-purple rounded-full animate-pulse" />
+          <span className="text-xs text-turbo-purple font-medium uppercase">
             {configMode} MODE
           </span>
         </div>

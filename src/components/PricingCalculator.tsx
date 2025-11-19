@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Calculator, HardDrive, DollarSign, Info, Check } from 'lucide-react';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../hooks/useCreditsForFiat';
+import { useFreeUploadLimit, formatFreeLimit } from '../hooks/useFreeUploadLimit';
 
 export default function PricingCalculator() {
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
   const [storageAmount, setStorageAmount] = useState(1);
   const [storageUnit, setStorageUnit] = useState<'MB' | 'GB' | 'TB'>('GB');
@@ -79,8 +81,8 @@ export default function PricingCalculator() {
         </div>
         <h2 className="text-2xl font-bold text-fg-muted mb-2">Pricing Calculator</h2>
         <p className="text-link text-sm max-w-2xl mx-auto">
-          Calculate storage costs or see how much storage your budget gets you. 
-          Files under 100KiB are always FREE!
+          Calculate storage costs or see how much storage your budget gets you.
+          {freeUploadLimitBytes > 0 && ` Files under ${formatFreeLimit(freeUploadLimitBytes)} are always FREE!`}
         </p>
       </div>
 
@@ -279,10 +281,12 @@ export default function PricingCalculator() {
                   <strong className="text-fg-muted">Good to know:</strong>
                 </p>
                 <ul className="space-y-1">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
-                    <span>Files under 100KiB are completely FREE</span>
-                  </li>
+                  {freeUploadLimitBytes > 0 && (
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
+                      <span>Files under {formatFreeLimit(freeUploadLimitBytes)} are completely FREE</span>
+                    </li>
+                  )}
                   <li className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
                     <span>Storage is permanent - pay once, store forever</span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useTurboCapture } from '../../hooks/useTurboCapture';
+import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
 import { wincPerCredit, APP_NAME, APP_VERSION } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { Camera, CheckCircle, XCircle, Shield, ExternalLink, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Link } from 'lucide-react';
@@ -31,6 +32,9 @@ export default function CapturePanel() {
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
   } = useStore();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
 
   // Capture state
   const [urlInput, setUrlInput] = useState('');
@@ -174,7 +178,7 @@ export default function CapturePanel() {
   };
 
   const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier
+    if (isFileFree(bytes, freeUploadLimitBytes)) return 0; // Free tier
     if (!wincForOneGiB) return null;
 
     const gibSize = bytes / (1024 * 1024 * 1024);
@@ -767,7 +771,7 @@ export default function CapturePanel() {
                         <div className="flex items-center gap-2 text-sm text-link">
                           <span>
                             {(() => {
-                              if (result.fileSize && result.fileSize < 100 * 1024) {
+                              if (result.fileSize && isFileFree(result.fileSize, freeUploadLimitBytes)) {
                                 return <span className="text-turbo-green">FREE</span>;
                               } else if (wincForOneGiB && result.winc) {
                                 const credits = Number(result.winc) / wincPerCredit;

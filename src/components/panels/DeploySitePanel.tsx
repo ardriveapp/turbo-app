@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
+import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
 import { wincPerCredit } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
+import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X, Wallet } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
@@ -16,7 +17,9 @@ import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 import UploadProgressSummary from '../UploadProgressSummary';
 import { JitPaymentCard } from '../JitPaymentCard';
+import { JitTokenSelector } from '../JitTokenSelector';
 import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
+import { SupportedTokenType } from '../../constants';
 
 // Enhanced Deploy Confirmation Modal for original deploy page
 interface DeployConfirmationModalProps {
@@ -39,6 +42,10 @@ interface DeployConfirmationModalProps {
   onJitEnabledChange: (enabled: boolean) => void;
   jitMaxTokenAmount: number;
   onJitMaxTokenAmountChange: (amount: number) => void;
+  selectedJitToken: SupportedTokenType;
+  onSelectedJitTokenChange: (token: SupportedTokenType) => void;
+  jitSectionExpanded: boolean;
+  onJitSectionExpandedChange: (expanded: boolean) => void;
 }
 
 function DeployConfirmationModal({
@@ -59,18 +66,17 @@ function DeployConfirmationModal({
   onJitEnabledChange,
   jitMaxTokenAmount,
   onJitMaxTokenAmountChange,
+  selectedJitToken,
+  onSelectedJitTokenChange,
+  jitSectionExpanded,
+  onJitSectionExpandedChange,
 }: DeployConfirmationModalProps) {
   const creditsNeeded = Math.max(0, totalCost - currentBalance);
+  const hasSufficientCredits = creditsNeeded === 0;
+  const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
-  // Determine the token type for JIT payment
-  // Arweave wallets must use ARIO for JIT (not AR)
-  // Ethereum wallets use Base-ETH for JIT
-  const jitTokenType = walletType === 'arweave'
-    ? 'ario'
-    : walletType === 'ethereum'
-    ? 'base-eth'
-    : walletType;
-  const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+  // Auto-expand if insufficient credits, otherwise respect user's toggle
+  const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
   return (
     <BaseModal onClose={onClose}>
       <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
@@ -150,28 +156,95 @@ function DeployConfirmationModal({
           </div>
         </div>
 
-        {/* JIT Payment Card - Show when insufficient credits and wallet supports it */}
-        {showJitOption && jitTokenType && (
-          <div className="mb-4">
-            <JitPaymentCard
-              creditsNeeded={creditsNeeded}
-              totalCost={totalCost}
-              currentBalance={currentBalance}
-              tokenType={jitTokenType}
-              maxTokenAmount={jitMaxTokenAmount}
-              onMaxTokenAmountChange={onJitMaxTokenAmountChange}
-            />
-          </div>
+        {/* JIT Payment Section */}
+        {canUseJit && (
+          <>
+            {/* Collapsed header when user has sufficient credits */}
+            {hasSufficientCredits && !jitSectionExpanded && (
+              <button
+                type="button"
+                onClick={() => {
+                  onJitSectionExpandedChange(true);
+                  onJitEnabledChange(true); // Auto-enable JIT when expanding
+                }}
+                className="w-full mb-4 p-3 bg-fg-muted/5 hover:bg-fg-muted/10 border border-default hover:border-fg-muted/30 rounded-lg transition-all text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-fg-muted" />
+                    <span className="text-sm font-medium text-fg-muted">
+                      Pay with crypto instead?
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-link group-hover:text-fg-muted transition-colors" />
+                </div>
+                <p className="text-xs text-link mt-1 ml-6">
+                  {walletType === 'ethereum'
+                    ? 'Use BASE-USDC (x402) or BASE-ETH for this deployment'
+                    : walletType === 'arweave'
+                    ? 'Use ARIO tokens for this deployment'
+                    : walletType === 'solana'
+                    ? 'Use SOL tokens for this deployment'
+                    : 'Use crypto for this deployment'
+                  }
+                </p>
+              </button>
+            )}
+
+            {/* Expanded JIT section */}
+            {isExpanded && (
+              <div className="mb-4">
+                {/* Collapse button when user has sufficient credits */}
+                {hasSufficientCredits && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onJitSectionExpandedChange(false);
+                      onJitEnabledChange(false); // Disable JIT when collapsing
+                    }}
+                    className="w-full mb-3 p-2 bg-surface hover:bg-canvas border border-default rounded-lg transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-fg-muted" />
+                      <span className="text-sm font-medium text-fg-muted">
+                        Pay with crypto
+                      </span>
+                    </div>
+                    <ChevronUp className="w-4 h-4 text-link group-hover:text-fg-muted transition-colors" />
+                  </button>
+                )}
+
+                {/* JIT Token Selector - shown for Ethereum wallets */}
+                {walletType === 'ethereum' && (
+                  <JitTokenSelector
+                    walletType={walletType}
+                    selectedToken={selectedJitToken}
+                    onTokenSelect={onSelectedJitTokenChange}
+                  />
+                )}
+
+                {/* JIT Payment Card */}
+                <JitPaymentCard
+                  creditsNeeded={creditsNeeded}
+                  totalCost={totalCost}
+                  currentBalance={currentBalance}
+                  tokenType={selectedJitToken}
+                  maxTokenAmount={jitMaxTokenAmount}
+                  onMaxTokenAmountChange={onJitMaxTokenAmountChange}
+                />
+              </div>
+            )}
+          </>
         )}
 
-        {/* Insufficient credits warning - Only show if JIT disabled or not supported */}
+        {/* Insufficient credits warning - only when not using JIT */}
         {creditsNeeded > 0 && !jitEnabled && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
+          <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>
                 Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                {!showJitOption && (
+                {!canUseJit && (
                   <>
                     {' '}
                     <a href="/topup" className="underline hover:text-red-300 transition-colors">
@@ -234,6 +307,10 @@ export default function DeploySitePanel() {
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
   } = useStore();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
+
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -266,20 +343,26 @@ export default function DeploySitePanel() {
   // JIT payment local state for this deployment
   const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
 
-  // Determine the token type for JIT payment
-  // Arweave wallets must use ARIO for JIT (not AR)
-  // Ethereum wallets use Base-ETH for JIT
-  const jitTokenTypeForDefaults = walletType === 'arweave'
-    ? 'ario'
-    : walletType === 'ethereum'
-    ? 'base-eth'
-    : walletType;
+  // Max will be auto-calculated by JitPaymentCard based on estimated cost
+  const [localJitMax, setLocalJitMax] = useState(0);
 
-  const [localJitMax, setLocalJitMax] = useState(
-    jitTokenTypeForDefaults && jitMaxTokenAmount[jitTokenTypeForDefaults]
-      ? jitMaxTokenAmount[jitTokenTypeForDefaults]
-      : 0
-  );
+  // Selected JIT token (default based on wallet type)
+  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
+    if (walletType === 'ethereum') return 'base-usdc'; // BASE-USDC with x402 default
+    if (walletType === 'arweave') return 'ario';
+    if (walletType === 'solana') return 'solana';
+    return 'base-eth'; // Fallback
+  });
+
+  // Update selectedJitToken when wallet type changes
+  useEffect(() => {
+    if (walletType === 'ethereum') setSelectedJitToken('base-usdc');
+    else if (walletType === 'arweave') setSelectedJitToken('ario');
+    else if (walletType === 'solana') setSelectedJitToken('solana');
+  }, [walletType]);
+
+  // Track if JIT section is expanded (for users with sufficient credits)
+  const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
 
   // Fixed 10% buffer for SDK (not exposed to user)
   const FIXED_BUFFER_MULTIPLIER = 1.1;
@@ -576,14 +659,14 @@ export default function DeploySitePanel() {
   const calculateTotalCost = (): number => {
     if (!wincForOneGiB || !selectedFolder) return 0;
     
-    // Calculate cost per file, accounting for 100KiB free tier
+    // Calculate cost per file, accounting for bundler's free tier
     let totalWinc = 0;
     Array.from(selectedFolder).forEach(file => {
-      if (file.size < 100 * 1024) {
-        // File is under 100KiB - FREE
+      if (isFileFree(file.size, freeUploadLimitBytes)) {
+        // File is under free limit - FREE
         return;
       } else {
-        // File is over 100KiB - calculate cost
+        // File is over free limit - calculate cost
         const gibSize = file.size / (1024 ** 3);
         const fileWinc = gibSize * Number(wincForOneGiB);
         totalWinc += fileWinc;
@@ -850,27 +933,25 @@ export default function DeploySitePanel() {
       return;
     }
 
+    setJitSectionExpanded(false); // Reset for next deployment
+
     // Save JIT preferences to store
     setJitPaymentEnabled(localJitEnabled);
 
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
-
-    // Save max token amount to store for future use
-    if (jitTokenType) {
-      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    // Save max token amount to store for future use (using selected token)
+    if (selectedJitToken) {
+      setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
-    // Convert max token amount to smallest unit for SDK
+    // Only enable JIT if the user has insufficient credits to cover the cost
+    // Calculate credits needed (0 if user has sufficient credits)
+    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+    const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
+
+    // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
-    if (localJitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
-      const converter = getTokenConverter(jitTokenType);
+    if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
+      const converter = getTokenConverter(selectedJitToken);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -881,9 +962,10 @@ export default function DeploySitePanel() {
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
         fallbackFile: fallbackFile || undefined,
-        jitEnabled: localJitEnabled,
+        jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
         jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        selectedJitToken: selectedJitToken, // Pass selected token for x402
       });
       
       if (result.manifestId) {
@@ -1011,6 +1093,16 @@ export default function DeploySitePanel() {
   const totalFileSize = calculateTotalSize();
   const totalCost = calculateTotalCost();
   const folderName = selectedFolder?.[0]?.webkitRelativePath?.split('/')[0] || '';
+
+  // Auto-enable JIT when user has insufficient credits
+  useEffect(() => {
+    if (showConfirmModal && totalCost !== null) {
+      const creditsNeeded = Math.max(0, totalCost - creditBalance);
+      if (creditsNeeded > 0) {
+        setLocalJitEnabled(true); // Auto-enable for insufficient credits
+      }
+    }
+  }, [showConfirmModal, totalCost, creditBalance]);
 
   return (
     <div className="px-4 sm:px-6">
@@ -1232,7 +1324,7 @@ export default function DeploySitePanel() {
 
                                         <span className="text-link/70 text-xs">
                                           {fileSize}
-                                          {file.size < 100 * 1024 && <span className="ml-1 text-turbo-green">• FREE</span>}
+                                          {isFileFree(file.size, freeUploadLimitBytes) && <span className="ml-1 text-turbo-green">• FREE</span>}
                                         </span>
                                         
                                       </div>
@@ -2153,7 +2245,7 @@ export default function DeploySitePanel() {
                                     {/* Row 3: Cost + Deploy Timestamp */}
                                     <div className="flex items-center gap-2 text-sm text-link">
                                       <span>
-                                        {file.size < 100 * 1024 ? (
+                                        {isFileFree(file.size, freeUploadLimitBytes) ? (
                                           <span className="text-turbo-green">FREE</span>
                                         ) : wincForOneGiB ? (
                                           `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
@@ -2217,7 +2309,10 @@ export default function DeploySitePanel() {
       {/* Deploy Confirmation Modal */}
       {showConfirmModal && selectedFolder && (
         <DeployConfirmationModal
-          onClose={() => setShowConfirmModal(false)}
+          onClose={() => {
+            setShowConfirmModal(false);
+            setJitSectionExpanded(false); // Reset JIT section when modal closes
+          }}
           onConfirm={handleConfirmDeploy}
           folderName={folderName}
           fileCount={selectedFolder.length}
@@ -2234,6 +2329,10 @@ export default function DeploySitePanel() {
           onJitEnabledChange={setLocalJitEnabled}
           jitMaxTokenAmount={localJitMax}
           onJitMaxTokenAmountChange={setLocalJitMax}
+          selectedJitToken={selectedJitToken}
+          onSelectedJitTokenChange={setSelectedJitToken}
+          jitSectionExpanded={jitSectionExpanded}
+          onJitSectionExpandedChange={setJitSectionExpanded}
         />
       )}
 

@@ -10,7 +10,9 @@ interface JitTokenSelectorProps {
 /**
  * JIT Token Selector Component
  * Allows users to choose between different JIT-supported payment tokens
- * Ethereum wallets can use BASE-USDC (x402), BASE-ETH, or ARIO
+ * - Ethereum wallets: BASE-USDC (x402) or BASE-ETH (standard JIT)
+ * - Arweave wallets: ARIO only
+ * - Solana wallets: SOL only
  */
 export function JitTokenSelector({
   walletType,
@@ -19,8 +21,8 @@ export function JitTokenSelector({
 }: JitTokenSelectorProps) {
   const getAvailableTokens = (): SupportedTokenType[] => {
     if (walletType === 'ethereum') {
-      // Ethereum wallets can hold and pay with ARIO tokens too
-      return ['base-usdc', 'base-eth', 'ario'];
+      // Ethereum wallets: BASE-USDC (x402) and BASE-ETH (regular JIT)
+      return ['base-usdc', 'base-eth'];
     } else if (walletType === 'arweave') {
       return ['ario'];
     } else if (walletType === 'solana') {
@@ -39,7 +41,7 @@ export function JitTokenSelector({
   return (
     <div className="mb-3">
       <label className="text-xs text-link block mb-2">Select payment method:</label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${availableTokens.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {availableTokens.map((token) => (
           <button
             key={token}
@@ -58,9 +60,10 @@ export function JitTokenSelector({
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-fg-muted truncate">{tokenLabels[token]}</div>
                 <div className="text-xs text-link mt-0.5">
-                  {token === 'base-usdc' && 'Fast x402'}
-                  {token === 'base-eth' && 'Standard'}
-                  {token === 'ario' && 'ARIO tokens'}
+                  {token === 'base-usdc'}
+                  {token === 'base-eth'}
+                  {token === 'solana'}
+                  {token === 'ario'}
                 </div>
               </div>
               {selectedToken === token && (
