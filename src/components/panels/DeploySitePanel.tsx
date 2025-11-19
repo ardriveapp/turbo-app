@@ -954,13 +954,15 @@ export default function DeploySitePanel() {
 
   // Auto-enable JIT when user has insufficient credits
   useEffect(() => {
-    if (showConfirmModal && totalCost !== null) {
-      const creditsNeeded = Math.max(0, totalCost - creditBalance);
+    if (showConfirmModal) {
+      const cost = calculateTotalCost();
+      const creditsNeeded = Math.max(0, cost - creditBalance);
       if (creditsNeeded > 0) {
         setLocalJitEnabled(true); // Auto-enable for insufficient credits
       }
     }
-  }, [showConfirmModal, totalCost, creditBalance]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showConfirmModal, creditBalance]);
 
   // ArNS names are fetched automatically when user connects (in useOwnedArNSNames hook)
 
