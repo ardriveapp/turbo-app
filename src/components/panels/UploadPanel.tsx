@@ -1018,6 +1018,7 @@ export default function UploadPanel() {
                             walletAddress={address}
                             walletType={walletType}
                             onBalanceValidation={setJitBalanceSufficient}
+                            enabled={true}
                           />
                         </div>
                       )}

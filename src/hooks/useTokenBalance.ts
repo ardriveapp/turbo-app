@@ -25,12 +25,13 @@ export interface TokenBalanceResult {
  * - BASE-ETH (Ethereum wallets on Base network)
  * - BASE-USDC (Ethereum wallets on Base network)
  *
- * Auto-refreshes every 15 seconds while component is mounted
+ * Auto-refreshes every 60 seconds while enabled
  */
 export function useTokenBalance(
   tokenType: SupportedTokenType | null,
   walletType: 'arweave' | 'ethereum' | 'solana' | null,
-  address: string | null
+  address: string | null,
+  enabled: boolean = true
 ): TokenBalanceResult {
   const { getCurrentConfig, configMode } = useStore();
   const [balance, setBalance] = useState(0);
@@ -247,21 +248,22 @@ export function useTokenBalance(
     }
   }, [address, tokenType, walletType, fetchArioBalance, fetchSolBalance, fetchBaseEthBalance, fetchBaseUsdcBalance]);
 
-  // Fetch balance on mount and when dependencies change
+  // Fetch balance on mount and when dependencies change (only if enabled)
   useEffect(() => {
+    if (!enabled) return;
     fetchBalance();
-  }, [fetchBalance]);
+  }, [fetchBalance, enabled]);
 
-  // Auto-refresh every 15 seconds
+  // Auto-refresh every 60 seconds (only when enabled)
   useEffect(() => {
-    if (!address || !tokenType) return;
+    if (!enabled || !address || !tokenType) return;
 
     const interval = setInterval(() => {
       fetchBalance();
-    }, 15000); // 15 seconds
+    }, 60000); // 60 seconds (1 minute)
 
     return () => clearInterval(interval);
-  }, [address, tokenType, fetchBalance]);
+  }, [address, tokenType, fetchBalance, enabled]);
 
   return {
     balance,

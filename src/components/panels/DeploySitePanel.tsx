@@ -240,6 +240,7 @@ function DeployConfirmationModal({
                   walletAddress={walletAddress}
                   walletType={walletType}
                   onBalanceValidation={onJitBalanceValidation}
+                  enabled={true}
                 />
               </div>
             )}

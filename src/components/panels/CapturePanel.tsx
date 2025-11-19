@@ -973,6 +973,7 @@ export default function CapturePanel() {
                         walletAddress={address}
                         walletType={walletType}
                         onBalanceValidation={setJitBalanceSufficient}
+                        enabled={true}
                       />
 
                       {/* Enable JIT toggle */}

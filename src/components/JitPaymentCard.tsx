@@ -17,6 +17,7 @@ interface JitPaymentCardProps {
   walletAddress: string | null;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   onBalanceValidation?: (hasSufficientBalance: boolean) => void;
+  enabled?: boolean; // Only fetch balance when true (when JIT section is expanded)
 }
 
 export function JitPaymentCard({
@@ -28,6 +29,7 @@ export function JitPaymentCard({
   walletAddress,
   walletType,
   onBalanceValidation,
+  enabled = true,
 }: JitPaymentCardProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState<{
@@ -39,13 +41,13 @@ export function JitPaymentCard({
   const BUFFER_MULTIPLIER = 1.1; // Fixed 10% buffer for SDK
   const MAX_MULTIPLIER = 1.5; // Max is 1.5x estimated cost
 
-  // Fetch wallet balance for the selected token
+  // Fetch wallet balance for the selected token (only when enabled)
   const {
     balance: tokenBalance,
     loading: balanceLoading,
     error: balanceError,
     isNetworkError,
-  } = useTokenBalance(tokenType, walletType, walletAddress);
+  } = useTokenBalance(tokenType, walletType, walletAddress, enabled);
 
   // Calculate estimated cost and auto-set max
   useEffect(() => {
