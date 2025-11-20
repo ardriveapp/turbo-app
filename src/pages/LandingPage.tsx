@@ -257,7 +257,7 @@ const LandingPage = () => {
 
         {/* Subheadline */}
         <p className="mt-5 text-base sm:text-lg text-center max-w-3xl text-link/90 leading-relaxed">
-          Turbo is a streamlined permaweb service provider with built-in fiat and crypto payments. Top up instantly and ship fast with SDKs designed for developers.
+          Turbo is a streamlined permaweb service provider with built-in fiat and crypto payments. Top up instantly and ship fast with SDKs designed for developers and AI Agents.
         </p>
 
         {/* CTA Section */}
