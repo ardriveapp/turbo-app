@@ -935,13 +935,16 @@ export default function UploadPanel() {
               const hasSufficientCredits = creditsNeeded === 0;
               const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
+              // Check if upload is completely free (all files under free limit)
+              const isFreeUpload = typeof totalCost === 'number' && totalCost === 0;
+
               // Auto-expand if insufficient credits, otherwise respect user's toggle
               const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
 
               return (
                 <>
-                  {/* JIT Section - Always show for wallets that support JIT */}
-                  {canUseJit && (
+                  {/* JIT Section - Show for wallets that support JIT, but hide for free uploads */}
+                  {canUseJit && !isFreeUpload && (
                     <>
                       {/* Collapsed header when user has sufficient credits */}
                       {hasSufficientCredits && !jitSectionExpanded && (

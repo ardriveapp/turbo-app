@@ -123,6 +123,10 @@ export function JitPaymentCard({
 
   const hasSufficientBalance = estimatedCost ? tokenBalance >= estimatedCost.tokenAmountReadable : true;
 
+  // Check if no files selected (no cost to calculate)
+  const hasCost = (typeof creditsNeeded === 'number' && creditsNeeded > 0) ||
+                  (typeof totalCost === 'number' && totalCost > 0);
+
   return (
     <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-lg border border-default p-3">
       {/* x402 info for base-usdc */}
@@ -130,6 +134,16 @@ export function JitPaymentCard({
         <div className="mb-2 pb-2 border-b border-default/30">
           <div className="text-xs text-link">
             Using <span className="text-fg-muted font-medium">x402 protocol</span> for instant payment processing
+          </div>
+        </div>
+      )}
+
+      {/* Message when no files selected */}
+      {!hasCost && (
+        <div className="text-center py-4">
+          <div className="text-sm text-link mb-1">Select files to see cost estimate</div>
+          <div className="text-xs text-link/70">
+            Payment will be processed automatically when uploading
           </div>
         </div>
       )}
