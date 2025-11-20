@@ -140,12 +140,12 @@ const LandingPage = () => {
       loginText: 'Buy Credits',
       connectText: 'Connect Wallet to Top Up'
     },
-    { 
-      name: 'Upload', 
-      icon: Upload, 
+    {
+      name: 'Upload',
+      icon: Upload,
       title: 'Upload Files & Folders',
-      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking, just in time payments and instant receipts.',
-      benefits: ['Drag & drop interface', 'Batch uploads', 'Just in time payments', 'Instant receipts'],
+      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking, x402 instant payments and instant receipts.',
+      benefits: ['Drag & drop interface', 'Batch uploads', 'x402 instant payments', 'Instant receipts'],
       action: 'upload',
       loginText: 'Upload Files',
       connectText: 'Connect Wallet to Upload'
@@ -376,7 +376,7 @@ const LandingPage = () => {
               <h3 className="text-xl font-bold text-fg-muted">Fund</h3>
             </div>
             <p className="text-sm text-link">
-              Buy Turbo Credits instantly with a card or crypto like ETH, SOL, ARIO, Stablecoins and more — ready to upload in seconds.
+              Buy Turbo Credits instantly with a card or crypto like ETH, SOL, ARIO, Stablecoins (via x402), and more — ready to upload in seconds.
             </p>
           </div>
 
@@ -387,7 +387,7 @@ const LandingPage = () => {
               <h3 className="text-xl font-bold text-fg-muted">Upload</h3>
             </div>
             <p className="text-sm text-link">
-              Use the Turbo SDK with your favorite Arweave, Ethereum, or Solana wallet to upload data directly to the Permaweb.
+              Use your favorite Arweave, Ethereum, or Solana wallet to cryptographically sign and upload data.
             </p>
           </div>
 
@@ -446,7 +446,7 @@ const LandingPage = () => {
       <div className="mb-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-fg-muted mb-2">Transparent Pricing</h2>
-          <p className="text-link/80">Pay-as-you-go storage with no subscriptions</p>
+          <p className="text-link/80">Pay-as-you-go storage with no subscriptions, now with x402</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -1007,13 +1007,13 @@ const LandingPage = () => {
               <Zap className="w-6 h-6 text-fg-muted" />
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-fg-muted">Fast Lane</h3>
-                <span className="bg-fg-muted/20 text-fg-muted text-xs px-2 py-1 rounded-full font-medium">
-                  Coming Soon
+                <span className="bg-turbo-green/20 text-turbo-green text-xs px-2 py-1 rounded-full font-medium">
+                  Live
                 </span>
               </div>
             </div>
             <p className="text-sm text-link">
-              Avoid rate limits for you and your data with priority access and dedicated bandwidth with{' '}
+              Priority access and dedicated bandwidth with{' '}
               <a
                 href="https://www.coinbase.com/developer-platform/products/x402"
                 target="_blank"
@@ -1022,7 +1022,7 @@ const LandingPage = () => {
               >
                 x402
               </a>
-              .
+              {' '}— now available for USDC payments on Base network.
             </p>
           </div>
           

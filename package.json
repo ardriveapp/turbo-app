@@ -1,6 +1,6 @@
 {
   "name": "turbo-gateway-app",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "type": "module",
   "description": "Unified Turbo Gateway Application",
   "scripts": {

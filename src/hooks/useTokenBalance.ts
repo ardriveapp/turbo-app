@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { SupportedTokenType, X402_CONFIG, ERC20_ABI, ETHEREUM_CONFIG, POLYGON_CONFIG } from '../constants';
+import { getSolanaConnection } from '../utils/solanaConnection';
 
 /**
  * Result of token balance fetch
@@ -26,13 +27,14 @@ export interface TokenBalanceResult {
  * - BASE-ETH (Ethereum wallets on Base network)
  * - BASE-USDC (Ethereum wallets on Base network)
  *
- * Auto-refreshes every 60 seconds while enabled
+ * Auto-refreshes every 5 minutes while enabled
  */
 export function useTokenBalance(
   tokenType: SupportedTokenType | null,
   walletType: 'arweave' | 'ethereum' | 'solana' | null,
   address: string | null,
-  enabled: boolean = true
+  enabled: boolean = true,
+  solanaConnection?: Connection
 ): TokenBalanceResult {
   const { getCurrentConfig, configMode } = useStore();
   const [balance, setBalance] = useState(0);
@@ -123,17 +125,24 @@ export function useTokenBalance(
 
   /**
    * Fetch SOL balance using Solana web3.js
+   * Uses provided connection if available, otherwise creates singleton connection
    */
   const fetchSolBalance = useCallback(async (solanaAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const config = getCurrentConfig();
-      const rpcUrl = config.tokenMap['solana'];
+      // Use provided connection if available, otherwise get from singleton
+      let connection: Connection;
 
-      if (!rpcUrl) {
-        throw new Error('Solana RPC URL not configured');
+      if (solanaConnection) {
+        connection = solanaConnection;
+      } else {
+        const config = getCurrentConfig();
+        const rpcUrl = config.tokenMap['solana'];
+        if (!rpcUrl) {
+          throw new Error('Solana RPC URL not configured');
+        }
+        connection = getSolanaConnection(rpcUrl);
       }
 
-      const connection = new Connection(rpcUrl);
       const publicKey = new PublicKey(solanaAddress);
       const balanceInLamports = await connection.getBalance(publicKey);
       const balanceInSol = balanceInLamports / LAMPORTS_PER_SOL;
@@ -146,7 +155,7 @@ export function useTokenBalance(
       console.error('Failed to fetch SOL balance:', err);
       throw new Error('Unable to fetch SOL balance. Please try again.');
     }
-  }, [getCurrentConfig]);
+  }, [getCurrentConfig, solanaConnection]);
 
   /**
    * Fetch BASE-ETH balance using ethers.js
@@ -492,13 +501,13 @@ export function useTokenBalance(
     fetchBalance();
   }, [fetchBalance, enabled]);
 
-  // Auto-refresh every 60 seconds (only when enabled)
+  // Auto-refresh every 5 minutes (only when enabled)
   useEffect(() => {
     if (!enabled || !address || !tokenType) return;
 
     const interval = setInterval(() => {
       fetchBalance();
-    }, 60000); // 60 seconds (1 minute)
+    }, 300000); // 300 seconds (5 minutes)
 
     return () => clearInterval(interval);
   }, [address, tokenType, fetchBalance, enabled]);
