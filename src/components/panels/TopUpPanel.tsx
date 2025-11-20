@@ -62,11 +62,22 @@ export default function TopUpPanel() {
   // Payment flow state
   const [fiatFlowStep, setFiatFlowStep] = useState<'amount' | 'details' | 'confirmation' | 'success'>('amount');
   
-  // Crypto flow state  
+  // Crypto flow state
   const [cryptoFlowStep, setCryptoFlowStep] = useState<'selection' | 'confirmation' | 'manual-payment' | 'complete'>('selection');
   const [selectedTokenType, setSelectedTokenType] = useState<SupportedTokenType>('arweave');
   const [cryptoPaymentResult, setCryptoPaymentResult] = useState<any>(null);
-  
+
+  // Auto-select token type based on wallet type (especially for single-option wallets like Solana)
+  useEffect(() => {
+    if (walletType === 'solana') {
+      setSelectedTokenType('solana');
+    } else if (walletType === 'arweave') {
+      setSelectedTokenType('ario'); // Default to ARIO for Arweave wallets
+    } else if (walletType === 'ethereum') {
+      setSelectedTokenType('base-usdc'); // Default to Base USDC for Ethereum wallets
+    }
+  }, [walletType]);
+
   const debouncedUsdAmount = useDebounce(usdAmount);
   const debouncedCryptoAmount = useDebounce(cryptoAmount);
   const debouncedStorageAmount = useDebounce(storageAmount);
@@ -728,10 +739,11 @@ export default function TopUpPanel() {
         )}
 
         {/* Crypto Token Selection - Show immediately after selecting crypto */}
-        {paymentMethod === 'crypto' && (
+        {/* Hide selector if only one token available (e.g., Solana wallet only has SOL) */}
+        {paymentMethod === 'crypto' && getAvailableTokens().length > 1 && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-link mb-3">Select Cryptocurrency</label>
-            
+
             {!walletType ? (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <div className="flex items-start gap-3">
