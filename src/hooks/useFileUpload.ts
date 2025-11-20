@@ -318,12 +318,13 @@ export function useFileUpload() {
       });
     }
 
-    // Try x402 first if BASE-USDC is selected and JIT is enabled
-    console.log(`[JIT] selectedJitToken: ${options?.selectedJitToken}, jitEnabled: ${options?.jitEnabled}`);
+    // Use x402 for ALL BASE-USDC uploads from Ethereum wallets (JIT or non-JIT)
+    // x402 protocol handles both paid and credit-based uploads
+    console.log(`[X402] selectedJitToken: ${options?.selectedJitToken}, walletType: ${walletType}`);
 
     if (
-      options?.jitEnabled &&
-      options.selectedJitToken === 'base-usdc'
+      walletType === 'ethereum' &&
+      options?.selectedJitToken === 'base-usdc'
     ) {
       try {
         console.log('[X402] Using x402 flow for BASE-USDC upload:', fileName);

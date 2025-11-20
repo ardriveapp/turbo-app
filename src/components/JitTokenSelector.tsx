@@ -58,12 +58,8 @@ export function JitTokenSelector({
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-fg-muted truncate">{tokenLabels[token]}</div>
-                <div className="text-xs text-link mt-0.5">
-                  {token === 'base-usdc' && 'x402 protocol'}
-                  {token === 'base-eth' && 'Standard JIT'}
-                  {token === 'solana' && 'Standard JIT'}
-                  {token === 'ario' && 'Standard JIT'}
+                <div className="text-sm font-medium text-fg-muted truncate">
+                  {token === 'base-usdc' ? 'USDC (Base) with x402' : tokenLabels[token]}
                 </div>
               </div>
               {selectedToken === token && (

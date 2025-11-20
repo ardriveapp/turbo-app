@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
+import { useX402Upload } from './useX402Upload';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -50,6 +51,7 @@ export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
   const { wallets } = useWallets(); // Get Privy wallets
+  const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook for BASE-USDC deployments
 
   // useFolderUpload store state logged
   const [deploying, setDeploying] = useState(false);
@@ -483,8 +485,40 @@ export function useFolderUpload() {
               return newProgress;
             });
 
-            // Upload with retry logic and timeout
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
+            // Use x402 for BASE-USDC deployments (direct wallet payment)
+            // x402 ALWAYS charges the wallet directly, never uses existing credits
+            let fileResult;
+            if (walletType === 'ethereum' && manifestOptions?.selectedJitToken === 'base-usdc') {
+              console.log('[X402] Using x402 flow for BASE-USDC deployment:', file.name);
+
+              // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
+              const maxUsdc = manifestOptions?.jitMaxTokenAmount
+                ? manifestOptions.jitMaxTokenAmount / 1_000_000
+                : 10; // Default 10 USDC max
+
+              // Create tags for Deploy Site feature
+              const deployTags = [
+                { name: 'App-Name', value: APP_NAME },
+                { name: 'App-Feature', value: 'Deploy Site' },
+                { name: 'App-Version', value: APP_VERSION },
+                { name: 'Content-Type', value: getContentType(file) },
+                { name: 'File-Path', value: file.webkitRelativePath || file.name },
+              ];
+
+              fileResult = await uploadFileWithX402(file, {
+                maxUsdcAmount: maxUsdc,
+                onProgress: (progress) => {
+                  setFileProgress(prev => ({ ...prev, [file.name]: progress }));
+                  setActiveUploads(prev => prev.map(u =>
+                    u.name === file.name ? { ...u, progress } : u
+                  ));
+                },
+                tags: deployTags,
+              });
+            } else {
+              // Regular upload with retry logic and timeout
+              fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
+            }
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -667,21 +701,50 @@ export function useFolderUpload() {
       const manifestFile = new File([manifestBlob], 'manifest.json', {
         type: 'application/x.arweave-manifest+json'
       });
-      
-      const manifestResult = await turbo.uploadFile({
-        file: manifestFile,
-        signal: controller.signal, // Also pass signal to manifest upload
-        fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
-        dataItemOpts: {
-          tags: [
-            { name: 'App-Name', value: APP_NAME },
-            { name: 'App-Feature', value: 'Deploy Site' },
-            { name: 'App-Version', value: APP_VERSION },
-            { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-            { name: 'Type', value: 'manifest' }
-          ]
-        }
-      } as any); // Type assertion needed until SDK types are updated
+
+      // Use x402 for manifest upload when BASE-USDC is selected
+      let manifestResult;
+      if (walletType === 'ethereum' && manifestOptions?.selectedJitToken === 'base-usdc') {
+        console.log('[X402] Using x402 flow for BASE-USDC manifest upload');
+
+        // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
+        const maxUsdc = manifestOptions?.jitMaxTokenAmount
+          ? manifestOptions.jitMaxTokenAmount / 1_000_000
+          : 10; // Default 10 USDC max
+
+        // Create tags for manifest
+        const manifestTags = [
+          { name: 'App-Name', value: APP_NAME },
+          { name: 'App-Feature', value: 'Deploy Site' },
+          { name: 'App-Version', value: APP_VERSION },
+          { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
+          { name: 'Type', value: 'manifest' }
+        ];
+
+        manifestResult = await uploadFileWithX402(manifestFile, {
+          maxUsdcAmount: maxUsdc,
+          onProgress: (progress) => {
+            setDeployProgress(90 + Math.round(progress / 10)); // 90-100%
+          },
+          tags: manifestTags,
+        });
+      } else {
+        // Regular upload with Turbo SDK
+        manifestResult = await turbo.uploadFile({
+          file: manifestFile,
+          signal: controller.signal, // Also pass signal to manifest upload
+          fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
+          dataItemOpts: {
+            tags: [
+              { name: 'App-Name', value: APP_NAME },
+              { name: 'App-Feature', value: 'Deploy Site' },
+              { name: 'App-Version', value: APP_VERSION },
+              { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
+              { name: 'Type', value: 'manifest' }
+            ]
+          }
+        } as any); // Type assertion needed until SDK types are updated
+      }
       
       const uploadResult = {
         manifestId: manifestResult.id,

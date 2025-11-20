@@ -137,33 +137,61 @@ export async function calculateRequiredTokenAmount({
     let tokensPerGiB: number;
     let usdPerToken: number | null = null;
 
-    // X402 pricing for base-usdc (uses upload service endpoint)
+    // X402 pricing for base-usdc (uses x402 signed endpoint)
     if (tokenType === 'base-usdc') {
-      console.log('[X402 Pricing] Fetching price from upload service for base-usdc...');
+      console.log('[X402 Pricing] Fetching price from x402 signed endpoint for base-usdc...');
 
-      const uploadServiceUrl = turboConfig.uploadServiceUrl;
-      const priceUrl = `${uploadServiceUrl}/price/x402/data-item/base-usdc/${oneGiBBytes}`;
+      const { configMode } = useStore.getState();
 
-      const response = await fetch(priceUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch x402 pricing: ${response.status} ${response.statusText}`);
+      // Derive x402 URL from base upload URL if in custom mode
+      const x402Url = configMode === 'custom'
+        ? `${turboConfig.uploadServiceUrl}/x402/data-item/signed`
+        : turboConfig.x402UploadUrl;
+
+      // Make POST request with Content-Length header to get pricing
+      const response = await fetch(x402Url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': oneGiBBytes.toString(),
+        },
+        body: new Uint8Array(0), // Empty body
+      });
+
+      // Expect 402 Payment Required response
+      if (response.status !== 402) {
+        throw new Error(`Expected 402 response from x402 endpoint, got ${response.status}`);
       }
 
       const priceData = await response.json();
       console.log('[X402 Pricing] Response:', priceData);
 
-      // Parse x402 response
-      // winstonCost is string, convert to number
-      wincPerGiB = Number(priceData.winstonCost);
+      // Find the Base network requirements
+      const useMainnet = configMode !== 'development';
+      const networkKey = useMainnet ? 'base' : 'base-sepolia';
+      const requirements = priceData.accepts?.find((a: any) => a.network === networkKey);
 
-      // usdcAmount is in smallest unit (6 decimals), convert to readable USDC
-      const usdcSmallestUnit = Number(priceData.usdcAmount);
+      if (!requirements) {
+        throw new Error(`Network ${networkKey} not available in x402 pricing response`);
+      }
+
+      // Parse the USDC amount (in smallest unit - 6 decimals)
+      const usdcSmallestUnit = Number(requirements.maxAmountRequired);
       tokensPerGiB = usdcSmallestUnit / 1_000_000; // Convert to readable USDC
+
+      // Calculate winc per GiB based on standard Turbo pricing
+      // Use payment service for winc conversion
+      const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+      const turbo = TurboFactory.unauthenticated({
+        paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+      });
+      const { winc: wincPerGiBString } = await turbo.getFiatRates();
+      wincPerGiB = Number(wincPerGiBString);
 
       // USDC is pegged to USD (1 USDC = $1 USD)
       usdPerToken = 1.0;
 
-      console.log(`[X402 Pricing] 1 GiB costs ${wincPerGiB} winc = ${tokensPerGiB} USDC`);
+      console.log(`[X402 Pricing] 1 GiB costs ${tokensPerGiB} USDC (${usdcSmallestUnit} smallest unit), ${wincPerGiB} winc`);
 
       if (wincPerGiB === 0) {
         throw new Error('Failed to get x402 pricing - wincPerGiB is 0');

@@ -65,23 +65,29 @@ export default function CapturePanel() {
   const [localJitMax, setLocalJitMax] = useState(0);
   const FIXED_BUFFER_MULTIPLIER = 1.1;
 
-  // Selected JIT token (default based on wallet type)
-  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
-    if (walletType === 'ethereum') return 'base-usdc'; // BASE-USDC with x402 default
-    if (walletType === 'arweave') return 'ario';
-    if (walletType === 'solana') return 'solana';
-    return 'base-eth'; // Fallback
-  });
-
-  // Update selectedJitToken when wallet type changes
-  useEffect(() => {
-    if (walletType === 'ethereum') setSelectedJitToken('base-usdc');
-    else if (walletType === 'arweave') setSelectedJitToken('ario');
-    else if (walletType === 'solana') setSelectedJitToken('solana');
-  }, [walletType]);
-
   // Track if JIT section is expanded (for users with sufficient credits)
   const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
+
+  // Selected JIT token - will be set when user opens "Pay with Crypto"
+  // NOT set by default to avoid triggering x402 pricing before user interaction
+  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
+    if (walletType === 'arweave') return 'ario';
+    if (walletType === 'solana') return 'solana';
+    return 'base-eth'; // Default for Ethereum - will switch to base-usdc when JIT opens
+  });
+
+  // Auto-select base-usdc (x402) ONLY when user explicitly opens "Pay with Crypto" section
+  // Reset to base-eth when they close it
+  // Do NOT switch based on localJitEnabled - that's just a preference, not a UI action
+  useEffect(() => {
+    if (walletType === 'ethereum') {
+      if (jitSectionExpanded) {
+        setSelectedJitToken('base-usdc'); // Switch to x402 when section expands
+      } else {
+        setSelectedJitToken('base-eth'); // Reset when section collapses
+      }
+    }
+  }, [walletType, jitSectionExpanded]); // REMOVED localJitEnabled from dependencies
 
   // Track if user has sufficient crypto balance for JIT payment
   const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
@@ -277,6 +283,7 @@ export default function CapturePanel() {
         jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
         jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        selectedJitToken: selectedJitToken, // Pass selected token for x402
         customTags,
       });
 
