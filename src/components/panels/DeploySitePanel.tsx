@@ -336,7 +336,6 @@ export default function DeploySitePanel() {
     addDeployResults,
     clearDeployHistory,
     jitPaymentEnabled,
-    jitMaxTokenAmount,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
   } = useStore();

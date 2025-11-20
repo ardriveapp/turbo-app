@@ -69,7 +69,7 @@ export function useX402Upload() {
 
         let ethersProvider = new ethers.BrowserProvider(ethProvider);
         let ethersSigner = await ethersProvider.getSigner();
-        let userAddress = await ethersSigner.getAddress();
+        const userAddress = await ethersSigner.getAddress();
 
         // Check and switch network if needed
         const network = await ethersProvider.getNetwork();
@@ -127,7 +127,7 @@ export function useX402Upload() {
                   // Create fresh provider and signer after add
                   ethersProvider = new ethers.BrowserProvider(window.ethereum);
                   ethersSigner = await ethersProvider.getSigner();
-                } catch (addError) {
+                } catch {
                   throw new Error(`Failed to add ${networkName} to your wallet. Please add it manually.`);
                 }
               } else {

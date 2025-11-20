@@ -256,7 +256,7 @@ export function useFileUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [walletType, wallets, getCurrentConfig, validateWalletState]);
+  }, [walletType, wallets, getCurrentConfig, validateWalletState, address]);
 
   const uploadFile = useCallback(async (
     file: File,
@@ -524,7 +524,6 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         // Add to recent files as error
         // Format error for user display
         const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
-        const rawError = error instanceof Error ? error.message : 'Unknown error';
 
         setRecentFiles(prev => [
           {
