@@ -926,15 +926,17 @@ export default function CapturePanel() {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
               const hasSufficientCredits = creditsNeeded === 0;
               const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
-              const showJitOption = creditsNeeded > 0 && canUseJit;
+
+              // Check if capture is completely free
+              const isFreeCapture = typeof totalCost === 'number' && totalCost === 0;
 
               // Auto-expand if insufficient credits, otherwise respect user's toggle
               const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
 
               return (
                 <>
-                  {/* JIT Payment Section - Collapsible for users with sufficient credits */}
-                  {hasSufficientCredits && canUseJit && (
+                  {/* JIT Payment Section - Collapsible for users with sufficient credits, hidden for free captures */}
+                  {hasSufficientCredits && canUseJit && !isFreeCapture && (
                     <button
                       onClick={() => setJitSectionExpanded(!jitSectionExpanded)}
                       className="w-full mb-3 p-2.5 bg-surface/30 rounded-lg border border-default/30 text-xs text-link hover:text-fg-muted transition-colors flex items-center justify-between"
@@ -948,8 +950,8 @@ export default function CapturePanel() {
                     </button>
                   )}
 
-                  {/* Show JIT options when expanded or when insufficient credits */}
-                  {isExpanded && canUseJit && (
+                  {/* Show JIT options when expanded or when insufficient credits, but not for free captures */}
+                  {isExpanded && canUseJit && !isFreeCapture && (
                     <div className="mb-4">
                       {/* JIT Token Selector - shown for Ethereum wallets */}
                       {walletType === 'ethereum' && (

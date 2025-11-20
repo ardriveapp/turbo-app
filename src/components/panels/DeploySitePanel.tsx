@@ -81,6 +81,9 @@ function DeployConfirmationModal({
   const hasSufficientCredits = creditsNeeded === 0;
   const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
+  // Check if deployment is completely free (all files under free limit)
+  const isFreeDeployment = totalCost === 0;
+
   // Auto-expand if insufficient credits, otherwise respect user's toggle
   const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
   return (
@@ -162,8 +165,8 @@ function DeployConfirmationModal({
           </div>
         </div>
 
-        {/* JIT Payment Section */}
-        {canUseJit && (
+        {/* JIT Payment Section - Show for wallets that support JIT, but hide for free deployments */}
+        {canUseJit && !isFreeDeployment && (
           <>
             {/* Collapsed header when user has sufficient credits */}
             {hasSufficientCredits && !jitSectionExpanded && (
