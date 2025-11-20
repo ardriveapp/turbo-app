@@ -29,7 +29,7 @@ export class MetaMaskSigner {
    */
   async setPublicKey(): Promise<void> {
     if (!this.publicKey) {
-      const message = 'Authorize Arweave uploads for this session';
+      const message = 'Sign to authorize Arweave uploads';
       const signature = await this.signer.signMessage(message);
       const messageHash = ethers.hashMessage(message);
       const recoveredPublicKey = ethers.SigningKey.recoverPublicKey(
