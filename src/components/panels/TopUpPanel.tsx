@@ -494,7 +494,7 @@ export default function TopUpPanel() {
       case 'confirmation':
         return (
           <CryptoConfirmationPanel
-            cryptoAmount={cryptoAmount}
+            cryptoAmount={inputType === 'storage' && cryptoForStorage !== undefined ? cryptoForStorage : cryptoAmount}
             tokenType={selectedTokenType}
             onBack={handleCryptoBackToSelection}
             onPaymentComplete={handleCryptoPaymentComplete}
@@ -1449,7 +1449,7 @@ export default function TopUpPanel() {
         </div>
 
         {/* Purchase Summary - Shopping Cart Style */}
-        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && !tokenPricingError && ((inputType === 'dollars' && cryptoCredits && cryptoCredits > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0)))) && (
+        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && usdAmount > 0) || (inputType === 'storage' && storageAmount > 0))) || (paymentMethod === 'crypto' && ((inputType === 'dollars' && cryptoAmount > 0) || (inputType === 'storage' && storageAmount > 0)))) && (
           <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6 mb-6">
             {/* Header */}
             <div className="text-sm text-link mb-4">Purchase Summary</div>
