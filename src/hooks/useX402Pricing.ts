@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 
 interface X402PricingResult {
@@ -22,11 +22,21 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoize x402 URL to prevent unnecessary re-renders and API calls
+  // Only recalculate when config mode changes (upload URLs are stable within a mode)
+  const x402Url = useMemo(() => {
+    const config = getCurrentConfig();
+    return configMode === 'custom'
+      ? `${config.uploadServiceUrl}/x402/data-item/signed`
+      : config.x402UploadUrl;
+  }, [configMode, getCurrentConfig]);
+
   useEffect(() => {
     // Skip if file size is 0 or negative
     if (fileSizeBytes <= 0) {
       setUsdcAmount(0);
       setUsdcAmountSmallestUnit('0');
+      setLoading(false); // Explicitly set loading to false
       setError(null);
       return;
     }
@@ -36,12 +46,6 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
       setError(null);
 
       try {
-        const config = getCurrentConfig();
-
-        // Derive x402 URL from base upload URL if in custom mode
-        const x402Url = configMode === 'custom'
-          ? `${config.uploadServiceUrl}/x402/data-item/signed`
-          : config.x402UploadUrl;
 
         console.log(`[X402 Pricing] Fetching price for ${fileSizeBytes} bytes from ${x402Url}`);
 
@@ -94,7 +98,8 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
     };
 
     fetchX402Pricing();
-  }, [fileSizeBytes, getCurrentConfig, configMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileSizeBytes, x402Url]); // Only re-fetch when file size or x402 URL changes
 
   return {
     usdcAmount,

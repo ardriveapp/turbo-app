@@ -325,7 +325,7 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
@@ -444,7 +444,7 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {currencies.map((currency) => (
                                 <Listbox.Option
                                   key={currency.value}
@@ -568,7 +568,7 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute right-0 z-10 mt-1 max-h-60 w-48 overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute right-0 z-10 mt-1 w-48 rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {currencies.map((currency) => (
                                 <Listbox.Option
                                   key={currency.value}

@@ -6,6 +6,7 @@ import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabel
 import { useStore } from '../../store/useStore';
 import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check, MapPin } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
+import { useCryptoPriceForWinc } from '../../hooks/useCryptoPrice';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
 import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
@@ -84,14 +85,31 @@ export default function TopUpPanel() {
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
   // Use comprehensive hook for all token types
   const { wincForToken: wincForSelectedToken, error: tokenPricingError, loading: tokenPricingLoading } = useWincForAnyToken(selectedTokenType, debouncedCryptoAmount);
-  
+
   // Calculate credits from winc (works for all tokens that have pricing)
   const cryptoCredits = wincForSelectedToken ? Number(wincForSelectedToken) / wincPerCredit : undefined;
   const wincForOneGiB = useWincForOneGiB();
   const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
-  
-  // Calculate storage in GiB
+
+  // Calculate storage in GiB (immediate, no debounce for responsive UI)
+  const storageInGiB = (() => {
+    switch (storageUnit) {
+      case 'MiB':
+        return storageAmount / 1024;
+      case 'TiB':
+        return storageAmount * 1024;
+      default:
+        return storageAmount;
+    }
+  })();
+
+  // Calculate storage in GiB (function for use elsewhere)
   const getStorageInGiB = () => {
+    return storageInGiB;
+  };
+
+  // Calculate crypto amount needed for storage mode (use debounced for API calls)
+  const debouncedStorageInGiB = (() => {
     switch (storageUnit) {
       case 'MiB':
         return debouncedStorageAmount / 1024;
@@ -100,7 +118,12 @@ export default function TopUpPanel() {
       default:
         return debouncedStorageAmount;
     }
-  };
+  })();
+
+  const wincNeededForStorage = wincForOneGiB && debouncedStorageAmount > 0
+    ? (debouncedStorageInGiB * Number(wincForOneGiB))
+    : undefined;
+  const cryptoForStorage = useCryptoPriceForWinc(wincNeededForStorage, selectedTokenType);
   
   // Calculate cost in dollars for storage
   const calculateStorageCost = () => {
@@ -1157,7 +1180,7 @@ export default function TopUpPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
@@ -1205,20 +1228,6 @@ export default function TopUpPanel() {
                     </div>
                   </div>
 
-                  {/* Cost Display for Storage Mode */}
-                  {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-2xl font-bold text-fg-muted">
-                          ${formatNumber(calculateStorageCost())} USD
-                        </div>
-                        <div className="text-sm text-link mt-2">
-                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </>
@@ -1316,7 +1325,7 @@ export default function TopUpPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
@@ -1364,23 +1373,6 @@ export default function TopUpPanel() {
                     </div>
                   </div>
 
-                  {/* Crypto Cost Display for Storage Mode */}
-                  {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-xl font-bold text-fg-muted mb-2">
-                          ${formatNumber(calculateStorageCost())} USD
-                        </div>
-                        <div className="text-sm text-link">
-                          Pay with {tokenLabels[selectedTokenType]}
-                        </div>
-                        <div className="text-xs text-link mt-1">
-                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -1456,44 +1448,90 @@ export default function TopUpPanel() {
           )}
         </div>
 
-        {/* Credits Preview */}
+        {/* Purchase Summary - Shopping Cart Style */}
         {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && !tokenPricingError && ((inputType === 'dollars' && cryptoCredits && cryptoCredits > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0)))) && (
-          <div className="space-y-4 mb-6">
-            {/* Purchase Summary */}
-            <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-              <div className="text-sm text-link mb-1">You'll Purchase</div>
-              <div className="text-4xl font-bold text-fg-muted mb-1">
-                {paymentMethod === 'fiat' 
-                  ? (inputType === 'storage' 
-                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
-                      : credits?.toLocaleString() || '...'
-                    )
-                  : (inputType === 'storage'
-                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
-                      : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
-                    )
-                } Credits
+          <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6 mb-6">
+            {/* Header */}
+            <div className="text-sm text-link mb-4">Purchase Summary</div>
+
+            {/* Purchase Details Section */}
+            <div className="space-y-3 mb-4 pb-4 border-b border-default">
+              <div className="flex justify-between items-start">
+                <div className="text-fg-muted font-medium">Credits</div>
+                <div className="text-right">
+                  <div className="text-lg font-medium text-fg-muted">
+                    {paymentMethod === 'fiat'
+                      ? (inputType === 'storage'
+                          ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : credits?.toLocaleString() || '...'
+                        )
+                      : (inputType === 'storage'
+                          ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
+                        )
+                    }
+                  </div>
+                  {wincForOneGiB && (
+                    <div className="text-xs text-link">
+                      ~{paymentMethod === 'fiat'
+                        ? (inputType === 'storage'
+                            ? formatStorage(getStorageInGiB())
+                            : credits ? formatStorage((credits * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                          )
+                        : (inputType === 'storage'
+                            ? formatStorage(getStorageInGiB())
+                            : cryptoCredits ? formatStorage((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                          )
+                      }
+                    </div>
+                  )}
+                </div>
               </div>
-              {wincForOneGiB && (
-                <div className="text-sm text-link">
-                  = ~{paymentMethod === 'fiat' 
-                    ? (inputType === 'storage' 
-                        ? formatStorage(getStorageInGiB())
-                        : credits ? formatStorage((credits * wincPerCredit) / Number(wincForOneGiB)) : '...'
-                      )
-                    : (inputType === 'storage'
-                        ? formatStorage(getStorageInGiB())
-                        : cryptoCredits ? formatStorage((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)) : '...'
-                      )
-                  }
+
+              {/* Price Row */}
+              {paymentMethod === 'fiat' && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-link">Price</div>
+                  <div className="text-lg font-medium text-fg-muted">
+                    ${inputType === 'storage' && wincForOneGiB && creditsForOneUSD
+                      ? formatNumber(calculateStorageCost())
+                      : formatNumber(usdAmount)
+                    }
+                  </div>
+                </div>
+              )}
+              {paymentMethod === 'crypto' && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-link">Pay with {tokenLabels[selectedTokenType]}</div>
+                  <div className="text-right">
+                    <div className="text-lg font-medium text-fg-muted">
+                      {inputType === 'storage'
+                        ? (cryptoForStorage !== undefined
+                            ? `${cryptoForStorage.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})} ${tokenLabels[selectedTokenType]}`
+                            : '...'
+                          )
+                        : `${cryptoAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})} ${tokenLabels[selectedTokenType]}`
+                      }
+                    </div>
+                    {creditsForOneUSD && (
+                      <div className="text-xs text-link">
+                        ≈ ${inputType === 'storage' && wincForOneGiB
+                          ? formatNumber(calculateStorageCost())
+                          : cryptoCredits && creditsForOneUSD
+                            ? formatNumber(cryptoCredits / creditsForOneUSD)
+                            : '...'
+                        }
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Balance Comparison */}
-            <div className="bg-surface/50 rounded-lg p-4 space-y-3">
+            {/* Balance Section */}
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-link">Current Balance</span>
+                <div className="text-sm text-link">Current Balance</div>
                 <div className="text-right">
                   {loadingTargetBalance ? (
                     <div className="flex items-center gap-2 text-sm text-link">
@@ -1502,9 +1540,9 @@ export default function TopUpPanel() {
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium text-fg-muted">
-                        {(targetBalance !== null ? targetBalance : creditBalance).toLocaleString()} Credits
-                      </span>
+                      <div className="text-lg font-medium text-fg-muted">
+                        {formatNumber(targetBalance !== null ? targetBalance : creditBalance)}
+                      </div>
                       {wincForOneGiB && (targetBalance !== null ? targetBalance : creditBalance) > 0 && (
                         <div className="text-xs text-link">
                           ~{(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB
@@ -1514,31 +1552,36 @@ export default function TopUpPanel() {
                   )}
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="h-px bg-default"></div>
+
+              {/* New Balance */}
               <div className="flex justify-between items-center">
-                <span className="text-sm text-link">After Purchase</span>
+                <div className="text-sm font-medium text-fg-muted">New Balance</div>
                 <div className="text-right">
-                  <span className="font-bold text-turbo-green text-lg">
+                  <div className="text-lg font-bold text-turbo-green">
                     {paymentMethod === 'fiat'
                       ? (inputType === 'storage'
-                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : credits ? ((targetBalance !== null ? targetBalance : creditBalance) + credits).toLocaleString() : '...'
+                          ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : credits ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + credits) : '...'
                         )
                       : (inputType === 'storage'
-                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : cryptoCredits ? ((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                          ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : cryptoCredits ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits) : '...'
                         )
-                    } Credits
-                  </span>
+                    }
+                  </div>
                   {wincForOneGiB && (
                     <div className="text-xs text-turbo-green">
                       ~{paymentMethod === 'fiat'
-                        ? (inputType === 'storage' 
-                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
-                            : credits ? formatStorage(((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                        ? (inputType === 'storage'
+                            ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : credits ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + credits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
                         : (inputType === 'storage'
-                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
-                            : cryptoCredits ? formatStorage(((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                            ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : cryptoCredits ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
                       }
                     </div>

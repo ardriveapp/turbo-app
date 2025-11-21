@@ -203,9 +203,13 @@ const turboConfig = useTurboConfig(tokenType); // Returns config based on curren
   - Arweave: Uses `ArconnectSigner` from `window.arweaveWallet`
   - Ethereum: Uses `EthereumSigner` with ethers.js BrowserProvider (MetaMask or Privy embedded wallet)
   - Solana: Uses `SolanaWalletAdapter` for Phantom/Solflare wallets
+- **Payment Methods**: Two distinct upload payment flows
+  - **Traditional Credits**: Pre-purchased Turbo credits via `useFileUpload` hook
+  - **Protocol Payment (X402)**: Instant USDC payment via `useX402Upload` hook (Base network only)
+  - Tab-based UI to switch between payment methods
 - **Upload Cancellation**: Proper AbortController support for canceling in-progress uploads
 - **Progress Tracking**: Real-time progress bars with single file view and error handling per file
-- **Cost Calculator**: Real-time pricing display with GiB estimates via `useWincForOneGiB` hook
+- **Cost Calculator**: Real-time pricing display with GiB estimates via `useWincForOneGiB` hook (traditional) or `useX402Pricing` hook (protocol)
 - **Receipt System**: Transaction IDs with Arweave explorer links and upload status caching
 - **Batch Upload**: Drag & drop with visual feedback and duplicate file prevention
 - **Upload History**: Persistent upload history in Zustand store with ArNS association tracking
@@ -340,11 +344,13 @@ All service panels follow consistent styling:
 - **Consistent Styling**: Dark theme with proper z-index layering
 
 #### Custom Hooks
-- `useWincForOneGiB`: Storage pricing calculations
+- `useWincForOneGiB`: Storage pricing calculations (traditional credits)
 - `useCreditsForFiat`: USD to credits conversion with debouncing
 - `useCreditsForCrypto`: Crypto to credits conversion calculations
 - `useCryptoForFiat`: Fiat to crypto conversion for payment amounts
-- `useFileUpload`: Multi-chain upload logic with proper signers
+- `useFileUpload`: Multi-chain upload logic with proper signers (traditional credits)
+- `useX402Upload`: Protocol-based upload with instant USDC payment (x402)
+- `useX402Pricing`: Calculate USDC costs for x402 protocol uploads
 - `useFolderUpload`: Folder upload with drag & drop support
 - `useTurboCapture`: Webpage capture state management and screenshot file creation
 - `usePrimaryArNSName`: Primary name fetching with cache management
@@ -359,6 +365,7 @@ All service panels follow consistent styling:
 - `useUploadStatus`: Upload status tracking
 - `usePrivyWallet`: Privy wallet detection and logout management
 - `useWalletAccountListener`: Monitors wallet account changes across all wallet types
+- `useTokenBalance`: Get ERC-20 token balance for connected wallet
 
 ### Styling System
 
@@ -399,7 +406,7 @@ onBlur={() => {
 ### Required Variables
 ```bash
 # Node environment
-VITE_NODE_ENV=production
+VITE_NODE_ENV=production  # Controls mainnet vs testnet endpoints
 
 # Authentication
 VITE_PRIVY_APP_ID=your_privy_app_id  # Required for email authentication
@@ -408,10 +415,17 @@ VITE_PRIVY_APP_ID=your_privy_app_id  # Required for email authentication
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id  # Optional
 VITE_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
-# Service endpoints (have defaults)
-VITE_PAYMENT_SERVICE_URL=https://payment.ardrive.io
-VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
+# Service endpoints (have defaults, dynamically configured via store)
+VITE_PAYMENT_SERVICE_URL=https://payment.ardrive.io  # Optional
+VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io    # Optional
 ```
+
+**Important Notes**:
+- Service URLs (payment, upload) are now managed by the store's configuration system
+- The app defaults to production/development presets based on `VITE_NODE_ENV`
+- X402 upload URL is automatically derived from `VITE_UPLOAD_SERVICE_URL` (adds `/x402/data-item/signed`)
+- Network selection for X402 (Base Mainnet vs Sepolia) is controlled by `VITE_NODE_ENV`
+- All configuration can be overridden at runtime via Developer Resources panel
 
 ### Vite Configuration
 - **Port 3000**: Dev server with `host: true` for network access
@@ -440,13 +454,20 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 
 ## Current Status
 
-### ✅ Completed Features (v0.7.2)
+### ✅ Completed Features (v0.8.0)
 - Multi-chain wallet authentication (Arweave, Ethereum, Solana)
 - Email authentication via Privy with embedded wallets
 - Buy Credits with Stripe checkout including full fiat payment flow
 - Complete fiat payment panels with form validation and country selection
 - Gift fiat payment flow with dedicated panels (details, confirmation, success)
 - Crypto payments for Solana and Ethereum
+- **X402 Payment Protocol Integration** (v0.8.0)
+  - Protocol-based JIT payments using x402 for instant uploads
+  - Automatic USDC payment for uploads without pre-purchased credits
+  - Support for Base network (Mainnet and Sepolia testnet)
+  - Tab-based payment UX with Traditional vs Protocol options
+  - MetaMask signer integration with session reuse
+  - x402 pricing endpoint integration
 - File upload with progress tracking (Arweave, Ethereum, and Solana wallets)
 - **Webpage Capture system with turbo-capture-service integration**
 - **Full-page screenshot capture with 90-second timeout**
@@ -481,7 +502,14 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
 - Transaction retry mechanism for improved payment reliability
 - Dynamic APP_VERSION from package.json
 
-### Recent Development (v0.6.0 - v0.7.2)
+### Recent Development (v0.6.0 - v0.8.0)
+- **X402 Protocol Integration** (v0.8.0): Protocol-based instant payments for uploads/deploys/captures
+  - Tab-based payment selection (Traditional Credits vs Protocol Payment)
+  - x402 pricing endpoint for accurate USDC cost calculations
+  - MetaMask signer with session persistence across uploads
+  - Support for Base Mainnet and Base Sepolia testnet
+  - Improved signing messages for better UX
+  - Protocol payment indicators throughout UI
 - **TTL Preservation & Configuration** (v0.7.2): ArNS record TTL management with preservation and custom settings
 - **USDC Integration** (v0.7.0): Full support for USDC stablecoins on Ethereum, Base, and Polygon
 - **Cross-Wallet Top-Up** (v0.6.0): Fund any wallet address without connecting that wallet
@@ -566,6 +594,73 @@ VITE_UPLOAD_SERVICE_URL=https://upload.ardrive.io
   - Production: `https://vilenarios.com/local/capture`
   - Development: Same as production (single service)
   - Store manages URL via `captureServiceUrl` in `DeveloperConfig`
+
+### X402 Payment Protocol Development
+The x402 protocol enables instant uploads with automatic USDC payment, eliminating the need to pre-purchase credits.
+
+**Architecture**:
+- **Hook**: `useX402Upload` handles protocol-based uploads with automatic payment
+- **Pricing Hook**: `useX402Pricing` calculates USDC costs using x402 pricing endpoint
+- **Signer**: `MetaMaskSigner` implements arbundles DataItemSigner interface with session reuse
+- **Configuration**: X402_CONFIG in `constants.ts` defines networks, chain IDs, and USDC addresses
+
+**Network Configuration**:
+```typescript
+// From constants.ts
+export const X402_CONFIG = {
+  enabled: true,
+  maxRetries: 1,
+  supportedNetworks: {
+    production: 'base',        // Base Mainnet
+    development: 'base-sepolia', // Base Sepolia Testnet
+  },
+  chainIds: {
+    production: 8453,   // Base Mainnet
+    development: 84532, // Base Sepolia
+  },
+  usdcAddresses: {
+    production: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',  // Base Mainnet USDC
+    development: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia USDC
+  },
+};
+```
+
+**Implementation Pattern**:
+```typescript
+import { useX402Upload } from '../hooks/useX402Upload';
+import { useX402Pricing } from '../hooks/useX402Pricing';
+
+// Get pricing (uses x402 pricing endpoint)
+const { getPrice, isLoading: isPricingLoading } = useX402Pricing();
+const usdcAmount = await getPrice(file.size); // Returns USDC amount for file size
+
+// Upload with x402 protocol
+const { uploadFileWithX402, uploading } = useX402Upload();
+const result = await uploadFileWithX402(file, {
+  maxUsdcAmount: usdcAmount,
+  onProgress: (progress) => console.log(`${progress}%`),
+  tags: [
+    { name: 'App-Name', value: APP_NAME },
+    { name: 'App-Feature', value: 'File Upload' },
+    { name: 'Content-Type', value: file.type },
+  ],
+});
+```
+
+**Key Points**:
+- X402 uploads use Base network USDC (Mainnet or Sepolia depending on config mode)
+- MetaMask signer is reused across uploads in same session (avoid repeated authorizations)
+- Upload endpoint derives from config: custom mode uses `${uploadServiceUrl}/x402/data-item/signed`
+- Payment happens atomically with upload (no separate payment confirmation needed)
+- Progress tracking includes both signing and upload phases
+- Supports same tag system as traditional uploads (App-Name, App-Feature, etc.)
+- Network switching handled automatically if user is on wrong network
+
+**UI Pattern** (Tab-based selection):
+- Traditional Credits tab: Uses pre-purchased Turbo credits (via `useFileUpload`)
+- Protocol Payment tab: Uses x402 instant payment (via `useX402Upload`)
+- Display both options when wallet is connected and supports MetaMask
+- Hide protocol option if user has sufficient credits for free uploads
 
 ### Privy Wallet Support
 When creating Turbo clients, check for Privy embedded wallets first:

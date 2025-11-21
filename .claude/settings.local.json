@@ -47,7 +47,8 @@
       "Bash(npm view:*)",
       "Bash(test:*)",
       "Bash(npm install:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

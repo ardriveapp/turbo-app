@@ -5,7 +5,7 @@ import { useTurboCapture } from '../../hooks/useTurboCapture';
 import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
 import { wincPerCredit, APP_NAME, APP_VERSION } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Camera, CheckCircle, XCircle, Shield, ExternalLink, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Link } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Shield, ExternalLink, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, Link, CreditCard, Wallet } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -16,10 +16,11 @@ import ArNSAssociationPanel from '../ArNSAssociationPanel';
 import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
-import { JitPaymentCard } from '../JitPaymentCard';
+import { CryptoPaymentDetails } from '../CryptoPaymentDetails';
 import { JitTokenSelector } from '../JitTokenSelector';
-import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
-import { SupportedTokenType } from '../../constants';
+import { supportsJitPayment, getTokenConverter, formatTokenAmount } from '../../utils/jitPayment';
+import { SupportedTokenType, tokenLabels } from '../../constants';
+import { useX402Pricing } from '../../hooks/useX402Pricing';
 
 export default function CapturePanel() {
   const {
@@ -30,9 +31,6 @@ export default function CapturePanel() {
     addUploadResults,
     updateUploadWithArNS,
     clearUploadHistory,
-    jitPaymentEnabled,
-    setJitPaymentEnabled,
-    setJitMaxTokenAmount,
   } = useStore();
 
   // Fetch and track the bundler's free upload limit
@@ -60,10 +58,17 @@ export default function CapturePanel() {
   const [uploadsToShow, setUploadsToShow] = useState(20);
   const [isUpdatingArNS, setIsUpdatingArNS] = useState(false);
 
+  // Payment method state (Credits vs Crypto tabs)
+  const [paymentTab, setPaymentTab] = useState<'credits' | 'crypto'>('credits');
+
+  // Track crypto shortage details for combined warning
+  const [cryptoShortage, setCryptoShortage] = useState<{
+    amount: number;
+    tokenType: SupportedTokenType;
+  } | null>(null);
+
   // JIT payment local state
-  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
   const [localJitMax, setLocalJitMax] = useState(0);
-  const FIXED_BUFFER_MULTIPLIER = 1.1;
 
   // Track if JIT section is expanded (for users with sufficient credits)
   const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
@@ -76,9 +81,17 @@ export default function CapturePanel() {
     return 'base-eth'; // Default for Ethereum - will switch to base-usdc when JIT opens
   });
 
+  // Reset payment tab to Credits when modal opens
+  // This ensures each new capture starts fresh on Credits tab
+  useEffect(() => {
+    if (showConfirmModal) {
+      setPaymentTab('credits');
+      setJitSectionExpanded(false);
+    }
+  }, [showConfirmModal]);
+
   // Auto-select base-usdc (x402) ONLY when user explicitly opens "Pay with Crypto" section
   // Reset to base-eth when they close it
-  // Do NOT switch based on localJitEnabled - that's just a preference, not a UI action
   useEffect(() => {
     if (walletType === 'ethereum') {
       if (jitSectionExpanded) {
@@ -87,7 +100,7 @@ export default function CapturePanel() {
         setSelectedJitToken('base-eth'); // Reset when section collapses
       }
     }
-  }, [walletType, jitSectionExpanded]); // REMOVED localJitEnabled from dependencies
+  }, [walletType, jitSectionExpanded]);
 
   // Track if user has sufficient crypto balance for JIT payment
   const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
@@ -118,6 +131,19 @@ export default function CapturePanel() {
     getStatusIcon,
     initializeFromCache
   } = useUploadStatus();
+
+  // Calculate billable file size for x402 pricing (exclude free files)
+  const billableFileSize = captureFile && !isFileFree(captureFile.size, freeUploadLimitBytes)
+    ? captureFile.size
+    : 0;
+
+  // Determine if we should use x402 for pricing
+  const shouldUseX402 =
+    walletType === 'ethereum' &&
+    selectedJitToken === 'base-usdc' &&
+    showConfirmModal &&  // Modal must be open
+    jitSectionExpanded;  // "Pay with Crypto" section must be expanded by user
+  const x402Pricing = useX402Pricing(shouldUseX402 ? billableFileSize : 0);
 
   // Initialize status from cache when page loads
   useEffect(() => {
@@ -248,16 +274,10 @@ export default function CapturePanel() {
     setShowConfirmModal(false);
     setCaptureMessage(null);
 
-    // Save JIT preferences
-    setJitPaymentEnabled(localJitEnabled);
-
-    // Save max token amount to store for future use (using selected token)
-    if (selectedJitToken) {
-      setJitMaxTokenAmount(selectedJitToken, localJitMax);
-    }
-
+    // Determine if JIT should be enabled based on payment tab selection
+    // JIT is enabled when user explicitly selects Crypto tab and has expanded the section
     const totalCost = calculateUploadCost(captureFile.size);
-    const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
+    const shouldEnableJit = paymentTab === 'crypto' && jitSectionExpanded && totalCost !== null && totalCost > 0;
 
     let jitMaxTokenAmountSmallest = 0;
     if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
@@ -282,7 +302,6 @@ export default function CapturePanel() {
       const { results, failedFiles } = await uploadMultipleFiles([captureFile], {
         jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
         selectedJitToken: selectedJitToken, // Pass selected token for x402
         customTags,
       });
@@ -363,6 +382,46 @@ export default function CapturePanel() {
   };
 
   const totalCost = captureFile ? calculateUploadCost(captureFile.size) : null;
+
+  // USD equivalent for credit pricing
+  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
+
+  // Fetch USD equivalent for credit pricing (only for billable bytes)
+  useEffect(() => {
+    const fetchUsdPrice = async () => {
+      if (!billableFileSize || billableFileSize <= 0 || !showConfirmModal) {
+        setUsdEquivalent(null);
+        return;
+      }
+
+      try {
+        const { getCurrentConfig } = useStore.getState();
+        const turboConfig = getCurrentConfig();
+
+        const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+        const turbo = TurboFactory.unauthenticated({
+          paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+        });
+
+        const fiatRates = await turbo.getFiatRates();
+        const usdPerGiB = fiatRates.fiat?.usd;
+
+        if (usdPerGiB) {
+          // Calculate USD for billable file size only (excluding free files)
+          const gib = billableFileSize / (1024 * 1024 * 1024);
+          const usdPrice = gib * usdPerGiB;
+          setUsdEquivalent(usdPrice);
+        } else {
+          setUsdEquivalent(null);
+        }
+      } catch (error) {
+        console.error('[USD Pricing] Error fetching USD price:', error);
+        setUsdEquivalent(null);
+      }
+    };
+
+    fetchUsdPrice();
+  }, [billableFileSize, showConfirmModal]);
 
   // Check if URL is valid
   const isValidUrl = (url: string) => {
@@ -878,6 +937,7 @@ export default function CapturePanel() {
               </div>
             </div>
 
+            {/* Upload Summary - Capture-specific info only */}
             <div className="mb-4">
               <div className="bg-surface rounded-lg p-3">
                 <div className="space-y-2">
@@ -906,29 +966,11 @@ export default function CapturePanel() {
                       {formatFileSize(captureFile.size)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-link">Cost:</span>
-                    <span className="text-xs text-fg-muted">
-                      {totalCost === 0 ? (
-                        <span className="text-turbo-green font-medium">FREE</span>
-                      ) : typeof totalCost === 'number' ? (
-                        `${totalCost.toFixed(6)} Credits`
-                      ) : (
-                        'Calculating...'
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                    <span className="text-xs text-link">Current Balance:</span>
-                    <span className="text-xs text-fg-muted">
-                      {creditBalance.toFixed(6)} Credits
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* JIT Payment Card */}
+            {/* Payment Method Section */}
             {(() => {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
               const hasSufficientCredits = creditsNeeded === 0;
@@ -937,29 +979,133 @@ export default function CapturePanel() {
               // Check if capture is completely free
               const isFreeCapture = typeof totalCost === 'number' && totalCost === 0;
 
-              // Auto-expand if insufficient credits, otherwise respect user's toggle
-              const isExpanded = hasSufficientCredits ? jitSectionExpanded : true;
+              // When switching to crypto tab, expand the section
+              const handleCryptoTabClick = () => {
+                setPaymentTab('crypto');
+                setJitSectionExpanded(true);
+                // Immediately set token for Ethereum wallets to avoid base-eth flash
+                if (walletType === 'ethereum') {
+                  setSelectedJitToken('base-usdc');
+                }
+              };
+
+              // When switching to credits tab, collapse crypto section
+              const handleCreditsTabClick = () => {
+                setPaymentTab('credits');
+                setJitSectionExpanded(false);
+              };
 
               return (
                 <>
-                  {/* JIT Payment Section - Collapsible for users with sufficient credits, hidden for free captures */}
-                  {hasSufficientCredits && canUseJit && !isFreeCapture && (
-                    <button
-                      onClick={() => setJitSectionExpanded(!jitSectionExpanded)}
-                      className="w-full mb-3 p-2.5 bg-surface/30 rounded-lg border border-default/30 text-xs text-link hover:text-fg-muted transition-colors flex items-center justify-between"
-                    >
-                      <span>Pay with crypto instead?</span>
-                      {jitSectionExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
+                  {/* Payment Method Tabs - Only show for wallets that support JIT and non-free captures */}
+                  {canUseJit && !isFreeCapture && (
+                    <div className="mb-4">
+                      <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
+                        <button
+                          type="button"
+                          onClick={handleCreditsTabClick}
+                          className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            paymentTab === 'credits'
+                              ? 'bg-fg-muted text-black'
+                              : 'text-link hover:text-fg-muted'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Credits
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCryptoTabClick}
+                          className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            paymentTab === 'crypto'
+                              ? 'bg-fg-muted text-black'
+                              : 'text-link hover:text-fg-muted'
+                          }`}
+                        >
+                          <Wallet className="w-4 h-4" />
+                          Crypto
+                        </button>
+                      </div>
+                    </div>
                   )}
 
-                  {/* Show JIT options when expanded or when insufficient credits, but not for free captures */}
-                  {isExpanded && canUseJit && !isFreeCapture && (
+                  {/* Payment Details Section - Credits Tab */}
+                  {paymentTab === 'credits' && canUseJit && !isFreeCapture && (
                     <div className="mb-4">
+                      <div className="bg-surface rounded-lg border border-default p-4">
+                        <div className="space-y-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Cost:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {totalCost === 0 ? (
+                                <span className="text-turbo-green font-medium">FREE</span>
+                              ) : typeof totalCost === 'number' ? (
+                                <>
+                                  {totalCost.toFixed(6)} Credits
+                                  {usdEquivalent !== null && usdEquivalent > 0 && (
+                                    <span className="text-xs text-link ml-2">
+                                      (≈ ${usdEquivalent < 0.01
+                                        ? usdEquivalent.toFixed(4)
+                                        : usdEquivalent.toFixed(2)})
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                'Calculating...'
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Only show balance info for non-free captures */}
+                          {!isFreeCapture && (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-link">Current Balance:</span>
+                                <span className="text-sm text-fg-muted font-medium">
+                                  {creditBalance.toFixed(6)} Credits
+                                </span>
+                              </div>
+                              {typeof totalCost === 'number' && (
+                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                                  <span className="text-xs text-link">After Upload:</span>
+                                  <span className="text-sm text-fg-muted font-medium">
+                                    {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Insufficient Credits Warning */}
+                          {!isFreeCapture && !hasSufficientCredits && (
+                            <div className="pt-3 mt-3 border-t border-default/30">
+                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                    Need {creditsNeeded.toFixed(6)} more credits
+                                  </div>
+                                  <div className="text-xs text-red-400/80">
+                                    {canUseJit && (
+                                      <>
+                                        • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-red-300">Crypto tab</button> to pay directly
+                                        <br />
+                                      </>
+                                    )}
+                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Details Section - Crypto Tab */}
+                  {paymentTab === 'crypto' && canUseJit && !isFreeCapture && (
+                    <>
                       {/* JIT Token Selector - shown for Ethereum wallets */}
                       {walletType === 'ethereum' && (
                         <div className="mb-3">
@@ -971,69 +1117,107 @@ export default function CapturePanel() {
                         </div>
                       )}
 
-                      {/* JIT Payment Card */}
-                      <JitPaymentCard
+                      {/* Unified Crypto Payment Display */}
+                      <CryptoPaymentDetails
                         creditsNeeded={creditsNeeded}
                         totalCost={typeof totalCost === 'number' ? totalCost : 0}
-                        currentBalance={creditBalance}
                         tokenType={selectedJitToken}
-                        maxTokenAmount={localJitMax}
-                        onMaxTokenAmountChange={setLocalJitMax}
                         walletAddress={address}
                         walletType={walletType}
                         onBalanceValidation={setJitBalanceSufficient}
-                        enabled={true}
+                        onShortageUpdate={setCryptoShortage}
+                        localJitMax={localJitMax}
+                        onMaxTokenAmountChange={setLocalJitMax}
+                        x402Pricing={x402Pricing}
                       />
-
-                      {/* Enable JIT toggle */}
-                      <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={localJitEnabled}
-                          onChange={(e) => setLocalJitEnabled(e.target.checked)}
-                          className="w-4 h-4 rounded border-default bg-canvas text-turbo-red focus:ring-turbo-red focus:ring-offset-0"
-                        />
-                        <span className="text-xs text-link">
-                          Enable automatic crypto top-up for this capture
-                        </span>
-                      </label>
-                    </div>
+                    </>
                   )}
 
-                  {/* Insufficient credits warning - when NOT using JIT */}
-                  {creditsNeeded > 0 && !localJitEnabled && (
-                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                          {!canUseJit && (
+                  {/* Credits-Only Payment (for wallets without JIT support or free captures) */}
+                  {(!canUseJit || isFreeCapture) && (
+                    <div className="mb-4">
+                      <div className="bg-surface rounded-lg border border-default p-4">
+                        <div className="space-y-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Cost:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {totalCost === 0 ? (
+                                <span className="text-turbo-green font-medium">FREE</span>
+                              ) : typeof totalCost === 'number' ? (
+                                <>
+                                  {totalCost.toFixed(6)} Credits
+                                  {usdEquivalent !== null && usdEquivalent > 0 && (
+                                    <span className="text-xs text-link ml-2">
+                                      (≈ ${usdEquivalent < 0.01
+                                        ? usdEquivalent.toFixed(4)
+                                        : usdEquivalent.toFixed(2)})
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                'Calculating...'
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Only show balance info for non-free captures */}
+                          {!isFreeCapture && (
                             <>
-                              {' '}
-                              <a href="/topup" className="underline hover:text-red-300 transition-colors">
-                                Buy credits
-                              </a>{' '}
-                              to continue.
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-link">Current Balance:</span>
+                                <span className="text-sm text-fg-muted font-medium">
+                                  {creditBalance.toFixed(6)} Credits
+                                </span>
+                              </div>
+                              {typeof totalCost === 'number' && (
+                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                                  <span className="text-xs text-link">After Upload:</span>
+                                  <span className="text-sm text-fg-muted font-medium">
+                                    {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
+                                  </span>
+                                </div>
+                              )}
                             </>
                           )}
-                        </span>
+
+                          {/* Insufficient Credits Warning */}
+                          {!isFreeCapture && !hasSufficientCredits && (
+                            <div className="pt-3 mt-3 border-t border-default/30">
+                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                    Need {creditsNeeded.toFixed(6)} more credits
+                                  </div>
+                                  <div className="text-xs text-red-400/80">
+                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Insufficient crypto balance warning - when using JIT */}
-                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && (
-                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          Insufficient crypto balance in your wallet.
-                          Please add funds to your wallet or{' '}
-                          <a href="/topup" className="underline hover:text-red-300 transition-colors">
-                            buy credits
-                          </a>{' '}
-                          instead.
-                        </span>
+                  {/* Insufficient crypto balance warning - when using Crypto tab */}
+                  {paymentTab === 'crypto' && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-red-400 font-medium mb-1">
+                            Need {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} more
+                          </div>
+                          <div className="text-xs text-red-400/80">
+                            Add funds to your wallet or{' '}
+                            <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                              buy credits
+                            </a>{' '}
+                            instead.
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1053,7 +1237,7 @@ export default function CapturePanel() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col-reverse sm:flex-row gap-3">
                     <button
                       onClick={() => setShowConfirmModal(false)}
                       className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
@@ -1063,12 +1247,12 @@ export default function CapturePanel() {
                     <button
                       onClick={handleConfirmUpload}
                       disabled={
-                        (creditsNeeded > 0 && !localJitEnabled) ||
-                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
+                        (creditsNeeded > 0 && paymentTab === 'credits') ||
+                        (paymentTab === 'crypto' && creditsNeeded > 0 && !jitBalanceSufficient)
                       }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
-                      {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}
+                      {paymentTab === 'crypto' && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>
                   </div>
                 </>

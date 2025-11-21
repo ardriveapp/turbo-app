@@ -207,6 +207,7 @@ export function useX402Upload() {
         else if (uploadResponse.status === 402) {
           console.log('402 Payment Required - processing x402 payment...');
           const priceData = await uploadResponse.json();
+          console.log('[X402] Pricing response:', JSON.stringify(priceData, null, 2));
 
           // Find requirements for our network
           const requirements = priceData.accepts.find((a: any) => a.network === networkKey);
@@ -215,11 +216,23 @@ export function useX402Upload() {
             throw new Error(`Network ${networkKey} not available for payment`);
           }
 
-          const baseAmount = BigInt(requirements.maxAmountRequired);
+          console.log('[X402] Selected requirements:', JSON.stringify(requirements, null, 2));
+
+          // Use the exact value from the server to avoid precision issues
+          // maxAmountRequired is already in smallest unit (6 decimals for USDC)
+          const amountInSmallestUnit = requirements.maxAmountRequired;
+
+          console.log(`[X402] Server maxAmountRequired (raw):`, amountInSmallestUnit, `(type: ${typeof amountInSmallestUnit})`);
+
+          // For BigInt conversion, handle both string and number from server
+          const baseAmount = typeof amountInSmallestUnit === 'string'
+            ? BigInt(Math.round(Number(amountInSmallestUnit)))
+            : BigInt(Math.round(amountInSmallestUnit));
+
           const amount = ethers.formatUnits(baseAmount, 6);
           paidUsdcAmount = amount;
 
-          console.log(`Payment required: ${amount} USDC`);
+          console.log(`[X402] Payment required: ${amount} USDC (${baseAmount.toString()} smallest unit)`);
 
           // Create payment authorization
           const currentTime = Math.floor(Date.now() / 1000);
@@ -229,6 +242,8 @@ export function useX402Upload() {
           const validBefore = currentTime + timeoutSeconds + bufferSeconds;
           const nonce = ethers.hexlify(ethers.randomBytes(32));
 
+          // Create authorization object (must use same object for signing and server)
+          // The signature is cryptographically bound to these exact values
           const authorization = {
             from: userAddress,
             to: requirements.payTo,
@@ -242,7 +257,7 @@ export function useX402Upload() {
           const domain = {
             name: 'USD Coin',
             version: '2',
-            chainId: chainId, // ethers.js will handle the conversion
+            chainId: chainId,
             verifyingContract: usdcAddress,
           };
 
@@ -257,11 +272,11 @@ export function useX402Upload() {
             ],
           };
 
-          console.log('Signing payment authorization (approve in wallet)...');
-          console.log('Domain:', domain);
-          console.log('Authorization:', authorization);
+          console.log('[X402] Signing payment authorization (approve in wallet)...');
+          console.log('[X402] Domain:', domain);
+          console.log('[X402] Authorization:', authorization);
           const signature = await ethersSigner.signTypedData(domain, types, authorization);
-          console.log('Payment authorized! Signature:', signature);
+          console.log('[X402] Payment authorized! Signature created.');
 
           const paymentPayload = {
             x402Version: 1,
@@ -270,12 +285,12 @@ export function useX402Upload() {
             payload: { signature, authorization },
           };
 
-          console.log('Payment payload:', JSON.stringify(paymentPayload, null, 2));
+          console.log('[X402] Payment payload:', JSON.stringify(paymentPayload, null, 2));
           const paymentHeader = btoa(JSON.stringify(paymentPayload));
-          console.log('Payment header (base64):', paymentHeader.substring(0, 100) + '...');
+          console.log('[X402] Payment header (base64):', paymentHeader.substring(0, 100) + '...');
 
           // Retry upload with payment (uploadData is already Uint8Array from earlier)
-          console.log('Retrying upload with x402 payment...');
+          console.log('[X402] Retrying upload with x402 payment...');
           uploadResponse = await fetch(x402Url, {
             method: 'POST',
             headers: {

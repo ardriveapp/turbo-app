@@ -73,7 +73,7 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
     kyve: 2,
     pol: 2,
     'usdc': 2,        // 10.50 USDC (stablecoin, dollars and cents)
-    'base-usdc': 2,   // 10.50 USDC (stablecoin, dollars and cents)
+    'base-usdc': 3,   // 10.500 USDC (one extra decimal for precision)
     'polygon-usdc': 2, // 10.50 USDC (stablecoin, dollars and cents)
   };
 
@@ -226,8 +226,11 @@ export async function calculateRequiredTokenAmount({
         const fiatRates = await turbo.getFiatRates();
         // fiatRates.fiat gives USD per GiB, we know tokens per GiB
         const usdPerGiB = fiatRates.fiat?.usd || 0;
+        console.log(`[JIT ${tokenType}] getFiatRates USD per GiB:`, usdPerGiB);
+        console.log(`[JIT ${tokenType}] Tokens per GiB:`, tokensPerGiB);
         if (usdPerGiB > 0 && tokensPerGiB > 0) {
           usdPerToken = usdPerGiB / tokensPerGiB;
+          console.log(`[JIT ${tokenType}] Calculated USD per token:`, usdPerToken);
         }
       } catch (err) {
         console.warn('Failed to get USD price for JIT payment:', err);
@@ -237,6 +240,10 @@ export async function calculateRequiredTokenAmount({
     // Calculate: tokens per credit (same for both x402 and regular)
     const creditsPerGiB = wincPerGiB / wincPerCredit;
     const tokenPricePerCredit = tokensPerGiB / creditsPerGiB;
+
+    console.log(`[JIT ${tokenType}] Winc per GiB:`, wincPerGiB);
+    console.log(`[JIT ${tokenType}] Credits per GiB:`, creditsPerGiB);
+    console.log(`[JIT ${tokenType}] Token price per credit:`, tokenPricePerCredit);
 
     // Cache the result
     priceCache.set(tokenType, {
@@ -248,6 +255,12 @@ export async function calculateRequiredTokenAmount({
     // Calculate final amounts
     const baseAmount = creditsNeeded * tokenPricePerCredit;
     const bufferedAmount = baseAmount * bufferMultiplier;
+
+    console.log(`[JIT ${tokenType}] Credits needed:`, creditsNeeded);
+    console.log(`[JIT ${tokenType}] Base amount (no buffer):`, baseAmount);
+    console.log(`[JIT ${tokenType}] Buffer multiplier:`, bufferMultiplier);
+    console.log(`[JIT ${tokenType}] Buffered amount:`, bufferedAmount);
+    console.log(`[JIT ${tokenType}] Estimated USD:`, usdPerToken ? bufferedAmount * usdPerToken : null);
 
     const converter = getTokenConverter(tokenType);
     const smallestUnit = converter ? converter(bufferedAmount) : 0;

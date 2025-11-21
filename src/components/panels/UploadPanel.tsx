@@ -28,6 +28,7 @@ interface CryptoPaymentDetailsProps {
   walletAddress: string | null;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   onBalanceValidation: (hasSufficientBalance: boolean) => void;
+  onShortageUpdate: (shortage: { amount: number; tokenType: SupportedTokenType } | null) => void;
   localJitMax: number;
   onMaxTokenAmountChange: (amount: number) => void;
   x402Pricing?: {
@@ -45,6 +46,7 @@ function CryptoPaymentDetails({
   walletAddress,
   walletType,
   onBalanceValidation,
+  onShortageUpdate,
   localJitMax,
   onMaxTokenAmountChange,
   x402Pricing,
@@ -54,10 +56,10 @@ function CryptoPaymentDetails({
     tokenAmountReadable: number;
     estimatedUSD: number | null;
   } | null>(null);
+  const [bufferPercentage, setBufferPercentage] = useState(1); // Default 1% buffer
 
   const tokenLabel = tokenLabels[tokenType];
-  const BUFFER_MULTIPLIER = 1.1; // Fixed 10% buffer
-  const MAX_MULTIPLIER = 1.5; // Max is 1.5x estimated cost
+  const BUFFER_MULTIPLIER = 1 + (bufferPercentage / 100); // Adjustable buffer
 
   // Fetch wallet balance
   const {
@@ -73,23 +75,28 @@ function CryptoPaymentDetails({
       try {
         // For base-usdc, use x402 pricing directly
         if (tokenType === 'base-usdc' && x402Pricing) {
-          if (!x402Pricing.loading && !x402Pricing.error && x402Pricing.usdcAmount > 0) {
+          // Don't set cost while loading to avoid showing "FREE" flash
+          if (x402Pricing.loading) {
+            setEstimatedCost(null); // Show "Calculating..."
+            return;
+          }
+
+          if (!x402Pricing.error) {
             setEstimatedCost({
-              tokenAmountReadable: x402Pricing.usdcAmount,
+              tokenAmountReadable: x402Pricing.usdcAmount, // Can be 0 for free uploads
               estimatedUSD: x402Pricing.usdcAmount, // USDC is 1:1 with USD
             });
 
-            // Auto-calculate max as 1.5x estimated cost
-            const autoMax = x402Pricing.usdcAmount * MAX_MULTIPLIER;
-            onMaxTokenAmountChange(autoMax);
+            // For Crypto tab, max is just the buffered cost
+            onMaxTokenAmountChange(x402Pricing.usdcAmount);
           }
           return;
         }
 
         // For other tokens, calculate using regular pricing
-        const creditsToConvert = creditsNeeded > 0 ? creditsNeeded : totalCost;
+        // Always use totalCost for Crypto tab - user is choosing to pay full amount with crypto
         const cost = await calculateRequiredTokenAmount({
-          creditsNeeded: creditsToConvert,
+          creditsNeeded: totalCost,
           tokenType,
           bufferMultiplier: BUFFER_MULTIPLIER,
         });
@@ -99,9 +106,8 @@ function CryptoPaymentDetails({
           estimatedUSD: cost.estimatedUSD,
         });
 
-        // Auto-calculate max as 1.5x estimated cost
-        const autoMax = cost.tokenAmountReadable * MAX_MULTIPLIER;
-        onMaxTokenAmountChange(autoMax);
+        // For Crypto tab, max is just the buffered cost (already includes buffer from BUFFER_MULTIPLIER)
+        onMaxTokenAmountChange(cost.tokenAmountReadable);
       } catch (error) {
         console.error('Failed to calculate crypto cost:', error);
         setEstimatedCost(null);
@@ -112,28 +118,40 @@ function CryptoPaymentDetails({
     if (hasCost) {
       calculate();
     }
-  }, [creditsNeeded, totalCost, tokenType, onMaxTokenAmountChange, x402Pricing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditsNeeded, totalCost, tokenType, bufferPercentage, x402Pricing?.usdcAmount, x402Pricing?.loading, x402Pricing?.error]);
 
-  // Validate balance
+  // Validate balance and update shortage info
   useEffect(() => {
     if (!estimatedCost) {
       onBalanceValidation(true);
+      onShortageUpdate(null);
       return;
     }
 
     if (isNetworkError) {
       onBalanceValidation(false);
+      onShortageUpdate(null);
       return;
     }
 
     if (balanceError) {
       onBalanceValidation(true);
+      onShortageUpdate(null);
       return;
     }
 
     const hasSufficientBalance = tokenBalance >= estimatedCost.tokenAmountReadable;
     onBalanceValidation(hasSufficientBalance);
-  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, onBalanceValidation]);
+
+    // Update shortage info for parent component warning
+    if (!hasSufficientBalance) {
+      const shortage = estimatedCost.tokenAmountReadable - tokenBalance;
+      onShortageUpdate({ amount: shortage, tokenType });
+    } else {
+      onShortageUpdate(null);
+    }
+  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, tokenType]);
 
   const afterUpload = estimatedCost ? Math.max(0, tokenBalance - estimatedCost.tokenAmountReadable) : tokenBalance;
   const hasSufficientBalance = estimatedCost ? tokenBalance >= estimatedCost.tokenAmountReadable : true;
@@ -147,16 +165,20 @@ function CryptoPaymentDetails({
             <span className="text-xs text-link">Cost:</span>
             <span className="text-sm text-fg-muted font-medium">
               {estimatedCost ? (
-                <>
-                  ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
-                  {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
-                    <span className="text-xs text-link ml-2">
-                      (≈ ${estimatedCost.estimatedUSD < 0.01
-                        ? estimatedCost.estimatedUSD.toFixed(4)
-                        : estimatedCost.estimatedUSD.toFixed(2)})
-                    </span>
-                  )}
-                </>
+                estimatedCost.tokenAmountReadable === 0 ? (
+                  <span className="text-turbo-green font-medium">FREE</span>
+                ) : (
+                  <>
+                    ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
+                    {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
+                      <span className="text-xs text-link ml-2">
+                        (≈ ${estimatedCost.estimatedUSD < 0.01
+                          ? estimatedCost.estimatedUSD.toFixed(4)
+                          : estimatedCost.estimatedUSD.toFixed(2)})
+                      </span>
+                    )}
+                  </>
+                )
               ) : (
                 'Calculating...'
               )}
@@ -166,7 +188,7 @@ function CryptoPaymentDetails({
           {/* Current Balance */}
           <div className="flex justify-between items-center">
             <span className="text-xs text-link">Current Balance:</span>
-            <span className="text-sm text-fg-muted">
+            <span className="text-sm text-fg-muted font-medium">
               {balanceLoading ? (
                 <span className="flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -187,23 +209,6 @@ function CryptoPaymentDetails({
               <span className="text-sm text-fg-muted font-medium">
                 {formatTokenAmount(afterUpload, tokenType)} {tokenLabel}
               </span>
-            </div>
-          )}
-
-          {/* Insufficient Balance Warning */}
-          {estimatedCost && !hasSufficientBalance && !balanceLoading && !balanceError && (
-            <div className="pt-3 mt-3 border-t border-default/30">
-              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-red-400 font-medium mb-1">
-                    Need {formatTokenAmount(estimatedCost.tokenAmountReadable - tokenBalance, tokenType)} {tokenLabel} more
-                  </div>
-                  <div className="text-xs text-red-400/80">
-                    Add funds to your wallet to continue
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -238,15 +243,26 @@ function CryptoPaymentDetails({
             </button>
 
             {showAdvanced && (
-              <div className="mt-3 space-y-2">
-                <div className="text-xs text-link">
-                  <div className="mb-1">Safety margin included in max amount:</div>
-                  <div className="text-fg-muted">
-                    Up to ~{formatTokenAmount(localJitMax, tokenType)} {tokenLabel}
-                  </div>
-                </div>
-                <div className="text-xs text-link/70">
-                  The payment will automatically charge your wallet when uploading. A 10% buffer is applied to ensure successful transactions.
+              <div className="mt-3">
+                <label className="text-xs text-link block mb-2">
+                  Safety Buffer (0-20%):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.5"
+                    value={bufferPercentage}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 20) {
+                        setBufferPercentage(value);
+                      }
+                    }}
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-canvas text-fg-muted focus:outline-none focus:border-fg-muted"
+                  />
+                  <span className="text-xs text-link">%</span>
                 </div>
               </div>
             )}
@@ -296,6 +312,12 @@ export default function UploadPanel() {
   // Payment method tab - 'credits' or 'crypto'
   const [paymentTab, setPaymentTab] = useState<'credits' | 'crypto'>('credits');
 
+  // Track crypto shortage details for combined warning
+  const [cryptoShortage, setCryptoShortage] = useState<{
+    amount: number;
+    tokenType: SupportedTokenType;
+  } | null>(null);
+
   // Selected JIT token - will be set when user opens "Pay with Crypto"
   // NOT set by default to avoid triggering x402 pricing before user interaction
   const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
@@ -303,6 +325,15 @@ export default function UploadPanel() {
     if (walletType === 'solana') return 'solana';
     return 'base-eth'; // Default for Ethereum - will switch to base-usdc when JIT opens
   });
+
+  // Reset payment tab to Credits when modal opens
+  // This ensures each new upload starts fresh on Credits tab
+  useEffect(() => {
+    if (showConfirmModal) {
+      setPaymentTab('credits');
+      setJitSectionExpanded(false);
+    }
+  }, [showConfirmModal]);
 
   // Auto-select base-usdc (x402) ONLY when user explicitly opens "Pay with Crypto" section
   // Reset to base-eth when they close it
@@ -364,10 +395,15 @@ export default function UploadPanel() {
         const fiatRates = await turbo.getFiatRates();
         const usdPerGiB = fiatRates.fiat?.usd || 0;
 
+        console.log('[Credits USD Pricing] getFiatRates response:', fiatRates);
+        console.log('[Credits USD Pricing] USD per GiB:', usdPerGiB);
+
         if (usdPerGiB > 0) {
           // Calculate USD for billable file size only (excluding free files)
           const gib = billableFileSize / (1024 * 1024 * 1024);
           const usdPrice = gib * usdPerGiB;
+          console.log('[Credits USD Pricing] Billable GiB:', gib);
+          console.log('[Credits USD Pricing] Total USD price:', usdPrice);
           setUsdEquivalent(usdPrice);
         } else {
           setUsdEquivalent(null);
@@ -1245,6 +1281,10 @@ export default function UploadPanel() {
                 setPaymentTab('crypto');
                 setJitSectionExpanded(true);
                 setLocalJitEnabled(true);
+                // Immediately set token for Ethereum wallets to avoid base-eth flash
+                if (walletType === 'ethereum') {
+                  setSelectedJitToken('base-usdc');
+                }
               };
 
               // When switching to credits tab, collapse crypto section
@@ -1289,7 +1329,7 @@ export default function UploadPanel() {
                   )}
 
                   {/* Payment Details Section - Credits Tab */}
-                  {paymentTab === 'credits' && (
+                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && (
                     <div className="mb-4">
                       <div className="bg-surface rounded-lg border border-default p-4">
                         <div className="space-y-2.5">
@@ -1320,7 +1360,7 @@ export default function UploadPanel() {
                             <>
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-link">Current Balance:</span>
-                                <span className="text-sm text-fg-muted">
+                                <span className="text-sm text-fg-muted font-medium">
                                   {creditBalance.toFixed(6)} Credits
                                 </span>
                               </div>
@@ -1384,6 +1424,7 @@ export default function UploadPanel() {
                         walletAddress={address}
                         walletType={walletType}
                         onBalanceValidation={setJitBalanceSufficient}
+                        onShortageUpdate={setCryptoShortage}
                         localJitMax={localJitMax}
                         onMaxTokenAmountChange={setLocalJitMax}
                         x402Pricing={x402Pricing}
@@ -1423,7 +1464,7 @@ export default function UploadPanel() {
                             <>
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-link">Current Balance:</span>
-                                <span className="text-sm text-fg-muted">
+                                <span className="text-sm text-fg-muted font-medium">
                                   {creditBalance.toFixed(6)} Credits
                                 </span>
                               </div>
@@ -1460,18 +1501,22 @@ export default function UploadPanel() {
                   )}
 
                   {/* Insufficient crypto balance warning - when using JIT */}
-                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && (
-                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          Insufficient crypto balance in your wallet.
-                          Please add funds to your wallet or{' '}
-                          <a href="/topup" className="underline hover:text-red-300 transition-colors">
-                            buy credits
-                          </a>{' '}
-                          instead.
-                        </span>
+                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-red-400 font-medium mb-1">
+                            Need {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} more
+                          </div>
+                          <div className="text-xs text-red-400/80">
+                            Add funds to your wallet or{' '}
+                            <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                              buy credits
+                            </a>{' '}
+                            instead.
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1506,7 +1551,7 @@ export default function UploadPanel() {
                       }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
-                      {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}
+                      {localJitEnabled && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>
                   </div>
                 </>

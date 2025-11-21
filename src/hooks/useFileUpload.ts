@@ -12,6 +12,7 @@ import { supportsJitPayment } from '../utils/jitPayment';
 import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useX402Upload } from './useX402Upload';
+import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
 
 interface UploadResult {
   id: string;
@@ -68,6 +69,7 @@ export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
   const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook
+  const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -318,13 +320,17 @@ export function useFileUpload() {
       });
     }
 
-    // Use x402 for ALL BASE-USDC uploads from Ethereum wallets (JIT or non-JIT)
-    // x402 protocol handles both paid and credit-based uploads
+    // Use x402 for BILLABLE BASE-USDC uploads from Ethereum wallets
+    // Free files use regular upload service (bundler handles free tier)
     console.log(`[X402] selectedJitToken: ${options?.selectedJitToken}, walletType: ${walletType}`);
+
+    const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
+    console.log(`[Upload] ${fileName}: size=${file.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isFileInFreeUploadTier}`);
 
     if (
       walletType === 'ethereum' &&
-      options?.selectedJitToken === 'base-usdc'
+      options?.selectedJitToken === 'base-usdc' &&
+      !isFileInFreeUploadTier  // Only use x402 for billable files
     ) {
       try {
         console.log('[X402] Using x402 flow for BASE-USDC upload:', fileName);
@@ -364,6 +370,9 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         // Throw error to stop upload - user must choose different approach
         throw new Error(errorMsg);
       }
+    } else if (isFileInFreeUploadTier && options?.selectedJitToken === 'base-usdc') {
+      // Free file with BASE-USDC selected - use regular upload (bundler handles free tier)
+      console.log(`[Free Upload] File ${fileName} is free (${file.size} bytes), using regular upload service`);
     } else if (options?.jitEnabled && jitTokenType) {
       // Regular JIT path (not x402)
       console.log(`[JIT] Using regular JIT flow with ${jitTokenType} for ${fileName}`);
