@@ -16,20 +16,20 @@ interface X402PricingResult {
  * @returns Pricing information in USDC
  */
 export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
-  const { getCurrentConfig, configMode } = useStore();
+  const { getCurrentConfig, configMode, customConfig } = useStore();
   const [usdcAmount, setUsdcAmount] = useState<number>(0);
   const [usdcAmountSmallestUnit, setUsdcAmountSmallestUnit] = useState<string>('0');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Memoize x402 URL to prevent unnecessary re-renders and API calls
-  // Only recalculate when config mode changes (upload URLs are stable within a mode)
+  // Recalculate when config mode OR upload URL changes
   const x402Url = useMemo(() => {
     const config = getCurrentConfig();
     return configMode === 'custom'
       ? `${config.uploadServiceUrl}/x402/data-item/signed`
       : config.x402UploadUrl;
-  }, [configMode, getCurrentConfig]);
+  }, [configMode, customConfig.uploadServiceUrl, customConfig.x402UploadUrl, getCurrentConfig]);
 
   useEffect(() => {
     // Skip if file size is 0 or negative
