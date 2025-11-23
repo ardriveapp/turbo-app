@@ -69,6 +69,7 @@ export default function CapturePanel() {
 
   // JIT payment local state
   const [localJitMax, setLocalJitMax] = useState(0);
+  const [localJitEnabled, setLocalJitEnabled] = useState(false);
 
   // Track if JIT section is expanded (for users with sufficient credits)
   const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
@@ -87,6 +88,7 @@ export default function CapturePanel() {
     if (showConfirmModal) {
       setPaymentTab('credits');
       setJitSectionExpanded(false);
+      setLocalJitEnabled(false);
     }
   }, [showConfirmModal]);
 
@@ -212,7 +214,7 @@ export default function CapturePanel() {
         capturedUrl,
         result.dataCaches.join('; '),
         result.fastFinalityIndexes.join('; '),
-        getArweaveUrl(result.id)
+        getArweaveUrl(result.id, result.dataCaches)
       ];
     });
 
@@ -272,12 +274,14 @@ export default function CapturePanel() {
     }
 
     setShowConfirmModal(false);
+    setJitSectionExpanded(false); // Reset for next capture
     setCaptureMessage(null);
 
-    // Determine if JIT should be enabled based on payment tab selection
-    // JIT is enabled when user explicitly selects Crypto tab and has expanded the section
+    // Only enable JIT if the user has insufficient credits to cover the cost
+    // Calculate credits needed (0 if user has sufficient credits)
     const totalCost = calculateUploadCost(captureFile.size);
-    const shouldEnableJit = paymentTab === 'crypto' && jitSectionExpanded && totalCost !== null && totalCost > 0;
+    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+    const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
 
     let jitMaxTokenAmountSmallest = 0;
     if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
@@ -714,7 +718,7 @@ export default function CapturePanel() {
                               </button>
                             )}
                             <a
-                              href={getArweaveUrl(result.id)}
+                              href={getArweaveUrl(result.id, result.dataCaches)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -807,7 +811,7 @@ export default function CapturePanel() {
                                       </button>
                                     )}
                                     <a
-                                      href={getArweaveUrl(result.id)}
+                                      href={getArweaveUrl(result.id, result.dataCaches)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={() => close()}
@@ -925,7 +929,10 @@ export default function CapturePanel() {
 
       {/* Upload Confirmation Modal */}
       {showConfirmModal && captureFile && captureResult && (
-        <BaseModal onClose={() => setShowConfirmModal(false)}>
+        <BaseModal onClose={() => {
+          setShowConfirmModal(false);
+          setJitSectionExpanded(false); // Reset JIT section when modal closes
+        }}>
           <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -979,10 +986,11 @@ export default function CapturePanel() {
               // Check if capture is completely free
               const isFreeCapture = typeof totalCost === 'number' && totalCost === 0;
 
-              // When switching to crypto tab, expand the section
+              // When switching to crypto tab, expand the section and enable JIT
               const handleCryptoTabClick = () => {
                 setPaymentTab('crypto');
                 setJitSectionExpanded(true);
+                setLocalJitEnabled(true);
                 // Immediately set token for Ethereum wallets to avoid base-eth flash
                 if (walletType === 'ethereum') {
                   setSelectedJitToken('base-usdc');
@@ -993,6 +1001,7 @@ export default function CapturePanel() {
               const handleCreditsTabClick = () => {
                 setPaymentTab('credits');
                 setJitSectionExpanded(false);
+                setLocalJitEnabled(false);
               };
 
               return (
@@ -1201,8 +1210,8 @@ export default function CapturePanel() {
                     </div>
                   )}
 
-                  {/* Insufficient crypto balance warning - when using Crypto tab */}
-                  {paymentTab === 'crypto' && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
+                  {/* Insufficient crypto balance warning - when using JIT */}
+                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
                     <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
@@ -1247,12 +1256,12 @@ export default function CapturePanel() {
                     <button
                       onClick={handleConfirmUpload}
                       disabled={
-                        (creditsNeeded > 0 && paymentTab === 'credits') ||
-                        (paymentTab === 'crypto' && creditsNeeded > 0 && !jitBalanceSufficient)
+                        (creditsNeeded > 0 && !localJitEnabled) ||
+                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
                       }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
-                      {paymentTab === 'crypto' && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
+                      {localJitEnabled && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>
                   </div>
                 </>

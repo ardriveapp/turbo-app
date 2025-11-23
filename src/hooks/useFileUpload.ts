@@ -13,6 +13,7 @@ import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useX402Upload } from './useX402Upload';
 import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
+import { getContentType } from '../utils/mimeTypes';
 
 interface UploadResult {
   id: string;
@@ -353,7 +354,7 @@ export function useFileUpload() {
           timestamp: Date.now(),
           fileName: file.name,
           fileSize: file.size,
-          contentType: file.type || 'application/octet-stream',
+          contentType: getContentType(file),
         };
       } catch (x402Error) {
         console.error('x402 upload failed:', x402Error);
@@ -396,7 +397,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
                   { name: 'App-Name', value: APP_NAME },
                   { name: 'App-Feature', value: 'File Upload' },
                   { name: 'App-Version', value: APP_VERSION },
-                  { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                  { name: 'Content-Type', value: getContentType(file) },
                   { name: 'File-Name', value: file.name }
                 ],
                 options.customTags
@@ -405,7 +406,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
                 { name: 'App-Name', value: APP_NAME },
                 { name: 'App-Feature', value: 'File Upload' },
                 { name: 'App-Version', value: APP_VERSION },
-                { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                { name: 'Content-Type', value: getContentType(file) },
                 { name: 'File-Name', value: file.name }
               ]
         },
@@ -443,7 +444,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         timestamp: Date.now(),
         fileName: file.name,
         fileSize: file.size,
-        contentType: file.type || 'application/octet-stream',
+        contentType: getContentType(file),
         receipt: uploadResult // Store the entire upload response as receipt
       };
       

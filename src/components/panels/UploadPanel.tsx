@@ -531,7 +531,7 @@ export default function UploadPanel() {
         contentType,
         result.dataCaches.join('; '),
         result.fastFinalityIndexes.join('; '),
-        getArweaveUrl(result.id)
+        getArweaveUrl(result.id, result.dataCaches)
       ];
     });
 
@@ -1014,7 +1014,7 @@ export default function UploadPanel() {
                           </button>
                         )}
                         <a
-                          href={getArweaveUrl(result.id)}
+                          href={getArweaveUrl(result.id, result.dataCaches)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -1111,7 +1111,7 @@ export default function UploadPanel() {
                                   </button>
                                 )}
                                 <a
-                                  href={getArweaveUrl(result.id)}
+                                  href={getArweaveUrl(result.id, result.dataCaches)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => close()}

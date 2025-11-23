@@ -104,13 +104,19 @@ const Header = () => {
       if (creditsAmount >= 1) {
         // Normal amounts: show 2 decimal places
         formattedCredits = new Intl.NumberFormat('en-US', {
-          minimumFractionDigits: 0,
+          minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }).format(creditsAmount);
-      } else if (creditsAmount > 0) {
-        // Small amounts: show more decimals to avoid showing 0
+      } else if (creditsAmount >= 0.01) {
+        // Medium amounts (0.01 - 0.99): show 2-4 decimals
         formattedCredits = new Intl.NumberFormat('en-US', {
-          minimumFractionDigits: 3,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4,
+        }).format(creditsAmount);
+      } else if (creditsAmount > 0) {
+        // Very small amounts (< 0.01): show up to 6 decimals to avoid showing 0
+        formattedCredits = new Intl.NumberFormat('en-US', {
+          minimumFractionDigits: 2,
           maximumFractionDigits: 6,
         }).format(creditsAmount);
       } else {

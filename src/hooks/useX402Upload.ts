@@ -5,6 +5,7 @@ import { useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { MetaMaskSigner } from '../utils/MetaMaskSigner';
 import { APP_NAME, APP_VERSION, X402_CONFIG } from '../constants';
+import { getContentType } from '../utils/mimeTypes';
 
 export interface X402UploadOptions {
   maxUsdcAmount: number; // In USDC (6 decimals), e.g., 2.5 for 2.5 USDC
@@ -165,7 +166,7 @@ export function useX402Upload() {
           { name: 'App-Name', value: APP_NAME },
           { name: 'App-Feature', value: 'File Upload' },
           { name: 'App-Version', value: APP_VERSION },
-          { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+          { name: 'Content-Type', value: getContentType(file) },
           { name: 'File-Name', value: file.name },
           ...(options.tags || []),
         ];

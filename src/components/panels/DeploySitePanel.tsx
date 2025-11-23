@@ -1266,7 +1266,7 @@ export default function DeploySitePanel() {
         new Date(group.manifest.timestamp).toLocaleString() : 
         'Unknown';
       
-      const siteUrl = getArweaveUrl(manifestId);
+      const siteUrl = getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches);
       const totalFiles = group.files?.files?.length || 0;
       const totalSize = group.files?.files?.reduce((sum: number, file: any) => sum + file.size, 0) || 0;
       const totalSizeHuman = totalSize > 0 ? (
@@ -2347,7 +2347,7 @@ export default function DeploySitePanel() {
                               <Code className="w-4 h-4" />
                             </a>
                             <a
-                              href={getArweaveUrl(manifestId)}
+                              href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -2449,7 +2449,7 @@ export default function DeploySitePanel() {
                                       View Raw JSON
                                     </a>
                                     <a
-                                      href={getArweaveUrl(manifestId)}
+                                      href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={() => close()}
@@ -2544,7 +2544,7 @@ export default function DeploySitePanel() {
                                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                                         </button>
                                         <a
-                                          href={getArweaveUrl(file.id)}
+                                          href={getArweaveUrl(file.id, file.receipt?.dataCaches)}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -2625,7 +2625,7 @@ export default function DeploySitePanel() {
                                                   Check Status
                                                 </button>
                                                 <a
-                                                  href={getArweaveUrl(file.id)}
+                                                  href={getArweaveUrl(file.id, file.receipt?.dataCaches)}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                   onClick={() => close()}
