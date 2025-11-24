@@ -68,16 +68,7 @@ export default function TopUpPanel() {
   const [selectedTokenType, setSelectedTokenType] = useState<SupportedTokenType>('arweave');
   const [cryptoPaymentResult, setCryptoPaymentResult] = useState<any>(null);
 
-  // Auto-select token type based on wallet type (especially for single-option wallets like Solana)
-  useEffect(() => {
-    if (walletType === 'solana') {
-      setSelectedTokenType('solana');
-    } else if (walletType === 'arweave') {
-      setSelectedTokenType('ario'); // Default to ARIO for Arweave wallets
-    } else if (walletType === 'ethereum') {
-      setSelectedTokenType('base-usdc'); // Default to Base USDC for Ethereum wallets
-    }
-  }, [walletType]);
+  // Token selection is handled by effect at line ~437 using getAvailableTokens() priority order
 
   const debouncedUsdAmount = useDebounce(usdAmount);
   const debouncedCryptoAmount = useDebounce(cryptoAmount);
@@ -351,13 +342,13 @@ export default function TopUpPanel() {
     setPaymentMethod('fiat');
   };
 
-  // Get available tokens based on wallet type
+  // Get available tokens based on wallet type (ordered by priority - first token is default)
   const getAvailableTokens = useCallback((): SupportedTokenType[] => {
     switch (walletType) {
       case 'arweave':
-        return ['arweave', 'ario'];
+        return ['ario', 'arweave']; // ARIO first (preferred default for Arweave wallets)
       case 'ethereum':
-        return ['ethereum', 'base-eth', 'pol', 'usdc', 'base-usdc', 'polygon-usdc'];
+        return ['base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // Base-USDC first (preferred default for Ethereum wallets)
       case 'solana':
         return ['solana'];
       default:
