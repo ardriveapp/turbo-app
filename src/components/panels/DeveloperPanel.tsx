@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ExternalLink, Code, Copy, Check, Database, Zap, Rss, Globe, Wrench, Edit3 } from 'lucide-react';
+import { ExternalLink, Code, Copy, Check, Database, Zap, Rss, Globe, Wrench, Edit3, Info } from 'lucide-react';
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { useStore } from '../../store/useStore';
 import CopyButton from '../CopyButton';
 
@@ -8,18 +9,24 @@ export default function DeveloperPanel() {
   const [activeTab, setActiveTab] = useState<'quickstart' | 'api' | 'guides' | 'horizon' | 'configuration'>('quickstart');
   
   // Developer configuration state
-  const { 
+  const {
     configMode,
-    setConfigMode, 
-    updateCustomConfig, 
-    updateTokenMap, 
+    setConfigMode,
+    updateCustomConfig,
+    updateTokenMap,
     getCurrentConfig,
-    resetToDefaults 
+    resetToDefaults,
+    x402OnlyMode,
+    setX402OnlyMode
   } = useStore();
   
   const currentConfig = getCurrentConfig();
   const handleModeChange = (mode: 'production' | 'development' | 'custom') => {
     setConfigMode(mode);
+    // Reset x402-only mode when switching to production
+    if (mode === 'production') {
+      setX402OnlyMode(false);
+    }
   };
 
   const applyConfiguration = () => {
@@ -485,15 +492,21 @@ console.log('Folder manifest ID:', folderUpload.id);`,
 
             {/* Configuration Fields */}
             <div className="space-y-4 mb-4 sm:mb-6">
-              {/* Payment Service URL */}
-              <div>
-                <label className="block text-sm font-medium text-link mb-2">Payment Service URL</label>
+              {/* Payment Service URL - Greyed out when x402-only mode is enabled */}
+              <div className={x402OnlyMode ? 'opacity-40' : ''}>
+                <label className="block text-sm font-medium text-link mb-2">
+                  Payment Service URL
+                  {x402OnlyMode && (
+                    <span className="ml-2 text-xs text-link/60">(disabled in x402-only mode)</span>
+                  )}
+                </label>
                 {configMode === 'custom' ? (
                   <input
                     type="text"
                     value={currentConfig.paymentServiceUrl}
                     onChange={(e) => updateCustomConfig('paymentServiceUrl', e.target.value)}
-                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-purple focus:border-transparent"
+                    disabled={x402OnlyMode}
+                    className="w-full px-3 py-2 bg-black/40 border border-default rounded-lg text-fg-muted text-sm focus:ring-2 focus:ring-turbo-purple focus:border-transparent disabled:cursor-not-allowed"
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -505,9 +518,41 @@ console.log('Folder manifest ID:', folderUpload.id);`,
                 )}
               </div>
 
-              {/* Upload Service URL */}
+              {/* Upload Service URL with X402-Only Mode Toggle */}
               <div>
-                <label className="block text-sm font-medium text-link mb-2">Upload Service URL</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-link">Upload Service URL</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-link">X402-Only</span>
+                    <button
+                      onClick={() => setX402OnlyMode(!x402OnlyMode)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-turbo-purple focus:ring-offset-2 focus:ring-offset-canvas ${
+                        x402OnlyMode ? 'bg-turbo-purple' : 'bg-surface border border-default'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3 w-3 transform rounded-full bg-fg-muted transition-transform ${
+                          x402OnlyMode ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <Popover className="relative">
+                      <PopoverButton className="text-link hover:text-fg-muted transition-colors focus:outline-none">
+                        <Info className="w-4 h-4" />
+                      </PopoverButton>
+                      <PopoverPanel className="absolute right-0 z-10 mt-2 w-72 rounded-lg bg-surface border border-default shadow-lg p-3">
+                        <div className="text-xs">
+                          <div className="font-medium text-fg-muted mb-1">X402-Only Mode</div>
+                          <p className="text-link leading-relaxed">
+                            Enable for bundlers that only support x402 payments (BASE-USDC microtransactions).
+                            Disables all payment service features: credits, fiat top-ups, gifts, and balance checking.
+                            Only crypto payments via x402 will be available.
+                          </p>
+                        </div>
+                      </PopoverPanel>
+                    </Popover>
+                  </div>
+                </div>
                 {configMode === 'custom' ? (
                   <input
                     type="text"

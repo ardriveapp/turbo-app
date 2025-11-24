@@ -104,7 +104,7 @@ export default function RecentUploadsSection() {
                     <Receipt className="w-4 h-4" />
                   </button>
                   <a
-                    href={getArweaveUrl(upload.id)}
+                    href={getArweaveUrl(upload.id, upload.dataCaches)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 text-link hover:text-fg-muted transition-colors"

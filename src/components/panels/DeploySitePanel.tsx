@@ -1,9 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
-import { wincPerCredit } from '../../constants';
+import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
+import { useX402Pricing } from '../../hooks/useX402Pricing';
+import { wincPerCredit, SupportedTokenType, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X } from 'lucide-react';
+import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X, Wallet, CreditCard } from 'lucide-react';
+import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { supportsJitPayment, calculateRequiredTokenAmount, formatTokenAmount, getTokenConverter } from '../../utils/jitPayment';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { getArweaveUrl, getArweaveRawUrl } from '../../utils';
@@ -15,15 +19,275 @@ import ArNSAssociationPanel from '../ArNSAssociationPanel';
 import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 import UploadProgressSummary from '../UploadProgressSummary';
-import { JitPaymentCard } from '../JitPaymentCard';
-import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
+import { JitTokenSelector } from '../JitTokenSelector';
+import X402OnlyBanner from '../X402OnlyBanner';
 
-// Enhanced Deploy Confirmation Modal for original deploy page
+// Unified Crypto Payment Details Component (matches Upload modal)
+interface CryptoPaymentDetailsProps {
+  creditsNeeded: number;
+  totalCost: number;
+  tokenType: SupportedTokenType;
+  walletAddress: string | null;
+  walletType: 'arweave' | 'ethereum' | 'solana' | null;
+  onBalanceValidation: (hasSufficientBalance: boolean) => void;
+  onShortageUpdate: (shortage: { amount: number; tokenType: SupportedTokenType } | null) => void;
+  localJitMax: number;
+  onMaxTokenAmountChange: (amount: number) => void;
+  x402Pricing?: {
+    usdcAmount: number;
+    usdcAmountSmallestUnit: string;
+    loading: boolean;
+    error: string | null;
+  };
+}
+
+function CryptoPaymentDetails({
+  creditsNeeded,
+  totalCost,
+  tokenType,
+  walletAddress,
+  walletType,
+  onBalanceValidation,
+  onShortageUpdate,
+  localJitMax,
+  onMaxTokenAmountChange,
+  x402Pricing,
+}: CryptoPaymentDetailsProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [estimatedCost, setEstimatedCost] = useState<{
+    tokenAmountReadable: number;
+    estimatedUSD: number | null;
+  } | null>(null);
+  const [bufferPercentage, setBufferPercentage] = useState(1); // Default 1% buffer
+
+  const tokenLabel = tokenLabels[tokenType];
+  const BUFFER_MULTIPLIER = 1 + (bufferPercentage / 100); // Adjustable buffer
+
+  // Fetch wallet balance
+  const {
+    balance: tokenBalance,
+    loading: balanceLoading,
+    error: balanceError,
+    isNetworkError,
+  } = useTokenBalance(tokenType, walletType, walletAddress, true);
+
+  // Calculate estimated cost
+  useEffect(() => {
+    const calculate = async () => {
+      try {
+        // For base-usdc, use x402 pricing directly
+        if (tokenType === 'base-usdc' && x402Pricing) {
+          // Don't set cost while loading to avoid showing "FREE" flash
+          if (x402Pricing.loading) {
+            setEstimatedCost(null); // Show "Calculating..."
+            return;
+          }
+
+          if (!x402Pricing.error) {
+            setEstimatedCost({
+              tokenAmountReadable: x402Pricing.usdcAmount, // Can be 0 for free deployments
+              estimatedUSD: x402Pricing.usdcAmount, // USDC is 1:1 with USD
+            });
+
+            // For Crypto tab, max is just the buffered cost
+            onMaxTokenAmountChange(x402Pricing.usdcAmount);
+          }
+          return;
+        }
+
+        // For other tokens, calculate using regular pricing
+        // Always use totalCost for Crypto tab - user is choosing to pay full amount with crypto
+        const cost = await calculateRequiredTokenAmount({
+          creditsNeeded: totalCost,
+          tokenType,
+          bufferMultiplier: BUFFER_MULTIPLIER,
+        });
+
+        setEstimatedCost({
+          tokenAmountReadable: cost.tokenAmountReadable,
+          estimatedUSD: cost.estimatedUSD,
+        });
+
+        // For Crypto tab, max is just the buffered cost (already includes buffer from BUFFER_MULTIPLIER)
+        onMaxTokenAmountChange(cost.tokenAmountReadable);
+      } catch (error) {
+        console.error('Failed to calculate crypto cost:', error);
+        setEstimatedCost(null);
+      }
+    };
+
+    const hasCost = (creditsNeeded > 0) || (totalCost > 0);
+    if (hasCost) {
+      calculate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditsNeeded, totalCost, tokenType, bufferPercentage, x402Pricing?.usdcAmount, x402Pricing?.loading, x402Pricing?.error]);
+
+  // Validate balance and update shortage info
+  useEffect(() => {
+    if (!estimatedCost) {
+      onBalanceValidation(true);
+      onShortageUpdate(null);
+      return;
+    }
+
+    // Don't show warnings while balance is loading
+    if (balanceLoading) {
+      onBalanceValidation(true);
+      onShortageUpdate(null);
+      return;
+    }
+
+    if (isNetworkError) {
+      onBalanceValidation(false);
+      onShortageUpdate(null);
+      return;
+    }
+
+    if (balanceError) {
+      onBalanceValidation(true);
+      onShortageUpdate(null);
+      return;
+    }
+
+    const hasSufficientBalance = tokenBalance >= estimatedCost.tokenAmountReadable;
+    onBalanceValidation(hasSufficientBalance);
+
+    // Update shortage info for parent component warning
+    if (!hasSufficientBalance) {
+      const shortage = estimatedCost.tokenAmountReadable - tokenBalance;
+      onShortageUpdate({ amount: shortage, tokenType });
+    } else {
+      onShortageUpdate(null);
+    }
+  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, balanceLoading, tokenType, onBalanceValidation, onShortageUpdate]);
+
+  const afterDeployment = estimatedCost ? Math.max(0, tokenBalance - estimatedCost.tokenAmountReadable) : tokenBalance;
+
+  return (
+    <div className="mb-4">
+      <div className="bg-surface rounded-lg border border-default p-4">
+        <div className="space-y-2.5">
+          {/* Cost */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-link">Cost:</span>
+            <span className="text-sm text-fg-muted font-medium">
+              {estimatedCost ? (
+                estimatedCost.tokenAmountReadable === 0 ? (
+                  <span className="text-turbo-green font-medium">FREE</span>
+                ) : (
+                  <>
+                    ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
+                    {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
+                      <span className="text-xs text-link ml-2">
+                        (≈ ${estimatedCost.estimatedUSD < 0.01
+                          ? estimatedCost.estimatedUSD.toFixed(4)
+                          : estimatedCost.estimatedUSD.toFixed(2)})
+                      </span>
+                    )}
+                  </>
+                )
+              ) : (
+                'Calculating...'
+              )}
+            </span>
+          </div>
+
+          {/* Current Balance */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-link">Current Balance:</span>
+            <span className="text-sm text-fg-muted font-medium">
+              {balanceLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Checking...
+                </span>
+              ) : balanceError ? (
+                <span className="text-amber-400">Unable to fetch</span>
+              ) : (
+                `${formatTokenAmount(tokenBalance, tokenType)} ${tokenLabel}`
+              )}
+            </span>
+          </div>
+
+          {/* After Deployment */}
+          {estimatedCost && !balanceLoading && !balanceError && (
+            <div className="flex justify-between items-center pt-2 border-t border-default/30">
+              <span className="text-xs text-link">After Deployment:</span>
+              <span className="text-sm text-fg-muted font-medium">
+                {formatTokenAmount(afterDeployment, tokenType)} {tokenLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Network Error Warning */}
+          {isNetworkError && (
+            <div className="pt-3 mt-3 border-t border-default/30">
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-amber-400 font-medium mb-1">
+                    {balanceError}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Advanced Settings */}
+        {estimatedCost && (
+          <div className="mt-4 pt-4 border-t border-default/30">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+            >
+              {showAdvanced ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              Advanced Settings
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-3">
+                <label className="text-xs text-link block mb-2">
+                  Safety Buffer (0-20%):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.5"
+                    value={bufferPercentage}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 20) {
+                        setBufferPercentage(value);
+                      }
+                    }}
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-canvas text-fg-muted focus:outline-none focus:border-fg-muted"
+                  />
+                  <span className="text-xs text-link">%</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Enhanced Deploy Confirmation Modal (matches Upload modal UX)
 interface DeployConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   folderName: string;
   fileCount: number;
+  files: FileList;
   totalSize: number;
   totalCost: number;
   indexFile: string;
@@ -32,13 +296,23 @@ interface DeployConfirmationModalProps {
   arnsEnabled: boolean;
   arnsName: string;
   undername: string;
-  // JIT payment props
+  // Payment props
   currentBalance: number;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
-  jitEnabled: boolean;
-  onJitEnabledChange: (enabled: boolean) => void;
-  jitMaxTokenAmount: number;
-  onJitMaxTokenAmountChange: (amount: number) => void;
+  walletAddress: string | null;
+  selectedJitToken: SupportedTokenType;
+  onSelectedJitTokenChange: (token: SupportedTokenType) => void;
+  jitBalanceSufficient: boolean;
+  onJitBalanceValidation: (sufficient: boolean) => void;
+  localJitMax: number;
+  onMaxTokenAmountChange: (amount: number) => void;
+  paymentTab: 'credits' | 'crypto';
+  onPaymentTabChange: (tab: 'credits' | 'crypto') => void;
+  cryptoShortage: { amount: number; tokenType: SupportedTokenType } | null;
+  onCryptoShortageUpdate: (shortage: { amount: number; tokenType: SupportedTokenType } | null) => void;
+  // X402 mode props
+  x402OnlyMode: boolean;
+  isPaymentServiceAvailable: () => boolean;
 }
 
 function DeployConfirmationModal({
@@ -46,6 +320,7 @@ function DeployConfirmationModal({
   onConfirm,
   folderName,
   fileCount,
+  files,
   totalSize,
   totalCost,
   indexFile,
@@ -55,22 +330,70 @@ function DeployConfirmationModal({
   undername,
   currentBalance,
   walletType,
-  jitEnabled,
-  onJitEnabledChange,
-  jitMaxTokenAmount,
-  onJitMaxTokenAmountChange,
+  walletAddress,
+  selectedJitToken,
+  onSelectedJitTokenChange,
+  jitBalanceSufficient,
+  onJitBalanceValidation,
+  localJitMax,
+  onMaxTokenAmountChange,
+  paymentTab,
+  onPaymentTabChange,
+  cryptoShortage,
+  onCryptoShortageUpdate,
+  x402OnlyMode,
+  isPaymentServiceAvailable,
 }: DeployConfirmationModalProps) {
   const creditsNeeded = Math.max(0, totalCost - currentBalance);
+  const hasSufficientCredits = creditsNeeded === 0;
+  const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
-  // Determine the token type for JIT payment
-  // Arweave wallets must use ARIO for JIT (not AR)
-  // Ethereum wallets use Base-ETH for JIT
-  const jitTokenType = walletType === 'arweave'
-    ? 'ario'
-    : walletType === 'ethereum'
-    ? 'base-eth'
-    : walletType;
-  const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+  // Get free upload limit to count free files
+  const freeUploadLimitBytes = useFreeUploadLimit();
+
+  // Check if deployment is completely free (all files under free limit)
+  const isFreeDeployment = totalCost === 0;
+
+  // Calculate USD equivalent for Credits tab
+  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
+  const wincForOneGiB = useWincForOneGiB();
+
+  useEffect(() => {
+    if (totalCost > 0 && wincForOneGiB && typeof wincForOneGiB === 'number' && wincForOneGiB > 0) {
+      const usd = (totalCost * wincPerCredit / wincForOneGiB) * 10; // $10 per GiB
+      setUsdEquivalent(usd);
+    } else {
+      setUsdEquivalent(null);
+    }
+  }, [totalCost, wincForOneGiB]);
+
+  // Calculate billable file size for x402 (total size for deployments)
+  const billableFileSize = totalSize;
+
+  // x402 pricing - only when user is on Crypto tab with BASE-USDC selected
+  // In x402-only mode, always use x402 pricing since there's no credits option
+  const shouldUseX402 =
+    walletType === 'ethereum' &&
+    selectedJitToken === 'base-usdc' &&
+    (paymentTab === 'crypto' || x402OnlyMode);
+  const x402Pricing = useX402Pricing(shouldUseX402 ? billableFileSize : 0);
+
+  // Tab click handlers
+  const handleCreditsTabClick = () => {
+    onPaymentTabChange('credits');
+    // Reset to base-eth when switching to Credits tab (unless x402-only mode)
+    if (walletType === 'ethereum' && !x402OnlyMode) {
+      onSelectedJitTokenChange('base-eth');
+    }
+  };
+
+  const handleCryptoTabClick = () => {
+    onPaymentTabChange('crypto');
+    // Immediately set token for Ethereum wallets to avoid base-eth flash
+    if (walletType === 'ethereum') {
+      onSelectedJitTokenChange('base-usdc');
+    }
+  };
   return (
     <BaseModal onClose={onClose}>
       <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
@@ -84,6 +407,10 @@ function DeployConfirmationModal({
           </div>
         </div>
 
+        {/* X402-Only Mode Banner */}
+        {x402OnlyMode && <X402OnlyBanner />}
+
+        {/* Deployment Summary */}
         <div className="mb-4">
           <div className="bg-surface rounded-lg p-3">
             <div className="space-y-2">
@@ -103,10 +430,18 @@ function DeployConfirmationModal({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-link">Files:</span>
-                <span className="text-xs text-fg-muted">{fileCount} file{fileCount !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-fg-muted">
+                  {fileCount} file{fileCount !== 1 ? 's' : ''}
+                  {(() => {
+                    const freeFilesCount = Array.from(files).filter(file => isFileFree(file.size, freeUploadLimitBytes)).length;
+                    return freeFilesCount > 0 ? (
+                      <span className="text-turbo-green"> ({freeFilesCount} free)</span>
+                    ) : null;
+                  })()}
+                </span>
               </div>
 
-              {/* Auto-detected files - moved up for better grouping */}
+              {/* Auto-detected files */}
               {(indexFile || fallbackFile) && (
                 <>
                   {indexFile && (
@@ -130,62 +465,256 @@ function DeployConfirmationModal({
                   {(totalSize / 1024 / 1024).toFixed(2)} MB
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-link">Cost:</span>
-                <span className="text-xs text-fg-muted">
-                  {totalCost === 0 ? (
-                    <span className="text-turbo-green font-medium">FREE</span>
-                  ) : (
-                    `${totalCost.toFixed(6)} Credits`
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                <span className="text-xs text-link">Current Balance:</span>
-                <span className="text-xs text-fg-muted">
-                  {currentBalance.toFixed(6)} Credits
-                </span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* JIT Payment Card - Show when insufficient credits and wallet supports it */}
-        {showJitOption && jitTokenType && (
-          <div className="mb-4">
-            <JitPaymentCard
-              creditsNeeded={creditsNeeded}
-              totalCost={totalCost}
-              currentBalance={currentBalance}
-              tokenType={jitTokenType}
-              enabled={jitEnabled}
-              onEnabledChange={onJitEnabledChange}
-              maxTokenAmount={jitMaxTokenAmount}
-              onMaxTokenAmountChange={onJitMaxTokenAmountChange}
-            />
-          </div>
-        )}
+        {/* Payment Method Section */}
+        {(() => {
+          return (
+            <>
+              {/* Payment Method Tabs - Only show for wallets that support JIT, non-free deployments, and payment service available */}
+              {canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && (
+                <div className="mb-4">
+                  <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
+                    <button
+                      type="button"
+                      onClick={handleCreditsTabClick}
+                      className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        paymentTab === 'credits'
+                          ? 'bg-fg-muted text-black'
+                          : 'text-link hover:text-fg-muted'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Credits
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCryptoTabClick}
+                      className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                        paymentTab === 'crypto'
+                          ? 'bg-fg-muted text-black'
+                          : 'text-link hover:text-fg-muted'
+                      }`}
+                    >
+                      <Wallet className="w-4 h-4" />
+                      Crypto
+                    </button>
+                  </div>
+                </div>
+              )}
 
-        {/* Insufficient credits warning - Only show if JIT disabled or not supported */}
-        {creditsNeeded > 0 && !jitEnabled && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>
-                Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                {!showJitOption && (
-                  <>
-                    {' '}
-                    <a href="/topup" className="underline hover:text-red-300 transition-colors">
-                      Buy credits
-                    </a>{' '}
-                    to continue.
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        )}
+              {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
+              {paymentTab === 'credits' && canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && (
+                <div className="mb-4">
+                  <div className="bg-surface rounded-lg border border-default p-4">
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-link">Cost:</span>
+                        <span className="text-sm text-fg-muted font-medium">
+                          {totalCost === 0 ? (
+                            <span className="text-turbo-green font-medium">FREE</span>
+                          ) : typeof totalCost === 'number' ? (
+                            <>
+                              {totalCost.toFixed(6)} Credits
+                              {usdEquivalent !== null && usdEquivalent > 0 && (
+                                <span className="text-xs text-link ml-2">
+                                  (≈ ${usdEquivalent < 0.01
+                                    ? usdEquivalent.toFixed(4)
+                                    : usdEquivalent.toFixed(2)})
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            'Calculating...'
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Only show balance info for non-free deployments */}
+                      {!isFreeDeployment && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Current Balance:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {currentBalance.toFixed(6)} Credits
+                            </span>
+                          </div>
+                          {typeof totalCost === 'number' && (
+                            <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                              <span className="text-xs text-link">After Deployment:</span>
+                              <span className="text-sm text-fg-muted font-medium">
+                                {Math.max(0, currentBalance - totalCost).toFixed(6)} Credits
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Insufficient Credits Warning */}
+                      {!isFreeDeployment && !hasSufficientCredits && typeof totalCost === 'number' && (
+                        <div className="pt-3 mt-3 border-t border-default/30">
+                          <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-red-400 font-medium mb-1">
+                                Need {creditsNeeded.toFixed(6)} more credits
+                              </div>
+                              <div className="text-xs text-red-400/80">
+                                {canUseJit && (
+                                  <>
+                                    • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-red-300">Crypto tab</button> to pay with crypto<br />
+                                  </>
+                                )}
+                                • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Details Section - Crypto Tab (always show in x402-only mode) */}
+              {(paymentTab === 'crypto' || x402OnlyMode) && canUseJit && !isFreeDeployment && (
+                <>
+                  {/* X402-only mode: Non-Ethereum wallet warning */}
+                  {x402OnlyMode && walletType !== 'ethereum' && (
+                    <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-yellow-400 text-sm mb-1">Ethereum Wallet Required</div>
+                          <div className="text-xs text-yellow-400/80">
+                            X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* JIT Token Selector - shown for Ethereum wallets */}
+                  {walletType === 'ethereum' && (
+                    <div className="mb-3">
+                      <JitTokenSelector
+                        walletType={walletType}
+                        selectedToken={selectedJitToken}
+                        onTokenSelect={onSelectedJitTokenChange}
+                        x402OnlyMode={x402OnlyMode}
+                      />
+                    </div>
+                  )}
+
+                  {/* Unified Crypto Payment Display - Only show for Ethereum in x402-only mode */}
+                  {(!x402OnlyMode || walletType === 'ethereum') && (
+                    <CryptoPaymentDetails
+                      creditsNeeded={creditsNeeded}
+                      totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                      tokenType={selectedJitToken}
+                      walletAddress={walletAddress}
+                      walletType={walletType}
+                      onBalanceValidation={onJitBalanceValidation}
+                      onShortageUpdate={onCryptoShortageUpdate}
+                      localJitMax={localJitMax}
+                      onMaxTokenAmountChange={onMaxTokenAmountChange}
+                      x402Pricing={x402Pricing}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Credits-Only Payment (for wallets without JIT support or free deployments) */}
+              {(!canUseJit || isFreeDeployment) && (
+                <div className="mb-4">
+                  <div className="bg-surface rounded-lg border border-default p-4">
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-link">Cost:</span>
+                        <span className="text-sm text-fg-muted font-medium">
+                          {totalCost === 0 ? (
+                            <span className="text-turbo-green font-medium">FREE</span>
+                          ) : typeof totalCost === 'number' ? (
+                            <>
+                              {totalCost.toFixed(6)} Credits
+                              {usdEquivalent !== null && usdEquivalent > 0 && (
+                                <span className="text-xs text-link ml-2">
+                                  (≈ ${usdEquivalent < 0.01
+                                    ? usdEquivalent.toFixed(4)
+                                    : usdEquivalent.toFixed(2)})
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            'Calculating...'
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Only show balance info for non-free deployments */}
+                      {!isFreeDeployment && (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Current Balance:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {currentBalance.toFixed(6)} Credits
+                            </span>
+                          </div>
+                          {typeof totalCost === 'number' && (
+                            <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                              <span className="text-xs text-link">After Deployment:</span>
+                              <span className="text-sm text-fg-muted font-medium">
+                                {Math.max(0, currentBalance - totalCost).toFixed(6)} Credits
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Insufficient Credits Warning */}
+                      {!isFreeDeployment && !hasSufficientCredits && typeof totalCost === 'number' && (
+                        <div className="pt-3 mt-3 border-t border-default/30">
+                          <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-red-400 font-medium mb-1">
+                                Need {creditsNeeded.toFixed(6)} more credits
+                              </div>
+                              <div className="text-xs text-red-400/80">
+                                • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Crypto Shortage Warning (when on Crypto tab with insufficient balance) */}
+              {paymentTab === 'crypto' && cryptoShortage && !jitBalanceSufficient && (
+                <div className="mb-4">
+                  <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-red-400 font-medium mb-1">
+                        Insufficient {tokenLabels[cryptoShortage.tokenType]} balance
+                      </div>
+                      <div className="text-xs text-red-400/80">
+                        • Switch to <button onClick={handleCreditsTabClick} className="underline hover:text-red-300">Credits tab</button> to use credits<br />
+                        • Add {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} to your wallet<br />
+                        • <a href="/topup" className="underline hover:text-red-300">Buy credits</a> instead
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Terms and Conditions */}
         <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
@@ -202,7 +731,7 @@ function DeployConfirmationModal({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button
             onClick={onClose}
             className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
@@ -211,10 +740,15 @@ function DeployConfirmationModal({
           </button>
           <button
             onClick={onConfirm}
-            disabled={creditsNeeded > 0 && !jitEnabled}
+            disabled={
+              // Disable if on Credits tab and insufficient credits
+              (paymentTab === 'credits' && creditsNeeded > 0) ||
+              // Disable if on Crypto tab and insufficient crypto balance
+              (paymentTab === 'crypto' && !jitBalanceSufficient && creditsNeeded > 0)
+            }
             className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
           >
-            {jitEnabled && creditsNeeded > 0 ? 'Deploy & Auto-Pay' : 'Deploy Now'}
+            {paymentTab === 'crypto' && creditsNeeded > 0 ? 'Deploy & Auto-Pay' : 'Deploy Now'}
           </button>
         </div>
       </div>
@@ -231,11 +765,14 @@ export default function DeploySitePanel() {
     deployHistory,
     addDeployResults,
     clearDeployHistory,
-    jitPaymentEnabled,
-    jitMaxTokenAmount,
-    setJitPaymentEnabled,
     setJitMaxTokenAmount,
+    x402OnlyMode,
+    isPaymentServiceAvailable,
   } = useStore();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
+
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<FileList | null>(null);
   const [deployMessage, setDeployMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -265,26 +802,45 @@ export default function DeploySitePanel() {
   // Domain assignment modal state
   const [showAssignDomainModal, setShowAssignDomainModal] = useState<string | null>(null);
 
+  // Payment method state (Credits/Crypto tabs)
+  const [paymentTab, setPaymentTab] = useState<'credits' | 'crypto'>('credits');
+
   // JIT payment local state for this deployment
-  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+  const [localJitMax, setLocalJitMax] = useState(0);
 
-  // Determine the token type for JIT payment
-  // Arweave wallets must use ARIO for JIT (not AR)
-  // Ethereum wallets use Base-ETH for JIT
-  const jitTokenTypeForDefaults = walletType === 'arweave'
-    ? 'ario'
-    : walletType === 'ethereum'
-    ? 'base-eth'
-    : walletType;
+  // Selected JIT token - will be set when user opens "Pay with Crypto"
+  // NOT set by default to avoid triggering x402 pricing before user interaction
+  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
+    if (walletType === 'arweave') return 'ario';
+    if (walletType === 'solana') return 'solana';
+    return 'base-eth'; // Default for Ethereum - will switch to base-usdc when Crypto tab selected
+  });
 
-  const [localJitMax, setLocalJitMax] = useState(
-    jitTokenTypeForDefaults && jitMaxTokenAmount[jitTokenTypeForDefaults]
-      ? jitMaxTokenAmount[jitTokenTypeForDefaults]
-      : 0
-  );
+  // Switch to base-usdc when x402-only mode is enabled (only option for ETH wallets)
+  useEffect(() => {
+    if (x402OnlyMode && walletType === 'ethereum') {
+      setSelectedJitToken('base-usdc');
+    }
+  }, [x402OnlyMode, walletType]);
 
-  // Fixed 10% buffer for SDK (not exposed to user)
-  const FIXED_BUFFER_MULTIPLIER = 1.1;
+  // Track if user has sufficient crypto balance for JIT payment
+  const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
+
+  // Track crypto shortage details for combined warning
+  const [cryptoShortage, setCryptoShortage] = useState<{
+    amount: number;
+    tokenType: SupportedTokenType;
+  } | null>(null);
+
+  // Reset payment tab when modal opens
+  // In x402-only mode, start on Crypto tab (no credits available)
+  // In normal mode, start on Credits tab
+  useEffect(() => {
+    if (showConfirmModal) {
+      setPaymentTab(x402OnlyMode ? 'crypto' : 'credits');
+    }
+  }, [showConfirmModal, x402OnlyMode]);
+
   const wincForOneGiB = useWincForOneGiB();
   const {
     deployFolder,
@@ -578,14 +1134,14 @@ export default function DeploySitePanel() {
   const calculateTotalCost = (): number => {
     if (!wincForOneGiB || !selectedFolder) return 0;
     
-    // Calculate cost per file, accounting for 100KiB free tier
+    // Calculate cost per file, accounting for bundler's free tier
     let totalWinc = 0;
     Array.from(selectedFolder).forEach(file => {
-      if (file.size < 100 * 1024) {
-        // File is under 100KiB - FREE
+      if (isFileFree(file.size, freeUploadLimitBytes)) {
+        // File is under free limit - FREE
         return;
       } else {
-        // File is over 100KiB - calculate cost
+        // File is over free limit - calculate cost
         const gibSize = file.size / (1024 ** 3);
         const fileWinc = gibSize * Number(wincForOneGiB);
         totalWinc += fileWinc;
@@ -752,7 +1308,7 @@ export default function DeploySitePanel() {
         new Date(group.manifest.timestamp).toLocaleString() : 
         'Unknown';
       
-      const siteUrl = getArweaveUrl(manifestId);
+      const siteUrl = getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches);
       const totalFiles = group.files?.files?.length || 0;
       const totalSize = group.files?.files?.reduce((sum: number, file: any) => sum + file.size, 0) || 0;
       const totalSizeHuman = totalSize > 0 ? (
@@ -852,27 +1408,20 @@ export default function DeploySitePanel() {
       return;
     }
 
-    // Save JIT preferences to store
-    setJitPaymentEnabled(localJitEnabled);
-
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
-
-    // Save max token amount to store for future use
-    if (jitTokenType) {
-      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    // Save max token amount to store for future use (using selected token)
+    if (selectedJitToken) {
+      setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
-    // Convert max token amount to smallest unit for SDK
+    // Only enable JIT if the user is on Crypto tab and has insufficient credits
+    // Calculate credits needed (0 if user has sufficient credits)
+    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+    const shouldEnableJit = paymentTab === 'crypto' && creditsNeeded > 0;
+
+    // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
-    if (localJitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
-      const converter = getTokenConverter(jitTokenType);
+    if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
+      const converter = getTokenConverter(selectedJitToken);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
@@ -883,9 +1432,9 @@ export default function DeploySitePanel() {
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
         fallbackFile: fallbackFile || undefined,
-        jitEnabled: localJitEnabled,
+        jitEnabled: shouldEnableJit,
         jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        selectedJitToken: selectedJitToken, // Pass selected token for x402
       });
       
       if (result.manifestId) {
@@ -1234,7 +1783,7 @@ export default function DeploySitePanel() {
 
                                         <span className="text-link/70 text-xs">
                                           {fileSize}
-                                          {file.size < 100 * 1024 && <span className="ml-1 text-turbo-green">• FREE</span>}
+                                          {isFileFree(file.size, freeUploadLimitBytes) && <span className="ml-1 text-turbo-green">• FREE</span>}
                                         </span>
                                         
                                       </div>
@@ -1840,7 +2389,7 @@ export default function DeploySitePanel() {
                               <Code className="w-4 h-4" />
                             </a>
                             <a
-                              href={getArweaveUrl(manifestId)}
+                              href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -1942,7 +2491,7 @@ export default function DeploySitePanel() {
                                       View Raw JSON
                                     </a>
                                     <a
-                                      href={getArweaveUrl(manifestId)}
+                                      href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={() => close()}
@@ -2037,7 +2586,7 @@ export default function DeploySitePanel() {
                                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                                         </button>
                                         <a
-                                          href={getArweaveUrl(file.id)}
+                                          href={getArweaveUrl(file.id, file.receipt?.dataCaches)}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -2118,7 +2667,7 @@ export default function DeploySitePanel() {
                                                   Check Status
                                                 </button>
                                                 <a
-                                                  href={getArweaveUrl(file.id)}
+                                                  href={getArweaveUrl(file.id, file.receipt?.dataCaches)}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                   onClick={() => close()}
@@ -2155,7 +2704,7 @@ export default function DeploySitePanel() {
                                     {/* Row 3: Cost + Deploy Timestamp */}
                                     <div className="flex items-center gap-2 text-sm text-link">
                                       <span>
-                                        {file.size < 100 * 1024 ? (
+                                        {isFileFree(file.size, freeUploadLimitBytes) ? (
                                           <span className="text-turbo-green">FREE</span>
                                         ) : wincForOneGiB ? (
                                           `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
@@ -2223,6 +2772,7 @@ export default function DeploySitePanel() {
           onConfirm={handleConfirmDeploy}
           folderName={folderName}
           fileCount={selectedFolder.length}
+          files={selectedFolder}
           totalSize={totalFileSize}
           totalCost={totalCost}
           indexFile={indexFile}
@@ -2232,10 +2782,19 @@ export default function DeploySitePanel() {
           undername={selectedUndername}
           currentBalance={creditBalance}
           walletType={walletType}
-          jitEnabled={localJitEnabled}
-          onJitEnabledChange={setLocalJitEnabled}
-          jitMaxTokenAmount={localJitMax}
-          onJitMaxTokenAmountChange={setLocalJitMax}
+          walletAddress={address}
+          selectedJitToken={selectedJitToken}
+          onSelectedJitTokenChange={setSelectedJitToken}
+          jitBalanceSufficient={jitBalanceSufficient}
+          onJitBalanceValidation={setJitBalanceSufficient}
+          localJitMax={localJitMax}
+          onMaxTokenAmountChange={setLocalJitMax}
+          paymentTab={paymentTab}
+          onPaymentTabChange={setPaymentTab}
+          cryptoShortage={cryptoShortage}
+          onCryptoShortageUpdate={setCryptoShortage}
+          x402OnlyMode={x402OnlyMode}
+          isPaymentServiceAvailable={isPaymentServiceAvailable}
         />
       )}
 

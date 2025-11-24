@@ -44,7 +44,11 @@
       "Read(//c/Source/turbo-gateway/Code/turbo-app/src/**)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfix: pass destinationAddress to all getWincForFiat calls\n\nPreviously, several getWincForFiat calls didn''t pass a destinationAddress,\ncausing the Turbo SDK to use \"placeholder\" as default. This resulted in\nmany unnecessary API calls with invalid addresses.\n\nFixed locations:\n- useCreditsForFiat: Uses paymentTargetAddress > address > ''arweave-pricing-lookup''\n- useGatewayInfo: Uses ''pricing-lookup'' for pricing information calls\n\nThe fallback strings are intentional for unauthenticated pricing lookups\nand will switch to real addresses once wallets are connected or target\naddresses are entered.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(test:*)",
+      "Bash(npm install:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

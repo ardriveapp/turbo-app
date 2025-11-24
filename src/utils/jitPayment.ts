@@ -57,9 +57,10 @@ export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType):
  */
 export function formatTokenAmount(amount: number, tokenType: SupportedTokenType): string {
   // For very small amounts, use higher precision to avoid showing 0.0000
-  if (amount < 0.0001 && amount > 0) {
-    // Use up to 8 decimal places for very small amounts
-    return amount.toFixed(8).replace(/\.?0+$/, ''); // Remove trailing zeros
+  // Increased threshold to 0.01 to catch small USDC amounts like 0.003734
+  if (amount < 0.01 && amount > 0) {
+    // Use up to 6 decimal places for very small amounts (USDC has 6 decimals)
+    return amount.toFixed(6).replace(/\.?0+$/, ''); // Remove trailing zeros
   }
 
   // Standard precision for normal amounts
@@ -72,7 +73,7 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
     kyve: 2,
     pol: 2,
     'usdc': 2,        // 10.50 USDC (stablecoin, dollars and cents)
-    'base-usdc': 2,   // 10.50 USDC (stablecoin, dollars and cents)
+    'base-usdc': 3,   // 10.500 USDC (one extra decimal for precision)
     'polygon-usdc': 2, // 10.50 USDC (stablecoin, dollars and cents)
   };
 
@@ -123,55 +124,126 @@ export async function calculateRequiredTokenAmount({
     };
   }
 
-  // Fetch fresh pricing from Turbo SDK
+  // Fetch fresh pricing
   try {
-    const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-
     // Get current dev mode configuration from store
     const { useStore } = await import('../store/useStore');
     const turboConfig = useStore.getState().getCurrentConfig();
 
-    // Create TurboFactory with proper config including dev mode RPC URLs
-    const turbo = TurboFactory.unauthenticated({
-      token: tokenType,
-      paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
-      gatewayUrl: turboConfig.tokenMap[tokenType]
-    });
-
-    // Get the cost in tokens for uploading credits worth of data
-    // Credits = Winc / wincPerCredit, so we need to figure out winc → bytes → tokens
     const wincPerCredit = 1_000_000_000_000; // 1 trillion winc = 1 credit
-
-    // Estimate: use 1 GiB as baseline to get token price
     const oneGiBBytes = 1024 * 1024 * 1024;
-    const priceResult = await turbo.getUploadCosts({ bytes: [oneGiBBytes] });
-    const wincPerGiB = Number(priceResult[0]?.winc || 0);
 
-    if (wincPerGiB === 0) {
-      throw new Error('Failed to get pricing from Turbo SDK - wincPerGiB is 0');
+    let wincPerGiB: number;
+    let tokensPerGiB: number;
+    let usdPerToken: number | null = null;
+
+    // X402 pricing for base-usdc (uses x402 signed endpoint)
+    if (tokenType === 'base-usdc') {
+      console.log('[X402 Pricing] Fetching price from x402 signed endpoint for base-usdc...');
+
+      const { configMode } = useStore.getState();
+
+      // Derive x402 URL from base upload URL if in custom mode
+      const x402Url = configMode === 'custom'
+        ? `${turboConfig.uploadServiceUrl}/x402/data-item/signed`
+        : turboConfig.x402UploadUrl;
+
+      // Make POST request with Content-Length header to get pricing
+      const response = await fetch(x402Url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': oneGiBBytes.toString(),
+        },
+        body: new Uint8Array(0), // Empty body
+      });
+
+      // Expect 402 Payment Required response
+      if (response.status !== 402) {
+        throw new Error(`Expected 402 response from x402 endpoint, got ${response.status}`);
+      }
+
+      const priceData = await response.json();
+      console.log('[X402 Pricing] Response:', priceData);
+
+      // Find the Base network requirements
+      const useMainnet = configMode !== 'development';
+      const networkKey = useMainnet ? 'base' : 'base-sepolia';
+      const requirements = priceData.accepts?.find((a: any) => a.network === networkKey);
+
+      if (!requirements) {
+        throw new Error(`Network ${networkKey} not available in x402 pricing response`);
+      }
+
+      // Parse the USDC amount (in smallest unit - 6 decimals)
+      const usdcSmallestUnit = Number(requirements.maxAmountRequired);
+      tokensPerGiB = usdcSmallestUnit / 1_000_000; // Convert to readable USDC
+
+      // Calculate winc per GiB based on standard Turbo pricing
+      // Use payment service for winc conversion
+      const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+      const turbo = TurboFactory.unauthenticated({
+        paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+      });
+      const { winc: wincPerGiBString } = await turbo.getFiatRates();
+      wincPerGiB = Number(wincPerGiBString);
+
+      // USDC is pegged to USD (1 USDC = $1 USD)
+      usdPerToken = 1.0;
+
+      console.log(`[X402 Pricing] 1 GiB costs ${tokensPerGiB} USDC (${usdcSmallestUnit} smallest unit), ${wincPerGiB} winc`);
+
+      if (wincPerGiB === 0) {
+        throw new Error('Failed to get x402 pricing - wincPerGiB is 0');
+      }
+    }
+    // Regular Turbo SDK pricing for all other tokens
+    else {
+      const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+
+      // Create TurboFactory with proper config including dev mode RPC URLs
+      const turbo = TurboFactory.unauthenticated({
+        token: tokenType,
+        paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+        gatewayUrl: turboConfig.tokenMap[tokenType]
+      });
+
+      // Get the cost in tokens for uploading credits worth of data
+      const priceResult = await turbo.getUploadCosts({ bytes: [oneGiBBytes] });
+      wincPerGiB = Number(priceResult[0]?.winc || 0);
+
+      if (wincPerGiB === 0) {
+        throw new Error('Failed to get pricing from Turbo SDK - wincPerGiB is 0');
+      }
+
+      // Get token price for 1 GiB worth of winc
+      const tokenPriceForGiB = await turbo.getTokenPriceForBytes({ byteCount: oneGiBBytes });
+      // SDK already returns price in readable token units (ARIO, not mARIO)
+      tokensPerGiB = Number(tokenPriceForGiB.tokenPrice);
+
+      // Try to get USD price from Turbo (getFiatRates or similar)
+      try {
+        const fiatRates = await turbo.getFiatRates();
+        // fiatRates.fiat gives USD per GiB, we know tokens per GiB
+        const usdPerGiB = fiatRates.fiat?.usd || 0;
+        console.log(`[JIT ${tokenType}] getFiatRates USD per GiB:`, usdPerGiB);
+        console.log(`[JIT ${tokenType}] Tokens per GiB:`, tokensPerGiB);
+        if (usdPerGiB > 0 && tokensPerGiB > 0) {
+          usdPerToken = usdPerGiB / tokensPerGiB;
+          console.log(`[JIT ${tokenType}] Calculated USD per token:`, usdPerToken);
+        }
+      } catch (err) {
+        console.warn('Failed to get USD price for JIT payment:', err);
+      }
     }
 
-    // Get token price for 1 GiB worth of winc
-    const tokenPriceForGiB = await turbo.getTokenPriceForBytes({ byteCount: oneGiBBytes });
-    // SDK already returns price in readable token units (ARIO, not mARIO)
-    const tokensPerGiB = Number(tokenPriceForGiB.tokenPrice);
-
-    // Calculate: tokens per credit
+    // Calculate: tokens per credit (same for both x402 and regular)
     const creditsPerGiB = wincPerGiB / wincPerCredit;
     const tokenPricePerCredit = tokensPerGiB / creditsPerGiB;
 
-    // Try to get USD price from Turbo (getFiatRates or similar)
-    let usdPerToken: number | null = null;
-    try {
-      const fiatRates = await turbo.getFiatRates();
-      // fiatRates.fiat gives USD per GiB, we know tokens per GiB
-      const usdPerGiB = fiatRates.fiat?.usd || 0;
-      if (usdPerGiB > 0 && tokensPerGiB > 0) {
-        usdPerToken = usdPerGiB / tokensPerGiB;
-      }
-    } catch (err) {
-      console.warn('Failed to get USD price for JIT payment:', err);
-    }
+    console.log(`[JIT ${tokenType}] Winc per GiB:`, wincPerGiB);
+    console.log(`[JIT ${tokenType}] Credits per GiB:`, creditsPerGiB);
+    console.log(`[JIT ${tokenType}] Token price per credit:`, tokenPricePerCredit);
 
     // Cache the result
     priceCache.set(tokenType, {
@@ -184,6 +256,12 @@ export async function calculateRequiredTokenAmount({
     const baseAmount = creditsNeeded * tokenPricePerCredit;
     const bufferedAmount = baseAmount * bufferMultiplier;
 
+    console.log(`[JIT ${tokenType}] Credits needed:`, creditsNeeded);
+    console.log(`[JIT ${tokenType}] Base amount (no buffer):`, baseAmount);
+    console.log(`[JIT ${tokenType}] Buffer multiplier:`, bufferMultiplier);
+    console.log(`[JIT ${tokenType}] Buffered amount:`, bufferedAmount);
+    console.log(`[JIT ${tokenType}] Estimated USD:`, usdPerToken ? bufferedAmount * usdPerToken : null);
+
     const converter = getTokenConverter(tokenType);
     const smallestUnit = converter ? converter(bufferedAmount) : 0;
 
@@ -193,7 +271,8 @@ export async function calculateRequiredTokenAmount({
       estimatedUSD: usdPerToken ? bufferedAmount * usdPerToken : null,
     };
   } catch (error) {
-    console.error('Failed to calculate JIT payment amount from Turbo SDK:', error);
+    const source = tokenType === 'base-usdc' ? 'x402 pricing endpoint' : 'Turbo SDK';
+    console.error(`Failed to calculate JIT payment amount from ${source}:`, error);
     // Fallback: return 0 and let user know pricing failed
     return {
       tokenAmount: 0,

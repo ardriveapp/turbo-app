@@ -10,6 +10,7 @@ const PRESET_CONFIGS = {
     paymentServiceUrl: 'https://payment.ardrive.io',
     uploadServiceUrl: 'https://upload.ardrive.io',
     captureServiceUrl: 'https://vilenarios.com/local/capture',
+    x402UploadUrl: 'https://upload.ardrive.io/x402/data-item/signed',
     arioGatewayUrl: 'https://turbo-gateway.com',
     stripeKey: 'pk_live_51JUAtwC8apPOWkDLMQqNF9sPpfneNSPnwX8YZ8y1FNDl6v94hZIwzgFSYl27bWE4Oos8CLquunUswKrKcaDhDO6m002Yj9AeKj',
     processId: 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE',
@@ -18,7 +19,7 @@ const PRESET_CONFIGS = {
       ario: 'https://arweave.net',
       ethereum: 'https://ethereum.publicnode.com',
       'base-eth': 'https://mainnet.base.org',
-      solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
+      solana: import.meta.env.VITE_SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
       kyve: 'https://api.kyve.network',
       pol: 'https://polygon-bor-rpc.publicnode.com',
       'usdc': 'https://cloudflare-eth.com',
@@ -30,6 +31,7 @@ const PRESET_CONFIGS = {
     paymentServiceUrl: 'https://payment.ardrive.dev',
     uploadServiceUrl: 'https://upload.ardrive.dev',
     captureServiceUrl: 'https://vilenarios.com/local/capture',
+    x402UploadUrl: 'https://upload.ardrive.dev/x402/data-item/signed',
     arioGatewayUrl: 'https://turbo-gateway.com',
     stripeKey: 'pk_test_51JUAtwC8apPOWkDLh2FPZkQkiKZEkTo6wqgLCtQoClL6S4l2jlbbc5MgOdwOUdU9Tn93NNvqAGbu115lkJChMikG00XUfTmo2z',
     processId: 'agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA',
@@ -38,7 +40,7 @@ const PRESET_CONFIGS = {
       ario: 'https://arweave.net',
       ethereum: 'https://eth-sepolia.public.blastapi.io',
       'base-eth': 'https://sepolia.base.org',
-      solana: 'https://api.devnet.solana.com',
+      solana: import.meta.env.VITE_SOLANA_RPC || 'https://api.devnet.solana.com',
       kyve: 'https://api.korellia.kyve.network',
       pol: 'https://rpc-amoy.polygon.technology',
       'usdc': 'https://eth-sepolia.public.blastapi.io',
@@ -96,6 +98,7 @@ export interface DeveloperConfig {
   paymentServiceUrl: string;
   uploadServiceUrl: string;
   captureServiceUrl: string;
+  x402UploadUrl: string;
   arioGatewayUrl: string;
   stripeKey: string;
   processId: string;
@@ -107,14 +110,17 @@ interface StoreState {
   address: string | null;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   creditBalance: number;
-  
+
+  // Bundler configuration state
+  freeUploadLimitBytes: number; // Free upload limit from bundler (defaults to 0)
+
   // ArNS state
   arnsNamesCache: Record<string, { name: string; logo?: string; timestamp: number }>;
   ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>; timestamp: number }>;
-  
+
   // Upload history state
   uploadHistory: UploadResult[];
-  
+
   // Deploy history state
   deployHistory: DeployResult[];
   
@@ -160,11 +166,13 @@ interface StoreState {
   // Developer configuration state
   configMode: ConfigMode;
   customConfig: DeveloperConfig;
+  x402OnlyMode: boolean; // X402-only mode (disables payment service features)
   
   // Actions
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
   setCreditBalance: (balance: number) => void;
+  setFreeUploadLimitBytes: (limitBytes: number) => void;
   setArNSName: (address: string, name: string, logo?: string) => void;
   getArNSName: (address: string) => { name: string; logo?: string } | null;
   setOwnedArNSNames: (address: string, names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>) => void;
@@ -224,6 +232,8 @@ interface StoreState {
   updateTokenMap: (token: SupportedTokenType, url: string) => void;
   getCurrentConfig: () => DeveloperConfig;
   resetToDefaults: () => void;
+  setX402OnlyMode: (enabled: boolean) => void;
+  isPaymentServiceAvailable: () => boolean;
 }
 
 export const useStore = create<StoreState>()(
@@ -233,6 +243,7 @@ export const useStore = create<StoreState>()(
       address: null,
       walletType: null,
       creditBalance: 0,
+      freeUploadLimitBytes: 0, // Default to 0 bytes (no free tier)
       arnsNamesCache: {},
       ownedArnsCache: {},
       uploadHistory: [],
@@ -242,6 +253,7 @@ export const useStore = create<StoreState>()(
       // Developer configuration state
       configMode: 'production',
       customConfig: PRESET_CONFIGS.production,
+      x402OnlyMode: false, // Default to full payment service support
       
       // Payment state
       paymentAmount: undefined,
@@ -277,6 +289,7 @@ export const useStore = create<StoreState>()(
       setAddress: (address, type) => set({ address, walletType: type }),
       clearAddress: () => set({ address: null, walletType: null, creditBalance: 0, arnsNamesCache: {}, ownedArnsCache: {} }),
       setCreditBalance: (balance) => set({ creditBalance: balance }),
+      setFreeUploadLimitBytes: (limitBytes) => set({ freeUploadLimitBytes: limitBytes }),
       setArNSName: (address, name, logo) => {
         const cache = get().arnsNamesCache;
         set({ 
@@ -453,12 +466,17 @@ export const useStore = create<StoreState>()(
           set({ customConfig: PRESET_CONFIGS.production });
         }
       },
+
+      setX402OnlyMode: (enabled) => set({ x402OnlyMode: enabled }),
+
+      isPaymentServiceAvailable: () => !get().x402OnlyMode,
     }),
     {
       name: 'turbo-gateway-store',
       partialize: (state) => ({
         address: state.address,
         walletType: state.walletType,
+        freeUploadLimitBytes: state.freeUploadLimitBytes,
         arnsNamesCache: state.arnsNamesCache,
         ownedArnsCache: state.ownedArnsCache,
         uploadHistory: state.uploadHistory,
@@ -466,6 +484,7 @@ export const useStore = create<StoreState>()(
         uploadStatusCache: state.uploadStatusCache,
         configMode: state.configMode,
         customConfig: state.customConfig,
+        x402OnlyMode: state.x402OnlyMode,
         // JIT payment preferences
         jitPaymentEnabled: state.jitPaymentEnabled,
         jitMaxTokenAmount: state.jitMaxTokenAmount,

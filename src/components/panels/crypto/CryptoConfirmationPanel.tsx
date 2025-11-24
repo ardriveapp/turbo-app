@@ -1,6 +1,6 @@
 import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount, POLToTokenAmount } from '@ardrive/turbo-sdk/web';
 import { useState } from 'react';
-import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users } from 'lucide-react';
+import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users, Loader2, XCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import {  tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
@@ -10,6 +10,8 @@ import { useWallets } from '@privy-io/react-auth';
 import { getWalletTypeLabel } from '../../../utils/addressValidation';
 import CopyButton from '../../CopyButton';
 import { useTurboConfig } from '../../../hooks/useTurboConfig';
+import { useTokenBalance } from '../../../hooks/useTokenBalance';
+import { formatTokenAmount } from '../../../utils/jitPayment';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -43,13 +45,26 @@ export default function CryptoConfirmationPanel({
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
   const { data: turboWallets } = useTurboWallets();
   const wincForOneGiB = useWincForOneGiB();
-  
+
+  // Fetch wallet balance for the selected token (always enabled for Buy Credits)
+  const {
+    balance: tokenBalance,
+    loading: balanceLoading,
+    error: balanceError,
+    isNetworkError,
+  } = useTokenBalance(tokenType, walletType, address, true);
+
   const quote = wincForToken ? {
     tokenAmount: cryptoAmount,
     credits: Number(wincForToken) / wincPerCredit,
     // Calculate storage correctly using actual GiB rate
     gigabytes: wincForOneGiB ? Number(wincForToken) / Number(wincForOneGiB) : 0,
   } : null;
+
+  // Calculate balance after purchase
+  const balanceAfterPurchase = tokenBalance - cryptoAmount;
+  // Balance validation: Block on network errors or insufficient balance, allow on other errors
+  const hasSufficientBalance = (balanceError && !isNetworkError) ? true : (!isNetworkError && tokenBalance >= cryptoAmount);
   
   // Get the turbo wallet address for manual payments
   const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
@@ -578,6 +593,74 @@ export default function CryptoConfirmationPanel({
               </div>
             </div>
 
+            {/* Wallet Balance Section */}
+            <div className="bg-surface rounded-lg p-4 border border-default mb-6">
+              <h4 className="font-medium text-fg-muted mb-3">Wallet Balance</h4>
+
+              {balanceLoading ? (
+                <div className="flex items-center gap-2 p-2 bg-surface/50 rounded border border-default">
+                  <Loader2 className="w-4 h-4 text-link animate-spin" />
+                  <span className="text-xs text-link">Checking wallet balance...</span>
+                </div>
+              ) : balanceError ? (
+                <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-amber-400 font-medium">Unable to fetch balance</div>
+                    <div className="text-xs text-amber-400/70 mt-0.5">{balanceError}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Current Balance */}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-link">Current Balance:</span>
+                    <span className="text-sm font-medium text-fg-muted">
+                      {formatTokenAmount(tokenBalance, tokenType)} {tokenLabels[tokenType]}
+                    </span>
+                  </div>
+
+                  {/* Payment Amount */}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-link">Payment Amount:</span>
+                    <span className="text-sm font-medium text-red-400">
+                      -{formatTokenAmount(cryptoAmount, tokenType)} {tokenLabels[tokenType]}
+                    </span>
+                  </div>
+
+                  {/* After Purchase */}
+                  <div className="flex justify-between items-center py-2 pt-3 border-t border-default/30">
+                    <span className="text-sm font-medium text-fg-muted">After Purchase:</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${hasSufficientBalance ? 'text-turbo-green' : 'text-red-400'}`}>
+                        {formatTokenAmount(Math.max(0, balanceAfterPurchase), tokenType)} {tokenLabels[tokenType]}
+                      </span>
+                      {hasSufficientBalance ? (
+                        <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Insufficient balance warning */}
+                  {!hasSufficientBalance && (
+                    <div className="mt-3 p-2 bg-red-500/10 rounded border border-red-500/20">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-red-400">
+                          <div className="font-medium">Insufficient {tokenLabels[tokenType]} balance</div>
+                          <div className="mt-1">
+                            You need {formatTokenAmount(cryptoAmount - tokenBalance, tokenType)} {tokenLabels[tokenType]} more to complete this purchase.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* Payment Method Info */}
             <div className="bg-surface rounded-lg p-4 border border-default mb-6">
               <div className="flex items-start gap-3">
@@ -675,7 +758,7 @@ export default function CryptoConfirmationPanel({
               
               <button
                 onClick={handlePayment}
-                disabled={!quote || isProcessing}
+                disabled={!quote || isProcessing || (!hasSufficientBalance && !balanceLoading)}
                 className="px-6 py-3 rounded-lg bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { getTurboBalance, wincToCredits } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
+import { useFreeUploadLimit, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
 import Faq from '../Faq';
 
 export default function InfoPanel() {
   const { address, walletType } = useStore();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const wincForOneGiB = useWincForOneGiB();
@@ -68,7 +70,9 @@ export default function InfoPanel() {
 
         <div className="bg-surface rounded-lg p-4">
           <div className="text-sm text-link mb-1">Free Tier</div>
-          <div className="font-semibold">Files under 100KiB</div>
+          <div className="font-semibold">
+            {freeUploadLimitBytes > 0 ? `Files under ${formatFreeLimit(freeUploadLimitBytes)}` : 'No free tier'}
+          </div>
         </div>
       </div>
 

@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useFreeUploadLimit, formatFreeLimit } from '../hooks/useFreeUploadLimit';
 
-const faqData = [
+const getFaqData = (freeLimit: number) => [
   {
     question: "How much storage do I need?",
     answer: "A little bit of money can go a long way in data storage. A small amount of USD can purchase storage for thousands of documents or hundreds of photos or songs. Files vary in size, but generally: 1 document ~0.31 MB, 1 HD Photo ~2.5 MB, 3.5 minute song ~3.5 MB, 1 minute HD video ~100 MB."
   },
   {
     question: "How are fees calculated?",
-    answer: "The file size determines the fee to upload data to the network. The larger the file, the higher the price will be. Files under 100KiB are FREE. All file sizes are represented using binary units of measurement (i.e. 1 MB = 1024 KB)."
+    answer: `The file size determines the fee to upload data to the network. The larger the file, the higher the price will be. ${freeLimit > 0 ? `Files under ${formatFreeLimit(freeLimit)} are FREE.` : ''} All file sizes are represented using binary units of measurement (i.e. 1 MB = 1024 KB).`
   },
   {
     question: "What are Credits?",
@@ -37,7 +38,10 @@ const faqData = [
 ];
 
 export default function Faq() {
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  const faqData = getFaqData(freeUploadLimitBytes);
 
   const toggleExpanded = (index: number) => {
     setExpandedIndex(expandedIndex === index ? null : index);

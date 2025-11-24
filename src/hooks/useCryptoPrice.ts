@@ -21,6 +21,10 @@ const getTokenSmallestUnit = (tokenType: SupportedTokenType): bigint => {
       return BigInt(10 ** 18); // wei equivalent
     case 'kyve':
       return BigInt(10 ** 6); // ukyve
+    case 'usdc':
+    case 'base-usdc':
+    case 'polygon-usdc':
+      return BigInt(10 ** 6); // USDC uses 6 decimals on all chains
     default:
       return BigInt(10 ** 12); // default
   }

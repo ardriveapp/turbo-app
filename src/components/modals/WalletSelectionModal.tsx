@@ -6,6 +6,7 @@ import { usePrivy, useLogin, useWallets, useCreateWallet } from '@privy-io/react
 import BaseModal from './BaseModal';
 import BlockingMessageModal from './BlockingMessageModal';
 import { useStore } from '../../store/useStore';
+import { getTurboBalance, resolveEthereumAddress } from '../../utils';
 import { Mail } from 'lucide-react';
 
 const WalletSelectionModal = ({
@@ -23,6 +24,19 @@ const WalletSelectionModal = ({
   const { wallets: privyWallets } = useWallets();
   const { createWallet } = useCreateWallet();
 
+  // Helper function to resolve and set Ethereum address
+  const setEthereumAddress = async (rawAddress: string) => {
+    try {
+      // Resolve the correct address format (checksummed vs lowercase)
+      const resolvedAddress = await resolveEthereumAddress(rawAddress, getTurboBalance);
+      setAddress(resolvedAddress, 'ethereum');
+    } catch (error) {
+      console.error('[Wallet Connection] Error resolving Ethereum address:', error);
+      // Fallback to using the raw address if resolution fails
+      setAddress(rawAddress, 'ethereum');
+    }
+  };
+
   const { login } = useLogin({
     onComplete: async ({ user }) => {
       // Check if user already has a wallet in linkedAccounts
@@ -31,7 +45,7 @@ const WalletSelectionModal = ({
       );
 
       if (existingWallet) {
-        setAddress(existingWallet.address, 'ethereum');
+        await setEthereumAddress(existingWallet.address);
         setConnectingWallet(undefined);
         onClose();
       } else {

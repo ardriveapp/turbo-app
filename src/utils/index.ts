@@ -176,7 +176,16 @@ export const getGatewayBaseUrl = (): string => {
   return baseUrl;
 };
 
-export const getArweaveUrl = (txId: string): string => {
+export const getArweaveUrl = (txId: string, dataCaches?: string[]): string => {
+  // If dataCaches is provided and has entries, use the first one as the gateway
+  // This ensures users browse to a gateway that actually has the bundled data
+  if (dataCaches && dataCaches.length > 0) {
+    const firstCache = dataCaches[0];
+    // Ensure we use https for the data cache
+    return `https://${firstCache}/${txId}`;
+  }
+
+  // Fall back to current gateway detection logic
   const gatewayBase = getGatewayBaseUrl();
 
   // The gateway base URL already handles all the logic:
@@ -267,7 +276,7 @@ export const getCurrentChainId = async (provider: any): Promise<number> => {
 };
 
 // Export address validation utilities
-export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong } from './addressValidation';
+export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong, resolveEthereumAddress } from './addressValidation';
 export type { WalletAddressType, AddressValidationResult } from './addressValidation';
 
 // Export AR.IO configuration helpers

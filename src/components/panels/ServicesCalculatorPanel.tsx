@@ -223,7 +223,7 @@ export default function ServicesCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}

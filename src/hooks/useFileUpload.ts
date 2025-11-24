@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
@@ -9,7 +9,11 @@ import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
+import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
+import { useX402Upload } from './useX402Upload';
+import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
+import { getContentType } from '../utils/mimeTypes';
 
 interface UploadResult {
   id: string;
@@ -65,6 +69,8 @@ const mergeTags = (
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
+  const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook
+  const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -75,6 +81,13 @@ export function useFileUpload() {
   const [activeUploads, setActiveUploads] = useState<ActiveUpload[]>([]);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [uploadErrors, setUploadErrors] = useState<UploadError[]>([]);
+
+  // Cache Turbo client to avoid re-authentication on every upload
+  const turboClientCache = useRef<{
+    client: TurboAuthenticatedClient;
+    address: string;
+    tokenType: string;
+  } | null>(null);
   const [totalSize, setTotalSize] = useState<number>(0);
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
@@ -116,6 +129,18 @@ export function useFileUpload() {
 
     // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
     const effectiveTokenType = tokenTypeOverride || walletType;
+
+    // Check if we can reuse cached client (same address and token type)
+    if (
+      turboClientCache.current &&
+      turboClientCache.current.address === address &&
+      turboClientCache.current.tokenType === effectiveTokenType
+    ) {
+      console.log('✅ Reusing cached Turbo client (no re-authentication needed)');
+      return turboClientCache.current.client;
+    }
+
+    console.log('Creating new Turbo client (will request signature for authentication)');
     const config = getCurrentConfig();
     const turboConfig = {
       paymentServiceConfig: { url: config.paymentServiceUrl },
@@ -133,12 +158,23 @@ export function useFileUpload() {
         }
         // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({
+        const arweaveClient = TurboFactory.authenticated({
           ...turboConfig,
           signer,
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
+
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: arweaveClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return arweaveClient;
         
       case 'ethereum':
         // Check if this is a Privy embedded wallet
@@ -150,13 +186,24 @@ export function useFileUpload() {
           const ethersProvider = new ethers.BrowserProvider(provider);
           const ethersSigner = await ethersProvider.getSigner();
 
-          return TurboFactory.authenticated({
+          const privyClient = TurboFactory.authenticated({
             token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
             ...turboConfig,
           });
+
+          // Cache the client
+          if (address && effectiveTokenType) {
+            turboClientCache.current = {
+              client: privyClient,
+              address: address,
+              tokenType: effectiveTokenType,
+            };
+          }
+
+          return privyClient;
         } else {
           // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
           if (!window.ethereum) {
@@ -167,30 +214,52 @@ export function useFileUpload() {
           const ethersProvider = new ethers.BrowserProvider(window.ethereum);
           const ethersSigner = await ethersProvider.getSigner();
 
-          return TurboFactory.authenticated({
+          const ethereumClient = TurboFactory.authenticated({
             token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
             walletAdapter: {
               getSigner: () => ethersSigner as any,
             },
             ...turboConfig,
           });
+
+          // Cache the client
+          if (address && effectiveTokenType) {
+            turboClientCache.current = {
+              client: ethereumClient,
+              address: address,
+              tokenType: effectiveTokenType,
+            };
+          }
+
+          return ethereumClient;
         }
-        
+
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
 
-        return TurboFactory.authenticated({
+        const solanaClient = TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
           ...turboConfig,
         });
+
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: solanaClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return solanaClient;
         
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [walletType, wallets, getCurrentConfig, validateWalletState]);
+  }, [walletType, wallets, getCurrentConfig, validateWalletState, address]);
 
   const uploadFile = useCallback(async (
     file: File,
@@ -199,6 +268,7 @@ export function useFileUpload() {
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
       customTags?: Array<{ name: string; value: string }>;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     if (!address) {
@@ -251,6 +321,64 @@ export function useFileUpload() {
       });
     }
 
+    // Use x402 for BILLABLE BASE-USDC uploads from Ethereum wallets
+    // Free files use regular upload service (bundler handles free tier)
+    console.log(`[X402] selectedJitToken: ${options?.selectedJitToken}, walletType: ${walletType}`);
+
+    const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
+    console.log(`[Upload] ${fileName}: size=${file.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isFileInFreeUploadTier}`);
+
+    if (
+      walletType === 'ethereum' &&
+      options?.selectedJitToken === 'base-usdc' &&
+      !isFileInFreeUploadTier  // Only use x402 for billable files
+    ) {
+      try {
+        console.log('[X402] Using x402 flow for BASE-USDC upload:', fileName);
+
+        // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
+        const maxUsdc = options.jitMaxTokenAmount ? options.jitMaxTokenAmount / 1_000_000 : 10; // Default 10 USDC
+
+        const result = await uploadFileWithX402(file, {
+          maxUsdcAmount: maxUsdc,
+          onProgress: (progress) => {
+            setUploadProgress((prev) => ({ ...prev, [fileName]: progress }));
+          },
+          tags: options?.customTags,
+        });
+
+        // Add metadata and return
+        setUploadProgress((prev) => ({ ...prev, [fileName]: 100 }));
+        return {
+          ...result,
+          timestamp: Date.now(),
+          fileName: file.name,
+          fileSize: file.size,
+          contentType: getContentType(file),
+        };
+      } catch (x402Error) {
+        console.error('x402 upload failed:', x402Error);
+
+        // Show user-friendly error with fallback suggestion
+        const errorMsg = `x402 payment failed: ${
+          x402Error instanceof Error ? x402Error.message : 'Unknown error'
+        }.
+
+Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment through the Turbo SDK.`;
+
+        setErrors((prev) => ({ ...prev, [fileName]: errorMsg }));
+
+        // Throw error to stop upload - user must choose different approach
+        throw new Error(errorMsg);
+      }
+    } else if (isFileInFreeUploadTier && options?.selectedJitToken === 'base-usdc') {
+      // Free file with BASE-USDC selected - use regular upload (bundler handles free tier)
+      console.log(`[Free Upload] File ${fileName} is free (${file.size} bytes), using regular upload service`);
+    } else if (options?.jitEnabled && jitTokenType) {
+      // Regular JIT path (not x402)
+      console.log(`[JIT] Using regular JIT flow with ${jitTokenType} for ${fileName}`);
+    }
+
     try {
       // Creating Turbo client for upload
       const turbo = await createTurboClient(jitTokenType || undefined);
@@ -269,7 +397,7 @@ export function useFileUpload() {
                   { name: 'App-Name', value: APP_NAME },
                   { name: 'App-Feature', value: 'File Upload' },
                   { name: 'App-Version', value: APP_VERSION },
-                  { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                  { name: 'Content-Type', value: getContentType(file) },
                   { name: 'File-Name', value: file.name }
                 ],
                 options.customTags
@@ -278,7 +406,7 @@ export function useFileUpload() {
                 { name: 'App-Name', value: APP_NAME },
                 { name: 'App-Feature', value: 'File Upload' },
                 { name: 'App-Version', value: APP_VERSION },
-                { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                { name: 'Content-Type', value: getContentType(file) },
                 { name: 'File-Name', value: file.name }
               ]
         },
@@ -299,7 +427,7 @@ export function useFileUpload() {
           onError: (error: any) => {
             // Upload error occurred
             console.error(`Upload error for ${fileName}:`, error);
-            const errorMessage = error?.message || 'Upload failed';
+            const errorMessage = formatUploadError(error?.message || 'Upload failed');
             setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
           },
           onSuccess: () => {
@@ -316,18 +444,18 @@ export function useFileUpload() {
         timestamp: Date.now(),
         fileName: file.name,
         fileSize: file.size,
-        contentType: file.type || 'application/octet-stream',
+        contentType: getContentType(file),
         receipt: uploadResult // Store the entire upload response as receipt
       };
       
       setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      const errorMessage = formatUploadError(error instanceof Error ? error : 'Upload failed');
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, createTurboClient]);
+  }, [address, walletType, wallets, createTurboClient, uploadFileWithX402]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],
@@ -336,6 +464,7 @@ export function useFileUpload() {
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
       customTags?: Array<{ name: string; value: string }>;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     // Validate wallet state before any operations
@@ -404,12 +533,15 @@ export function useFileUpload() {
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
 
         // Add to recent files as error
+        // Format error for user display
+        const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
+
         setRecentFiles(prev => [
           {
             name: file.name,
             size: file.size,
             status: 'error' as const,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             timestamp: Date.now()
           },
           ...prev
@@ -420,14 +552,13 @@ export function useFileUpload() {
           ...prev,
           {
             fileName: file.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             retryable: true
           }
         ]);
 
         // Failed to upload file
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setErrors(prev => ({ ...prev, [file.name]: errorMessage }));
+        setErrors(prev => ({ ...prev, [file.name]: userFriendlyError }));
         failedFileNames.push(file.name);
         setFailedFiles(prev => [...prev, file]);
         setFailedCount(prev => prev + 1);
