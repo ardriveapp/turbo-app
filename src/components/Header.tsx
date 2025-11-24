@@ -84,8 +84,16 @@ const Header = () => {
   
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
+    // Don't fetch balance if payment service is unavailable (x402-only mode)
+    if (!isPaymentServiceAvailable()) {
+      setCredits('0');
+      setCreditsNumeric(0);
+      return;
+    }
+
     if (!address || !walletType) {
       setCredits('0');
+      setCreditsNumeric(0);
       return;
     }
 
@@ -129,14 +137,16 @@ const Header = () => {
       if (error instanceof Error && error.message.includes('Invalid')) {
         // Address format may not be supported for balance checking
         setCredits('0');
+        setCreditsNumeric(0);
       } else {
         setCredits('---');
+        setCreditsNumeric(0);
       }
     } finally {
       setLoadingBalance(false);
       setIsRefreshing(false);
     }
-  }, [address, walletType, setCreditBalance]);
+  }, [address, walletType, setCreditBalance, isPaymentServiceAvailable]);
 
   useEffect(() => {
     fetchBalance();
