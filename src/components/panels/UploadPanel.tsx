@@ -19,6 +19,7 @@ import { supportsJitPayment, getTokenConverter, calculateRequiredTokenAmount, fo
 import { useTokenBalance } from '../../hooks/useTokenBalance';
 import { tokenLabels } from '../../constants';
 import { Loader2 } from 'lucide-react';
+import X402OnlyBanner from '../X402OnlyBanner';
 
 // Unified Crypto Payment Details Component (matches Credits layout)
 interface CryptoPaymentDetailsProps {
@@ -285,6 +286,8 @@ export default function UploadPanel() {
     jitPaymentEnabled,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
+    x402OnlyMode,
+    isPaymentServiceAvailable,
   } = useStore();
 
   // Fetch and track the bundler's free upload limit
@@ -326,27 +329,35 @@ export default function UploadPanel() {
     return 'base-eth'; // Default for Ethereum - will switch to base-usdc when JIT opens
   });
 
-  // Reset payment tab to Credits when modal opens
-  // This ensures each new upload starts fresh on Credits tab
+  // Switch to base-usdc when x402-only mode is enabled (only option for ETH wallets)
+  useEffect(() => {
+    if (x402OnlyMode && walletType === 'ethereum') {
+      setSelectedJitToken('base-usdc');
+    }
+  }, [x402OnlyMode, walletType]);
+
+  // Reset payment tab when modal opens
+  // In x402-only mode, start on Crypto tab (no credits available)
+  // In normal mode, start on Credits tab
   useEffect(() => {
     if (showConfirmModal) {
-      setPaymentTab('credits');
-      setJitSectionExpanded(false);
+      setPaymentTab(x402OnlyMode ? 'crypto' : 'credits');
+      setJitSectionExpanded(x402OnlyMode); // Auto-expand in x402-only mode
     }
-  }, [showConfirmModal]);
+  }, [showConfirmModal, x402OnlyMode]);
 
   // Auto-select base-usdc (x402) ONLY when user explicitly opens "Pay with Crypto" section
-  // Reset to base-eth when they close it
+  // Reset to base-eth when they close it (unless x402-only mode is active)
   // Do NOT switch based on localJitEnabled - that's just a preference, not a UI action
   useEffect(() => {
     if (walletType === 'ethereum') {
       if (jitSectionExpanded) {
         setSelectedJitToken('base-usdc'); // Switch to x402 when section expands
-      } else {
-        setSelectedJitToken('base-eth'); // Reset when section collapses
+      } else if (!x402OnlyMode) {
+        setSelectedJitToken('base-eth'); // Reset when section collapses (unless x402-only)
       }
     }
-  }, [walletType, jitSectionExpanded]); // REMOVED localJitEnabled from dependencies
+  }, [walletType, jitSectionExpanded, x402OnlyMode]); // Added x402OnlyMode to dependencies
 
   // Track if user has sufficient crypto balance for JIT payment
   const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
@@ -366,12 +377,13 @@ export default function UploadPanel() {
 
   // Get x402 pricing ONLY when user has opened the "Pay with Crypto" section
   // This ensures we show CREDITS by default and only fetch x402 pricing when user clicks "Pay with Crypto"
+  // In x402-only mode, always use x402 pricing since there's no credits option
   // Use billableFileSize (excluding free files) for accurate x402 pricing
   const shouldUseX402 =
     walletType === 'ethereum' &&
     selectedJitToken === 'base-usdc' &&
     showConfirmModal &&  // Modal must be open
-    jitSectionExpanded;  // "Pay with Crypto" section must be expanded by user
+    (jitSectionExpanded || x402OnlyMode);  // "Pay with Crypto" section expanded OR x402-only mode
   const x402Pricing = useX402Pricing(shouldUseX402 ? billableFileSize : 0);
 
   // Fetch USD equivalent for credit pricing (only for billable bytes)
@@ -1241,6 +1253,9 @@ export default function UploadPanel() {
               </div>
             </div>
 
+            {/* X402-Only Mode Banner */}
+            {x402OnlyMode && <X402OnlyBanner />}
+
             {/* Upload Summary - Files and Size only */}
             <div className="mb-4">
               <div className="bg-surface rounded-lg p-3">
@@ -1296,8 +1311,8 @@ export default function UploadPanel() {
 
               return (
                 <>
-                  {/* Payment Method Tabs - Only show for wallets that support JIT and non-free uploads */}
-                  {canUseJit && !isFreeUpload && (
+                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free uploads, and payment service available */}
+                  {canUseJit && !isFreeUpload && isPaymentServiceAvailable() && (
                     <div className="mb-4">
                       <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
                         <button
@@ -1328,8 +1343,8 @@ export default function UploadPanel() {
                     </div>
                   )}
 
-                  {/* Payment Details Section - Credits Tab */}
-                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && (
+                  {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
+                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && isPaymentServiceAvailable() && (
                     <div className="mb-4">
                       <div className="bg-surface rounded-lg border border-default p-4">
                         <div className="space-y-2.5">
@@ -1402,9 +1417,24 @@ export default function UploadPanel() {
                     </div>
                   )}
 
-                  {/* Payment Details Section - Crypto Tab */}
-                  {paymentTab === 'crypto' && canUseJit && !isFreeUpload && (
+                  {/* Payment Details Section - Crypto Tab (always show in x402-only mode) */}
+                  {(paymentTab === 'crypto' || x402OnlyMode) && canUseJit && !isFreeUpload && (
                     <>
+                      {/* X402-only mode: Non-Ethereum wallet warning */}
+                      {x402OnlyMode && walletType !== 'ethereum' && (
+                        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <div className="font-medium text-yellow-400 text-sm mb-1">Ethereum Wallet Required</div>
+                              <div className="text-xs text-yellow-400/80">
+                                X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* JIT Token Selector - shown for Ethereum wallets */}
                       {walletType === 'ethereum' && (
                         <div className="mb-3">
@@ -1412,23 +1442,26 @@ export default function UploadPanel() {
                             walletType={walletType}
                             selectedToken={selectedJitToken}
                             onTokenSelect={setSelectedJitToken}
+                            x402OnlyMode={x402OnlyMode}
                           />
                         </div>
                       )}
 
-                      {/* Unified Crypto Payment Display */}
-                      <CryptoPaymentDetails
-                        creditsNeeded={creditsNeeded}
-                        totalCost={typeof totalCost === 'number' ? totalCost : 0}
-                        tokenType={selectedJitToken}
-                        walletAddress={address}
-                        walletType={walletType}
-                        onBalanceValidation={setJitBalanceSufficient}
-                        onShortageUpdate={setCryptoShortage}
-                        localJitMax={localJitMax}
-                        onMaxTokenAmountChange={setLocalJitMax}
-                        x402Pricing={x402Pricing}
-                      />
+                      {/* Unified Crypto Payment Display - Only show for Ethereum in x402-only mode */}
+                      {(!x402OnlyMode || walletType === 'ethereum') && (
+                        <CryptoPaymentDetails
+                          creditsNeeded={creditsNeeded}
+                          totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                          tokenType={selectedJitToken}
+                          walletAddress={address}
+                          walletType={walletType}
+                          onBalanceValidation={setJitBalanceSufficient}
+                          onShortageUpdate={setCryptoShortage}
+                          localJitMax={localJitMax}
+                          onMaxTokenAmountChange={setLocalJitMax}
+                          x402Pricing={x402Pricing}
+                        />
+                      )}
                     </>
                   )}
 

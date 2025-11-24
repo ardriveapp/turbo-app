@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Listbox, Transition } from '@headlessui/react';
 import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard, ChevronDown, Check } from 'lucide-react';
@@ -6,12 +6,13 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useCryptoPriceForWinc, useWincForCrypto } from '../../hooks/useCryptoPrice';
 import { useFreeUploadLimit, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
+import { useX402Pricing } from '../../hooks/useX402Pricing';
 import { useStore } from '../../store/useStore';
 import { SupportedTokenType, tokenLabels } from '../../constants';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
 export default function PricingCalculatorPanel() {
-  const { address, creditBalance } = useStore();
+  const { address, creditBalance, x402OnlyMode } = useStore();
   const freeUploadLimitBytes = useFreeUploadLimit();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
@@ -25,9 +26,9 @@ export default function PricingCalculatorPanel() {
     { value: 'TiB', label: 'TiB' },
   ] as const;
 
-  // Currency options
+  // Currency options - x402-only mode shows ONLY USDC (x402)
   type CurrencyType = 'usd' | SupportedTokenType;
-  const currencies: Array<{ value: CurrencyType; label: string; symbol: string }> = [
+  const baseCurrencies: Array<{ value: CurrencyType; label: string; symbol: string }> = [
     { value: 'usd', label: 'USD', symbol: '$' },
     { value: 'arweave', label: tokenLabels.arweave, symbol: 'AR' },
     { value: 'ario', label: tokenLabels.ario, symbol: 'ARIO' },
@@ -35,12 +36,24 @@ export default function PricingCalculatorPanel() {
     { value: 'base-eth', label: tokenLabels['base-eth'], symbol: 'ETH' },
     { value: 'solana', label: tokenLabels.solana, symbol: 'SOL' },
     { value: 'pol', label: tokenLabels.pol, symbol: 'POL' },
+    { value: 'base-usdc', label: 'USDC (Base) with x402', symbol: 'USDC' },
   ];
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('usd');
+  // In x402-only mode, ONLY show USDC (x402)
+  const currencies = x402OnlyMode
+    ? [{ value: 'base-usdc' as CurrencyType, label: tokenLabels['base-usdc'] + ' (x402)', symbol: 'USDC' }]
+    : baseCurrencies;
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(x402OnlyMode ? 'base-usdc' : 'usd');
 
   const [dollarAmount, setDollarAmount] = useState(10);
   const [dollarAmountInput, setDollarAmountInput] = useState('10'); // String for display
-  
+
+  // Auto-switch to 'storage' mode when base-usdc is selected (x402 doesn't support Budget to Storage)
+  useEffect(() => {
+    if (selectedCurrency === 'base-usdc' && inputType === 'dollars') {
+      setInputType('storage');
+    }
+  }, [selectedCurrency, inputType]);
+
   // Helper to convert crypto display amount to smallest unit (bigint)
   const getTokenSmallestUnit = (tokenType: SupportedTokenType, amount: number): bigint => {
     let decimals: number;
@@ -62,6 +75,11 @@ export default function PricingCalculatorPanel() {
       case 'kyve':
         decimals = 6; // ukyve
         break;
+      case 'usdc':
+      case 'base-usdc':
+      case 'polygon-usdc':
+        decimals = 6; // USDC uses 6 decimals
+        break;
       default:
         decimals = 12;
     }
@@ -73,7 +91,7 @@ export default function PricingCalculatorPanel() {
     return wholePart * multiplier + fractionalBigInt;
   };
 
-  // Get conversion rates
+  // Get conversion rates (skip in x402-only mode as we use direct x402 pricing)
   const wincForOneGiB = useWincForOneGiB();
   const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
   const wincLoading = !wincForOneGiB;
@@ -136,9 +154,25 @@ export default function PricingCalculatorPanel() {
     const gib = getStorageInGiB();
     return gib * 1024 * 1024 * 1024; // 1 GiB = 1024^3 bytes
   };
-  
+
+  // X402 pricing: Fetch price for 1 GiB ONCE (just like wincForOneGiB in normal mode)
+  // Fetch when x402-only mode is active OR when base-usdc currency is selected
+  const oneGiBInBytes = 1024 * 1024 * 1024; // 1 GiB = 1,073,741,824 bytes
+  const shouldFetchX402 = x402OnlyMode || selectedCurrency === 'base-usdc';
+  const x402PricingPerGiB = useX402Pricing(shouldFetchX402 ? oneGiBInBytes : 0);
+
   // Calculate cost in dollars for storage
   const calculateStorageCost = () => {
+    // Use x402 pricing when x402-only mode is active OR base-usdc currency is selected
+    if ((x402OnlyMode || selectedCurrency === 'base-usdc') && inputType === 'storage') {
+      if (x402PricingPerGiB.loading) return 0;
+      if (x402PricingPerGiB.error) return 0;
+      // Extrapolate: storage amount * price per GiB
+      const storageInGiB = getStorageInGiB();
+      return storageInGiB * x402PricingPerGiB.usdcAmount;
+    }
+
+    // Regular mode: use winc/credits conversion
     if (!wincForOneGiB || !creditsForOneUSD) return 0;
     const storageInGiB = getStorageInGiB();
     const wincNeeded = storageInGiB * Number(wincForOneGiB);
@@ -199,7 +233,10 @@ export default function PricingCalculatorPanel() {
     return `${formatNumber(tib)} TiB`;
   };
 
-  const isLoading = wincLoading || creditsLoading;
+  // When using x402 pricing (x402-only mode or base-usdc selected), only care about x402 loading state
+  const isLoading = (x402OnlyMode || selectedCurrency === 'base-usdc')
+    ? x402PricingPerGiB.loading
+    : (wincLoading || creditsLoading);
 
   return (
     <div className="px-4 sm:px-6">
@@ -220,11 +257,21 @@ export default function PricingCalculatorPanel() {
       <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
         
         {/* Free Tier Notice */}
-        {freeUploadLimitBytes > 0 && (
+        {freeUploadLimitBytes > 0 && !x402OnlyMode && (
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 bg-fg-muted/10 text-fg-muted px-4 py-2 rounded-lg text-sm font-medium">
               <Zap className="w-4 h-4" />
               Files under {formatFreeLimit(freeUploadLimitBytes)} are FREE!
+            </div>
+          </div>
+        )}
+
+        {/* X402-Only Mode Notice */}
+        {x402OnlyMode && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-turbo-purple/10 text-turbo-purple px-4 py-2 rounded-lg text-sm font-medium border border-turbo-purple/20">
+              <Calculator className="w-4 h-4" />
+              X402-Only Mode: Pricing via BASE-USDC microtransactions
             </div>
           </div>
         )}
@@ -249,8 +296,10 @@ export default function PricingCalculatorPanel() {
                 inputType === 'dollars'
                   ? 'bg-fg-muted text-black'
                   : 'text-link hover:text-fg-muted'
-              }`}
-              onClick={() => setInputType('dollars')}
+              } ${(x402OnlyMode || selectedCurrency === 'base-usdc') ? 'opacity-40 cursor-not-allowed' : ''}`}
+              onClick={() => !(x402OnlyMode || selectedCurrency === 'base-usdc') && setInputType('dollars')}
+              disabled={x402OnlyMode || selectedCurrency === 'base-usdc'}
+              title={(x402OnlyMode || selectedCurrency === 'base-usdc') ? 'Budget to Storage not available for x402 pricing' : ''}
             >
               <DollarSign className="w-4 h-4" />
               <span className="hidden sm:inline">Budget to Storage</span>
@@ -431,7 +480,7 @@ export default function PricingCalculatorPanel() {
                         value={selectedCurrencyInfo}
                         onChange={(currency) => setSelectedCurrency(currency.value)}
                       >
-                        <div className="relative w-full sm:w-48">
+                        <div className="relative w-full sm:w-64">
                           <Listbox.Button className="relative w-full rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{selectedCurrencyInfo.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
@@ -568,7 +617,7 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute right-0 z-10 mt-1 w-48 rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute right-0 z-10 mt-1 w-64 rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {currencies.map((currency) => (
                                 <Listbox.Option
                                   key={currency.value}
@@ -659,7 +708,7 @@ export default function PricingCalculatorPanel() {
                       <span className="text-sm text-link">Credits You'll Get</span>
                       <span className="text-lg font-medium text-fg-muted">
                         {selectedCurrency === 'usd'
-                          ? formatNumber(dollarAmount * creditsForOneUSD)
+                          ? formatNumber(dollarAmount * (creditsForOneUSD || 0))
                           : wincFromCrypto
                             ? formatNumber(wincFromCrypto / 1e12)
                             : '0'
@@ -682,8 +731,10 @@ export default function PricingCalculatorPanel() {
         )}
         
         {/* CTA Section */}
-        <div className="mt-8 text-center bg-canvas rounded-lg border border-fg-muted/20 p-6">
-          {!address ? (
+        {/* Call to Action Section - Hidden in x402-only mode */}
+        {!x402OnlyMode && (
+          <div className="mt-8 text-center bg-canvas rounded-lg border border-fg-muted/20 p-6">
+            {!address ? (
             // Not logged in - show connect wallet CTA
             <>
               <h4 className="text-lg font-bold text-fg-muted mb-3">Ready to store your data permanently?</h4>
@@ -731,7 +782,8 @@ export default function PricingCalculatorPanel() {
               </Link>
             </>
           )}
-        </div>
+          </div>
+        )}
       </div>
 
       {showWalletModal && (

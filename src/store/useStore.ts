@@ -166,6 +166,7 @@ interface StoreState {
   // Developer configuration state
   configMode: ConfigMode;
   customConfig: DeveloperConfig;
+  x402OnlyMode: boolean; // X402-only mode (disables payment service features)
   
   // Actions
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
@@ -231,6 +232,8 @@ interface StoreState {
   updateTokenMap: (token: SupportedTokenType, url: string) => void;
   getCurrentConfig: () => DeveloperConfig;
   resetToDefaults: () => void;
+  setX402OnlyMode: (enabled: boolean) => void;
+  isPaymentServiceAvailable: () => boolean;
 }
 
 export const useStore = create<StoreState>()(
@@ -250,6 +253,7 @@ export const useStore = create<StoreState>()(
       // Developer configuration state
       configMode: 'production',
       customConfig: PRESET_CONFIGS.production,
+      x402OnlyMode: false, // Default to full payment service support
       
       // Payment state
       paymentAmount: undefined,
@@ -462,6 +466,10 @@ export const useStore = create<StoreState>()(
           set({ customConfig: PRESET_CONFIGS.production });
         }
       },
+
+      setX402OnlyMode: (enabled) => set({ x402OnlyMode: enabled }),
+
+      isPaymentServiceAvailable: () => !get().x402OnlyMode,
     }),
     {
       name: 'turbo-gateway-store',
@@ -476,6 +484,7 @@ export const useStore = create<StoreState>()(
         uploadStatusCache: state.uploadStatusCache,
         configMode: state.configMode,
         customConfig: state.customConfig,
+        x402OnlyMode: state.x402OnlyMode,
         // JIT payment preferences
         jitPaymentEnabled: state.jitPaymentEnabled,
         jitMaxTokenAmount: state.jitMaxTokenAmount,

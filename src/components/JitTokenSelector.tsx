@@ -5,21 +5,31 @@ interface JitTokenSelectorProps {
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   selectedToken: SupportedTokenType;
   onTokenSelect: (token: SupportedTokenType) => void;
+  x402OnlyMode?: boolean;
 }
 
 /**
  * JIT Token Selector Component
  * Allows users to choose between different JIT-supported payment tokens
- * - Ethereum wallets: BASE-USDC (x402) or BASE-ETH (standard JIT)
- * - Arweave wallets: ARIO only
- * - Solana wallets: SOL only
+ * - X402-Only Mode: BASE-USDC (x402) ONLY for Ethereum wallets
+ * - Regular Mode:
+ *   - Ethereum wallets: BASE-USDC (x402) or BASE-ETH (standard JIT)
+ *   - Arweave wallets: ARIO only
+ *   - Solana wallets: SOL only
  */
 export function JitTokenSelector({
   walletType,
   selectedToken,
   onTokenSelect,
+  x402OnlyMode = false,
 }: JitTokenSelectorProps) {
   const getAvailableTokens = (): SupportedTokenType[] => {
+    // In x402-only mode, ONLY base-usdc is available (and only for ETH wallets)
+    if (x402OnlyMode) {
+      return walletType === 'ethereum' ? ['base-usdc'] : [];
+    }
+
+    // Regular mode
     if (walletType === 'ethereum') {
       // Ethereum wallets: BASE-USDC (x402) and BASE-ETH (regular JIT)
       return ['base-usdc', 'base-eth'];

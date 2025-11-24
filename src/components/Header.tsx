@@ -69,7 +69,7 @@ const getServiceActiveColor = (page: string): string => {
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode } = useStore();
+  const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode, isPaymentServiceAvailable } = useStore();
   const { isPrivyUser, privyLogout } = usePrivyWallet();
   const { exportWallet } = usePrivy();
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
@@ -185,6 +185,17 @@ const Header = () => {
     return '';
   };
 
+  // Filter services based on payment service availability (x402-only mode)
+  // Payment service dependent routes: topup, share, gift, balances, redeem
+  // Note: calculator is NOT included - it works in x402-only mode with USDC pricing
+  const paymentServiceRoutes = ['topup', 'share', 'gift', 'balances', 'redeem'];
+  const filteredAccountServices = accountServices.filter(service =>
+    isPaymentServiceAvailable() || !paymentServiceRoutes.includes(service.page)
+  );
+  const filteredUtilityServices = utilityServices.filter(service =>
+    isPaymentServiceAvailable() || !paymentServiceRoutes.includes(service.page)
+  );
+
   return (
     <div className="flex items-center py-2 sm:py-3">
       <Link to="/" className="cursor-pointer ml-2 sm:ml-0">
@@ -223,7 +234,7 @@ const Header = () => {
                     </span>
                   )}
                 </div>
-                {accountServices.map((service) => {
+                {filteredAccountServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
 
                   // Buy Credits (topup) is always accessible without login
@@ -270,7 +281,7 @@ const Header = () => {
                 
                 {/* Public Tools */}
                 <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Tools</div>
-                {utilityServices.map((service) => {
+                {filteredUtilityServices.map((service) => {
                   const isActive = location.pathname === `/${service.page}`;
                   return (
                     <Link
@@ -364,38 +375,40 @@ const Header = () => {
               </div>
             </div>
             
-            {/* Credit Balance Section - Display Only */}
-            <div className="px-6 py-4 border-b border-default">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-fg-muted" />
-                  <span className="text-xs text-link">Credits</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end">
-                    <div className="font-bold text-lg text-fg-muted">
-                      {loadingBalance || isRefreshing ? '...' : credits}
-                    </div>
-                    {!loadingBalance && !isRefreshing && creditsNumeric > 0 && (
-                      <div className="text-xs text-link/60 mt-0.5">
-                        {formatStorageCapacity(creditsNumeric)}
-                      </div>
-                    )}
+            {/* Credit Balance Section - Display Only (hide in x402-only mode) */}
+            {isPaymentServiceAvailable() && (
+              <div className="px-6 py-4 border-b border-default">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-fg-muted" />
+                    <span className="text-xs text-link">Credits</span>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent triggering the parent click
-                      handleRefresh();
-                    }}
-                    disabled={isRefreshing || loadingBalance}
-                    className="p-1 rounded hover:bg-canvas transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={isRefreshing ? 'Refreshing...' : 'Refresh balance'}
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-turbo-red animate-spin' : 'text-link hover:text-fg-muted'}`} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end">
+                      <div className="font-bold text-lg text-fg-muted">
+                        {loadingBalance || isRefreshing ? '...' : credits}
+                      </div>
+                      {!loadingBalance && !isRefreshing && creditsNumeric > 0 && (
+                        <div className="text-xs text-link/60 mt-0.5">
+                          {formatStorageCapacity(creditsNumeric)}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering the parent click
+                        handleRefresh();
+                      }}
+                      disabled={isRefreshing || loadingBalance}
+                      className="p-1 rounded hover:bg-canvas transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={isRefreshing ? 'Refreshing...' : 'Refresh balance'}
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-turbo-red animate-spin' : 'text-link hover:text-fg-muted'}`} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             
             {/* Actions */}
             <button
