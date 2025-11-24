@@ -579,7 +579,8 @@ export default function UploadPanel() {
     return creditCost;
   };
 
-  const totalCost = calculateUploadCost(totalFileSize);
+  // Use billableFileSize (sum of non-free files) to respect per-file free tiers
+  const totalCost = calculateUploadCost(billableFileSize);
 
   // Auto-enable JIT when user has insufficient credits
   useEffect(() => {
