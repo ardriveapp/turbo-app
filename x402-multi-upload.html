@@ -1266,7 +1266,7 @@
           const publicKeyHex = recoveredPublicKey.slice(2);
           const bytes = new Uint8Array(publicKeyHex.length / 2);
           for (let i = 0; i < publicKeyHex.length; i += 2) {
-            bytes[i / 2] = parseInt(publicKeyHex.substr(i, 2), 16);
+            bytes[i / 2] = parseInt(publicKeyHex.substring(i, i + 2), 16);
           }
           this.publicKey = bytes;
           log(`✅ Session authorized for data signing (public key: ${this.publicKey.length} bytes)`, 'success');
