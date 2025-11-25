@@ -179,6 +179,7 @@ export function useX402Upload() {
 
         const dataItemId = await dataItem.id;
         console.log(`Data item signed! ID: ${dataItemId}`);
+        options.onProgress?.(20); // Data item created and signed
 
         const uploadDataBuffer = dataItem.getRaw();
         // Convert Buffer to Uint8Array for fetch
@@ -195,12 +196,15 @@ export function useX402Upload() {
           body: uploadData,
         });
 
+        options.onProgress?.(40); // First upload attempt complete
+
         let result: any;
         let paidUsdcAmount: string | undefined;
 
         // Success with existing credits (200 OK)
         if (uploadResponse.status === 200) {
           console.log('Upload succeeded using existing credits!');
+          options.onProgress?.(90); // Upload successful
           result = await uploadResponse.json();
           paidUsdcAmount = undefined;
         }
@@ -234,6 +238,16 @@ export function useX402Upload() {
           paidUsdcAmount = amount;
 
           console.log(`[X402] Payment required: ${amount} USDC (${baseAmount.toString()} smallest unit)`);
+
+          // Enforce client-side maxUsdcAmount cap before building authorization
+          const maxAmountInSmallestUnit = BigInt(Math.round(options.maxUsdcAmount * 1_000_000)); // Convert to 6 decimals
+          if (baseAmount > maxAmountInSmallestUnit) {
+            const maxAmountFormatted = ethers.formatUnits(maxAmountInSmallestUnit, 6);
+            throw new Error(
+              `Upload cost (${amount} USDC) exceeds configured maximum (${maxAmountFormatted} USDC). ` +
+              `Please reduce file size or increase payment limit.`
+            );
+          }
 
           // Create payment authorization
           const currentTime = Math.floor(Date.now() / 1000);
@@ -278,6 +292,7 @@ export function useX402Upload() {
           console.log('[X402] Authorization:', authorization);
           const signature = await ethersSigner.signTypedData(domain, types, authorization);
           console.log('[X402] Payment authorized! Signature created.');
+          options.onProgress?.(60); // Payment authorization created
 
           const paymentPayload = {
             x402Version: 1,
@@ -309,6 +324,7 @@ export function useX402Upload() {
             );
           }
 
+          options.onProgress?.(90); // Retry upload with payment successful
           result = await uploadResponse.json();
         }
         // Unexpected status
@@ -318,6 +334,7 @@ export function useX402Upload() {
         }
 
         console.log(`✅ x402 upload successful! ID: ${result.id}`);
+        options.onProgress?.(100); // Upload complete
 
         return {
           id: result.id,
