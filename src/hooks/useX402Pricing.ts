@@ -1,11 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { X402_CONFIG } from '../constants';
+import type { ConfigMode } from '../store/useStore';
 
 interface X402PricingResult {
   usdcAmount: number; // In human-readable USDC (e.g., 2.5 for 2.5 USDC)
   usdcAmountSmallestUnit: string; // In smallest unit (6 decimals) as string (e.g., "2500000")
   loading: boolean;
   error: string | null;
+}
+
+/**
+ * Helper to get the x402 network key from config mode
+ * Uses centralized X402_CONFIG mapping instead of hard-coded logic
+ */
+function getNetworkKeyFromConfigMode(configMode: ConfigMode): string {
+  // Custom mode uses production network (mainnet)
+  const normalizedMode = configMode === 'custom' ? 'production' : configMode;
+  return X402_CONFIG.supportedNetworks[normalizedMode as keyof typeof X402_CONFIG.supportedNetworks];
 }
 
 /**
@@ -16,20 +28,23 @@ interface X402PricingResult {
  * @returns Pricing information in USDC
  */
 export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
-  const { getCurrentConfig, configMode, customConfig } = useStore();
+  const getCurrentConfig = useStore(s => s.getCurrentConfig);
+  const configMode = useStore(s => s.configMode);
   const [usdcAmount, setUsdcAmount] = useState<number>(0);
   const [usdcAmountSmallestUnit, setUsdcAmountSmallestUnit] = useState<string>('0');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Derive stable config object - safe because getCurrentConfig() never throws
+  const config = useMemo(() => getCurrentConfig(), [getCurrentConfig]);
+
   // Memoize x402 URL to prevent unnecessary re-renders and API calls
-  // Recalculate when config mode OR upload URL changes
+  // Safe dependencies: configMode and derived config values (no direct customConfig access)
   const x402Url = useMemo(() => {
-    const config = getCurrentConfig();
     return configMode === 'custom'
       ? `${config.uploadServiceUrl}/x402/data-item/signed`
-      : config.x402UploadUrl;
-  }, [configMode, customConfig.uploadServiceUrl, customConfig.x402UploadUrl, getCurrentConfig]);
+      : config.x402UploadUrl || `${config.uploadServiceUrl}/x402/data-item/signed`;
+  }, [configMode, config.uploadServiceUrl, config.x402UploadUrl]);
 
   useEffect(() => {
     // Skip if file size is 0 or negative
@@ -64,9 +79,8 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
         if (response.status === 402) {
           const data = await response.json();
 
-          // Find the Base network requirements
-          const useMainnet = configMode !== 'development';
-          const networkKey = useMainnet ? 'base' : 'base-sepolia';
+          // Find the Base network requirements using centralized config mapping
+          const networkKey = getNetworkKeyFromConfigMode(configMode);
           const requirements = data.accepts?.find((a: any) => a.network === networkKey);
 
           if (!requirements) {
