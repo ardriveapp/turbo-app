@@ -487,20 +487,17 @@ export function useFolderUpload() {
               return newProgress;
             });
 
-            // Use x402 for BASE-USDC deployments (direct wallet payment)
-            // x402 ALWAYS charges the wallet directly, never uses existing credits
+            // Use x402 for ALL BASE-USDC deployments (direct wallet payment)
+            // x402 endpoint now handles free tier detection (same as regular upload service)
             let fileResult;
-            // Use x402 for BILLABLE BASE-USDC deployments from Ethereum wallets
-            // Free files use regular upload service (bundler handles free tier)
             const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
             console.log(`[Deploy] ${file.name}: size=${file.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isFileInFreeUploadTier}`);
 
             if (
               walletType === 'ethereum' &&
-              manifestOptions?.selectedJitToken === 'base-usdc' &&
-              !isFileInFreeUploadTier  // Only use x402 for billable files
+              manifestOptions?.selectedJitToken === 'base-usdc'
             ) {
-              console.log('[X402] Using x402 flow for billable file:', file.name);
+              console.log(`[X402] Using x402 flow for BASE-USDC deploy (${isFileInFreeUploadTier ? 'FREE' : 'PAID'}):`, file.name);
 
               // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
               const maxUsdc = manifestOptions?.jitMaxTokenAmount
@@ -527,9 +524,6 @@ export function useFolderUpload() {
                 tags: deployTags,
               });
             } else {
-              if (isFileInFreeUploadTier && manifestOptions?.selectedJitToken === 'base-usdc') {
-                console.log(`[Free Deploy] File ${file.name} is free, using regular upload service`);
-              }
               // Regular upload with retry logic and timeout
               fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
             }
@@ -716,18 +710,17 @@ export function useFolderUpload() {
         type: 'application/x.arweave-manifest+json'
       });
 
-      // Use x402 for manifest upload when BASE-USDC is selected AND manifest is billable
-      // Free manifests use regular upload service (bundler handles free tier)
+      // Use x402 for ALL manifest uploads when BASE-USDC is selected
+      // x402 endpoint now handles free tier detection (same as regular upload service)
       let manifestResult;
       const isManifestInFreeUploadTier = isFileFree(manifestFile.size, freeUploadLimitBytes);
       console.log(`[Deploy] manifest.json: size=${manifestFile.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isManifestInFreeUploadTier}`);
 
       if (
         walletType === 'ethereum' &&
-        manifestOptions?.selectedJitToken === 'base-usdc' &&
-        !isManifestInFreeUploadTier  // Only use x402 for billable manifests
+        manifestOptions?.selectedJitToken === 'base-usdc'
       ) {
-        console.log('[X402] Using x402 flow for billable manifest upload');
+        console.log(`[X402] Using x402 flow for BASE-USDC manifest (${isManifestInFreeUploadTier ? 'FREE' : 'PAID'})`);
 
         // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
         const maxUsdc = manifestOptions?.jitMaxTokenAmount
@@ -751,9 +744,6 @@ export function useFolderUpload() {
           tags: manifestTags,
         });
       } else {
-        if (isManifestInFreeUploadTier && manifestOptions?.selectedJitToken === 'base-usdc') {
-          console.log(`[Free Deploy] Manifest is free, using regular upload service`);
-        }
         // Regular upload with Turbo SDK
         manifestResult = await turbo.uploadFile({
           file: manifestFile,

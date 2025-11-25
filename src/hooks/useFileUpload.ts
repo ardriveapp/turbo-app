@@ -321,8 +321,8 @@ export function useFileUpload() {
       });
     }
 
-    // Use x402 for BILLABLE BASE-USDC uploads from Ethereum wallets
-    // Free files use regular upload service (bundler handles free tier)
+    // Use x402 for ALL BASE-USDC uploads from Ethereum wallets
+    // x402 endpoint now handles free tier detection (same as regular upload service)
     console.log(`[X402] selectedJitToken: ${options?.selectedJitToken}, walletType: ${walletType}`);
 
     const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
@@ -330,11 +330,10 @@ export function useFileUpload() {
 
     if (
       walletType === 'ethereum' &&
-      options?.selectedJitToken === 'base-usdc' &&
-      !isFileInFreeUploadTier  // Only use x402 for billable files
+      options?.selectedJitToken === 'base-usdc'
     ) {
       try {
-        console.log('[X402] Using x402 flow for BASE-USDC upload:', fileName);
+        console.log(`[X402] Using x402 flow for BASE-USDC upload (${isFileInFreeUploadTier ? 'FREE' : 'PAID'}):`, fileName);
 
         // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
         const maxUsdc = options.jitMaxTokenAmount ? options.jitMaxTokenAmount / 1_000_000 : 10; // Default 10 USDC
@@ -371,10 +370,9 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
         // Throw error to stop upload - user must choose different approach
         throw new Error(errorMsg);
       }
-    } else if (isFileInFreeUploadTier && options?.selectedJitToken === 'base-usdc') {
-      // Free file with BASE-USDC selected - use regular upload (bundler handles free tier)
-      console.log(`[Free Upload] File ${fileName} is free (${file.size} bytes), using regular upload service`);
-    } else if (options?.jitEnabled && jitTokenType) {
+    }
+
+    if (options?.jitEnabled && jitTokenType) {
       // Regular JIT path (not x402)
       console.log(`[JIT] Using regular JIT flow with ${jitTokenType} for ${fileName}`);
     }
