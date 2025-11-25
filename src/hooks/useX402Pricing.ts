@@ -40,11 +40,10 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
 
   // Memoize x402 URL to prevent unnecessary re-renders and API calls
   // Safe dependencies: configMode and derived config values (no direct customConfig access)
+  // x402 URL is always derived from uploadServiceUrl since x402UploadUrl was removed from config
   const x402Url = useMemo(() => {
-    return configMode === 'custom'
-      ? `${config.uploadServiceUrl}/x402/data-item/signed`
-      : config.x402UploadUrl || `${config.uploadServiceUrl}/x402/data-item/signed`;
-  }, [configMode, config.uploadServiceUrl, config.x402UploadUrl]);
+    return `${config.uploadServiceUrl}/x402/data-item/signed`;
+  }, [config.uploadServiceUrl]);
 
   useEffect(() => {
     // Skip if file size is 0 or negative

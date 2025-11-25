@@ -455,7 +455,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, createTurboClient, uploadFileWithX402]);
+  }, [address, walletType, wallets, createTurboClient, uploadFileWithX402, freeUploadLimitBytes]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],

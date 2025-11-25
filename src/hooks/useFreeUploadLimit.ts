@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 
 /**
@@ -8,8 +8,7 @@ import { useStore } from '../store/useStore';
  */
 export function useFreeUploadLimit() {
   const uploadServiceUrl = useStore(s => s.getCurrentConfig().uploadServiceUrl);
-  const setFreeUploadLimitBytes = useStore(s => s.setFreeUploadLimitBytes);
-  const freeUploadLimitBytes = useStore(s => s.freeUploadLimitBytes);
+  const [freeUploadLimitBytes, setFreeUploadLimitBytes] = useState<number>(0);
 
   useEffect(() => {
     const fetchFreeUploadLimit = async () => {

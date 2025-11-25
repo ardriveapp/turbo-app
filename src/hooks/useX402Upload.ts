@@ -37,11 +37,9 @@ export function useX402Upload() {
 
       try {
         const config = getCurrentConfig();
-        // Derive x402 URL from base upload URL if in custom mode
-        // This ensures custom upload URLs work for X402 without separate configuration
-        const x402Url = configMode === 'custom'
-          ? `${config.uploadServiceUrl}/x402/data-item/signed`
-          : config.x402UploadUrl;
+        // Derive x402 URL from base upload URL
+        // x402UploadUrl was removed from config, always derive from uploadServiceUrl
+        const x402Url = `${config.uploadServiceUrl}/x402/data-item/signed`;
 
         // Determine network (Base Mainnet or Sepolia)
         // Only development mode uses Sepolia testnet, production and custom use Mainnet

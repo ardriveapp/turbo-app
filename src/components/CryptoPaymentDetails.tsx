@@ -30,7 +30,7 @@ export function CryptoPaymentDetails({
   walletType,
   onBalanceValidation,
   onShortageUpdate,
-  localJitMax,
+  localJitMax: _localJitMax, // eslint-disable-line @typescript-eslint/no-unused-vars
   onMaxTokenAmountChange,
   x402Pricing,
 }: CryptoPaymentDetailsProps) {
@@ -137,7 +137,6 @@ export function CryptoPaymentDetails({
   }, [tokenBalance, estimatedCost, balanceError, isNetworkError, tokenType, onBalanceValidation, onShortageUpdate]);
 
   const afterUpload = estimatedCost ? Math.max(0, tokenBalance - estimatedCost.tokenAmountReadable) : tokenBalance;
-  const hasSufficientBalance = estimatedCost ? tokenBalance >= estimatedCost.tokenAmountReadable : true;
 
   return (
     <div className="mb-4">

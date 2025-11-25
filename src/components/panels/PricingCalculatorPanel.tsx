@@ -5,7 +5,6 @@ import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, Cred
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useCryptoPriceForWinc, useWincForCrypto } from '../../hooks/useCryptoPrice';
-import { useFreeUploadLimit, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
 import { useX402Pricing } from '../../hooks/useX402Pricing';
 import { useStore } from '../../store/useStore';
 import { SupportedTokenType, tokenLabels } from '../../constants';
@@ -697,7 +696,7 @@ export default function PricingCalculatorPanel() {
                       <span className="text-sm text-link">Credits You'll Get</span>
                       <span className="text-lg font-medium text-fg-muted">
                         {selectedCurrency === 'usd'
-                          ? formatNumber(dollarAmount * creditsForOneUSD)
+                          ? formatNumber(dollarAmount * (creditsForOneUSD || 0))
                           : wincFromCrypto
                             ? formatNumber(wincFromCrypto / 1e12)
                             : '0'

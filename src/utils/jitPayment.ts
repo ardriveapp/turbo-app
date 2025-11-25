@@ -143,10 +143,9 @@ export async function calculateRequiredTokenAmount({
 
       const { configMode } = useStore.getState();
 
-      // Derive x402 URL from base upload URL if in custom mode
-      const x402Url = configMode === 'custom'
-        ? `${turboConfig.uploadServiceUrl}/x402/data-item/signed`
-        : turboConfig.x402UploadUrl;
+      // Derive x402 URL from base upload URL
+      // x402UploadUrl was removed from config, always derive from uploadServiceUrl
+      const x402Url = `${turboConfig.uploadServiceUrl}/x402/data-item/signed`;
 
       // Make POST request with Content-Length header to get pricing
       const response = await fetch(x402Url, {
