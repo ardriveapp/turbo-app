@@ -7,13 +7,21 @@ import { useStore } from '../store/useStore';
  * Defaults to 0 bytes (no free tier) if the limit cannot be fetched.
  */
 export function useFreeUploadLimit() {
-  const { getCurrentConfig, setFreeUploadLimitBytes, freeUploadLimitBytes } = useStore();
+  const uploadServiceUrl = useStore(s => s.getCurrentConfig().uploadServiceUrl);
+  const setFreeUploadLimitBytes = useStore(s => s.setFreeUploadLimitBytes);
+  const freeUploadLimitBytes = useStore(s => s.freeUploadLimitBytes);
 
   useEffect(() => {
     const fetchFreeUploadLimit = async () => {
+      // Guard against undefined uploadServiceUrl
+      if (!uploadServiceUrl) {
+        console.warn('Upload service URL not configured, defaulting to 0 free bytes');
+        setFreeUploadLimitBytes(0);
+        return;
+      }
+
       try {
-        const config = getCurrentConfig();
-        const response = await fetch(config.uploadServiceUrl);
+        const response = await fetch(uploadServiceUrl);
 
         if (!response.ok) {
           console.warn('Failed to fetch bundler info, defaulting to 0 free bytes');
@@ -35,7 +43,7 @@ export function useFreeUploadLimit() {
     };
 
     fetchFreeUploadLimit();
-  }, [getCurrentConfig, setFreeUploadLimitBytes]);
+  }, [uploadServiceUrl, setFreeUploadLimitBytes]);
 
   return freeUploadLimitBytes;
 }
