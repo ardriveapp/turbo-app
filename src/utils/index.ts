@@ -180,8 +180,28 @@ export const getArweaveUrl = (txId: string, dataCaches?: string[]): string => {
   // If dataCaches is provided and has entries, use the first one as the gateway
   // This ensures users browse to a gateway that actually has the bundled data
   if (dataCaches && dataCaches.length > 0) {
-    const firstCache = dataCaches[0];
-    // Ensure we use https for the data cache
+    let firstCache = dataCaches[0].trim();
+
+    // Validate and sanitize the cache string to avoid malformed URLs
+    // Check if it's a full URL (contains protocol)
+    if (firstCache.startsWith('http://') || firstCache.startsWith('https://')) {
+      try {
+        // Extract origin portion from full URL
+        const url = new URL(firstCache);
+        firstCache = url.host; // host includes hostname and port if present
+      } catch {
+        // If URL parsing fails, strip protocol manually
+        firstCache = firstCache.replace(/^https?:\/\//, '');
+      }
+    } else {
+      // Remove any leading protocol that might be malformed
+      firstCache = firstCache.replace(/^https?:\/\//, '');
+    }
+
+    // Remove any trailing slashes
+    firstCache = firstCache.replace(/\/+$/, '');
+
+    // Ensure exactly one slash between host and txId, always use https
     return `https://${firstCache}/${txId}`;
   }
 
