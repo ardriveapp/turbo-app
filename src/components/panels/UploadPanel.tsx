@@ -3,6 +3,7 @@ import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useFreeUploadLimit, isFileFree, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
 import { useX402Pricing } from '../../hooks/useX402Pricing';
+import { usePaymentFlow } from '../../hooks/usePaymentFlow';
 import { wincPerCredit, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
 import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
@@ -118,6 +119,10 @@ function CryptoPaymentDetails({
     const hasCost = (creditsNeeded > 0) || (totalCost > 0);
     if (hasCost) {
       calculate();
+    } else {
+      // Free upload - set cost to 0 immediately
+      setEstimatedCost({ tokenAmountReadable: 0, estimatedUSD: 0 });
+      onMaxTokenAmountChange(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditsNeeded, totalCost, tokenType, bufferPercentage, x402Pricing?.usdcAmount, x402Pricing?.loading, x402Pricing?.error]);
@@ -303,64 +308,28 @@ export default function UploadPanel() {
   const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // JIT payment local state for this upload
-  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
-
-  // Max will be auto-calculated by JitPaymentCard based on estimated cost
-  const [localJitMax, setLocalJitMax] = useState(0);
-
-  // Track if JIT section is expanded (for users with sufficient credits)
-  const [jitSectionExpanded, setJitSectionExpanded] = useState(false);
-
-  // Payment method tab - 'credits' or 'crypto'
-  const [paymentTab, setPaymentTab] = useState<'credits' | 'crypto'>('credits');
-
-  // Track crypto shortage details for combined warning
-  const [cryptoShortage, setCryptoShortage] = useState<{
-    amount: number;
-    tokenType: SupportedTokenType;
-  } | null>(null);
-
-  // Selected JIT token - will be set when user opens "Pay with Crypto"
-  // NOT set by default to avoid triggering x402 pricing before user interaction
-  const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
-    if (walletType === 'arweave') return 'ario';
-    if (walletType === 'solana') return 'solana';
-    return 'base-eth'; // Default for Ethereum - will switch to base-usdc when JIT opens
+  // Shared payment flow state and effects
+  const {
+    paymentTab,
+    setPaymentTab,
+    cryptoShortage,
+    setCryptoShortage,
+    localJitMax,
+    setLocalJitMax,
+    localJitEnabled,
+    setLocalJitEnabled,
+    jitSectionExpanded,
+    setJitSectionExpanded,
+    selectedJitToken,
+    setSelectedJitToken,
+    jitBalanceSufficient,
+    setJitBalanceSufficient,
+  } = usePaymentFlow({
+    walletType,
+    x402OnlyMode,
+    showConfirmModal,
+    initialJitEnabled: jitPaymentEnabled,
   });
-
-  // Switch to base-usdc when x402-only mode is enabled (only option for ETH wallets)
-  useEffect(() => {
-    if (x402OnlyMode && walletType === 'ethereum') {
-      setSelectedJitToken('base-usdc');
-    }
-  }, [x402OnlyMode, walletType]);
-
-  // Reset payment tab when modal opens
-  // In x402-only mode, start on Crypto tab (no credits available)
-  // In normal mode, start on Credits tab
-  useEffect(() => {
-    if (showConfirmModal) {
-      setPaymentTab(x402OnlyMode ? 'crypto' : 'credits');
-      setJitSectionExpanded(x402OnlyMode); // Auto-expand in x402-only mode
-    }
-  }, [showConfirmModal, x402OnlyMode]);
-
-  // Auto-select base-usdc (x402) ONLY when user explicitly opens "Pay with Crypto" section
-  // Reset to base-eth when they close it (unless x402-only mode is active)
-  // Do NOT switch based on localJitEnabled - that's just a preference, not a UI action
-  useEffect(() => {
-    if (walletType === 'ethereum') {
-      if (jitSectionExpanded) {
-        setSelectedJitToken('base-usdc'); // Switch to x402 when section expands
-      } else if (!x402OnlyMode) {
-        setSelectedJitToken('base-eth'); // Reset when section collapses (unless x402-only)
-      }
-    }
-  }, [walletType, jitSectionExpanded, x402OnlyMode]); // Added x402OnlyMode to dependencies
-
-  // Track if user has sufficient crypto balance for JIT payment
-  const [jitBalanceSufficient, setJitBalanceSufficient] = useState(true);
 
   // USD equivalent for credit pricing
   const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);

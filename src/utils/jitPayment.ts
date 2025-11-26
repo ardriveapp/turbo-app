@@ -185,12 +185,16 @@ export async function calculateRequiredTokenAmount({
 
       // Calculate winc per GiB based on standard Turbo pricing
       // Use payment service for winc conversion
-      const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-      const turbo = TurboFactory.unauthenticated({
-        paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
-      });
-      const { winc: wincPerGiBString } = await turbo.getFiatRates();
-      wincPerGiB = Number(wincPerGiBString);
+      try {
+        const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+        const turbo = TurboFactory.unauthenticated({
+          paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
+        });
+        const { winc: wincPerGiBString } = await turbo.getFiatRates();
+        wincPerGiB = Number(wincPerGiBString);
+      } catch (turboError) {
+        throw new Error(`Turbo getFiatRates failed: ${turboError instanceof Error ? turboError.message : String(turboError)}`);
+      }
 
       // USDC is pegged to USD (1 USDC = $1 USD)
       usdPerToken = 1.0;

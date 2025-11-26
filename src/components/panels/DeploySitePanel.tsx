@@ -119,6 +119,10 @@ function CryptoPaymentDetails({
     const hasCost = (creditsNeeded > 0) || (totalCost > 0);
     if (hasCost) {
       calculate();
+    } else {
+      // Free deployment - set cost to 0 immediately
+      setEstimatedCost({ tokenAmountReadable: 0, estimatedUSD: 0 });
+      onMaxTokenAmountChange(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditsNeeded, totalCost, tokenType, bufferPercentage, x402Pricing?.usdcAmount, x402Pricing?.loading, x402Pricing?.error]);
