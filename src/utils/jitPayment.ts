@@ -147,14 +147,18 @@ export async function calculateRequiredTokenAmount({
       // x402UploadUrl was removed from config, always derive from uploadServiceUrl
       const x402Url = `${turboConfig.uploadServiceUrl}/x402/data-item/signed`;
 
-      // Make POST request with Content-Length header to get pricing
+      // Use a 1 MiB probe size to avoid large memory allocation
+      // Content-Length is a forbidden header in browser fetch - browser sets it from actual body
+      // We'll scale the result to 1 GiB after getting the response
+      const probeSizeBytes = 1024 * 1024; // 1 MiB
+      const scaleToGiB = oneGiBBytes / probeSizeBytes; // 1024x scaling factor
+
       const response = await fetch(x402Url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/octet-stream',
-          'Content-Length': oneGiBBytes.toString(),
         },
-        body: new Uint8Array(0), // Empty body
+        body: new Uint8Array(probeSizeBytes), // Actual body with correct size
       });
 
       // Expect 402 Payment Required response
@@ -163,7 +167,7 @@ export async function calculateRequiredTokenAmount({
       }
 
       const priceData = await response.json();
-      console.log('[X402 Pricing] Response:', priceData);
+      console.log('[X402 Pricing] Response for 1 MiB probe:', priceData);
 
       // Find the Base network requirements
       const useMainnet = configMode !== 'development';
@@ -174,9 +178,10 @@ export async function calculateRequiredTokenAmount({
         throw new Error(`Network ${networkKey} not available in x402 pricing response`);
       }
 
-      // Parse the USDC amount (in smallest unit - 6 decimals)
-      const usdcSmallestUnit = Number(requirements.maxAmountRequired);
-      tokensPerGiB = usdcSmallestUnit / 1_000_000; // Convert to readable USDC
+      // Parse the USDC amount for 1 MiB (in smallest unit - 6 decimals) and scale to 1 GiB
+      const usdcSmallestUnitPerMiB = Number(requirements.maxAmountRequired);
+      const usdcSmallestUnitPerGiB = usdcSmallestUnitPerMiB * scaleToGiB;
+      tokensPerGiB = usdcSmallestUnitPerGiB / 1_000_000; // Convert to readable USDC
 
       // Calculate winc per GiB based on standard Turbo pricing
       // Use payment service for winc conversion
@@ -190,7 +195,7 @@ export async function calculateRequiredTokenAmount({
       // USDC is pegged to USD (1 USDC = $1 USD)
       usdPerToken = 1.0;
 
-      console.log(`[X402 Pricing] 1 GiB costs ${tokensPerGiB} USDC (${usdcSmallestUnit} smallest unit), ${wincPerGiB} winc`);
+      console.log(`[X402 Pricing] 1 GiB costs ${tokensPerGiB} USDC (${usdcSmallestUnitPerGiB} smallest unit, scaled from 1 MiB probe), ${wincPerGiB} winc`);
 
       if (wincPerGiB === 0) {
         throw new Error('Failed to get x402 pricing - wincPerGiB is 0');

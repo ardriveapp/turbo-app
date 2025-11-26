@@ -293,6 +293,16 @@ export default function CapturePanel() {
     // Calculate credits needed (0 if user has sufficient credits)
     const totalCost = calculateUploadCost(captureFile.size);
     const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+
+    // Prevent upload in x402-only mode for non-Ethereum wallets on billable captures
+    if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
+      setCaptureMessage({
+        type: 'error',
+        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.'
+      });
+      return;
+    }
+
     const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
 
     let jitMaxTokenAmountSmallest = 0;
@@ -1290,7 +1300,9 @@ export default function CapturePanel() {
                       onClick={handleConfirmUpload}
                       disabled={
                         (creditsNeeded > 0 && !localJitEnabled) ||
-                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
+                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient) ||
+                        // Disable if in x402-only mode with non-Ethereum wallet for billable captures
+                        (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum')
                       }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >

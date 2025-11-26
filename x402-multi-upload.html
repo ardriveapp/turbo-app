@@ -1183,11 +1183,11 @@
           if (uploadResult) {
             // Show payment badge
             const paidUsdcAmount = uploadResult.paidUsdcAmount;
-            if (paidUsdcAmount) {
-              paymentDiv.innerHTML = `<span class="file-payment-badge payment-usdc">💳 ${paidUsdcAmount} USDC</span>`;
-            } else {
-              paymentDiv.innerHTML = `<span class="file-payment-badge payment-credits">💎 Credits</span>`;
-            }
+            paymentDiv.innerHTML = ''; // Clear existing content
+            const badgeSpan = document.createElement('span');
+            badgeSpan.className = paidUsdcAmount ? 'file-payment-badge payment-usdc' : 'file-payment-badge payment-credits';
+            badgeSpan.textContent = paidUsdcAmount ? `💳 ${paidUsdcAmount} USDC` : '💎 Credits';
+            paymentDiv.appendChild(badgeSpan);
 
             // Show details toggle and hide tags/remove buttons
             toggleBtn.classList.remove('hidden');
@@ -1199,7 +1199,12 @@
         case 'failed':
           statusIcon.textContent = '❌';
           if (uploadResult && uploadResult.error) {
-            paymentDiv.innerHTML = `<span class="file-error" title="${uploadResult.error}">Error: ${uploadResult.error}</span>`;
+            const errorSpan = document.createElement('span');
+            errorSpan.className = 'file-error';
+            errorSpan.textContent = `Error: ${uploadResult.error}`;
+            errorSpan.setAttribute('title', uploadResult.error);
+            paymentDiv.innerHTML = ''; // Clear existing content
+            paymentDiv.appendChild(errorSpan);
           }
           removeBtn.classList.add('hidden');
           if (tagsToggleBtn) tagsToggleBtn.classList.add('hidden');

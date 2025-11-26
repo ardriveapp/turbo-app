@@ -125,7 +125,8 @@ function CryptoPaymentDetails({
   // Validate balance and update shortage info
   useEffect(() => {
     if (!estimatedCost) {
-      onBalanceValidation(true);
+      // Don't call onBalanceValidation - preserve previous state while pricing loads
+      // Clear shortage info since we don't have valid pricing yet
       onShortageUpdate(null);
       return;
     }
@@ -615,6 +616,16 @@ export default function UploadPanel() {
     // Only enable JIT if the user has insufficient credits to cover the cost
     // Calculate credits needed (0 if user has sufficient credits)
     const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+
+    // Prevent upload in x402-only mode for non-Ethereum wallets on billable uploads
+    if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
+      setUploadMessage({
+        type: 'error',
+        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.'
+      });
+      return;
+    }
+
     const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
 
     // Convert max token amount to smallest unit for SDK/x402
@@ -1580,7 +1591,11 @@ export default function UploadPanel() {
                       onClick={handleConfirmUpload}
                       disabled={
                         (creditsNeeded > 0 && !localJitEnabled) ||
-                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient)
+                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient) ||
+                        // Disable if in x402-only mode with non-Ethereum wallet for billable uploads
+                        (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') ||
+                        // Disable while x402 pricing is loading (for crypto payments)
+                        (localJitEnabled && creditsNeeded > 0 && selectedJitToken === 'base-usdc' && x402Pricing?.loading)
                       }
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >

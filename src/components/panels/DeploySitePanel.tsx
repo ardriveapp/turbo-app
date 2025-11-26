@@ -744,7 +744,9 @@ function DeployConfirmationModal({
               // Disable if on Credits tab and insufficient credits
               (paymentTab === 'credits' && creditsNeeded > 0) ||
               // Disable if on Crypto tab and insufficient crypto balance
-              (paymentTab === 'crypto' && !jitBalanceSufficient && creditsNeeded > 0)
+              (paymentTab === 'crypto' && !jitBalanceSufficient && creditsNeeded > 0) ||
+              // Disable if in x402-only mode with non-Ethereum wallet for billable deployments
+              (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum')
             }
             className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
           >
@@ -1408,14 +1410,24 @@ export default function DeploySitePanel() {
       return;
     }
 
+    // Calculate credits needed (0 if user has sufficient credits)
+    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+
+    // Prevent deployment in x402-only mode for non-Ethereum wallets on billable deployments
+    if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
+      setDeployMessage({
+        type: 'error',
+        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.'
+      });
+      return;
+    }
+
     // Save max token amount to store for future use (using selected token)
     if (selectedJitToken) {
       setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
     // Only enable JIT if the user is on Crypto tab and has insufficient credits
-    // Calculate credits needed (0 if user has sufficient credits)
-    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
     const shouldEnableJit = paymentTab === 'crypto' && creditsNeeded > 0;
 
     // Convert max token amount to smallest unit for SDK/x402
