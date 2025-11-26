@@ -120,8 +120,7 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
     };
 
     fetchX402Pricing();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileSizeBytes, x402Url]); // Only re-fetch when file size or x402 URL changes
+  }, [fileSizeBytes, x402Url, configMode]); // Re-fetch when file size, x402 URL, or config mode changes
 
   return {
     usdcAmount,
