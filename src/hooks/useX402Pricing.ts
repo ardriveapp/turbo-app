@@ -20,27 +20,33 @@ function getNetworkKeyFromConfigMode(configMode: ConfigMode): string {
   return X402_CONFIG.supportedNetworks[normalizedMode as keyof typeof X402_CONFIG.supportedNetworks];
 }
 
+// Use a fixed 1 MiB probe size to avoid OOM with large file sizes
+// The pricing is linear, so we can scale the result based on the requested size
+const PROBE_SIZE_BYTES = 1024 * 1024; // 1 MiB
+
 /**
  * Hook to get x402 pricing for a given file size
- * Makes a request to the x402 endpoint with Content-Length to get pricing
+ * Makes a request to the x402 endpoint with a 1 MiB probe to get pricing rate,
+ * then scales the result linearly to the requested file size.
+ * This avoids OOM issues with large file sizes (e.g., 1 GiB probes).
  *
  * @param fileSizeBytes - The size of the file in bytes
- * @returns Pricing information in USDC
+ * @returns Pricing information in USDC (scaled to the requested file size)
  */
 export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
-  const getCurrentConfig = useStore(s => s.getCurrentConfig);
-  const configMode = useStore(s => s.configMode);
+  // Select config values directly from store to ensure reactivity
+  const { configMode, config } = useStore((s) => ({
+    configMode: s.configMode,
+    config: s.getCurrentConfig(),
+  }));
+
   const [usdcAmount, setUsdcAmount] = useState<number>(0);
   const [usdcAmountSmallestUnit, setUsdcAmountSmallestUnit] = useState<string>('0');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Derive stable config object - safe because getCurrentConfig() never throws
-  const config = useMemo(() => getCurrentConfig(), [getCurrentConfig]);
-
   // Memoize x402 URL to prevent unnecessary re-renders and API calls
-  // Safe dependencies: configMode and derived config values (no direct customConfig access)
-  // x402 URL is always derived from uploadServiceUrl since x402UploadUrl was removed from config
+  // Recomputes when configMode or uploadServiceUrl changes
   const x402Url = useMemo(() => {
     return `${config.uploadServiceUrl}/x402/data-item/signed`;
   }, [config.uploadServiceUrl]);
@@ -60,18 +66,16 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
       setError(null);
 
       try {
+        console.log(`[X402 Pricing] Fetching rate using ${PROBE_SIZE_BYTES} byte probe, scaling to ${fileSizeBytes} bytes`);
 
-        console.log(`[X402 Pricing] Fetching price for ${fileSizeBytes} bytes from ${x402Url}`);
-
-        // Make a POST request with actual body size (like curl --data-binary)
-        // The body must be the correct size for Content-Length to be accurate
-        // This will return a 402 response with pricing information
+        // Make a POST request with a fixed 1 MiB probe size to avoid OOM
+        // The pricing is linear, so we'll scale the result based on the requested size
         const response = await fetch(x402Url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/octet-stream',
           },
-          body: new Uint8Array(fileSizeBytes), // Body with correct size (zeros)
+          body: new Uint8Array(PROBE_SIZE_BYTES), // Fixed 1 MiB probe
         });
 
         // We expect a 402 Payment Required response with pricing
@@ -86,14 +90,19 @@ export function useX402Pricing(fileSizeBytes: number): X402PricingResult {
             throw new Error(`Network ${networkKey} not available in x402 pricing response`);
           }
 
-          // Parse the USDC amount (in smallest unit - 6 decimals)
-          const amountSmallestUnit = requirements.maxAmountRequired;
-          const amountUSDC = Number(amountSmallestUnit) / 1_000_000; // Convert from smallest unit to USDC
+          // Parse the USDC amount for the probe size (in smallest unit - 6 decimals)
+          const probeAmountSmallestUnit = requirements.maxAmountRequired;
+          const probeAmountUSDC = Number(probeAmountSmallestUnit) / 1_000_000;
 
-          console.log(`[X402 Pricing] Price: ${amountUSDC} USDC (${amountSmallestUnit} smallest unit)`);
+          // Scale linearly to the requested file size
+          const scaleFactor = fileSizeBytes / PROBE_SIZE_BYTES;
+          const scaledAmountUSDC = probeAmountUSDC * scaleFactor;
+          const scaledAmountSmallestUnit = Math.ceil(Number(probeAmountSmallestUnit) * scaleFactor).toString();
 
-          setUsdcAmount(amountUSDC);
-          setUsdcAmountSmallestUnit(amountSmallestUnit);
+          console.log(`[X402 Pricing] Probe price: ${probeAmountUSDC} USDC, Scaled price: ${scaledAmountUSDC} USDC (${scaledAmountSmallestUnit} smallest unit)`);
+
+          setUsdcAmount(scaledAmountUSDC);
+          setUsdcAmountSmallestUnit(scaledAmountSmallestUnit);
         } else {
           // Unexpected status code
           const errorText = await response.text();
