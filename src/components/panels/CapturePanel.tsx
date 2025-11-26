@@ -997,8 +997,8 @@ export default function CapturePanel() {
 
               return (
                 <>
-                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free captures, and payment service available */}
-                  {canUseJit && !isFreeCapture && isPaymentServiceAvailable() && (
+                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free captures, payment service available, and not x402-only mode */}
+                  {canUseJit && !isFreeCapture && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
                       <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
                         <button
@@ -1030,7 +1030,7 @@ export default function CapturePanel() {
                   )}
 
                   {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
-                  {paymentTab === 'credits' && canUseJit && !isFreeCapture && isPaymentServiceAvailable() && (
+                  {paymentTab === 'credits' && canUseJit && !isFreeCapture && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
                       <div className="bg-surface rounded-lg border border-default p-4">
                         <div className="space-y-2.5">

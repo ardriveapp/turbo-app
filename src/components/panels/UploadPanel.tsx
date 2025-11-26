@@ -1291,8 +1291,8 @@ export default function UploadPanel() {
 
               return (
                 <>
-                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free uploads, and payment service available */}
-                  {canUseJit && !isFreeUpload && isPaymentServiceAvailable() && (
+                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free uploads, payment service available, and not x402-only mode */}
+                  {canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
                       <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
                         <button
@@ -1324,7 +1324,7 @@ export default function UploadPanel() {
                   )}
 
                   {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
-                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && isPaymentServiceAvailable() && (
+                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
                       <div className="bg-surface rounded-lg border border-default p-4">
                         <div className="space-y-2.5">

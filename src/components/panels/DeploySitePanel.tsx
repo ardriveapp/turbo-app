@@ -477,8 +477,8 @@ function DeployConfirmationModal({
         {(() => {
           return (
             <>
-              {/* Payment Method Tabs - Only show for wallets that support JIT, non-free deployments, and payment service available */}
-              {canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && (
+              {/* Payment Method Tabs - Only show for wallets that support JIT, non-free deployments, payment service available, and not x402-only mode */}
+              {canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && !x402OnlyMode && (
                 <div className="mb-4">
                   <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
                     <button
@@ -510,7 +510,7 @@ function DeployConfirmationModal({
               )}
 
               {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
-              {paymentTab === 'credits' && canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && (
+              {paymentTab === 'credits' && canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && !x402OnlyMode && (
                 <div className="mb-4">
                   <div className="bg-surface rounded-lg border border-default p-4">
                     <div className="space-y-2.5">
