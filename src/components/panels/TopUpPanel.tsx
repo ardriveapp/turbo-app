@@ -348,7 +348,7 @@ export default function TopUpPanel() {
       case 'arweave':
         return ['ario', 'arweave']; // ARIO first (preferred default for Arweave wallets)
       case 'ethereum':
-        return ['base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // Base-USDC first (preferred default for Ethereum wallets)
+        return ['ario', 'base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // ARIO first (preferred default - works via InjectedEthereumSigner)
       case 'solana':
         return ['solana'];
       default:
@@ -369,7 +369,7 @@ export default function TopUpPanel() {
       case 'arweave':
         return 'Connect an Arweave wallet (like Wander) to pay with AR tokens on Arweave';
       case 'ario':
-        return 'Connect an Arweave wallet (like Wander) to pay with ARIO tokens';
+        return 'Connect an Arweave or Ethereum wallet (like Wander or MetaMask) to pay with ARIO tokens';
       case 'ethereum':
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Ethereum L1 (higher fees)';
       case 'base-eth':
@@ -789,11 +789,11 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : walletType === 'ethereum' ? (
-              // Custom layout for Ethereum wallet with ETH tokens and USDC tokens
+              // Custom layout for Ethereum wallet with ARIO, ETH tokens, and USDC tokens
               <div className="space-y-4">
-                {/* ETH Tokens Row */}
-                <div className="grid grid-cols-3 gap-2">
-                  {(['ethereum', 'base-eth', 'pol'] as const).map((tokenType) => (
+                {/* Native Tokens Row - ARIO, ETH, Base ETH, POL */}
+                <div className="grid grid-cols-4 gap-2">
+                  {(['ario', 'ethereum', 'base-eth', 'pol'] as const).map((tokenType) => (
                     <button
                       key={tokenType}
                       onClick={() => {
@@ -810,14 +810,9 @@ export default function TopUpPanel() {
                         <div className="font-bold text-base">
                           {tokenLabels[tokenType]}
                         </div>
-                        {tokenType === 'base-eth' && (
+                        {(tokenType === 'ario' || tokenType === 'base-eth' || tokenType === 'pol') && (
                           <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            Low Fee
-                          </div>
-                        )}
-                        {tokenType === 'ethereum' && (
-                          <div className="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            High Fee
+                            Fast
                           </div>
                         )}
                       </div>
@@ -833,7 +828,7 @@ export default function TopUpPanel() {
 
                 {/* USDC Stablecoins Row */}
                 <div>
-                  <div className="text-xs font-medium text-link mb-2 px-1">Stablecoins (pegged to $1 USD)</div>
+                  <div className="text-xs font-medium text-link mb-2 px-1">Stablecoins</div>
                   <div className="grid grid-cols-3 gap-2">
                     {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => (
                       <button
@@ -1536,7 +1531,7 @@ export default function TopUpPanel() {
                       </div>
                       {wincForOneGiB && (targetBalance !== null ? targetBalance : creditBalance) > 0 && (
                         <div className="text-xs text-link">
-                          ~{(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB
+                          ~{formatStorage(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB))}
                         </div>
                       )}
                     </>

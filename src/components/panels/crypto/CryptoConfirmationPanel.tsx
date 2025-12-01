@@ -1,4 +1,5 @@
 import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount, POLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { InjectedEthereumSigner } from '@ar.io/sdk/web';
 import { useState } from 'react';
 import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users, Loader2, XCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
@@ -86,9 +87,10 @@ export default function CryptoConfirmationPanel({
 
   // Determine if user can pay directly or needs manual payment
   // SDK v1.35.0-alpha.2 officially supports USDC direct wallet payments
+  // ARIO payments from Ethereum wallets use InjectedEthereumSigner from @ar.io/sdk
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc' || tokenType === 'ario')) ||
     (walletType === 'solana' && tokenType === 'solana')
   );
 
@@ -121,6 +123,78 @@ export default function CryptoConfirmationPanel({
           } else {
             throw new Error(`Unsupported token type for Arweave wallet: ${tokenType}`);
           }
+
+          const result = await turbo.topUpWithTokens({
+            tokenAmount,
+            turboCreditDestinationAddress,
+          });
+
+          onPaymentComplete({
+            ...result,
+            quote,
+            tokenType,
+            transactionId: result.id,
+          });
+        } else if (walletType === 'ethereum' && tokenType === 'ario') {
+          // ARIO payment via Ethereum wallet using InjectedEthereumSigner
+          // ARIO is an AO-based token, so it requires signing AO data items
+          // We use InjectedEthereumSigner from @ar.io/sdk which can sign AO data items using an Ethereum wallet
+          const { ethers } = await import('ethers');
+
+          // Check if this is a Privy embedded wallet
+          const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+          let ethersSigner;
+
+          if (privyWallet) {
+            // Use Privy embedded wallet
+            const privyProvider = await privyWallet.getEthereumProvider();
+            const provider = new ethers.BrowserProvider(privyProvider);
+            ethersSigner = await provider.getSigner();
+          } else if (window.ethereum) {
+            // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            ethersSigner = await provider.getSigner();
+          } else {
+            throw new Error('No Ethereum wallet available');
+          }
+
+          const ethAddress = await ethersSigner.getAddress();
+
+          // Create InjectedEthereumSigner for AO data item signing
+          const injectedProvider = {
+            getSigner: () => ({
+              signMessage: async (message: any) => {
+                const arg = typeof message === 'string' ? message : message.raw || message;
+                return await ethersSigner.signMessage(arg);
+              },
+              getAddress: async () => ethAddress,
+            }),
+          };
+
+          const injectedSigner = new InjectedEthereumSigner(injectedProvider as any);
+
+          // Set public key (required for AO data item signing)
+          // The user will sign a message to derive their public key
+          const connectMessage = 'Sign this message to connect to Turbo Gateway for ARIO payment';
+          const signature = await ethersSigner.signMessage(connectMessage);
+          const messageHash = ethers.hashMessage(connectMessage);
+          const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
+          injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+
+          // Create Turbo client with the InjectedEthereumSigner
+          // For ARIO (AO-based token), we use `signer` NOT `walletAdapter`
+          const turbo = TurboFactory.authenticated({
+            signer: injectedSigner,
+            token: 'ario',
+            paymentServiceConfig: {
+              url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
+            },
+            gatewayUrl: turboConfig.tokenMap['ario'],
+          });
+
+          // Convert to smallest unit using SDK helper
+          const tokenAmount = ARIOToTokenAmount(cryptoAmount);
 
           const result = await turbo.topUpWithTokens({
             tokenAmount,
@@ -704,23 +778,14 @@ export default function CryptoConfirmationPanel({
             {/* Terms */}
             <div className="text-center bg-surface/30 rounded-lg p-4 mb-6">
               <p className="text-xs text-link">
-                By continuing, you agree to our{' '}
-                <a 
-                  href="https://ardrive.io/tos-and-privacy/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                By uploading, you agree to our{' '}
+                <a
+                  href="https://ardrive.io/tos-and-privacy/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-fg-muted hover:text-fg-muted/80 transition-colors"
                 >
                   Terms of Service
-                </a>
-                {' '}and{' '}
-                <a 
-                  href="https://ardrive.io/tos-and-privacy/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-fg-muted hover:text-fg-muted/80 transition-colors"
-                >
-                  Privacy Policy
                 </a>
               </p>
             </div>
