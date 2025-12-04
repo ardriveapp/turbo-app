@@ -6,12 +6,12 @@ import {
   OnDemandFunding,
   TurboUnauthenticatedConfiguration,
 } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useX402Upload } from './useX402Upload';
+import { useEthereumTurboClient } from './useEthereumTurboClient';
 import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
 
 interface DeployResult {
@@ -51,8 +51,9 @@ export interface UploadError {
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
-  const { wallets } = useWallets(); // Get Privy wallets
+  useWallets(); // Required for Privy wallet detection in useEthereumTurboClient
   const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook for BASE-USDC deployments
+  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit from bundler
 
   // useFolderUpload store state logged
@@ -151,64 +152,9 @@ export function useFolderUpload() {
         });
         
       case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
-
-        // Detect token type from current network if not overridden
-        let detectedTokenType: 'ethereum' | 'base-eth' | 'pol' = 'ethereum';
-
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network if no override provided
-          if (!tokenTypeOverride) {
-            try {
-              const { getTokenTypeFromChainId } = await import('../utils');
-              const network = await ethersProvider.getNetwork();
-              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
-            } catch (error) {
-              console.warn('Failed to detect network, defaulting to ethereum:', error);
-            }
-          }
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || detectedTokenType) as any,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...dynamicTurboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
-          }
-          // Creating Ethereum walletAdapter
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network if no override provided
-          if (!tokenTypeOverride) {
-            try {
-              const { getTokenTypeFromChainId } = await import('../utils');
-              const network = await ethersProvider.getNetwork();
-              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
-            } catch (error) {
-              console.warn('Failed to detect network, defaulting to ethereum:', error);
-            }
-          }
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || detectedTokenType) as any,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...dynamicTurboConfig,
-          });
-        }
+        // Use the shared Ethereum Turbo client with custom connect message
+        // This caches the client globally and only prompts for signature once per session
+        return createEthereumTurboClient(tokenTypeOverride || 'ethereum');
         
       case 'solana':
         // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
@@ -243,7 +189,7 @@ export function useFolderUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, wallets, getCurrentConfig, validateWalletState]);
+  }, [address, walletType, getCurrentConfig, validateWalletState, createEthereumTurboClient]);
 
 
   // Smart content type detection based on file extensions

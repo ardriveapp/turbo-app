@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { useStore } from '../../store/useStore';
@@ -9,7 +8,7 @@ import { formatWalletAddress } from '../../utils';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { usePrimaryArNSName } from '../../hooks/usePrimaryArNSName';
 import CopyButton from '../CopyButton';
-import { useWallets } from '@privy-io/react-auth';
+import { useEthereumTurboClient } from '../../hooks/useEthereumTurboClient';
 
 interface BalanceResult {
   address: string;
@@ -44,7 +43,7 @@ interface BalanceResult {
 export default function BalanceCheckerPanel() {
   const { address: connectedAddress, walletType } = useStore();
   const turboConfig = useTurboConfig();
-  const { wallets } = useWallets(); // Get Privy wallets
+  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,61 +53,31 @@ export default function BalanceCheckerPanel() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokedApprovals, setRevokedApprovals] = useState<Set<string>>(new Set());
   const wincForOneGiB = useWincForOneGiB();
-  
+
   // Get ArNS name for the searched address
   const { arnsName, loading: loadingArNS } = usePrimaryArNSName(balanceResult?.address || null);
 
-  // Create Turbo client with proper wallet support (exact same pattern as file upload)
+  // Create Turbo client with proper wallet support
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
     if (!connectedAddress || !walletType) {
       throw new Error('Wallet not connected');
     }
-    
+
     switch (walletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
+        return TurboFactory.authenticated({
           ...turboConfig,
-          signer 
+          signer
         });
-        
+
       case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        // Use the shared Ethereum Turbo client with custom connect message
+        return createEthereumTurboClient('ethereum');
 
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: "ethereum",
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
-          }
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: "ethereum",
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        }
-        
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
@@ -119,11 +88,11 @@ export default function BalanceCheckerPanel() {
           walletAdapter: window.solana,
           ...turboConfig,
         });
-        
+
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [connectedAddress, walletType, turboConfig, wallets]);
+  }, [connectedAddress, walletType, turboConfig, createEthereumTurboClient]);
 
   // Load recent searches from localStorage and check for pre-filled address
   useEffect(() => {
