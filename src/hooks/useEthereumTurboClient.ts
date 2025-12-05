@@ -151,7 +151,8 @@ export function useEthereumTurboClient() {
       const signature = await ethersSigner.signMessage(ETHEREUM_CONNECT_MESSAGE);
       const messageHash = ethers.hashMessage(ETHEREUM_CONNECT_MESSAGE);
       const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
-      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+      // Strip the 0x04 uncompressed prefix (first byte) - InjectedEthereumSigner expects 64 bytes
+      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey).slice(1));
 
       // Cache the signer globally (shared across all token types)
       const cachedSigner: CachedEthereumSigner = {
