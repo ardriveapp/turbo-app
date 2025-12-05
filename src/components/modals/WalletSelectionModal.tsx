@@ -59,7 +59,7 @@ const WalletSelectionModal = ({
           const newWallet = await createWallet();
 
           if (newWallet) {
-            setAddress(newWallet.address, 'ethereum');
+            await setEthereumAddress(newWallet.address);
             setConnectingWallet(undefined);
             onClose();
           } else {
@@ -90,22 +90,24 @@ const WalletSelectionModal = ({
       );
 
       if (privyWallet) {
-        setAddress(privyWallet.address, 'ethereum');
-        setConnectingWallet(undefined);
-        setWaitingForPrivyWallet(false);
-        onClose();
+        setEthereumAddress(privyWallet.address).then(() => {
+          setConnectingWallet(undefined);
+          setWaitingForPrivyWallet(false);
+          onClose();
+        });
       } else {
         // If we have wallets but none match our criteria, use the first one
         const firstWallet = privyWallets[0];
         if (firstWallet) {
-          setAddress(firstWallet.address, 'ethereum');
-          setConnectingWallet(undefined);
-          setWaitingForPrivyWallet(false);
-          onClose();
+          setEthereumAddress(firstWallet.address).then(() => {
+            setConnectingWallet(undefined);
+            setWaitingForPrivyWallet(false);
+            onClose();
+          });
         }
       }
     }
-  }, [privyWallets, waitingForPrivyWallet, setAddress, onClose]);
+  }, [privyWallets, waitingForPrivyWallet, onClose]);
 
   // Check if user is already authenticated with Privy when modal opens
   useEffect(() => {
@@ -117,8 +119,9 @@ const WalletSelectionModal = ({
       const privyWallet = privyWallets.find(w => w.walletClientType === 'privy');
 
       if (privyWallet && privyWallet.address !== currentAddress) {
-        setAddress(privyWallet.address, 'ethereum');
-        onClose();
+        setEthereumAddress(privyWallet.address).then(() => {
+          onClose();
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,12 +154,18 @@ const WalletSelectionModal = ({
       // Clear any cached Turbo clients since we have a new wallet
       clearEthereumTurboClientCache();
 
-      // Ethereum wallet connected via RainbowKit
-      setAddress(ethAccount.address, 'ethereum');
-      setIntentionalEthConnect(false);
-      onClose();
+      // Resolve and set Ethereum address (handles checksummed vs lowercase)
+      setEthereumAddress(ethAccount.address).then(() => {
+        setIntentionalEthConnect(false);
+        onClose();
+      }).catch((error) => {
+        console.error('[Wallet Connection] Failed to set Ethereum address:', error);
+        // Still close modal on error - address was set via fallback in setEthereumAddress
+        setIntentionalEthConnect(false);
+        onClose();
+      });
     }
-  }, [ethAccount.isConnected, ethAccount.address, intentionalEthConnect, setAddress, onClose]);
+  }, [ethAccount.isConnected, ethAccount.address, intentionalEthConnect, onClose]);
 
   // Reset the handled flag when the modal opens (component mounts)
   useEffect(() => {
@@ -259,7 +268,7 @@ const WalletSelectionModal = ({
       );
 
       if (privyWallet) {
-        setAddress(privyWallet.address, 'ethereum');
+        await setEthereumAddress(privyWallet.address);
         // Close the modal immediately without waiting
         setTimeout(() => onClose(), 0);
         return;
