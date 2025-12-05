@@ -1,6 +1,7 @@
 import { ARIO, ANT, AOProcess, ContractSigner, InjectedEthereumSigner, AoSigner } from '@ar.io/sdk/web';
 import { connect } from '@permaweb/aoconnect';
 import { ethers } from 'ethers';
+import { getCachedEthereumSigner, setCachedEthereumSigner } from '../hooks/useEthereumTurboClient';
 
 // Production AR.IO Process ID for comparison
 const PRODUCTION_PROCESS_ID = 'qNvAoz0TgcH7DMg8BCVn8jF32QH5L6T29VjHxhHqqGE';
@@ -97,44 +98,70 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
     return window.arweaveWallet as ContractSigner;
   } else if (walletType === 'ethereum') {
     // For Ethereum wallets, create AoSigner (like EthWalletConnector + our existing pattern)
-    if (!window.ethereum) {
-      throw new Error('Ethereum wallet not found. Please install MetaMask.');
+    // First, check if we have a cached signer from Turbo operations (uploads, etc.)
+    const cachedSigner = getCachedEthereumSigner();
+
+    let injectedSigner: InjectedEthereumSigner;
+    let address: string;
+
+    if (cachedSigner) {
+      // Reuse the cached signer - no new signature needed!
+      console.log('✅ Reusing cached Ethereum signer for ArNS (no signature needed)');
+      injectedSigner = cachedSigner.injectedSigner;
+      address = cachedSigner.address;
+
+      // Ensure address property is set for ArNS permission checks
+      (injectedSigner as any).address = address;
+    } else {
+      // No cached signer - need to create one and request signature
+      console.log('Creating new Ethereum signer for ArNS (will request signature)...');
+
+      if (!window.ethereum) {
+        throw new Error('Ethereum wallet not found. Please install MetaMask.');
+      }
+
+      // Use our existing Ethereum pattern from uploads
+      const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+      const ethersSigner = await ethersProvider.getSigner();
+      address = await ethersSigner.getAddress();
+
+      // Create provider interface that matches reference app pattern
+      const provider = {
+        getSigner: () => ({
+          signMessage: async (message: any) => {
+            // Handle different message types (string, Uint8Array, object with raw)
+            if (typeof message === 'string' || message instanceof Uint8Array) {
+              return await ethersSigner.signMessage(message);
+            }
+            const arg = message.raw || message;
+            return await ethersSigner.signMessage(arg);
+          },
+          getAddress: async () => address,
+        }),
+      };
+
+      injectedSigner = new InjectedEthereumSigner(provider as any);
+
+      // CRITICAL: Set the address property for ArNS permission checks
+      (injectedSigner as any).address = address;
+
+      // Set up public key (required for Ethereum signers)
+      const message = 'Sign this message to connect to Turbo Gateway';
+      const signature = await ethersSigner.signMessage(message);
+      const messageHash = ethers.hashMessage(message);
+      const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
+      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+
+      // Cache the signer so Turbo operations can reuse it
+      setCachedEthereumSigner(injectedSigner, ethersSigner, address);
     }
 
-    // Use our existing Ethereum pattern from uploads
-    const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-    const ethersSigner = await ethersProvider.getSigner();
-    const address = await ethersSigner.getAddress();
-
-    // Create provider interface that matches reference app pattern
-    const provider = {
-      getSigner: () => ({
-        signMessage: async (message: any) => {
-          const arg = typeof message === 'string' ? message : message.raw || message;
-          return await ethersSigner.signMessage(arg);
-        },
-        getAddress: async () => address,
-      }),
-    };
-
-    const injectedSigner = new InjectedEthereumSigner(provider as any);
-
-    // CRITICAL: Set the address property for ArNS permission checks
-    (injectedSigner as any).address = address;
-
-    // Set up public key (required for Ethereum signers)
-    const message = 'Sign this message to connect to Turbo Gateway';
-    const signature = await ethersSigner.signMessage(message);
-    const messageHash = ethers.hashMessage(message);
-    const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
-    injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
-    
     // Create AoSigner wrapper (like reference app EthWalletConnector)
     const aoSigner: AoSigner = async ({ data, tags, target }) => {
       if (!injectedSigner.publicKey) {
         throw new Error('Public key not set for Ethereum signer');
       }
-      
+
       // Use arbundles to create data item (like reference app)
       const { createData } = await import('arbundles');
       const dataItem = createData(data as string, injectedSigner, {
@@ -151,7 +178,7 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
         raw: dataItem.getRaw() as unknown as ArrayBuffer,
       };
     };
-    
+
     return aoSigner as ContractSigner;
   } else {
     throw new Error('Only Arweave and Ethereum wallets can update ArNS records.');
