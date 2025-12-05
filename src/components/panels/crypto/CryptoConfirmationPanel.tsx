@@ -180,8 +180,7 @@ export default function CryptoConfirmationPanel({
           const signature = await ethersSigner.signMessage(connectMessage);
           const messageHash = ethers.hashMessage(connectMessage);
           const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
-          // Strip the 0x04 uncompressed prefix (first byte) - InjectedEthereumSigner expects 64 bytes
-          injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey).slice(1));
+          injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
 
           // Create Turbo client with the InjectedEthereumSigner
           // For ARIO (AO-based token), we use `signer` NOT `walletAdapter`

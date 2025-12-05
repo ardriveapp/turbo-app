@@ -150,8 +150,7 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
       const signature = await ethersSigner.signMessage(message);
       const messageHash = ethers.hashMessage(message);
       const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
-      // Strip the 0x04 uncompressed prefix (first byte) - InjectedEthereumSigner expects 64 bytes
-      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey).slice(1));
+      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
 
       // Cache the signer so Turbo operations can reuse it
       setCachedEthereumSigner(injectedSigner, ethersSigner, address);
