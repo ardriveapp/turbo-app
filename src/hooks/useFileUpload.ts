@@ -7,6 +7,7 @@ import {
 } from '@ardrive/turbo-sdk/web';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
@@ -69,6 +70,7 @@ const mergeTags = (
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
+  const ethAccount = useAccount(); // RainbowKit/Wagmi account state
   const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook
   const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit
@@ -100,6 +102,9 @@ export function useFileUpload() {
       throw new Error('Wallet not connected');
     }
 
+    // Check for Privy embedded wallet
+    const hasPrivyWallet = wallets.some(w => w.walletClientType === 'privy');
+
     // WALLET ISOLATION: Verify correct wallet is available and connected
     switch (walletType) {
       case 'arweave':
@@ -108,8 +113,10 @@ export function useFileUpload() {
         }
         break;
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('MetaMask not available. Please reconnect your Ethereum wallet.');
+        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, or direct window.ethereum
+        // WalletConnect and other remote wallets won't have window.ethereum
+        if (!hasPrivyWallet && !ethAccount.isConnected && !window.ethereum) {
+          throw new Error('Ethereum wallet not connected. Please reconnect your wallet.');
         }
         break;
       case 'solana':
@@ -118,7 +125,7 @@ export function useFileUpload() {
         }
         break;
     }
-  }, [address, walletType]);
+  }, [address, walletType, wallets, ethAccount.isConnected]);
 
   // Get config function from store
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);
@@ -246,22 +253,28 @@ export function useFileUpload() {
       jitTokenType = 'ario';
     } else if (walletType === 'ethereum') {
       // Detect token type from current network chainId
+      // Priority: wagmi account chainId > Privy > window.ethereum
       try {
-        const { ethers } = await import('ethers');
         const { getTokenTypeFromChainId } = await import('../utils');
 
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        // First try wagmi's chainId (works for RainbowKit, WalletConnect, etc.)
+        if (ethAccount.chainId) {
+          jitTokenType = getTokenTypeFromChainId(ethAccount.chainId);
+        } else {
+          // Fallback to Privy or window.ethereum for legacy support
+          const { ethers } = await import('ethers');
+          const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 
-        if (privyWallet) {
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const network = await ethersProvider.getNetwork();
-          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
-        } else if (window.ethereum) {
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const network = await ethersProvider.getNetwork();
-          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          if (privyWallet) {
+            const provider = await privyWallet.getEthereumProvider();
+            const ethersProvider = new ethers.BrowserProvider(provider);
+            const network = await ethersProvider.getNetwork();
+            jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          } else if (window.ethereum) {
+            const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+            const network = await ethersProvider.getNetwork();
+            jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          }
         }
       } catch (error) {
         console.warn('Failed to detect network, defaulting to ethereum:', error);
@@ -412,7 +425,7 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, createTurboClient, uploadFileWithX402, freeUploadLimitBytes]);
+  }, [address, walletType, wallets, ethAccount.chainId, createTurboClient, uploadFileWithX402, freeUploadLimitBytes]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],

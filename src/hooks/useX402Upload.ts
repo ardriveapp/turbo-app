@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { useAccount, useConfig } from 'wagmi';
+import { getConnectorClient } from 'wagmi/actions';
 import { ethers } from 'ethers';
 import { X402Funding } from '@ardrive/turbo-sdk/web';
 import { createWalletClient, custom } from 'viem';
@@ -64,9 +66,19 @@ interface CachedX402Signer {
 
 let sharedX402SignerCache: CachedX402Signer | null = null;
 
+/**
+ * Utility function to clear the X402 signer cache from outside React components
+ * Call this when wallet changes to ensure fresh signer is created
+ */
+export function clearX402SignerCache() {
+  sharedX402SignerCache = null;
+}
+
 export function useX402Upload() {
   const { configMode } = useStore();
   const { wallets } = useWallets();
+  const wagmiConfig = useConfig();
+  const ethAccount = useAccount();
   const { createEthereumTurboClient } = useEthereumTurboClient();
   const [uploading, setUploading] = useState(false);
 
@@ -82,16 +94,33 @@ export function useX402Upload() {
           ? X402_CONFIG.chainIds.production
           : X402_CONFIG.chainIds.development;
 
-        // Get Ethereum provider (Privy or MetaMask)
+        // Get Ethereum provider - priority: Privy > RainbowKit/Wagmi > window.ethereum
         const privyWallet = wallets.find((w) => w.walletClientType === 'privy');
-        let ethProvider;
+        let ethProvider: any;
 
         if (privyWallet) {
+          // Privy embedded wallet (email login)
           ethProvider = await privyWallet.getEthereumProvider();
+        } else if (ethAccount.isConnected && ethAccount.connector) {
+          // RainbowKit/Wagmi connected wallet (MetaMask, WalletConnect, Coinbase, etc.)
+          try {
+            const connectorClient = await getConnectorClient(wagmiConfig, {
+              connector: ethAccount.connector,
+            });
+            ethProvider = connectorClient.transport;
+          } catch (error) {
+            console.warn('Failed to get connector client for X402, falling back to window.ethereum:', error);
+            if (window.ethereum) {
+              ethProvider = window.ethereum;
+            } else {
+              throw new Error('Failed to get Ethereum provider from connected wallet');
+            }
+          }
         } else if (window.ethereum) {
+          // Direct window.ethereum fallback (legacy support)
           ethProvider = window.ethereum;
         } else {
-          throw new Error('No Ethereum wallet found');
+          throw new Error('No Ethereum wallet found. Please connect a wallet first.');
         }
 
         let ethersProvider = new ethers.BrowserProvider(ethProvider);
@@ -105,10 +134,17 @@ export function useX402Upload() {
         if (currentChainId !== chainId) {
           console.log(`Network mismatch. Current: ${currentChainId}, Expected: ${chainId}`);
 
-          // Only attempt auto-switching for regular wallets (not Privy)
-          if (window.ethereum && !privyWallet) {
+          // Only attempt auto-switching for injected wallets (not Privy, not WalletConnect)
+          // WalletConnect wallets need to switch in the mobile app
+          const isInjectedWallet = window.ethereum && !privyWallet &&
+            (!ethAccount.connector || ethAccount.connector.id === 'injected' || ethAccount.connector.id === 'metaMask');
+
+          if (isInjectedWallet && window.ethereum) {
+            // We've confirmed window.ethereum exists, store reference for type safety
+            const ethereum = window.ethereum;
+
             try {
-              await window.ethereum.request({
+              await ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: `0x${chainId.toString(16)}` }],
               });
@@ -118,7 +154,7 @@ export function useX402Upload() {
               await new Promise((resolve) => setTimeout(resolve, 1000));
 
               // Create fresh provider and signer after switch
-              ethersProvider = new ethers.BrowserProvider(window.ethereum);
+              ethersProvider = new ethers.BrowserProvider(ethereum);
               ethersSigner = await ethersProvider.getSigner();
             } catch (switchError: any) {
               // Error 4902 means the network doesn't exist in MetaMask - add it first
@@ -132,7 +168,7 @@ export function useX402Upload() {
                   : 'https://sepolia.basescan.org';
 
                 try {
-                  await window.ethereum.request({
+                  await ethereum.request({
                     method: 'wallet_addEthereumChain',
                     params: [
                       {
@@ -154,7 +190,7 @@ export function useX402Upload() {
                   await new Promise((resolve) => setTimeout(resolve, 1000));
 
                   // Create fresh provider and signer after add
-                  ethersProvider = new ethers.BrowserProvider(window.ethereum);
+                  ethersProvider = new ethers.BrowserProvider(ethereum);
                   ethersSigner = await ethersProvider.getSigner();
                 } catch {
                   throw new Error(
@@ -265,7 +301,7 @@ export function useX402Upload() {
         setUploading(false);
       }
     },
-    [configMode, wallets, createEthereumTurboClient]
+    [configMode, wallets, wagmiConfig, ethAccount.isConnected, ethAccount.connector, createEthereumTurboClient]
   );
 
   return {

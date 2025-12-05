@@ -8,6 +8,7 @@ import {
 } from '@ardrive/turbo-sdk/web';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useX402Upload } from './useX402Upload';
@@ -51,7 +52,8 @@ export interface UploadError {
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
-  useWallets(); // Required for Privy wallet detection in useEthereumTurboClient
+  const { wallets } = useWallets(); // Required for Privy wallet detection in useEthereumTurboClient
+  const ethAccount = useAccount(); // RainbowKit/Wagmi account state
   const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook for BASE-USDC deployments
   const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit from bundler
@@ -82,6 +84,9 @@ export function useFolderUpload() {
       throw new Error('Wallet not connected');
     }
 
+    // Check for Privy embedded wallet
+    const hasPrivyWallet = wallets.some(w => w.walletClientType === 'privy');
+
     // WALLET ISOLATION: Verify correct wallet is available and connected
     switch (walletType) {
       case 'arweave':
@@ -90,8 +95,10 @@ export function useFolderUpload() {
         }
         break;
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('MetaMask not available. Please reconnect your Ethereum wallet.');
+        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, or direct window.ethereum
+        // WalletConnect and other remote wallets won't have window.ethereum
+        if (!hasPrivyWallet && !ethAccount.isConnected && !window.ethereum) {
+          throw new Error('Ethereum wallet not connected. Please reconnect your wallet.');
         }
         break;
       case 'solana':
@@ -100,7 +107,7 @@ export function useFolderUpload() {
         }
         break;
     }
-  }, [address, walletType]);
+  }, [address, walletType, wallets, ethAccount.isConnected]);
 
   // Get config function from store
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);

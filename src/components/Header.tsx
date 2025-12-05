@@ -2,6 +2,7 @@ import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Camera, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useDisconnect } from 'wagmi';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
 import { formatWalletAddress, getTurboBalance } from '../utils';
@@ -12,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePrivyWallet } from '../hooks/usePrivyWallet';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
+import { clearEthereumTurboClientCache } from '../hooks/useEthereumTurboClient';
 
 // Services for logged-in users
 const accountServices = [
@@ -72,6 +74,7 @@ const Header = () => {
   const { address, walletType, clearAddress, clearAllPaymentState, setCreditBalance, configMode, isPaymentServiceAvailable } = useStore();
   const { isPrivyUser, privyLogout } = usePrivyWallet();
   const { exportWallet } = usePrivy();
+  const { disconnectAsync } = useDisconnect(); // RainbowKit/Wagmi disconnect
   // Only check ArNS for Arweave/Ethereum wallets - Solana can't own ArNS names
   const { arnsName, profile, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
   
@@ -484,9 +487,14 @@ const Header = () => {
                     if (walletType === 'arweave' && window.arweaveWallet) {
                       await window.arweaveWallet.disconnect();
                     } else if (walletType === 'ethereum') {
-                      // For Ethereum wallets, we should clear the connection
-                      // Note: MetaMask doesn't have a direct disconnect method
-                      // The connection is managed by wagmi
+                      // Disconnect RainbowKit/Wagmi connection (handles MetaMask, WalletConnect, Coinbase, etc.)
+                      try {
+                        await disconnectAsync();
+                      } catch {
+                        // Wagmi disconnect failed, continue anyway
+                      }
+                      // Clear cached Turbo clients
+                      clearEthereumTurboClientCache();
                     } else if (walletType === 'solana' && window.solana) {
                       // Properly disconnect Solana wallet to prevent conflicts
                       try {

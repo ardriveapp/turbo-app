@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { useAccount } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { clearEthereumTurboClientCache } from './useEthereumTurboClient';
 
 /**
  * Hook that listens for wallet account changes across all supported wallet types
@@ -20,14 +21,30 @@ import { useWallet } from '@solana/wallet-adapter-react';
 export function useWalletAccountListener() {
   const { address, walletType, setAddress, clearAddress, clearAllPaymentState } = useStore();
 
-  // Listen for Ethereum account changes (MetaMask, Privy embedded wallet)
-  const { address: ethAddress } = useAccount();
+  // Listen for Ethereum account changes (RainbowKit, MetaMask, Privy embedded wallet)
+  const { address: ethAddress, isConnected: ethIsConnected, connector } = useAccount();
+
+  // Track previous connector to detect wallet app switches
+  const prevConnectorRef = useRef<string | null>(null);
+
+  // Handle RainbowKit/Wagmi session restoration on page load
+  // When user refreshes, wagmi auto-reconnects and we need to update our store
+  useEffect(() => {
+    if (ethIsConnected && ethAddress && !address) {
+      // Session restored from RainbowKit/Wagmi - update our store
+      console.log('[Wallet Listener] Session restored from RainbowKit:', ethAddress);
+      setAddress(ethAddress, 'ethereum');
+    }
+  }, [ethIsConnected, ethAddress, address, setAddress]);
 
   // Update address if Ethereum account changes
   useEffect(() => {
     if (walletType === 'ethereum' && ethAddress && ethAddress !== address) {
       console.log('[Wallet Listener] Ethereum address changed:', { from: address, to: ethAddress });
       console.warn('[Wallet Listener] IMPORTANT: Wallet account has switched. Clearing payment state to prevent wrong account usage.');
+
+      // Clear cached Turbo clients since we have a new wallet
+      clearEthereumTurboClientCache();
 
       // Update to new address
       setAddress(ethAddress, 'ethereum');
@@ -38,6 +55,19 @@ export function useWalletAccountListener() {
       // Note: Balance will be automatically refetched by Header component's useEffect
     }
   }, [ethAddress, address, walletType, setAddress, clearAllPaymentState]);
+
+  // Detect connector (wallet app) changes - important for clearing caches
+  useEffect(() => {
+    const currentConnectorId = connector?.uid || null;
+
+    if (walletType === 'ethereum' && prevConnectorRef.current !== null && currentConnectorId !== prevConnectorRef.current) {
+      console.log('[Wallet Listener] Ethereum connector changed:', { from: prevConnectorRef.current, to: currentConnectorId });
+      // Clear cached Turbo clients when switching wallet apps
+      clearEthereumTurboClientCache();
+    }
+
+    prevConnectorRef.current = currentConnectorId;
+  }, [connector?.uid, walletType]);
 
   // Listen for Solana wallet changes
   const { publicKey: solanaPublicKey } = useWallet();
