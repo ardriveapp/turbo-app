@@ -29,10 +29,20 @@ export function useWalletAccountListener() {
 
   // Handle RainbowKit/Wagmi session restoration on page load
   // When user refreshes, wagmi auto-reconnects and we need to update our store
+  // Also handles case where RainbowKit reconnects to a different address than stored
   useEffect(() => {
-    if (ethIsConnected && ethAddress && !address) {
-      // Session restored from RainbowKit/Wagmi - update our store
-      console.log('[Wallet Listener] Session restored from RainbowKit:', ethAddress);
+    if (ethIsConnected && ethAddress && ethAddress !== address) {
+      // Session restored from RainbowKit/Wagmi with different or new address - update our store
+      // This handles both:
+      // 1. Empty store (!address) - fresh session restoration
+      // 2. Different address - RainbowKit reconnected to different wallet than stored
+      console.log('[Wallet Listener] Session restored/updated from RainbowKit:', { from: address, to: ethAddress });
+
+      // Only clear cache if there was a previous address (actual switch, not initial load)
+      if (address) {
+        clearEthereumTurboClientCache();
+      }
+
       setAddress(ethAddress, 'ethereum');
     }
   }, [ethIsConnected, ethAddress, address, setAddress]);
