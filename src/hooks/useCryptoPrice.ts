@@ -11,7 +11,8 @@ const getTokenSmallestUnit = (tokenType: SupportedTokenType): bigint => {
     case 'arweave':
       return BigInt(10 ** 12); // winston
     case 'ario':
-      return BigInt(10 ** 6); // mARIO - 1 ARIO = 1,000,000 mARIO
+    case 'base-ario':
+      return BigInt(10 ** 6); // mARIO - 1 ARIO = 1,000,000 mARIO (same for AO and Base)
     case 'ethereum':
     case 'base-eth':
       return BigInt(10 ** 18); // wei

@@ -129,15 +129,6 @@ export function JitPaymentCard({
 
   return (
     <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-lg border border-default p-3">
-      {/* x402 info for base-usdc */}
-      {tokenType === 'base-usdc' && (
-        <div className="mb-2 pb-2 border-b border-default/30">
-          <div className="text-xs text-link">
-            Using <span className="text-fg-muted font-medium">x402 protocol</span> for instant payment processing
-          </div>
-        </div>
-      )}
-
       {/* Message when no files selected */}
       {!hasCost && (
         <div className="text-center py-4">

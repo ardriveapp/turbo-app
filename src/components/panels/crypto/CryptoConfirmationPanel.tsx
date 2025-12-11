@@ -88,9 +88,10 @@ export default function CryptoConfirmationPanel({
   // Determine if user can pay directly or needs manual payment
   // SDK v1.35.0-alpha.2 officially supports USDC direct wallet payments
   // ARIO payments from Ethereum wallets use InjectedEthereumSigner from @ar.io/sdk
+  // Base ARIO uses walletAdapter pattern like other Base tokens
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc' || tokenType === 'ario')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'base-ario' || tokenType === 'polygon-usdc' || tokenType === 'ario')) ||
     (walletType === 'solana' && tokenType === 'solana')
   );
 
@@ -207,8 +208,8 @@ export default function CryptoConfirmationPanel({
             tokenType,
             transactionId: result.id,
           });
-        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) {
-          // ETH L1/Base ETH/POL/USDC direct payment via Ethereum wallet
+        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'base-ario' || tokenType === 'polygon-usdc')) {
+          // ETH L1/Base ETH/POL/USDC/Base-ARIO direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
 
           // Check if this is a Privy embedded wallet
@@ -238,7 +239,7 @@ export default function CryptoConfirmationPanel({
           const isDevMode = turboConfig.paymentServiceUrl?.includes('.dev');
           const expectedChainId = (tokenType === 'ethereum' || tokenType === 'usdc')
             ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
-            : (tokenType === 'base-eth' || tokenType === 'base-usdc')
+            : (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
             ? (isDevMode ? 84532 : 8453) // Base Sepolia : Base mainnet
             : (tokenType === 'pol' || tokenType === 'polygon-usdc')
             ? (isDevMode ? 80002 : 137) // Amoy testnet : Polygon mainnet
@@ -259,7 +260,7 @@ export default function CryptoConfirmationPanel({
                 provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
               } catch {
-                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc')
+                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
                   ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
                   : (tokenType === 'pol' || tokenType === 'polygon-usdc')
                   ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
@@ -268,7 +269,7 @@ export default function CryptoConfirmationPanel({
               }
             } else if (window.ethereum) {
               // Only attempt auto-switching for regular wallets
-              if (tokenType === 'base-eth' || tokenType === 'base-usdc') {
+              if (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario') {
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -322,7 +323,7 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
-                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : 'ETH';
+                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : tokenType === 'base-ario' ? 'ARIO' : 'ETH';
                     throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
@@ -430,12 +431,15 @@ export default function CryptoConfirmationPanel({
 
           const turbo = TurboFactory.authenticated(turboConfig_forSDK);
 
-          // Convert to smallest unit (wei for ETH/Base, POL for Polygon, 6 decimals for USDC)
+          // Convert to smallest unit (wei for ETH/Base, POL for Polygon, 6 decimals for USDC/ARIO)
           let tokenAmount;
           if (tokenType === 'pol') {
             tokenAmount = POLToTokenAmount(cryptoAmount);
           } else if (tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc') {
             // USDC uses 6 decimals
+            tokenAmount = (cryptoAmount * 1e6).toString();
+          } else if (tokenType === 'base-ario') {
+            // Base ARIO uses 6 decimals (same as ARIO on AO)
             tokenAmount = (cryptoAmount * 1e6).toString();
           } else {
             tokenAmount = ETHToTokenAmount(cryptoAmount);

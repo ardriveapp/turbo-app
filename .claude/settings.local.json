@@ -48,7 +48,12 @@
       "Bash(test:*)",
       "Bash(npm install:*)",
       "Bash(git commit:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm pack:*)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm run build:prod:*)"
     ],
     "deny": [],
     "ask": []

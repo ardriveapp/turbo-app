@@ -170,6 +170,7 @@ export default function TopUpPanel() {
     switch (tokenType) {
       case 'arweave': return [0.5, 1, 5, 10];
       case 'ario': return [50, 100, 500, 1000];
+      case 'base-ario': return [50, 100, 500, 1000]; // Same presets as ARIO
       case 'ethereum': return [0.01, 0.05, 0.1, 0.25];
       case 'base-eth': return [0.01, 0.05, 0.1, 0.25];
       case 'solana': return [0.05, 0.1, 0.25, 0.5];
@@ -348,7 +349,7 @@ export default function TopUpPanel() {
       case 'arweave':
         return ['ario', 'arweave']; // ARIO first (preferred default for Arweave wallets)
       case 'ethereum':
-        return ['ario', 'base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // ARIO first (preferred default - works via InjectedEthereumSigner)
+        return ['base-ario', 'ario', 'base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // Base ARIO first, then ARIO (AO)
       case 'solana':
         return ['solana'];
       default:
@@ -370,6 +371,8 @@ export default function TopUpPanel() {
         return 'Connect an Arweave wallet (like Wander) to pay with AR tokens on Arweave';
       case 'ario':
         return 'Connect an Arweave or Ethereum wallet (like Wander or MetaMask) to pay with ARIO tokens';
+      case 'base-ario':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with ARIO on Base L2 (fast & low fees)';
       case 'ethereum':
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Ethereum L1 (higher fees)';
       case 'base-eth':
@@ -789,11 +792,120 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : walletType === 'ethereum' ? (
-              // Custom layout for Ethereum wallet with ARIO, ETH tokens, and USDC tokens
-              <div className="space-y-4">
-                {/* Native Tokens Row - ARIO, ETH, Base ETH, POL */}
-                <div className="grid grid-cols-4 gap-2">
-                  {(['ario', 'ethereum', 'base-eth', 'pol'] as const).map((tokenType) => (
+              // Compact layout for Ethereum wallet with all token options
+              <div className="space-y-3">
+                {/* Native Tokens Row - Base ARIO, ARIO (AO), ETH options, POL */}
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {(['base-ario', 'ario', 'ethereum', 'base-eth', 'pol'] as const).map((tokenType) => {
+                    const tokenName = tokenType === 'base-ario' ? 'ARIO'
+                      : tokenType === 'ario' ? 'ARIO'
+                      : tokenType === 'ethereum' ? 'ETH'
+                      : tokenType === 'base-eth' ? 'ETH'
+                      : 'POL';
+                    const networkName = tokenType === 'base-ario' ? 'Base'
+                      : tokenType === 'ario' ? 'AO'
+                      : tokenType === 'ethereum' ? 'Ethereum'
+                      : tokenType === 'base-eth' ? 'Base'
+                      : 'Polygon';
+                    const isFast = tokenType === 'base-ario' || tokenType === 'ario' || tokenType === 'base-eth' || tokenType === 'pol';
+                    const isNoFee = tokenType === 'base-ario' || tokenType === 'ario';
+
+                    return (
+                      <button
+                        key={tokenType}
+                        onClick={() => {
+                          setSelectedTokenType(tokenType);
+                          setErrorMessage('');
+                        }}
+                        className={`p-2 rounded-lg border transition-all text-left ${
+                          selectedTokenType === tokenType
+                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-sm">{tokenName}</div>
+                            <div className="text-[10px] opacity-75">{networkName}</div>
+                          </div>
+                          {selectedTokenType === tokenType && (
+                            <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                          )}
+                        </div>
+                        {(isFast || isNoFee) && (
+                          <div className="flex gap-1 mt-1">
+                            {isFast && (
+                              <span className="text-[9px] text-green-400 font-medium">Fast</span>
+                            )}
+                            {isNoFee && (
+                              <span className="text-[9px] text-blue-400 font-medium">No Fee</span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* USDC Stablecoins Row */}
+                <div>
+                  <div className="text-[10px] font-medium text-link mb-1.5 px-1 uppercase tracking-wider">Stablecoins</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => {
+                      const networkName = tokenType === 'usdc' ? 'Ethereum'
+                        : tokenType === 'base-usdc' ? 'Base'
+                        : 'Polygon';
+                      const isFast = tokenType === 'base-usdc' || tokenType === 'polygon-usdc';
+
+                      return (
+                        <button
+                          key={tokenType}
+                          onClick={() => {
+                            setSelectedTokenType(tokenType);
+                            setErrorMessage('');
+                          }}
+                          className={`p-2 rounded-lg border transition-all text-left ${
+                            selectedTokenType === tokenType
+                              ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                              : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-sm">USDC</div>
+                              <div className="text-[10px] opacity-75">{networkName}</div>
+                            </div>
+                            {selectedTokenType === tokenType && (
+                              <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                            )}
+                          </div>
+                          {isFast && (
+                            <div className="mt-1">
+                              <span className="text-[9px] text-green-400 font-medium">Fast</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Compact layout for other wallet types (Arweave, Solana)
+              <div className={`grid gap-1.5 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {getAvailableTokens().map((tokenType) => {
+                  const tokenName = tokenType === 'ario' ? 'ARIO'
+                    : tokenType === 'arweave' ? 'AR'
+                    : tokenType === 'solana' ? 'SOL'
+                    : tokenLabels[tokenType];
+                  const networkName = tokenType === 'ario' ? 'AO Network'
+                    : tokenType === 'arweave' ? 'Arweave'
+                    : tokenType === 'solana' ? 'Solana'
+                    : '';
+                  const isFast = tokenType === 'ario' || tokenType === 'solana';
+                  const isNoFee = tokenType === 'ario';
+
+                  return (
                     <button
                       key={tokenType}
                       onClick={() => {
@@ -806,93 +918,28 @@ export default function TopUpPanel() {
                           : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="font-bold text-base">
-                          {tokenLabels[tokenType]}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-base">{tokenName}</div>
+                          <div className="text-xs opacity-75">{networkName}</div>
                         </div>
-                        {(tokenType === 'ario' || tokenType === 'base-eth' || tokenType === 'pol') && (
-                          <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            Fast
-                          </div>
+                        {selectedTokenType === tokenType && (
+                          <Check className="w-4 h-4 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="text-xs font-medium opacity-90 mb-0.5">
-                        {tokenNetworkLabels[tokenType]}
-                      </div>
-                      <div className="text-[11px] opacity-75 line-clamp-2">
-                        {tokenNetworkDescriptions[tokenType]}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* USDC Stablecoins Row */}
-                <div>
-                  <div className="text-xs font-medium text-link mb-2 px-1">Stablecoins</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => (
-                      <button
-                        key={tokenType}
-                        onClick={() => {
-                          setSelectedTokenType(tokenType);
-                          setErrorMessage('');
-                        }}
-                        className={`p-3 rounded-lg border transition-all text-left ${
-                          selectedTokenType === tokenType
-                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="font-bold text-base">
-                            {tokenLabels[tokenType]}
-                          </div>
-                          {tokenType === 'base-usdc' && (
-                            <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                              Fast
-                            </div>
+                      {(isFast || isNoFee) && (
+                        <div className="flex gap-2 mt-1.5">
+                          {isFast && (
+                            <span className="text-[10px] text-green-400 font-medium">Fast</span>
+                          )}
+                          {isNoFee && (
+                            <span className="text-[10px] text-blue-400 font-medium">No Fee</span>
                           )}
                         </div>
-                        <div className="text-xs font-medium opacity-90 mb-0.5">
-                          {tokenNetworkLabels[tokenType]}
-                        </div>
-                        <div className="text-[11px] opacity-75 line-clamp-2">
-                          {tokenNetworkDescriptions[tokenType]}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Default layout for other wallet types (Arweave, Solana)
-              <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : getAvailableTokens().length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {getAvailableTokens().map((tokenType) => (
-                  <button
-                    key={tokenType}
-                    onClick={() => {
-                      setSelectedTokenType(tokenType);
-                      setErrorMessage('');
-                    }}
-                    className={`p-4 rounded-lg border transition-all text-left ${
-                      selectedTokenType === tokenType
-                        ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-bold text-lg">
-                        {tokenLabels[tokenType as keyof typeof tokenLabels]}
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium opacity-90 mb-1">
-                      {tokenNetworkLabels[tokenType]}
-                    </div>
-                    <div className="text-xs opacity-75">
-                      {tokenNetworkDescriptions[tokenType]}
-                    </div>
-                  </button>
-                ))}
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

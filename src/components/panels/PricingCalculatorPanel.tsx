@@ -30,6 +30,7 @@ export default function PricingCalculatorPanel() {
     { value: 'usd', label: 'USD', symbol: '$' },
     { value: 'arweave', label: tokenLabels.arweave, symbol: 'AR' },
     { value: 'ario', label: tokenLabels.ario, symbol: 'ARIO' },
+    { value: 'base-ario', label: tokenLabels['base-ario'], symbol: 'ARIO' },
     { value: 'ethereum', label: tokenLabels.ethereum, symbol: 'ETH' },
     { value: 'base-eth', label: tokenLabels['base-eth'], symbol: 'ETH' },
     { value: 'solana', label: tokenLabels.solana, symbol: 'SOL' },
@@ -69,7 +70,8 @@ export default function PricingCalculatorPanel() {
         decimals = 12; // winston
         break;
       case 'ario':
-        decimals = 6; // mARIO - 1 ARIO = 1,000,000 mARIO
+      case 'base-ario':
+        decimals = 6; // mARIO - 1 ARIO = 1,000,000 mARIO (same for AO and Base)
         break;
       case 'ethereum':
       case 'base-eth':

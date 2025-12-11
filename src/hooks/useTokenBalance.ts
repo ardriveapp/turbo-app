@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
-import { SupportedTokenType, X402_CONFIG, ERC20_ABI, ETHEREUM_CONFIG, POLYGON_CONFIG } from '../constants';
+import { SupportedTokenType, X402_CONFIG, ERC20_ABI, ETHEREUM_CONFIG, POLYGON_CONFIG, BASE_ARIO_CONFIG } from '../constants';
 import { getSolanaConnection } from '../utils/solanaConnection';
 
 /**
@@ -243,6 +243,54 @@ export function useTokenBalance(
   }, [configMode]);
 
   /**
+   * Fetch BASE-ARIO balance using ethers.js and ERC-20 contract
+   * ARIO tokens bridged to Base L2 network
+   */
+  const fetchBaseArioBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
+    try {
+      if (!window.ethereum) {
+        throw new Error('No Ethereum wallet found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+
+      // Check current network (same chain IDs as base-usdc/base-eth)
+      const network = await provider.getNetwork();
+      const currentChainId = Number(network.chainId);
+      const expectedChainId = configMode === 'development'
+        ? BASE_ARIO_CONFIG.chainIds.development
+        : BASE_ARIO_CONFIG.chainIds.production;
+
+      // If wrong network, return 0 balance with clear error
+      if (currentChainId !== expectedChainId) {
+        const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
+        throw new Error(`Please switch to ${networkName} network to view balance`);
+      }
+
+      // Get Base ARIO contract address for current network
+      const arioAddress = configMode === 'development'
+        ? BASE_ARIO_CONFIG.contractAddresses.development
+        : BASE_ARIO_CONFIG.contractAddresses.production;
+
+      // Create contract instance
+      const contract = new ethers.Contract(arioAddress, ERC20_ABI, provider);
+
+      // Fetch balance
+      const balanceInSmallest = await contract.balanceOf(ethAddress);
+      const balanceInArio = Number(ethers.formatUnits(balanceInSmallest, BASE_ARIO_CONFIG.decimals)); // ARIO uses 6 decimals
+      const balanceInSmallestNumber = Number(balanceInSmallest);
+
+      return {
+        readable: balanceInArio,
+        smallest: balanceInSmallestNumber,
+      };
+    } catch (err: any) {
+      console.error('Failed to fetch BASE-ARIO balance:', err);
+      throw err; // Re-throw to preserve error message
+    }
+  }, [configMode]);
+
+  /**
    * Fetch Ethereum L1 ETH balance using ethers.js
    */
   const fetchEthereumBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
@@ -466,6 +514,10 @@ export function useTokenBalance(
           result = await fetchBaseUsdcBalance(address);
           break;
 
+        case 'base-ario':
+          result = await fetchBaseArioBalance(address);
+          break;
+
         case 'polygon-usdc':
           result = await fetchPolygonUsdcBalance(address);
           break;
@@ -493,7 +545,7 @@ export function useTokenBalance(
     } finally {
       setLoading(false);
     }
-  }, [address, tokenType, walletType, fetchArBalance, fetchArioBalance, fetchSolBalance, fetchEthereumBalance, fetchBaseEthBalance, fetchPolBalance, fetchUsdcBalance, fetchBaseUsdcBalance, fetchPolygonUsdcBalance]);
+  }, [address, tokenType, walletType, fetchArBalance, fetchArioBalance, fetchSolBalance, fetchEthereumBalance, fetchBaseEthBalance, fetchPolBalance, fetchUsdcBalance, fetchBaseUsdcBalance, fetchBaseArioBalance, fetchPolygonUsdcBalance]);
 
   // Fetch balance on mount and when dependencies change (only if enabled)
   useEffect(() => {

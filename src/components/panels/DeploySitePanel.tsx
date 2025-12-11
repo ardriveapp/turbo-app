@@ -393,10 +393,8 @@ function DeployConfirmationModal({
 
   const handleCryptoTabClick = () => {
     onPaymentTabChange('crypto');
-    // Immediately set token for Ethereum wallets to avoid base-eth flash
-    if (walletType === 'ethereum') {
-      onSelectedJitTokenChange('base-usdc');
-    }
+    // Keep current selection (default is base-ario for Ethereum wallets)
+    // User can change via JitTokenSelector if needed
   };
   return (
     <BaseModal onClose={onClose}>
@@ -1431,8 +1429,9 @@ export default function DeploySitePanel() {
       setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
-    // Only enable JIT if the user is on Crypto tab and has insufficient credits
-    const shouldEnableJit = paymentTab === 'crypto' && creditsNeeded > 0;
+    // Enable JIT if user has explicitly selected crypto payment tab
+    // This allows forcing crypto payment even when credits are sufficient
+    const shouldEnableJit = paymentTab === 'crypto';
 
     // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
@@ -1445,12 +1444,13 @@ export default function DeploySitePanel() {
       setDeployMessage(null);
       setDeploySuccessInfo(null); // Clear any previous success info
       setArnsUpdateCancelled(false); // Reset cancel state for new deployment
+      // Pre-topup flow for crypto payments (one payment for all files)
       const result = await deployFolder(Array.from(selectedFolder), {
         indexFile: indexFile || undefined,
         fallbackFile: fallbackFile || undefined,
-        jitEnabled: shouldEnableJit,
-        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        selectedJitToken: selectedJitToken, // Pass selected token for x402
+        cryptoPayment: shouldEnableJit,
+        tokenAmount: jitMaxTokenAmountSmallest,
+        selectedToken: selectedJitToken,
       });
       
       if (result.manifestId) {

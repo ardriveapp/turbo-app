@@ -73,9 +73,13 @@ export const getANT = (processId: string, signer?: any, hyperbeamUrl?: string) =
 /**
  * Create appropriate signer based on wallet type (following reference app pattern)
  * @param walletType - The wallet type ('arweave' | 'ethereum' | 'solana')
+ * @param ethereumProvider - Optional Ethereum provider for non-injected wallets (Privy, WalletConnect, etc.)
  * @returns Proper ContractSigner for the wallet type
  */
-export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 'solana' | null): Promise<ContractSigner> => {
+export const createContractSigner = async (
+  walletType: 'arweave' | 'ethereum' | 'solana' | null,
+  ethereumProvider?: any
+): Promise<ContractSigner> => {
   if (walletType === 'arweave') {
     // For Arweave wallets, ensure wallet is connected and get the active address
     if (!window.arweaveWallet) {
@@ -116,12 +120,14 @@ export const createContractSigner = async (walletType: 'arweave' | 'ethereum' | 
       // No cached signer - need to create one and request signature
       console.log('Creating new Ethereum signer for ArNS (will request signature)...');
 
-      if (!window.ethereum) {
-        throw new Error('Ethereum wallet not found. Please install MetaMask.');
+      // Use provided ethereumProvider, or fall back to window.ethereum
+      const providerToUse = ethereumProvider || window.ethereum;
+      if (!providerToUse) {
+        throw new Error('Ethereum wallet not found. Please connect a wallet first.');
       }
 
       // Use our existing Ethereum pattern from uploads
-      const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+      const ethersProvider = new ethers.BrowserProvider(providerToUse);
       const ethersSigner = await ethersProvider.getSigner();
       address = await ethersSigner.getAddress();
 

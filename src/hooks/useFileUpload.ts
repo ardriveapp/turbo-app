@@ -11,9 +11,8 @@ import { useAccount } from 'wagmi';
 import { supportsJitPayment } from '../utils/jitPayment';
 import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
-import { useX402Upload } from './useX402Upload';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
-import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
+import { useFreeUploadLimit } from './useFreeUploadLimit';
 import { getContentType } from '../utils/mimeTypes';
 
 interface UploadResult {
@@ -71,7 +70,6 @@ export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
   const ethAccount = useAccount(); // RainbowKit/Wagmi account state
-  const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook
   const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit
   const [uploading, setUploading] = useState(false);
@@ -144,11 +142,8 @@ export function useFileUpload() {
       turboClientCache.current.address === address &&
       turboClientCache.current.tokenType === effectiveTokenType
     ) {
-      console.log('✅ Reusing cached Turbo client (no re-authentication needed)');
       return turboClientCache.current.client;
     }
-
-    console.log('Creating new Turbo client (will request signature for authentication)');
     const config = getCurrentConfig();
     const turboConfig = {
       paymentServiceConfig: { url: config.paymentServiceUrl },
@@ -164,7 +159,6 @@ export function useFileUpload() {
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
-        // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
         const arweaveClient = TurboFactory.authenticated({
           ...turboConfig,
@@ -183,10 +177,8 @@ export function useFileUpload() {
         }
 
         return arweaveClient;
-        
+
       case 'ethereum':
-        // Use the shared Ethereum Turbo client with custom connect message
-        // This caches the client globally and only prompts for signature once per session
         const ethereumClient = await createEthereumTurboClient(tokenTypeOverride || 'ethereum');
 
         // Also cache in local ref for consistency with other wallet types
@@ -245,11 +237,13 @@ export function useFileUpload() {
     setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
     // Determine the token type for JIT payment and uploads
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets: detect from current network (ETH L1, Base, or Polygon)
+    // Priority: user-selected JIT token > wallet-specific defaults
     let jitTokenType: SupportedTokenType | null = null;
 
-    if (walletType === 'arweave') {
+    // If user explicitly selected a JIT token, use that
+    if (options?.selectedJitToken && supportsJitPayment(options.selectedJitToken)) {
+      jitTokenType = options.selectedJitToken;
+    } else if (walletType === 'arweave') {
       jitTokenType = 'ario';
     } else if (walletType === 'ethereum') {
       // Detect token type from current network chainId
@@ -293,68 +287,11 @@ export function useFileUpload() {
       });
     }
 
-    // Use x402 for ALL BASE-USDC uploads from Ethereum wallets
-    // x402 endpoint now handles free tier detection (same as regular upload service)
-    console.log(`[X402] selectedJitToken: ${options?.selectedJitToken}, walletType: ${walletType}`);
-
-    const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
-    console.log(`[Upload] ${fileName}: size=${file.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isFileInFreeUploadTier}`);
-
-    if (
-      walletType === 'ethereum' &&
-      options?.selectedJitToken === 'base-usdc'
-    ) {
-      try {
-        console.log(`[X402] Using x402 flow for BASE-USDC upload (${isFileInFreeUploadTier ? 'FREE' : 'PAID'}):`, fileName);
-
-        // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
-        const maxUsdc = options.jitMaxTokenAmount ? options.jitMaxTokenAmount / 1_000_000 : 10; // Default 10 USDC
-
-        const result = await uploadFileWithX402(file, {
-          maxUsdcAmount: maxUsdc,
-          onProgress: (progress) => {
-            setUploadProgress((prev) => ({ ...prev, [fileName]: progress }));
-          },
-          tags: options?.customTags,
-        });
-
-        // Add metadata and return
-        setUploadProgress((prev) => ({ ...prev, [fileName]: 100 }));
-        return {
-          ...result,
-          timestamp: Date.now(),
-          fileName: file.name,
-          fileSize: file.size,
-          contentType: getContentType(file),
-        };
-      } catch (x402Error) {
-        console.error('x402 upload failed:', x402Error);
-
-        // Show user-friendly error with fallback suggestion
-        const errorMsg = `x402 payment failed: ${
-          x402Error instanceof Error ? x402Error.message : 'Unknown error'
-        }.
-
-Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment through the Turbo SDK.`;
-
-        setErrors((prev) => ({ ...prev, [fileName]: errorMsg }));
-
-        // Throw error to stop upload - user must choose different approach
-        throw new Error(errorMsg);
-      }
-    }
-
-    if (options?.jitEnabled && jitTokenType) {
-      // Regular JIT path (not x402)
-      console.log(`[JIT] Using regular JIT flow with ${jitTokenType} for ${fileName}`);
-    }
-
     try {
-      // Creating Turbo client for upload
-      const turbo = await createTurboClient(jitTokenType || undefined);
-
-      // Starting upload for file
-      console.log(`Starting upload for ${fileName} (${file.size} bytes)`);
+      // Only pass jitTokenType if JIT is actually enabled, otherwise use default
+      // This prevents triggering walletAdapter path for regular credit-based uploads
+      const tokenTypeForClient = (options?.jitEnabled && jitTokenType) ? jitTokenType : undefined;
+      const turbo = await createTurboClient(tokenTypeForClient);
 
       // Upload file using the proper uploadFile method for browsers
       const uploadResult = await turbo.uploadFile({
@@ -381,11 +318,9 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
               ]
         },
         events: {
-          // Overall progress (includes both signing and upload)
           onProgress: (progressData: { totalBytes: number; processedBytes: number; step?: string }) => {
-            const { totalBytes, processedBytes, step } = progressData;
+            const { totalBytes, processedBytes } = progressData;
             const percentage = Math.round((processedBytes / totalBytes) * 100);
-            console.log(`Upload progress for ${fileName}: ${percentage}% (${processedBytes}/${totalBytes} bytes, step: ${step || 'unknown'})`);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
             // Update active uploads array with progress
             setActiveUploads(prev => prev.map(upload =>
@@ -395,14 +330,10 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
             ));
           },
           onError: (error: any) => {
-            // Upload error occurred
-            console.error(`Upload error for ${fileName}:`, error);
             const errorMessage = formatUploadError(error?.message || 'Upload failed');
             setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
           },
           onSuccess: () => {
-            // Upload completed successfully
-            console.log(`Upload success for ${fileName}`);
             setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
           }
         }
@@ -425,16 +356,20 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, ethAccount.chainId, createTurboClient, uploadFileWithX402, freeUploadLimitBytes]);
+  }, [address, walletType, wallets, ethAccount.chainId, createTurboClient, freeUploadLimitBytes]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],
     options?: {
-      jitEnabled?: boolean;
-      jitMaxTokenAmount?: number; // In smallest unit
-      jitBufferMultiplier?: number;
+      cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
+      tokenAmount?: number; // Amount to top up in smallest unit (e.g., mARIO)
+      selectedToken?: SupportedTokenType; // Token to use for crypto payment
       customTags?: Array<{ name: string; value: string }>;
-      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
+      // Legacy JIT options (deprecated - use cryptoPayment instead)
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number;
+      jitBufferMultiplier?: number;
+      selectedJitToken?: SupportedTokenType;
     }
   ) => {
     // Validate wallet state before any operations
@@ -460,6 +395,65 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
     const results: UploadResult[] = [];
     const failedFileNames: string[] = [];
 
+    // Handle crypto payment: top up once for all files before uploading
+    const selectedToken = options?.selectedToken || options?.selectedJitToken;
+    if (options?.cryptoPayment && selectedToken && options?.tokenAmount) {
+      try {
+        const turbo = await createTurboClient(selectedToken);
+        await turbo.topUpWithTokens({
+          tokenAmount: BigInt(options.tokenAmount),
+        });
+        window.dispatchEvent(new CustomEvent('refresh-balance'));
+      } catch (topUpError) {
+        const errorMessage = topUpError instanceof Error ? topUpError.message : 'Unknown error';
+
+        // Check if this is a polling timeout with a valid tx ID
+        // The SDK embeds the tx ID in the error message when polling times out
+        // Transaction hashes are: 0x + 64 hex chars (Ethereum) or 43-44 base64url chars (Arweave/AO)
+        // We specifically match these patterns and exclude ERC20 calldata (which starts with 0xa9059cbb)
+        const txIdMatch = errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*([a-zA-Z0-9_-]{43,44})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*([a-zA-Z0-9_-]{43,44})/i);
+
+        if (txIdMatch && txIdMatch[1]) {
+          const txId = txIdMatch[1].replace(/['"]/g, '');
+          console.log('Detected failed tx ID from polling timeout, attempting retry:', txId);
+
+          // Try to resubmit the transaction to Turbo
+          try {
+            const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+            const config = getCurrentConfig();
+            const unauthenticatedTurbo = TurboFactory.unauthenticated({
+              paymentServiceConfig: { url: config.paymentServiceUrl },
+              uploadServiceConfig: { url: config.uploadServiceUrl },
+              token: selectedToken as any,
+            });
+
+            // Wait a moment for blockchain confirmation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const retryResult = await unauthenticatedTurbo.submitFundTransaction({ txId });
+            console.log('Retry submitFundTransaction succeeded:', retryResult);
+
+            if (retryResult.status !== 'failed') {
+              window.dispatchEvent(new CustomEvent('refresh-balance'));
+              // Success - continue with uploads
+            } else {
+              throw new Error('Transaction confirmation failed after retry');
+            }
+          } catch (retryError) {
+            setUploading(false);
+            const retryMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
+            throw new Error(`Crypto payment polling timed out. Your transaction (${txId}) may have succeeded - check your balance or try "Buy Credits" to resubmit. Error: ${retryMsg}`);
+          }
+        } else {
+          setUploading(false);
+          throw new Error(`Crypto payment failed: ${errorMessage}`);
+        }
+      }
+    }
+
     for (const file of files) {
       // Check if cancelled
       if (isCancelled) {
@@ -469,19 +463,18 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
       }
 
       try {
-        // Add to active uploads
         setActiveUploads(prev => [
           ...prev.filter(u => u.name !== file.name),
           { name: file.name, progress: 0, size: file.size }
         ]);
 
-        // Starting upload for file
-        const result = await uploadFile(file, options);
+        // If we did a crypto pre-topup, don't pass JIT options to avoid per-file JIT
+        const uploadOptions = (options?.cryptoPayment && selectedToken)
+          ? { customTags: options?.customTags }
+          : options;
+        const result = await uploadFile(file, uploadOptions);
 
-        // Remove from active uploads
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
-
-        // Add to recent files
         setRecentFiles(prev => [
           {
             name: file.name,
@@ -490,20 +483,15 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
             timestamp: Date.now()
           },
           ...prev
-        ].slice(0, 20)); // Keep last 20
+        ].slice(0, 20));
 
-        // Upload completed for file
         results.push(result);
         setUploadResults(prev => [...prev, result]);
         setUploadedCount(prev => prev + 1);
         setUploadedSize(prev => prev + file.size);
 
       } catch (error) {
-        // Remove from active uploads
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
-
-        // Add to recent files as error
-        // Format error for user display
         const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
 
         setRecentFiles(prev => [
@@ -517,7 +505,6 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
           ...prev
         ].slice(0, 20));
 
-        // Add to upload errors
         setUploadErrors(prev => [
           ...prev,
           {
@@ -527,21 +514,17 @@ Try selecting BASE-ETH as your payment method, or use regular BASE-USDC payment 
           }
         ]);
 
-        // Failed to upload file
         setErrors(prev => ({ ...prev, [file.name]: userFriendlyError }));
         failedFileNames.push(file.name);
         setFailedFiles(prev => [...prev, file]);
         setFailedCount(prev => prev + 1);
-        setUploadedCount(prev => prev + 1); // Still count as processed
-
-        // Error details logged for debugging
+        setUploadedCount(prev => prev + 1);
       }
     }
 
     setUploading(false);
-    // Upload summary processed
     return { results, failedFiles: failedFileNames };
-  }, [uploadFile, validateWalletState, isCancelled]);
+  }, [uploadFile, validateWalletState, isCancelled, createTurboClient]);
 
   const reset = useCallback(() => {
     setUploadProgress({});

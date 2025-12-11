@@ -2,10 +2,10 @@ import { SupportedTokenType } from '../constants';
 
 /**
  * Check if a wallet type supports just-in-time (on-demand) payments
- * Currently supported: ARIO, SOL, Base-ETH, Base-USDC
+ * Currently supported: ARIO, Base-ARIO, SOL, Base-ETH, Base-USDC
  */
 export function supportsJitPayment(tokenType: SupportedTokenType | null): boolean {
-  return tokenType === 'ario' || tokenType === 'solana' || tokenType === 'base-eth' || tokenType === 'base-usdc';
+  return tokenType === 'ario' || tokenType === 'base-ario' || tokenType === 'solana' || tokenType === 'base-eth' || tokenType === 'base-usdc';
 }
 
 /**
@@ -16,6 +16,7 @@ export function getTokenConverter(tokenType: SupportedTokenType): ((amount: numb
   const TOKEN_DECIMALS: Record<SupportedTokenType, number> = {
     arweave: 12,
     ario: 6,  // 1 ARIO = 1,000,000 mARIO
+    'base-ario': 6, // 1 ARIO = 1,000,000 mARIO (same as ARIO on AO)
     ethereum: 18,
     'base-eth': 18,
     solana: 9,
@@ -37,6 +38,7 @@ export function fromSmallestUnit(amount: number, tokenType: SupportedTokenType):
   const TOKEN_DECIMALS: Record<SupportedTokenType, number> = {
     arweave: 12,
     ario: 6,  // 1 ARIO = 1,000,000 mARIO
+    'base-ario': 6, // 1 ARIO = 1,000,000 mARIO (same as ARIO on AO)
     ethereum: 18,
     'base-eth': 18,
     solana: 9,
@@ -66,6 +68,7 @@ export function formatTokenAmount(amount: number, tokenType: SupportedTokenType)
   // Standard precision for normal amounts
   const precision: Record<SupportedTokenType, number> = {
     ario: 2,        // 100.50 ARIO
+    'base-ario': 2, // 100.50 ARIO (same as ARIO)
     solana: 6,      // 0.000001 SOL (increased from 4)
     'base-eth': 6,  // 0.000001 ETH (increased from 4)
     ethereum: 6,
@@ -298,6 +301,7 @@ export function getDefaultMaxTokenAmount(tokenType: SupportedTokenType): number 
   // Aim for ~$20-25 equivalent across all types
   const defaults: Record<SupportedTokenType, number> = {
     ario: 200,      // 200 ARIO ≈ $20 at $0.10/ARIO
+    'base-ario': 200, // 200 ARIO ≈ $20 at $0.10/ARIO (on Base L2)
     solana: 0.15,   // 0.15 SOL ≈ $22.50 at $150/SOL
     'base-eth': 0.01, // 0.01 ETH ≈ $25 at $2500/ETH
     'base-usdc': 25,  // 25 USDC = $25 (stablecoin)

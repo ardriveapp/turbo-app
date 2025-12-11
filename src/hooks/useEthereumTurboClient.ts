@@ -15,6 +15,7 @@ const ETHEREUM_CONNECT_MESSAGE = 'Sign this message to connect to Turbo Gateway'
 interface CachedEthereumSigner {
   injectedSigner: any; // InjectedEthereumSigner with public key set
   ethersSigner: ethers.JsonRpcSigner;
+  publicKey: Buffer; // The recovered public key from our custom connect message
   address: string;
   configKey: string;
 }
@@ -68,43 +69,32 @@ export function useEthereumTurboClient() {
       sharedEthereumSignerCache.address === address &&
       sharedEthereumSignerCache.configKey === configKey
     ) {
-      console.log('✅ Reusing cached Ethereum signer (no signature needed)');
       return sharedEthereumSignerCache;
     }
 
     // If we're already creating a signer, wait for it
     if (creatingSignerRef.current) {
-      console.log('⏳ Waiting for in-progress signer creation...');
       return creatingSignerRef.current;
     }
 
     // Create new signer
     const createSigner = async (): Promise<CachedEthereumSigner> => {
-      console.log('Creating new Ethereum signer (will request signature)...');
-
       // Get Ethereum provider - priority: Privy > RainbowKit/Wagmi > window.ethereum
       const privyWallet = wallets.find((w) => w.walletClientType === 'privy');
       let ethersSigner: ethers.JsonRpcSigner;
 
       if (privyWallet) {
-        // Privy embedded wallet (email login)
-        console.log('Using Privy embedded wallet');
         const ethProvider = await privyWallet.getEthereumProvider();
         const ethersProvider = new ethers.BrowserProvider(ethProvider);
         ethersSigner = await ethersProvider.getSigner();
       } else if (ethAccount.isConnected && ethAccount.connector) {
-        // RainbowKit/Wagmi connected wallet (MetaMask, WalletConnect, Coinbase, etc.)
-        console.log(`Using RainbowKit wallet: ${ethAccount.connector.name}`);
         try {
-          // Get the connector client from wagmi - this works for ALL wallet types including WalletConnect
           const connectorClient = await getConnectorClient(wagmiConfig, {
             connector: ethAccount.connector,
           });
-          // Create ethers provider from the connector's transport
           const ethersProvider = new ethers.BrowserProvider(connectorClient.transport, 'any');
           ethersSigner = await ethersProvider.getSigner();
-        } catch (error) {
-          console.warn('Failed to get connector client, falling back to window.ethereum:', error);
+        } catch {
           // Fallback for injected wallets if connector client fails
           if (window.ethereum) {
             const ethersProvider = new ethers.BrowserProvider(window.ethereum);
@@ -114,8 +104,6 @@ export function useEthereumTurboClient() {
           }
         }
       } else if (window.ethereum) {
-        // Direct window.ethereum fallback (legacy support)
-        console.log('Using window.ethereum fallback');
         const ethersProvider = new ethers.BrowserProvider(window.ethereum);
         ethersSigner = await ethersProvider.getSigner();
       } else {
@@ -151,18 +139,18 @@ export function useEthereumTurboClient() {
       const signature = await ethersSigner.signMessage(ETHEREUM_CONNECT_MESSAGE);
       const messageHash = ethers.hashMessage(ETHEREUM_CONNECT_MESSAGE);
       const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
-      injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+      const publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+      injectedSigner.publicKey = publicKey;
 
       // Cache the signer globally (shared across all token types)
       const cachedSigner: CachedEthereumSigner = {
         injectedSigner,
         ethersSigner,
+        publicKey,
         address: userAddress,
         configKey,
       };
       sharedEthereumSignerCache = cachedSigner;
-
-      console.log('✅ Ethereum signer created and cached globally');
       return cachedSigner;
     };
 
@@ -193,12 +181,8 @@ export function useEthereumTurboClient() {
       // Check if we can reuse cached client for this specific token type
       const cachedClient = sharedEthereumClientCache.get(clientCacheKey);
       if (cachedClient && cachedClient.address === address) {
-        console.log(`✅ Reusing cached Ethereum Turbo client for ${tokenType}`);
         return cachedClient.client;
       }
-
-      // Get or create the shared signer (signature only requested once)
-      const signerCache = await getOrCreateSigner(config, configKey);
 
       // Build turbo config for this token type
       const turboConfig = {
@@ -209,25 +193,133 @@ export function useEthereumTurboClient() {
           : {}),
       };
 
-      // Create authenticated Turbo client with the shared signer
-      const client = TurboFactory.authenticated({
-        signer: signerCache.injectedSigner,
-        token: tokenType as any,
-        ...turboConfig,
-      });
+      // Tokens requiring walletAdapter for topUpWithTokens() (on-chain token transfers need sendTransaction)
+      // NOTE: 'ethereum' is NOT included here because:
+      // 1. ETH L1 payments are handled directly in CryptoConfirmationPanel (not via this hook)
+      // 2. When 'ethereum' is passed here, it's for regular uploads which need InjectedEthereumSigner
+      const evmTokenTransferTypes = new Set([
+        'base-ario', 'base-eth', 'base-usdc', 'polygon-usdc', 'pol', 'usdc'
+      ]);
+
+      // For EVM token transfers, we need to switch network BEFORE getting the signer
+      // Otherwise the signer will be connected to the wrong network
+      const privyWallet = wallets.find((w) => w.walletClientType === 'privy');
+
+      if (evmTokenTransferTypes.has(tokenType)) {
+        // EVM token transfers: must switch to correct network first
+        const isDevMode = config.paymentServiceUrl?.includes('.dev');
+        const expectedChainId = (tokenType === 'usdc')
+          ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
+          : (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
+          ? (isDevMode ? 84532 : 8453) // Base Sepolia : Base mainnet
+          : (tokenType === 'pol' || tokenType === 'polygon-usdc')
+          ? (isDevMode ? 80002 : 137) // Amoy testnet : Polygon mainnet
+          : 8453; // Default to Base mainnet for unknown EVM tokens
+
+        if (privyWallet) {
+          // For Privy: Check current chain and switch if needed BEFORE getting provider
+          const currentChainId = privyWallet.chainId;
+
+          if (currentChainId !== `eip155:${expectedChainId}` && Number(currentChainId?.split(':')[1]) !== expectedChainId) {
+            try {
+              await privyWallet.switchChain(expectedChainId);
+              // Wait for switch to complete
+              await new Promise(resolve => setTimeout(resolve, 1500));
+            } catch {
+              const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
+                ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
+                : (tokenType === 'pol' || tokenType === 'polygon-usdc')
+                ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
+                : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
+              throw new Error(`Failed to switch to ${networkName}. Please switch networks manually and try again.`);
+            }
+          }
+        } else if (window.ethereum) {
+          // For regular wallets: Check and switch network
+          try {
+            const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+            const currentChainId = parseInt(chainIdHex, 16);
+
+            if (currentChainId !== expectedChainId) {
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
+              });
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch {
+            const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
+              ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
+              : (tokenType === 'pol' || tokenType === 'polygon-usdc')
+              ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
+              : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
+            throw new Error(`Please switch to ${networkName} in your wallet for ${tokenType} payments.`);
+          }
+        }
+      }
+
+      // NOW get the signer (after network switch if needed)
+      let ethersSigner: ethers.JsonRpcSigner;
+
+      if (privyWallet) {
+        const ethProvider = await privyWallet.getEthereumProvider();
+        const ethersProvider = new ethers.BrowserProvider(ethProvider);
+        ethersSigner = await ethersProvider.getSigner();
+      } else if (ethAccount.isConnected && ethAccount.connector) {
+        try {
+          const connectorClient = await getConnectorClient(wagmiConfig, {
+            connector: ethAccount.connector,
+          });
+          const ethersProvider = new ethers.BrowserProvider(connectorClient.transport, 'any');
+          ethersSigner = await ethersProvider.getSigner();
+        } catch {
+          if (window.ethereum) {
+            const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+            ethersSigner = await ethersProvider.getSigner();
+          } else {
+            throw new Error('Failed to get Ethereum provider from connected wallet');
+          }
+        }
+      } else if (window.ethereum) {
+        const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+        ethersSigner = await ethersProvider.getSigner();
+      } else {
+        throw new Error('No Ethereum wallet found. Please connect a wallet first.');
+      }
+
+      let client: TurboAuthenticatedClient;
+
+      if (evmTokenTransferTypes.has(tokenType)) {
+        // EVM token transfers: use walletAdapter pattern (SDK handles its own signature)
+        client = TurboFactory.authenticated({
+          token: tokenType as any,
+          walletAdapter: {
+            getSigner: () => ethersSigner,
+          },
+          ...turboConfig,
+        });
+      } else {
+        // Regular uploads: use cached InjectedEthereumSigner with custom connect message
+        const signerCache = await getOrCreateSigner(config, configKey);
+        client = TurboFactory.authenticated({
+          token: tokenType as any,
+          signer: signerCache.injectedSigner,
+          ...turboConfig,
+        });
+      }
 
       // Cache the client for this token type
+      const userAddress = await ethersSigner.getAddress();
       sharedEthereumClientCache.set(clientCacheKey, {
         client,
-        address: signerCache.address,
+        address: userAddress,
         tokenType,
         configKey,
       });
 
-      console.log(`✅ Ethereum Turbo client created for ${tokenType} (reused signer)`);
       return client;
     },
-    [getCurrentConfig, address, getOrCreateSigner]
+    [getCurrentConfig, address, wallets, wagmiConfig, ethAccount.isConnected, ethAccount.connector, getOrCreateSigner]
   );
 
   /**
@@ -236,7 +328,6 @@ export function useEthereumTurboClient() {
   const clearCache = useCallback(() => {
     sharedEthereumSignerCache = null;
     sharedEthereumClientCache.clear();
-    console.log('Ethereum signer and client caches cleared');
   }, []);
 
   return {
@@ -286,11 +377,13 @@ export function setCachedEthereumSigner(
   address: string,
   configKey: string = 'arns'
 ) {
+  // Get the publicKey from the injectedSigner if available
+  const publicKey = injectedSigner.publicKey || Buffer.alloc(65);
   sharedEthereumSignerCache = {
     injectedSigner,
     ethersSigner,
+    publicKey,
     address,
     configKey,
   };
-  console.log('✅ Ethereum signer cached from external source (ArNS)');
 }

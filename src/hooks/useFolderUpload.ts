@@ -9,11 +9,10 @@ import {
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { useAccount } from 'wagmi';
-import { supportsJitPayment } from '../utils/jitPayment';
+// supportsJitPayment import removed - using pre-topup flow instead of per-file JIT
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
-import { useX402Upload } from './useX402Upload';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
-import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
+import { useFreeUploadLimit } from './useFreeUploadLimit';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -52,13 +51,10 @@ export interface UploadError {
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
-  const { wallets } = useWallets(); // Required for Privy wallet detection in useEthereumTurboClient
-  const ethAccount = useAccount(); // RainbowKit/Wagmi account state
-  const { uploadFileWithX402 } = useX402Upload(); // x402 upload hook for BASE-USDC deployments
-  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
-  const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit from bundler
-
-  // useFolderUpload store state logged
+  const { wallets } = useWallets();
+  const ethAccount = useAccount();
+  const { createEthereumTurboClient } = useEthereumTurboClient();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
   const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
@@ -149,7 +145,6 @@ export function useFolderUpload() {
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
-        // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
         return TurboFactory.authenticated({
           ...dynamicTurboConfig,
@@ -157,36 +152,20 @@ export function useFolderUpload() {
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
-        
+
       case 'ethereum':
-        // Use the shared Ethereum Turbo client with custom connect message
-        // This caches the client globally and only prompts for signature once per session
         return createEthereumTurboClient(tokenTypeOverride || 'ethereum');
-        
+
       case 'solana':
-        // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
         if (walletType !== 'solana') {
           throw new Error('Internal error: Attempting Solana operations with non-Solana wallet');
         }
-        
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
-        
-        // Verify this is an intentional Solana connection
-        if (!window.solana.isConnected) {
+        if (!window.solana.isConnected || !window.solana.publicKey) {
           throw new Error('Solana wallet not connected. Please connect your Solana wallet first.');
         }
-        
-        // Creating Solana walletAdapter
-        const provider = window.solana;
-        
-        // Use existing connection instead of calling connect() again
-        const existingPublicKey = provider.publicKey;
-        if (!existingPublicKey) {
-          throw new Error('Solana wallet connection lost. Please reconnect your Solana wallet.');
-        }
-
         return TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
@@ -322,10 +301,9 @@ export function useFolderUpload() {
     manifestOptions?: {
       indexFile?: string;
       fallbackFile?: string;
-      jitEnabled?: boolean;
-      jitMaxTokenAmount?: number; // In smallest unit
-      jitBufferMultiplier?: number;
-      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
+      cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
+      tokenAmount?: number; // Amount to top up in smallest unit
+      selectedToken?: SupportedTokenType; // Token to use for crypto payment
     }
   ) => {
     // Validate wallet state before any operations
@@ -355,25 +333,75 @@ export function useFolderUpload() {
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
-    // Use selectedJitToken if provided, otherwise default based on wallet type
-    const jitTokenType = manifestOptions?.selectedJitToken || (
-      walletType === 'arweave' ? 'ario' :
-      walletType === 'ethereum' ? 'base-eth' :
-      walletType
-    );
+    // Use selectedToken if provided for crypto payment
+    const selectedToken = manifestOptions?.selectedToken;
 
-    // Create funding mode if JIT enabled and supported
-    let fundingMode: OnDemandFunding | undefined = undefined;
-    if (manifestOptions?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
-      fundingMode = new OnDemandFunding({
-        maxTokenAmount: manifestOptions.jitMaxTokenAmount || 0,
-        topUpBufferMultiplier: manifestOptions.jitBufferMultiplier || 1.1,
-      });
+    // Handle crypto payment: top up once for all files before uploading
+    if (manifestOptions?.cryptoPayment && selectedToken && manifestOptions?.tokenAmount) {
+      try {
+        const turbo = await createTurboClient(selectedToken);
+        await turbo.topUpWithTokens({
+          tokenAmount: BigInt(manifestOptions.tokenAmount),
+        });
+        // Dispatch balance refresh event
+        window.dispatchEvent(new CustomEvent('refresh-balance'));
+      } catch (topUpError) {
+        const errorMessage = topUpError instanceof Error ? topUpError.message : 'Unknown error';
+
+        // Check if this is a polling timeout with a valid tx ID
+        // The SDK embeds the tx ID in the error message when polling times out
+        // Transaction hashes are: 0x + 64 hex chars (Ethereum) or 43-44 base64url chars (Arweave/AO)
+        // We specifically match these patterns and exclude ERC20 calldata (which starts with 0xa9059cbb)
+        const txIdMatch = errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*([a-zA-Z0-9_-]{43,44})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*([a-zA-Z0-9_-]{43,44})/i);
+
+        if (txIdMatch && txIdMatch[1]) {
+          const txId = txIdMatch[1].replace(/['"]/g, '');
+          console.log('Detected failed tx ID from polling timeout, attempting retry:', txId);
+
+          // Try to resubmit the transaction to Turbo
+          try {
+            const config = getCurrentConfig();
+            const unauthenticatedTurbo = TurboFactory.unauthenticated({
+              paymentServiceConfig: { url: config.paymentServiceUrl },
+              uploadServiceConfig: { url: config.uploadServiceUrl },
+              token: selectedToken as any,
+            });
+
+            // Wait a moment for blockchain confirmation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const retryResult = await unauthenticatedTurbo.submitFundTransaction({ txId });
+            console.log('Retry submitFundTransaction succeeded:', retryResult);
+
+            if (retryResult.status !== 'failed') {
+              window.dispatchEvent(new CustomEvent('refresh-balance'));
+              // Success - continue with deployment
+            } else {
+              throw new Error('Transaction confirmation failed after retry');
+            }
+          } catch (retryError) {
+            setDeploying(false);
+            const retryMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
+            throw new Error(`Crypto payment polling timed out. Your transaction (${txId}) may have succeeded - check your balance or try "Buy Credits" to resubmit. Error: ${retryMsg}`);
+          }
+        } else {
+          setDeploying(false);
+          throw new Error(`Crypto payment failed: ${errorMessage}`);
+        }
+      }
     }
 
+    // No per-file JIT needed - we already topped up with crypto payment above
+    const fundingMode: OnDemandFunding | undefined = undefined;
+
     try {
-      // Creating Turbo client for folder deployment (using selected JIT token)
-      const turbo = await createTurboClient(jitTokenType || undefined);
+      // IMPORTANT: For uploads after crypto pre-topup, do NOT pass the token type
+      // The token type is only needed for topUpWithTokens() (which uses walletAdapter)
+      // For uploads, we want to use the cached InjectedEthereumSigner (no extra signature)
+      const turbo = await createTurboClient(undefined);
       
       // Starting folder deployment
       
@@ -440,46 +468,8 @@ export function useFolderUpload() {
               return newProgress;
             });
 
-            // Use x402 for ALL BASE-USDC deployments (direct wallet payment)
-            // x402 endpoint now handles free tier detection (same as regular upload service)
-            let fileResult;
-            const isFileInFreeUploadTier = isFileFree(file.size, freeUploadLimitBytes);
-            console.log(`[Deploy] ${file.name}: size=${file.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isFileInFreeUploadTier}`);
-
-            if (
-              walletType === 'ethereum' &&
-              manifestOptions?.selectedJitToken === 'base-usdc'
-            ) {
-              console.log(`[X402] Using x402 flow for BASE-USDC deploy (${isFileInFreeUploadTier ? 'FREE' : 'PAID'}):`, file.name);
-
-              // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
-              const maxUsdc = manifestOptions?.jitMaxTokenAmount
-                ? manifestOptions.jitMaxTokenAmount / 1_000_000
-                : 10; // Default 10 USDC max
-
-              // Create tags for Deploy Site feature
-              const deployTags = [
-                { name: 'App-Name', value: APP_NAME },
-                { name: 'App-Feature', value: 'Deploy Site' },
-                { name: 'App-Version', value: APP_VERSION },
-                { name: 'Content-Type', value: getContentType(file) },
-                { name: 'File-Path', value: file.webkitRelativePath || file.name },
-              ];
-
-              fileResult = await uploadFileWithX402(file, {
-                maxUsdcAmount: maxUsdc,
-                onProgress: (progress) => {
-                  setFileProgress(prev => ({ ...prev, [file.name]: progress }));
-                  setActiveUploads(prev => prev.map(u =>
-                    u.name === file.name ? { ...u, progress } : u
-                  ));
-                },
-                tags: deployTags,
-              });
-            } else {
-              // Regular upload with retry logic and timeout
-              fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
-            }
+            // Regular upload with retry logic and timeout
+            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -663,56 +653,20 @@ export function useFolderUpload() {
         type: 'application/x.arweave-manifest+json'
       });
 
-      // Use x402 for ALL manifest uploads when BASE-USDC is selected
-      // x402 endpoint now handles free tier detection (same as regular upload service)
-      let manifestResult;
-      const isManifestInFreeUploadTier = isFileFree(manifestFile.size, freeUploadLimitBytes);
-      console.log(`[Deploy] manifest.json: size=${manifestFile.size} bytes, freeLimit=${freeUploadLimitBytes}, isFree=${isManifestInFreeUploadTier}`);
-
-      if (
-        walletType === 'ethereum' &&
-        manifestOptions?.selectedJitToken === 'base-usdc'
-      ) {
-        console.log(`[X402] Using x402 flow for BASE-USDC manifest (${isManifestInFreeUploadTier ? 'FREE' : 'PAID'})`);
-
-        // Convert maxTokenAmount from smallest unit (6 decimals) to USDC
-        const maxUsdc = manifestOptions?.jitMaxTokenAmount
-          ? manifestOptions.jitMaxTokenAmount / 1_000_000
-          : 10; // Default 10 USDC max
-
-        // Create tags for manifest
-        const manifestTags = [
-          { name: 'App-Name', value: APP_NAME },
-          { name: 'App-Feature', value: 'Deploy Site' },
-          { name: 'App-Version', value: APP_VERSION },
-          { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-          { name: 'Type', value: 'manifest' }
-        ];
-
-        manifestResult = await uploadFileWithX402(manifestFile, {
-          maxUsdcAmount: maxUsdc,
-          onProgress: (progress) => {
-            setDeployProgress(90 + Math.round(progress / 10)); // 90-100%
-          },
-          tags: manifestTags,
-        });
-      } else {
-        // Regular upload with Turbo SDK
-        manifestResult = await turbo.uploadFile({
-          file: manifestFile,
-          signal: controller.signal, // Also pass signal to manifest upload
-          fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
-          dataItemOpts: {
-            tags: [
-              { name: 'App-Name', value: APP_NAME },
-              { name: 'App-Feature', value: 'Deploy Site' },
-              { name: 'App-Version', value: APP_VERSION },
-              { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-              { name: 'Type', value: 'manifest' }
-            ]
-          }
-        } as any); // Type assertion needed until SDK types are updated
-      }
+      // Upload manifest with Turbo SDK
+      const manifestResult = await turbo.uploadFile({
+        file: manifestFile,
+        signal: controller.signal,
+        dataItemOpts: {
+          tags: [
+            { name: 'App-Name', value: APP_NAME },
+            { name: 'App-Feature', value: 'Deploy Site' },
+            { name: 'App-Version', value: APP_VERSION },
+            { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
+            { name: 'Type', value: 'manifest' }
+          ]
+        }
+      } as any); // Type assertion needed until SDK types are updated
       
       const uploadResult = {
         manifestId: manifestResult.id,
@@ -764,7 +718,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType, freeUploadLimitBytes, getContentType, uploadFileWithX402]);
+  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType, freeUploadLimitBytes, getContentType]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);

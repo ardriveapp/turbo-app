@@ -16,6 +16,7 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
+      'base-ario': 'https://mainnet.base.org',
       ethereum: 'https://ethereum.publicnode.com',
       'base-eth': 'https://mainnet.base.org',
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
@@ -36,6 +37,7 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
+      'base-ario': 'https://sepolia.base.org',
       ethereum: 'https://eth-sepolia.public.blastapi.io',
       'base-eth': 'https://sepolia.base.org',
       solana: 'https://api.devnet.solana.com',
@@ -272,6 +274,7 @@ export const useStore = create<StoreState>()(
       jitPaymentEnabled: true, // Default opt-in
       jitMaxTokenAmount: {
         ario: 200,      // 200 ARIO ≈ $20
+        'base-ario': 200, // 200 ARIO ≈ $20 (on Base L2)
         solana: 0.15,   // 0.15 SOL ≈ $22.50
         'base-eth': 0.01, // 0.01 ETH ≈ $25
         'base-usdc': 25,  // 25 USDC = $25 (stablecoin)

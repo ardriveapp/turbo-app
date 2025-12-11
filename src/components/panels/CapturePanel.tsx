@@ -269,7 +269,9 @@ export default function CapturePanel() {
       return;
     }
 
-    const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
+    // Enable JIT if user has explicitly selected crypto payment tab
+    // This allows forcing crypto payment even when credits are sufficient
+    const shouldEnableJit = localJitEnabled && paymentTab === 'crypto';
 
     let jitMaxTokenAmountSmallest = 0;
     if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
@@ -291,10 +293,11 @@ export default function CapturePanel() {
       ];
 
       // Upload with special Turbo Capture tags
+      // Pre-topup flow for crypto payments (one payment for all files)
       const { results, failedFiles } = await uploadMultipleFiles([captureFile], {
-        jitEnabled: shouldEnableJit,
-        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        selectedJitToken: selectedJitToken, // Pass selected token for x402
+        cryptoPayment: shouldEnableJit,
+        tokenAmount: jitMaxTokenAmountSmallest,
+        selectedToken: selectedJitToken,
         customTags,
       });
 
@@ -982,10 +985,8 @@ export default function CapturePanel() {
                 setPaymentTab('crypto');
                 setJitSectionExpanded(true);
                 setLocalJitEnabled(true);
-                // Immediately set token for Ethereum wallets to avoid base-eth flash
-                if (walletType === 'ethereum') {
-                  setSelectedJitToken('base-usdc');
-                }
+                // Keep current selection (default is base-ario for Ethereum wallets)
+                // User can change via JitTokenSelector if needed
               };
 
               // When switching to credits tab, collapse crypto section

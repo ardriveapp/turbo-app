@@ -595,7 +595,9 @@ export default function UploadPanel() {
       return;
     }
 
-    const shouldEnableJit = localJitEnabled && creditsNeeded > 0;
+    // Enable JIT if user has explicitly selected crypto payment tab
+    // This allows forcing crypto payment even when credits are sufficient
+    const shouldEnableJit = localJitEnabled && paymentTab === 'crypto';
 
     // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
@@ -605,11 +607,11 @@ export default function UploadPanel() {
     }
 
     try {
+      // Pre-topup flow for crypto payments (one payment for all files)
       const { results, failedFiles } = await uploadMultipleFiles(files, {
-        jitEnabled: shouldEnableJit,
-        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
-        selectedJitToken: selectedJitToken, // Pass selected token for x402
+        cryptoPayment: shouldEnableJit,
+        tokenAmount: jitMaxTokenAmountSmallest,
+        selectedToken: selectedJitToken,
       });
       
       if (results.length > 0) {
@@ -1276,10 +1278,8 @@ export default function UploadPanel() {
                 setPaymentTab('crypto');
                 setJitSectionExpanded(true);
                 setLocalJitEnabled(true);
-                // Immediately set token for Ethereum wallets to avoid base-eth flash
-                if (walletType === 'ethereum') {
-                  setSelectedJitToken('base-usdc');
-                }
+                // Keep current selection (default is base-ario for Ethereum wallets)
+                // User can change via JitTokenSelector if needed
               };
 
               // When switching to credits tab, collapse crypto section

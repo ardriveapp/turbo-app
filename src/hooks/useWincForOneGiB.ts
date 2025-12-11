@@ -50,7 +50,8 @@ const getAmountByTokenType = (amount: number, token: string) => {
     case 'solana':
       return SOLToTokenAmount(amount);  // Converts to lamports
     case 'ario':
-      return ARIOToTokenAmount(amount); // Proper ARIO token conversion
+    case 'base-ario':
+      return ARIOToTokenAmount(amount); // Proper ARIO token conversion (6 decimals for both AO and Base)
     case 'pol':
       return POLToTokenAmount(amount); // Proper POL token conversion
     case 'usdc':

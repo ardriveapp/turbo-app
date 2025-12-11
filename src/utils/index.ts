@@ -129,10 +129,14 @@ export const getExplorerUrl = (txid: string, token: string) => {
     case 'arweave':
       return `https://viewblock.io/arweave/tx/${txid}`;
     case 'ethereum':
+    case 'usdc':
       return `https://etherscan.io/tx/${txid}`;
     case 'base-eth':
+    case 'base-usdc':
+    case 'base-ario':
       return `https://basescan.org/tx/${txid}`;
     case 'pol':
+    case 'polygon-usdc':
       return `https://polygonscan.com/tx/${txid}`;
     case 'solana':
       return `https://solscan.io/tx/${txid}`;
