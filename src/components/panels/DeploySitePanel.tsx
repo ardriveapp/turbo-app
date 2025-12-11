@@ -363,8 +363,9 @@ function DeployConfirmationModal({
   const wincForOneGiB = useWincForOneGiB();
 
   useEffect(() => {
-    if (totalCost > 0 && wincForOneGiB && typeof wincForOneGiB === 'number' && wincForOneGiB > 0) {
-      const usd = (totalCost * wincPerCredit / wincForOneGiB) * 10; // $10 per GiB
+    const wincForOneGiBNum = wincForOneGiB ? Number(wincForOneGiB) : NaN;
+    if (totalCost > 0 && Number.isFinite(wincForOneGiBNum) && wincForOneGiBNum > 0) {
+      const usd = (totalCost * wincPerCredit / wincForOneGiBNum) * 10; // $10 per GiB
       setUsdEquivalent(usd);
     } else {
       setUsdEquivalent(null);
@@ -817,6 +818,8 @@ export default function DeploySitePanel() {
   const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
     if (walletType === 'arweave') return 'ario';
     if (walletType === 'solana') return 'solana';
+    // In x402-only mode, only base-usdc is available
+    if (x402OnlyMode) return 'base-usdc';
     return 'base-eth'; // Default for Ethereum - will switch to base-usdc when Crypto tab selected
   });
 

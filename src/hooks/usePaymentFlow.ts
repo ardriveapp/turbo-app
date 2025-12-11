@@ -69,6 +69,8 @@ export function usePaymentFlow({
   const [selectedJitToken, setSelectedJitToken] = useState<SupportedTokenType>(() => {
     if (walletType === 'arweave') return 'ario';
     if (walletType === 'solana') return 'solana';
+    // In x402-only mode, only base-usdc is available
+    if (x402OnlyMode) return 'base-usdc';
     return 'base-ario'; // Default for Ethereum - fast L2 ARIO payments
   });
 

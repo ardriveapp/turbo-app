@@ -584,7 +584,8 @@ export default function UploadPanel() {
 
     // Only enable JIT if the user has insufficient credits to cover the cost
     // Calculate credits needed (0 if user has sufficient credits)
-    const creditsNeeded = Math.max(0, (totalCost || 0) - creditBalance);
+    // Guard against null totalCost - should not happen since button is disabled when pricing is loading
+    const creditsNeeded = totalCost !== null ? Math.max(0, totalCost - creditBalance) : 0;
 
     // Prevent upload in x402-only mode for non-Ethereum wallets on billable uploads
     if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
@@ -1559,6 +1560,8 @@ export default function UploadPanel() {
                     <button
                       onClick={handleConfirmUpload}
                       disabled={
+                        // Disable while pricing is loading (totalCost is null)
+                        totalCost === null ||
                         (creditsNeeded > 0 && !localJitEnabled) ||
                         (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient) ||
                         // Disable if in x402-only mode with non-Ethereum wallet for billable uploads

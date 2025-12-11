@@ -35,7 +35,7 @@ export default function PricingCalculatorPanel() {
     { value: 'base-eth', label: tokenLabels['base-eth'], symbol: 'ETH' },
     { value: 'solana', label: tokenLabels.solana, symbol: 'SOL' },
     { value: 'pol', label: tokenLabels.pol, symbol: 'POL' },
-    { value: 'base-usdc', label: 'USDC (Base) with x402', symbol: 'USDC' },
+    { value: 'base-usdc', label: 'USDC (Base)', symbol: 'USDC' },
   ];
   // In x402-only mode, ONLY show USDC (x402)
   const currencies = x402OnlyMode

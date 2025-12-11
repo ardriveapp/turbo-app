@@ -29,13 +29,16 @@ export function useWalletAccountListener() {
 
   // Handle RainbowKit/Wagmi session restoration on page load
   // When user refreshes, wagmi auto-reconnects and we need to update our store
-  // Also handles case where RainbowKit reconnects to a different address than stored
+  // Only restore if store is empty OR already on Ethereum - don't overwrite Solana/Arweave
   useEffect(() => {
-    if (ethIsConnected && ethAddress && ethAddress !== address) {
-      // Session restored from RainbowKit/Wagmi with different or new address - update our store
-      // This handles both:
-      // 1. Empty store (!address) - fresh session restoration
-      // 2. Different address - RainbowKit reconnected to different wallet than stored
+    if (
+      ethIsConnected &&
+      ethAddress &&
+      (!address || walletType === 'ethereum') &&
+      ethAddress !== address
+    ) {
+      // Session restored from RainbowKit/Wagmi - update our store
+      // Only when: store is empty, or already on Ethereum with different address
       console.log('[Wallet Listener] Session restored/updated from RainbowKit:', { from: address, to: ethAddress });
 
       // Only clear cache if there was a previous address (actual switch, not initial load)
@@ -45,7 +48,7 @@ export function useWalletAccountListener() {
 
       setAddress(ethAddress, 'ethereum');
     }
-  }, [ethIsConnected, ethAddress, address, setAddress]);
+  }, [ethIsConnected, ethAddress, address, walletType, setAddress]);
 
   // Update address if Ethereum account changes
   useEffect(() => {
@@ -157,6 +160,9 @@ export function useWalletAccountListener() {
         // This is a backup in case wagmi missed it
         console.log('[Wallet Listener] MetaMask backup listener detected account change:', { from: address, to: accounts[0] });
         console.warn('[Wallet Listener] IMPORTANT: Wallet account has switched. Clearing payment state to prevent wrong account usage.');
+
+        // Clear cached Turbo clients since we have a new wallet
+        clearEthereumTurboClientCache();
 
         // Update to new address
         setAddress(accounts[0], 'ethereum');
