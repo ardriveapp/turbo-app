@@ -97,7 +97,7 @@ export default function RecentDeploymentsSection() {
                 )}
               </div>
               <a
-                href={getArweaveUrl(manifestId)}
+                href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-3 py-1.5 bg-turbo-green text-white rounded hover:bg-turbo-green/90 transition-colors text-xs font-medium"
@@ -123,7 +123,7 @@ export default function RecentDeploymentsSection() {
               
               <div className="flex items-center gap-1">
                 <a
-                  href={getArweaveUrl(manifestId)}
+                  href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1 text-link hover:text-fg-muted transition-colors"

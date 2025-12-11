@@ -11,7 +11,8 @@ const getTokenSmallestUnit = (tokenType: SupportedTokenType): bigint => {
     case 'arweave':
       return BigInt(10 ** 12); // winston
     case 'ario':
-      return BigInt(10 ** 6); // mARIO - 1 ARIO = 1,000,000 mARIO
+    case 'base-ario':
+      return BigInt(10 ** 6); // mARIO - 1 ARIO = 1,000,000 mARIO (same for AO and Base)
     case 'ethereum':
     case 'base-eth':
       return BigInt(10 ** 18); // wei
@@ -21,6 +22,10 @@ const getTokenSmallestUnit = (tokenType: SupportedTokenType): bigint => {
       return BigInt(10 ** 18); // wei equivalent
     case 'kyve':
       return BigInt(10 ** 6); // ukyve
+    case 'usdc':
+    case 'base-usdc':
+    case 'polygon-usdc':
+      return BigInt(10 ** 6); // USDC uses 6 decimals on all chains
     default:
       return BigInt(10 ** 12); // default
   }

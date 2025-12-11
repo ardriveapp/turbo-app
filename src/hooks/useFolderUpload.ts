@@ -6,11 +6,13 @@ import {
   OnDemandFunding,
   TurboUnauthenticatedConfiguration,
 } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
-import { supportsJitPayment } from '../utils/jitPayment';
-import { APP_NAME, APP_VERSION } from '../constants';
+import { useAccount } from 'wagmi';
+// supportsJitPayment import removed - using pre-topup flow instead of per-file JIT
+import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
+import { useEthereumTurboClient } from './useEthereumTurboClient';
+import { useFreeUploadLimit } from './useFreeUploadLimit';
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -49,9 +51,10 @@ export interface UploadError {
 export function useFolderUpload() {
   const store = useStore();
   const { address, walletType } = store;
-  const { wallets } = useWallets(); // Get Privy wallets
-
-  // useFolderUpload store state logged
+  const { wallets } = useWallets();
+  const ethAccount = useAccount();
+  const { createEthereumTurboClient } = useEthereumTurboClient();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const [deploying, setDeploying] = useState(false);
   const [deployProgress, setDeployProgress] = useState<number>(0);
   const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
@@ -77,6 +80,9 @@ export function useFolderUpload() {
       throw new Error('Wallet not connected');
     }
 
+    // Check for Privy embedded wallet
+    const hasPrivyWallet = wallets.some(w => w.walletClientType === 'privy');
+
     // WALLET ISOLATION: Verify correct wallet is available and connected
     switch (walletType) {
       case 'arweave':
@@ -85,8 +91,10 @@ export function useFolderUpload() {
         }
         break;
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('MetaMask not available. Please reconnect your Ethereum wallet.');
+        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, or direct window.ethereum
+        // WalletConnect and other remote wallets won't have window.ethereum
+        if (!hasPrivyWallet && !ethAccount.isConnected && !window.ethereum) {
+          throw new Error('Ethereum wallet not connected. Please reconnect your wallet.');
         }
         break;
       case 'solana':
@@ -95,7 +103,7 @@ export function useFolderUpload() {
         }
         break;
     }
-  }, [address, walletType]);
+  }, [address, walletType, wallets, ethAccount.isConnected]);
 
   // Get config function from store
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);
@@ -137,7 +145,6 @@ export function useFolderUpload() {
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
-        // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
         return TurboFactory.authenticated({
           ...dynamicTurboConfig,
@@ -145,91 +152,20 @@ export function useFolderUpload() {
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
-        
+
       case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        return createEthereumTurboClient(tokenTypeOverride || 'ethereum');
 
-        // Detect token type from current network if not overridden
-        let detectedTokenType: 'ethereum' | 'base-eth' | 'pol' = 'ethereum';
-
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network if no override provided
-          if (!tokenTypeOverride) {
-            try {
-              const { getTokenTypeFromChainId } = await import('../utils');
-              const network = await ethersProvider.getNetwork();
-              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
-            } catch (error) {
-              console.warn('Failed to detect network, defaulting to ethereum:', error);
-            }
-          }
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || detectedTokenType) as any,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...dynamicTurboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
-          }
-          // Creating Ethereum walletAdapter
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network if no override provided
-          if (!tokenTypeOverride) {
-            try {
-              const { getTokenTypeFromChainId } = await import('../utils');
-              const network = await ethersProvider.getNetwork();
-              detectedTokenType = getTokenTypeFromChainId(Number(network.chainId));
-            } catch (error) {
-              console.warn('Failed to detect network, defaulting to ethereum:', error);
-            }
-          }
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || detectedTokenType) as any,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...dynamicTurboConfig,
-          });
-        }
-        
       case 'solana':
-        // WALLET ISOLATION: Strict validation - only access Solana when explicitly using Solana wallet
         if (walletType !== 'solana') {
           throw new Error('Internal error: Attempting Solana operations with non-Solana wallet');
         }
-        
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
-        
-        // Verify this is an intentional Solana connection
-        if (!window.solana.isConnected) {
+        if (!window.solana.isConnected || !window.solana.publicKey) {
           throw new Error('Solana wallet not connected. Please connect your Solana wallet first.');
         }
-        
-        // Creating Solana walletAdapter
-        const provider = window.solana;
-        
-        // Use existing connection instead of calling connect() again
-        const existingPublicKey = provider.publicKey;
-        if (!existingPublicKey) {
-          throw new Error('Solana wallet connection lost. Please reconnect your Solana wallet.');
-        }
-
         return TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
@@ -239,7 +175,7 @@ export function useFolderUpload() {
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, wallets, getCurrentConfig, validateWalletState]);
+  }, [address, walletType, getCurrentConfig, validateWalletState, createEthereumTurboClient]);
 
 
   // Smart content type detection based on file extensions
@@ -365,9 +301,9 @@ export function useFolderUpload() {
     manifestOptions?: {
       indexFile?: string;
       fallbackFile?: string;
-      jitEnabled?: boolean;
-      jitMaxTokenAmount?: number; // In smallest unit
-      jitBufferMultiplier?: number;
+      cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
+      tokenAmount?: number; // Amount to top up in smallest unit
+      selectedToken?: SupportedTokenType; // Token to use for crypto payment
     }
   ) => {
     // Validate wallet state before any operations
@@ -397,27 +333,75 @@ export function useFolderUpload() {
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
+    // Use selectedToken if provided for crypto payment
+    const selectedToken = manifestOptions?.selectedToken;
 
-    // Create funding mode if JIT enabled and supported
-    let fundingMode: OnDemandFunding | undefined = undefined;
-    if (manifestOptions?.jitEnabled && jitTokenType && supportsJitPayment(jitTokenType)) {
-      fundingMode = new OnDemandFunding({
-        maxTokenAmount: manifestOptions.jitMaxTokenAmount || 0,
-        topUpBufferMultiplier: manifestOptions.jitBufferMultiplier || 1.1,
-      });
+    // Handle crypto payment: top up once for all files before uploading
+    if (manifestOptions?.cryptoPayment && selectedToken && manifestOptions?.tokenAmount) {
+      try {
+        const turbo = await createTurboClient(selectedToken);
+        await turbo.topUpWithTokens({
+          tokenAmount: BigInt(manifestOptions.tokenAmount),
+        });
+        // Dispatch balance refresh event
+        window.dispatchEvent(new CustomEvent('refresh-balance'));
+      } catch (topUpError) {
+        const errorMessage = topUpError instanceof Error ? topUpError.message : 'Unknown error';
+
+        // Check if this is a polling timeout with a valid tx ID
+        // The SDK embeds the tx ID in the error message when polling times out
+        // Transaction hashes are: 0x + 64 hex chars (Ethereum) or 43-44 base64url chars (Arweave/AO)
+        // We specifically match these patterns and exclude ERC20 calldata (which starts with 0xa9059cbb)
+        const txIdMatch = errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*([a-zA-Z0-9_-]{43,44})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*([a-zA-Z0-9_-]{43,44})/i);
+
+        if (txIdMatch && txIdMatch[1]) {
+          const txId = txIdMatch[1].replace(/['"]/g, '');
+          console.log('Detected failed tx ID from polling timeout, attempting retry:', txId);
+
+          // Try to resubmit the transaction to Turbo
+          try {
+            const config = getCurrentConfig();
+            const unauthenticatedTurbo = TurboFactory.unauthenticated({
+              paymentServiceConfig: { url: config.paymentServiceUrl },
+              uploadServiceConfig: { url: config.uploadServiceUrl },
+              token: selectedToken as any,
+            });
+
+            // Wait a moment for blockchain confirmation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const retryResult = await unauthenticatedTurbo.submitFundTransaction({ txId });
+            console.log('Retry submitFundTransaction succeeded:', retryResult);
+
+            if (retryResult.status !== 'failed') {
+              window.dispatchEvent(new CustomEvent('refresh-balance'));
+              // Success - continue with deployment
+            } else {
+              throw new Error('Transaction confirmation failed after retry');
+            }
+          } catch (retryError) {
+            setDeploying(false);
+            const retryMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
+            throw new Error(`Crypto payment polling timed out. Your transaction (${txId}) may have succeeded - check your balance or try "Buy Credits" to resubmit. Error: ${retryMsg}`);
+          }
+        } else {
+          setDeploying(false);
+          throw new Error(`Crypto payment failed: ${errorMessage}`);
+        }
+      }
     }
 
+    // No per-file JIT needed - we already topped up with crypto payment above
+    const fundingMode: OnDemandFunding | undefined = undefined;
+
     try {
-      // Creating Turbo client for folder deployment
-      const turbo = await createTurboClient(jitTokenType || undefined);
+      // IMPORTANT: For uploads after crypto pre-topup, do NOT pass the token type
+      // The token type is only needed for topUpWithTokens() (which uses walletAdapter)
+      // For uploads, we want to use the cached InjectedEthereumSigner (no extra signature)
+      const turbo = await createTurboClient(undefined);
       
       // Starting folder deployment
       
@@ -484,7 +468,7 @@ export function useFolderUpload() {
               return newProgress;
             });
 
-            // Upload with retry logic and timeout
+            // Regular upload with retry logic and timeout
             const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
 
             // Mark file as complete in active uploads (keep at 100%)
@@ -668,11 +652,11 @@ export function useFolderUpload() {
       const manifestFile = new File([manifestBlob], 'manifest.json', {
         type: 'application/x.arweave-manifest+json'
       });
-      
+
+      // Upload manifest with Turbo SDK
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
-        signal: controller.signal, // Also pass signal to manifest upload
-        fundingMode, // Pass JIT funding mode to manifest upload (TypeScript types don't include this yet, but runtime supports it)
+        signal: controller.signal,
         dataItemOpts: {
           tags: [
             { name: 'App-Name', value: APP_NAME },
@@ -734,7 +718,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType]);
+  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType, freeUploadLimitBytes, getContentType]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);

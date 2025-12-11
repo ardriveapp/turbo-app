@@ -1,9 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { wincPerCredit } from '../../constants';
+import { useFreeUploadLimit, isFileFree, formatFreeLimit } from '../../hooks/useFreeUploadLimit';
+import { useX402Pricing } from '../../hooks/useX402Pricing';
+import { usePaymentFlow } from '../../hooks/usePaymentFlow';
+import { wincPerCredit, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Upload, ExternalLink, Shield, RefreshCw, Receipt, ChevronDown, ChevronUp, Archive, Clock, HelpCircle, MoreVertical, ArrowRight, Copy, Globe, AlertTriangle, CreditCard, Wallet } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import CopyButton from '../CopyButton';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -12,8 +15,278 @@ import AssignDomainModal from '../modals/AssignDomainModal';
 import BaseModal from '../modals/BaseModal';
 import { getArweaveUrl } from '../../utils';
 import UploadProgressSummary from '../UploadProgressSummary';
-import { JitPaymentCard } from '../JitPaymentCard';
-import { supportsJitPayment, getTokenConverter } from '../../utils/jitPayment';
+import { JitTokenSelector } from '../JitTokenSelector';
+import { supportsJitPayment, getTokenConverter, calculateRequiredTokenAmount, formatTokenAmount } from '../../utils/jitPayment';
+import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { tokenLabels } from '../../constants';
+import { Loader2 } from 'lucide-react';
+import X402OnlyBanner from '../X402OnlyBanner';
+
+// Unified Crypto Payment Details Component (matches Credits layout)
+interface CryptoPaymentDetailsProps {
+  creditsNeeded: number;
+  totalCost: number;
+  tokenType: SupportedTokenType;
+  walletAddress: string | null;
+  walletType: 'arweave' | 'ethereum' | 'solana' | null;
+  onBalanceValidation: (hasSufficientBalance: boolean) => void;
+  onShortageUpdate: (shortage: { amount: number; tokenType: SupportedTokenType } | null) => void;
+  localJitMax: number;
+  onMaxTokenAmountChange: (amount: number) => void;
+  x402Pricing?: {
+    usdcAmount: number;
+    usdcAmountSmallestUnit: string;
+    loading: boolean;
+    error: string | null;
+  };
+}
+
+function CryptoPaymentDetails({
+  creditsNeeded,
+  totalCost,
+  tokenType,
+  walletAddress,
+  walletType,
+  onBalanceValidation,
+  onShortageUpdate,
+  localJitMax: _localJitMax, // eslint-disable-line @typescript-eslint/no-unused-vars
+  onMaxTokenAmountChange,
+  x402Pricing,
+}: CryptoPaymentDetailsProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [estimatedCost, setEstimatedCost] = useState<{
+    tokenAmountReadable: number;
+    estimatedUSD: number | null;
+  } | null>(null);
+  const [bufferPercentage, setBufferPercentage] = useState(1); // Default 1% buffer
+
+  const tokenLabel = tokenLabels[tokenType];
+  const BUFFER_MULTIPLIER = 1 + (bufferPercentage / 100); // Adjustable buffer
+
+  // Fetch wallet balance
+  const {
+    balance: tokenBalance,
+    loading: balanceLoading,
+    error: balanceError,
+    isNetworkError,
+  } = useTokenBalance(tokenType, walletType, walletAddress, true);
+
+  // Calculate estimated cost
+  useEffect(() => {
+    const calculate = async () => {
+      try {
+        // For base-usdc, use x402 pricing directly
+        if (tokenType === 'base-usdc' && x402Pricing) {
+          // Don't set cost while loading to avoid showing "FREE" flash
+          if (x402Pricing.loading) {
+            setEstimatedCost(null); // Show "Calculating..."
+            return;
+          }
+
+          if (!x402Pricing.error) {
+            setEstimatedCost({
+              tokenAmountReadable: x402Pricing.usdcAmount, // Can be 0 for free uploads
+              estimatedUSD: x402Pricing.usdcAmount, // USDC is 1:1 with USD
+            });
+
+            // For Crypto tab, max is just the buffered cost
+            onMaxTokenAmountChange(x402Pricing.usdcAmount);
+          }
+          return;
+        }
+
+        // For other tokens, calculate using regular pricing
+        // Always use totalCost for Crypto tab - user is choosing to pay full amount with crypto
+        const cost = await calculateRequiredTokenAmount({
+          creditsNeeded: totalCost,
+          tokenType,
+          bufferMultiplier: BUFFER_MULTIPLIER,
+        });
+
+        setEstimatedCost({
+          tokenAmountReadable: cost.tokenAmountReadable,
+          estimatedUSD: cost.estimatedUSD,
+        });
+
+        // For Crypto tab, max is just the buffered cost (already includes buffer from BUFFER_MULTIPLIER)
+        onMaxTokenAmountChange(cost.tokenAmountReadable);
+      } catch (error) {
+        console.error('Failed to calculate crypto cost:', error);
+        setEstimatedCost(null);
+      }
+    };
+
+    const hasCost = (creditsNeeded > 0) || (totalCost > 0);
+    if (hasCost) {
+      calculate();
+    } else {
+      // Free upload - set cost to 0 immediately
+      setEstimatedCost({ tokenAmountReadable: 0, estimatedUSD: 0 });
+      onMaxTokenAmountChange(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditsNeeded, totalCost, tokenType, bufferPercentage, x402Pricing?.usdcAmount, x402Pricing?.loading, x402Pricing?.error]);
+
+  // Validate balance and update shortage info
+  useEffect(() => {
+    // Keep button disabled while pricing is loading (estimatedCost not yet available)
+    if (!estimatedCost) {
+      onBalanceValidation(false);
+      onShortageUpdate(null);
+      return;
+    }
+
+    // Keep button disabled while balance is loading
+    if (balanceLoading) {
+      onBalanceValidation(false);
+      onShortageUpdate(null);
+      return;
+    }
+
+    if (isNetworkError) {
+      onBalanceValidation(false);
+      onShortageUpdate(null);
+      return;
+    }
+
+    // If there's a balance error but we have pricing, allow proceeding
+    // (user may still have sufficient balance, we just can't verify)
+    if (balanceError) {
+      onBalanceValidation(true);
+      onShortageUpdate(null);
+      return;
+    }
+
+    const hasSufficientBalance = tokenBalance >= estimatedCost.tokenAmountReadable;
+    onBalanceValidation(hasSufficientBalance);
+
+    // Update shortage info for parent component warning
+    if (!hasSufficientBalance) {
+      const shortage = estimatedCost.tokenAmountReadable - tokenBalance;
+      onShortageUpdate({ amount: shortage, tokenType });
+    } else {
+      onShortageUpdate(null);
+    }
+  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, balanceLoading, tokenType, onBalanceValidation, onShortageUpdate]);
+
+  const afterUpload = estimatedCost ? Math.max(0, tokenBalance - estimatedCost.tokenAmountReadable) : tokenBalance;
+
+  return (
+    <div className="mb-4">
+      <div className="bg-surface rounded-lg border border-default p-4">
+        <div className="space-y-2.5">
+          {/* Cost */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-link">Cost:</span>
+            <span className="text-sm text-fg-muted font-medium">
+              {estimatedCost ? (
+                estimatedCost.tokenAmountReadable === 0 ? (
+                  <span className="text-turbo-green font-medium">FREE</span>
+                ) : (
+                  <>
+                    ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
+                    {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
+                      <span className="text-xs text-link ml-2">
+                        (≈ ${estimatedCost.estimatedUSD < 0.01
+                          ? estimatedCost.estimatedUSD.toFixed(4)
+                          : estimatedCost.estimatedUSD.toFixed(2)})
+                      </span>
+                    )}
+                  </>
+                )
+              ) : (
+                'Calculating...'
+              )}
+            </span>
+          </div>
+
+          {/* Current Balance */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-link">Current Balance:</span>
+            <span className="text-sm text-fg-muted font-medium">
+              {balanceLoading ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Checking...
+                </span>
+              ) : balanceError ? (
+                <span className="text-amber-400">Unable to fetch</span>
+              ) : (
+                `${formatTokenAmount(tokenBalance, tokenType)} ${tokenLabel}`
+              )}
+            </span>
+          </div>
+
+          {/* After Upload */}
+          {estimatedCost && !balanceLoading && !balanceError && (
+            <div className="flex justify-between items-center pt-2 border-t border-default/30">
+              <span className="text-xs text-link">After Upload:</span>
+              <span className="text-sm text-fg-muted font-medium">
+                {formatTokenAmount(afterUpload, tokenType)} {tokenLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Network Error Warning */}
+          {isNetworkError && (
+            <div className="pt-3 mt-3 border-t border-default/30">
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-amber-400 font-medium mb-1">
+                    {balanceError}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Advanced Settings - hidden for base-usdc since x402 pricing is authoritative */}
+        {estimatedCost && tokenType !== 'base-usdc' && (
+          <div className="mt-4 pt-4 border-t border-default/30">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+            >
+              {showAdvanced ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              Advanced Settings
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-3">
+                <label className="text-xs text-link block mb-2">
+                  Safety Buffer (0-20%):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.5"
+                    value={bufferPercentage}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 20) {
+                        setBufferPercentage(value);
+                      }
+                    }}
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-canvas text-fg-muted focus:outline-none focus:border-fg-muted"
+                  />
+                  <span className="text-xs text-link">%</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function UploadPanel() {
   const {
@@ -27,7 +300,13 @@ export default function UploadPanel() {
     jitPaymentEnabled,
     setJitPaymentEnabled,
     setJitMaxTokenAmount,
+    x402OnlyMode,
+    isPaymentServiceAvailable,
   } = useStore();
+
+  // Fetch and track the bundler's free upload limit
+  const freeUploadLimitBytes = useFreeUploadLimit();
+
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'error' | 'success' | 'info'; text: string } | null>(null);
@@ -38,15 +317,96 @@ export default function UploadPanel() {
   const [uploadsToShow, setUploadsToShow] = useState(20); // Start with 20 uploads
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // JIT payment local state for this upload
-  const [localJitEnabled, setLocalJitEnabled] = useState(jitPaymentEnabled);
+  // Shared payment flow state and effects
+  const {
+    paymentTab,
+    setPaymentTab,
+    cryptoShortage,
+    setCryptoShortage,
+    localJitMax,
+    setLocalJitMax,
+    localJitEnabled,
+    setLocalJitEnabled,
+    jitSectionExpanded,
+    setJitSectionExpanded,
+    selectedJitToken,
+    setSelectedJitToken,
+    jitBalanceSufficient,
+    setJitBalanceSufficient,
+  } = usePaymentFlow({
+    walletType,
+    x402OnlyMode,
+    showConfirmModal,
+    initialJitEnabled: jitPaymentEnabled,
+  });
 
-  // Max will be auto-calculated by JitPaymentCard based on estimated cost
-  const [localJitMax, setLocalJitMax] = useState(0);
+  // USD equivalent for credit pricing
+  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
 
   // Fixed 10% buffer for SDK (not exposed to user)
   const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
+
+  // Calculate total file size and billable size (excluding free files)
+  const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
+  const billableFileSize = files.reduce((acc, file) => {
+    return isFileFree(file.size, freeUploadLimitBytes) ? acc : acc + file.size;
+  }, 0);
+
+  // Get x402 pricing ONLY when user has opened the "Pay with Crypto" section
+  // This ensures we show CREDITS by default and only fetch x402 pricing when user clicks "Pay with Crypto"
+  // In x402-only mode, always use x402 pricing since there's no credits option
+  // Use billableFileSize (excluding free files) for accurate x402 pricing
+  const shouldUseX402 =
+    walletType === 'ethereum' &&
+    selectedJitToken === 'base-usdc' &&
+    showConfirmModal &&  // Modal must be open
+    (jitSectionExpanded || x402OnlyMode);  // "Pay with Crypto" section expanded OR x402-only mode
+  const x402Pricing = useX402Pricing(shouldUseX402 ? billableFileSize : 0);
+
+  // Fetch USD equivalent for credit pricing (only for billable bytes)
+  useEffect(() => {
+    const fetchUsdPrice = async () => {
+      if (billableFileSize <= 0 || !showConfirmModal) {
+        setUsdEquivalent(null);
+        return;
+      }
+
+      try {
+        const { getCurrentConfig } = useStore.getState();
+        const config = getCurrentConfig();
+        const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+
+        const turbo = TurboFactory.unauthenticated({
+          paymentServiceConfig: { url: config.paymentServiceUrl },
+        });
+
+        // Get USD price per GiB
+        const fiatRates = await turbo.getFiatRates();
+        const usdPerGiB = fiatRates.fiat?.usd || 0;
+
+        console.log('[Credits USD Pricing] getFiatRates response:', fiatRates);
+        console.log('[Credits USD Pricing] USD per GiB:', usdPerGiB);
+
+        if (usdPerGiB > 0) {
+          // Calculate USD for billable file size only (excluding free files)
+          const gib = billableFileSize / (1024 * 1024 * 1024);
+          const usdPrice = gib * usdPerGiB;
+          console.log('[Credits USD Pricing] Billable GiB:', gib);
+          console.log('[Credits USD Pricing] Total USD price:', usdPrice);
+          setUsdEquivalent(usdPrice);
+        } else {
+          setUsdEquivalent(null);
+        }
+      } catch (error) {
+        console.error('[USD Pricing] Error fetching USD price:', error);
+        setUsdEquivalent(null);
+      }
+    };
+
+    fetchUsdPrice();
+  }, [billableFileSize, showConfirmModal]);
+
   const {
     uploadMultipleFiles,
     uploading,
@@ -161,7 +521,7 @@ export default function UploadPanel() {
         contentType,
         result.dataCaches.join('; '),
         result.fastFinalityIndexes.join('; '),
-        getArweaveUrl(result.id)
+        getArweaveUrl(result.id, result.dataCaches)
       ];
     });
 
@@ -185,17 +545,33 @@ export default function UploadPanel() {
 
 
   const calculateUploadCost = (bytes: number) => {
-    if (bytes < 100 * 1024) return 0; // Free tier: Files under 100KiB
+    if (isFileFree(bytes, freeUploadLimitBytes)) return 0; // Free tier: Files under bundler's free limit
+
+    // Always return credit-based pricing for file list display
+    // x402 pricing is only used in the payment modal for USDC payment option
     if (!wincForOneGiB) return null;
-    
+
     const gibSize = bytes / (1024 * 1024 * 1024);
     const wincCost = gibSize * Number(wincForOneGiB);
     const creditCost = wincCost / wincPerCredit;
     return creditCost;
   };
 
-  const totalFileSize = files.reduce((acc, file) => acc + file.size, 0);
-  const totalCost = calculateUploadCost(totalFileSize);
+  // Use billableFileSize (sum of non-free files) to respect per-file free tiers
+  const totalCost = calculateUploadCost(billableFileSize);
+
+  // Auto-switch to crypto tab when user has insufficient credits
+  // This guides users to the crypto payment option when credits won't cover the upload
+  useEffect(() => {
+    if (showConfirmModal && totalCost !== null) {
+      const creditsNeeded = Math.max(0, totalCost - creditBalance);
+      if (creditsNeeded > 0) {
+        setLocalJitEnabled(true); // Enable JIT payment option
+        setPaymentTab('crypto'); // Switch to crypto tab so user sees the payment UI
+        setJitSectionExpanded(true); // Expand the JIT section
+      }
+    }
+  }, [showConfirmModal, totalCost, creditBalance, setPaymentTab, setJitSectionExpanded]);
 
   const handleUpload = () => {
     if (!address) {
@@ -207,40 +583,48 @@ export default function UploadPanel() {
 
   const handleConfirmUpload = async () => {
     setShowConfirmModal(false);
+    setJitSectionExpanded(false); // Reset for next upload
     setUploadMessage(null);
 
     // Save JIT preferences to store
     setJitPaymentEnabled(localJitEnabled);
 
-    // Determine the token type for JIT payment
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets use Base-ETH for JIT
-    const jitTokenType = walletType === 'arweave'
-      ? 'ario'
-      : walletType === 'ethereum'
-      ? 'base-eth'
-      : walletType;
-
-    // Save max token amount to store for future use
-    if (jitTokenType) {
-      setJitMaxTokenAmount(jitTokenType, localJitMax);
+    // Save max token amount to store for future use (using selected token)
+    if (selectedJitToken) {
+      setJitMaxTokenAmount(selectedJitToken, localJitMax);
     }
 
-    // Only enable JIT if the upload actually costs credits (not free tier)
-    const shouldEnableJit = localJitEnabled && totalCost !== null && totalCost > 0;
+    // Only enable JIT if the user has insufficient credits to cover the cost
+    // Calculate credits needed (0 if user has sufficient credits)
+    // Guard against null totalCost - should not happen since button is disabled when pricing is loading
+    const creditsNeeded = totalCost !== null ? Math.max(0, totalCost - creditBalance) : 0;
 
-    // Convert max token amount to smallest unit for SDK
+    // Prevent upload in x402-only mode for non-Ethereum wallets on billable uploads
+    if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
+      setUploadMessage({
+        type: 'error',
+        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.'
+      });
+      return;
+    }
+
+    // Enable JIT if user has explicitly selected crypto payment tab
+    // This allows forcing crypto payment even when credits are sufficient
+    const shouldEnableJit = localJitEnabled && paymentTab === 'crypto';
+
+    // Convert max token amount to smallest unit for SDK/x402
     let jitMaxTokenAmountSmallest = 0;
-    if (shouldEnableJit && jitTokenType && supportsJitPayment(jitTokenType)) {
-      const converter = getTokenConverter(jitTokenType);
+    if (shouldEnableJit && selectedJitToken && supportsJitPayment(selectedJitToken)) {
+      const converter = getTokenConverter(selectedJitToken);
       jitMaxTokenAmountSmallest = converter ? converter(localJitMax) : 0;
     }
 
     try {
+      // Pre-topup flow for crypto payments (one payment for all files)
       const { results, failedFiles } = await uploadMultipleFiles(files, {
-        jitEnabled: shouldEnableJit,
-        jitMaxTokenAmount: jitMaxTokenAmountSmallest,
-        jitBufferMultiplier: FIXED_BUFFER_MULTIPLIER,
+        cryptoPayment: shouldEnableJit,
+        tokenAmount: jitMaxTokenAmountSmallest,
+        selectedToken: selectedJitToken,
       });
       
       if (results.length > 0) {
@@ -351,7 +735,10 @@ export default function UploadPanel() {
                   Drop files here or click to browse
                 </p>
                 <p className="text-sm text-link">
-                  Files under 100KiB are <span className="text-turbo-green font-semibold">FREE</span> • Max 10GiB per file
+                  {freeUploadLimitBytes > 0 ? (
+                    <>Files under {formatFreeLimit(freeUploadLimitBytes)} are <span className="text-turbo-green font-semibold">FREE</span> • </>
+                  ) : null}
+                  Max 10GiB per file
                 </p>
               </div>
               <input
@@ -417,7 +804,7 @@ export default function UploadPanel() {
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {files.map((file, index) => {
                   const cost = calculateUploadCost(file.size);
-                  const isFree = file.size < 100 * 1024;
+                  const isFree = isFileFree(file.size, freeUploadLimitBytes);
 
                   return (
                     <div key={index} className="bg-surface/50 rounded p-3">
@@ -428,7 +815,9 @@ export default function UploadPanel() {
                             {formatFileSize(file.size)}
                             {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
                             {cost !== null && cost > 0 && (
-                              <span className="ml-2">• {cost.toFixed(6)} Credits</span>
+                              <span className="ml-2">
+                                • {cost.toFixed(6)} Credits
+                              </span>
                             )}
                           </div>
                         </div>
@@ -632,7 +1021,7 @@ export default function UploadPanel() {
                           </button>
                         )}
                         <a
-                          href={getArweaveUrl(result.id)}
+                          href={getArweaveUrl(result.id, result.dataCaches)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1.5 text-link hover:text-fg-muted transition-colors"
@@ -729,7 +1118,7 @@ export default function UploadPanel() {
                                   </button>
                                 )}
                                 <a
-                                  href={getArweaveUrl(result.id)}
+                                  href={getArweaveUrl(result.id, result.dataCaches)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => close()}
@@ -769,7 +1158,7 @@ export default function UploadPanel() {
                     <div className="flex items-center gap-2 text-sm text-link">
                       <span>
                         {(() => {
-                          if (result.fileSize && result.fileSize < 100 * 1024) {
+                          if (result.fileSize && isFileFree(result.fileSize, freeUploadLimitBytes)) {
                             return <span className="text-turbo-green">FREE</span>;
                           } else if (wincForOneGiB && result.winc) {
                             const credits = Number(result.winc) / wincPerCredit;
@@ -844,7 +1233,10 @@ export default function UploadPanel() {
 
       {/* Upload Confirmation Modal */}
       {showConfirmModal && files.length > 0 && (
-        <BaseModal onClose={() => setShowConfirmModal(false)}>
+        <BaseModal onClose={() => {
+          setShowConfirmModal(false);
+          setJitSectionExpanded(false); // Reset JIT section when modal closes
+        }}>
           <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -856,12 +1248,24 @@ export default function UploadPanel() {
               </div>
             </div>
 
+            {/* X402-Only Mode Banner */}
+            {x402OnlyMode && <X402OnlyBanner />}
+
+            {/* Upload Summary - Files and Size only */}
             <div className="mb-4">
               <div className="bg-surface rounded-lg p-3">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-link">Files:</span>
-                    <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-fg-muted">
+                      {files.length} file{files.length !== 1 ? 's' : ''}
+                      {(() => {
+                        const freeFilesCount = files.filter(file => isFileFree(file.size, freeUploadLimitBytes)).length;
+                        return freeFilesCount > 0 ? (
+                          <span className="text-turbo-green"> ({freeFilesCount} free)</span>
+                        ) : null;
+                      })()}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-link">Total Size:</span>
@@ -869,76 +1273,276 @@ export default function UploadPanel() {
                       {formatFileSize(totalFileSize)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-link">Cost:</span>
-                    <span className="text-xs text-fg-muted">
-                      {totalCost === 0 ? (
-                        <span className="text-turbo-green font-medium">FREE</span>
-                      ) : typeof totalCost === 'number' ? (
-                        `${totalCost.toFixed(6)} Credits`
-                      ) : (
-                        'Calculating...'
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                    <span className="text-xs text-link">Current Balance:</span>
-                    <span className="text-xs text-fg-muted">
-                      {creditBalance.toFixed(6)} Credits
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* JIT Payment Card */}
+            {/* Payment Method Section */}
             {(() => {
               const creditsNeeded = typeof totalCost === 'number' ? Math.max(0, totalCost - creditBalance) : 0;
+              const hasSufficientCredits = creditsNeeded === 0;
+              const canUseJit = selectedJitToken && supportsJitPayment(selectedJitToken);
 
-              // Determine the token type for JIT payment
-              // Arweave wallets must use ARIO for JIT (not AR)
-              // Ethereum wallets use Base-ETH for JIT
-              const jitTokenType = walletType === 'arweave'
-                ? 'ario'
-                : walletType === 'ethereum'
-                ? 'base-eth'
-                : walletType;
-              const showJitOption = creditsNeeded > 0 && jitTokenType && supportsJitPayment(jitTokenType);
+              // Check if upload is completely free (all files under free limit)
+              const isFreeUpload = typeof totalCost === 'number' && totalCost === 0;
+
+              // When switching to crypto tab, expand the section and enable JIT
+              const handleCryptoTabClick = () => {
+                setPaymentTab('crypto');
+                setJitSectionExpanded(true);
+                setLocalJitEnabled(true);
+                // Keep current selection (default is base-ario for Ethereum wallets)
+                // User can change via JitTokenSelector if needed
+              };
+
+              // When switching to credits tab, collapse crypto section
+              const handleCreditsTabClick = () => {
+                setPaymentTab('credits');
+                setJitSectionExpanded(false);
+                setLocalJitEnabled(false);
+              };
 
               return (
                 <>
-                  {showJitOption && jitTokenType && (
+                  {/* Payment Method Tabs - Only show for wallets that support JIT, non-free uploads, payment service available, and not x402-only mode */}
+                  {canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
-                      <JitPaymentCard
-                        creditsNeeded={creditsNeeded}
-                        totalCost={typeof totalCost === 'number' ? totalCost : 0}
-                        currentBalance={creditBalance}
-                        tokenType={jitTokenType}
-                        enabled={localJitEnabled}
-                        onEnabledChange={setLocalJitEnabled}
-                        maxTokenAmount={localJitMax}
-                        onMaxTokenAmountChange={setLocalJitMax}
-                      />
+                      <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
+                        <button
+                          type="button"
+                          onClick={handleCreditsTabClick}
+                          className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            paymentTab === 'credits'
+                              ? 'bg-fg-muted text-black'
+                              : 'text-link hover:text-fg-muted'
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Credits
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCryptoTabClick}
+                          className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            paymentTab === 'crypto'
+                              ? 'bg-fg-muted text-black'
+                              : 'text-link hover:text-fg-muted'
+                          }`}
+                        >
+                          <Wallet className="w-4 h-4" />
+                          Crypto
+                        </button>
+                      </div>
                     </div>
                   )}
 
-                  {/* Insufficient credits warning */}
-                  {creditsNeeded > 0 && !localJitEnabled && (
-                    <div className="mb-4 p-2.5 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          Insufficient credits. You need {creditsNeeded.toFixed(6)} more credits.
-                          {!showJitOption && (
+                  {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
+                  {paymentTab === 'credits' && canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
+                    <div className="mb-4">
+                      <div className="bg-surface rounded-lg border border-default p-4">
+                        <div className="space-y-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Cost:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {totalCost === 0 ? (
+                                <span className="text-turbo-green font-medium">FREE</span>
+                              ) : typeof totalCost === 'number' ? (
+                                <>
+                                  {totalCost.toFixed(6)} Credits
+                                  {usdEquivalent !== null && usdEquivalent > 0 && (
+                                    <span className="text-xs text-link ml-2">
+                                      (≈ ${usdEquivalent < 0.01
+                                        ? usdEquivalent.toFixed(4)
+                                        : usdEquivalent.toFixed(2)})
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                'Calculating...'
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Only show balance info for non-free uploads */}
+                          {!isFreeUpload && (
                             <>
-                              {' '}
-                              <a href="/topup" className="underline hover:text-red-300 transition-colors">
-                                Buy credits
-                              </a>{' '}
-                              to continue.
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-link">Current Balance:</span>
+                                <span className="text-sm text-fg-muted font-medium">
+                                  {creditBalance.toFixed(6)} Credits
+                                </span>
+                              </div>
+                              {typeof totalCost === 'number' && (
+                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                                  <span className="text-xs text-link">After Upload:</span>
+                                  <span className="text-sm text-fg-muted font-medium">
+                                    {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
+                                  </span>
+                                </div>
+                              )}
                             </>
                           )}
-                        </span>
+
+                          {/* Insufficient Credits Warning */}
+                          {!isFreeUpload && !hasSufficientCredits && (
+                            <div className="pt-3 mt-3 border-t border-default/30">
+                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                    Need {creditsNeeded.toFixed(6)} more credits
+                                  </div>
+                                  <div className="text-xs text-red-400/80">
+                                    {canUseJit && (
+                                      <>
+                                        • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-red-300">Crypto tab</button> to pay directly
+                                        <br />
+                                      </>
+                                    )}
+                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Details Section - Crypto Tab (always show in x402-only mode) */}
+                  {(paymentTab === 'crypto' || x402OnlyMode) && canUseJit && !isFreeUpload && (
+                    <>
+                      {/* X402-only mode: Non-Ethereum wallet warning */}
+                      {x402OnlyMode && walletType !== 'ethereum' && (
+                        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <div className="font-medium text-yellow-400 text-sm mb-1">Ethereum Wallet Required</div>
+                              <div className="text-xs text-yellow-400/80">
+                                X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* JIT Token Selector - shown for Ethereum wallets */}
+                      {walletType === 'ethereum' && (
+                        <div className="mb-3">
+                          <JitTokenSelector
+                            walletType={walletType}
+                            selectedToken={selectedJitToken}
+                            onTokenSelect={setSelectedJitToken}
+                            x402OnlyMode={x402OnlyMode}
+                          />
+                        </div>
+                      )}
+
+                      {/* Unified Crypto Payment Display - Only show for Ethereum in x402-only mode */}
+                      {(!x402OnlyMode || walletType === 'ethereum') && (
+                        <CryptoPaymentDetails
+                          creditsNeeded={creditsNeeded}
+                          totalCost={typeof totalCost === 'number' ? totalCost : 0}
+                          tokenType={selectedJitToken}
+                          walletAddress={address}
+                          walletType={walletType}
+                          onBalanceValidation={setJitBalanceSufficient}
+                          onShortageUpdate={setCryptoShortage}
+                          localJitMax={localJitMax}
+                          onMaxTokenAmountChange={setLocalJitMax}
+                          x402Pricing={x402Pricing}
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {/* Credits-Only Payment (for wallets without JIT support or free uploads) */}
+                  {(!canUseJit || isFreeUpload) && (
+                    <div className="mb-4">
+                      <div className="bg-surface rounded-lg border border-default p-4">
+                        <div className="space-y-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-link">Cost:</span>
+                            <span className="text-sm text-fg-muted font-medium">
+                              {totalCost === 0 ? (
+                                <span className="text-turbo-green font-medium">FREE</span>
+                              ) : typeof totalCost === 'number' ? (
+                                <>
+                                  {totalCost.toFixed(6)} Credits
+                                  {usdEquivalent !== null && usdEquivalent > 0 && (
+                                    <span className="text-xs text-link ml-2">
+                                      (≈ ${usdEquivalent < 0.01
+                                        ? usdEquivalent.toFixed(4)
+                                        : usdEquivalent.toFixed(2)})
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                'Calculating...'
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Only show balance info for non-free uploads */}
+                          {!isFreeUpload && (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-link">Current Balance:</span>
+                                <span className="text-sm text-fg-muted font-medium">
+                                  {creditBalance.toFixed(6)} Credits
+                                </span>
+                              </div>
+                              {typeof totalCost === 'number' && (
+                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
+                                  <span className="text-xs text-link">After Upload:</span>
+                                  <span className="text-sm text-fg-muted font-medium">
+                                    {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Insufficient Credits Warning */}
+                          {!isFreeUpload && !hasSufficientCredits && (
+                            <div className="pt-3 mt-3 border-t border-default/30">
+                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                    Need {creditsNeeded.toFixed(6)} more credits
+                                  </div>
+                                  <div className="text-xs text-red-400/80">
+                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Insufficient crypto balance warning - when using JIT */}
+                  {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-red-400 font-medium mb-1">
+                            Need {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} more
+                          </div>
+                          <div className="text-xs text-red-400/80">
+                            Add funds to your wallet or{' '}
+                            <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                              buy credits
+                            </a>{' '}
+                            instead.
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -958,7 +1562,7 @@ export default function UploadPanel() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex flex-col-reverse sm:flex-row gap-3">
                     <button
                       onClick={() => setShowConfirmModal(false)}
                       className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
@@ -967,10 +1571,25 @@ export default function UploadPanel() {
                     </button>
                     <button
                       onClick={handleConfirmUpload}
-                      disabled={creditsNeeded > 0 && !localJitEnabled}
+                      disabled={(() => {
+                        // Compute shouldEnableJit consistently with handleConfirmUpload
+                        const shouldEnableJit = localJitEnabled && paymentTab === 'crypto';
+                        return (
+                          // Disable while pricing is loading (totalCost is null)
+                          totalCost === null ||
+                          // User needs credits but hasn't opted into crypto payment
+                          (creditsNeeded > 0 && !shouldEnableJit) ||
+                          // User opted into crypto but balance validation failed
+                          (shouldEnableJit && creditsNeeded > 0 && !jitBalanceSufficient) ||
+                          // Disable if in x402-only mode with non-Ethereum wallet for billable uploads
+                          (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') ||
+                          // Disable while x402 pricing is loading (for crypto payments)
+                          (shouldEnableJit && creditsNeeded > 0 && selectedJitToken === 'base-usdc' && x402Pricing?.loading)
+                        );
+                      })()}
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
-                      {localJitEnabled && creditsNeeded > 0 ? 'Upload & Auto-Pay' : 'Upload Now'}
+                      {localJitEnabled && paymentTab === 'crypto' && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>
                   </div>
                 </>

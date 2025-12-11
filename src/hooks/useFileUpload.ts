@@ -1,15 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
   ArconnectSigner,
   OnDemandFunding,
 } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { supportsJitPayment } from '../utils/jitPayment';
+import { formatUploadError } from '../utils/errorMessages';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
+import { useEthereumTurboClient } from './useEthereumTurboClient';
+import { useFreeUploadLimit } from './useFreeUploadLimit';
+import { getContentType } from '../utils/mimeTypes';
 
 interface UploadResult {
   id: string;
@@ -65,6 +69,9 @@ const mergeTags = (
 export function useFileUpload() {
   const { address, walletType } = useStore();
   const { wallets } = useWallets(); // Get Privy wallets
+  const ethAccount = useAccount(); // RainbowKit/Wagmi account state
+  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
+  const freeUploadLimitBytes = useFreeUploadLimit(); // Get free upload limit
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -75,6 +82,13 @@ export function useFileUpload() {
   const [activeUploads, setActiveUploads] = useState<ActiveUpload[]>([]);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [uploadErrors, setUploadErrors] = useState<UploadError[]>([]);
+
+  // Cache Turbo client to avoid re-authentication on every upload
+  const turboClientCache = useRef<{
+    client: TurboAuthenticatedClient;
+    address: string;
+    tokenType: string;
+  } | null>(null);
   const [totalSize, setTotalSize] = useState<number>(0);
   const [uploadedSize, setUploadedSize] = useState<number>(0);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
@@ -86,6 +100,9 @@ export function useFileUpload() {
       throw new Error('Wallet not connected');
     }
 
+    // Check for Privy embedded wallet
+    const hasPrivyWallet = wallets.some(w => w.walletClientType === 'privy');
+
     // WALLET ISOLATION: Verify correct wallet is available and connected
     switch (walletType) {
       case 'arweave':
@@ -94,8 +111,10 @@ export function useFileUpload() {
         }
         break;
       case 'ethereum':
-        if (!window.ethereum) {
-          throw new Error('MetaMask not available. Please reconnect your Ethereum wallet.');
+        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, or direct window.ethereum
+        // WalletConnect and other remote wallets won't have window.ethereum
+        if (!hasPrivyWallet && !ethAccount.isConnected && !window.ethereum) {
+          throw new Error('Ethereum wallet not connected. Please reconnect your wallet.');
         }
         break;
       case 'solana':
@@ -104,7 +123,7 @@ export function useFileUpload() {
         }
         break;
     }
-  }, [address, walletType]);
+  }, [address, walletType, wallets, ethAccount.isConnected]);
 
   // Get config function from store
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);
@@ -116,6 +135,15 @@ export function useFileUpload() {
 
     // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
     const effectiveTokenType = tokenTypeOverride || walletType;
+
+    // Check if we can reuse cached client (same address and token type)
+    if (
+      turboClientCache.current &&
+      turboClientCache.current.address === address &&
+      turboClientCache.current.tokenType === effectiveTokenType
+    ) {
+      return turboClientCache.current.client;
+    }
     const config = getCurrentConfig();
     const turboConfig = {
       paymentServiceConfig: { url: config.paymentServiceUrl },
@@ -131,66 +159,65 @@ export function useFileUpload() {
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
-        // Creating ArconnectSigner for Wander wallet
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({
+        const arweaveClient = TurboFactory.authenticated({
           ...turboConfig,
           signer,
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
         });
-        
-      case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
-          }
-          // Creating Ethereum walletAdapter
-          // Create ethers provider and get the signer
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: (tokenTypeOverride || "ethereum") as any, // Use base-eth for JIT, ethereum otherwise
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: arweaveClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
         }
-        
+
+        return arweaveClient;
+
+      case 'ethereum':
+        const ethereumClient = await createEthereumTurboClient(tokenTypeOverride || 'ethereum');
+
+        // Also cache in local ref for consistency with other wallet types
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: ethereumClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return ethereumClient;
+
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
         }
 
-        return TurboFactory.authenticated({
+        const solanaClient = TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
           ...turboConfig,
         });
+
+        // Cache the client
+        if (address && effectiveTokenType) {
+          turboClientCache.current = {
+            client: solanaClient,
+            address: address,
+            tokenType: effectiveTokenType,
+          };
+        }
+
+        return solanaClient;
         
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [walletType, wallets, getCurrentConfig, validateWalletState]);
+  }, [walletType, getCurrentConfig, validateWalletState, address, createEthereumTurboClient]);
 
   const uploadFile = useCallback(async (
     file: File,
@@ -199,6 +226,7 @@ export function useFileUpload() {
       jitMaxTokenAmount?: number; // In smallest unit
       jitBufferMultiplier?: number;
       customTags?: Array<{ name: string; value: string }>;
+      selectedJitToken?: SupportedTokenType; // Selected JIT payment token
     }
   ) => {
     if (!address) {
@@ -209,30 +237,38 @@ export function useFileUpload() {
     setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
     // Determine the token type for JIT payment and uploads
-    // Arweave wallets must use ARIO for JIT (not AR)
-    // Ethereum wallets: detect from current network (ETH L1, Base, or Polygon)
+    // Priority: user-selected JIT token > wallet-specific defaults
     let jitTokenType: SupportedTokenType | null = null;
 
-    if (walletType === 'arweave') {
+    // If user explicitly selected a JIT token, use that
+    if (options?.selectedJitToken && supportsJitPayment(options.selectedJitToken)) {
+      jitTokenType = options.selectedJitToken;
+    } else if (walletType === 'arweave') {
       jitTokenType = 'ario';
     } else if (walletType === 'ethereum') {
       // Detect token type from current network chainId
+      // Priority: wagmi account chainId > Privy > window.ethereum
       try {
-        const { ethers } = await import('ethers');
         const { getTokenTypeFromChainId } = await import('../utils');
 
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        // First try wagmi's chainId (works for RainbowKit, WalletConnect, etc.)
+        if (ethAccount.chainId) {
+          jitTokenType = getTokenTypeFromChainId(ethAccount.chainId);
+        } else {
+          // Fallback to Privy or window.ethereum for legacy support
+          const { ethers } = await import('ethers');
+          const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 
-        if (privyWallet) {
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const network = await ethersProvider.getNetwork();
-          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
-        } else if (window.ethereum) {
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const network = await ethersProvider.getNetwork();
-          jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          if (privyWallet) {
+            const provider = await privyWallet.getEthereumProvider();
+            const ethersProvider = new ethers.BrowserProvider(provider);
+            const network = await ethersProvider.getNetwork();
+            jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          } else if (window.ethereum) {
+            const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+            const network = await ethersProvider.getNetwork();
+            jitTokenType = getTokenTypeFromChainId(Number(network.chainId));
+          }
         }
       } catch (error) {
         console.warn('Failed to detect network, defaulting to ethereum:', error);
@@ -252,11 +288,10 @@ export function useFileUpload() {
     }
 
     try {
-      // Creating Turbo client for upload
-      const turbo = await createTurboClient(jitTokenType || undefined);
-
-      // Starting upload for file
-      console.log(`Starting upload for ${fileName} (${file.size} bytes)`);
+      // Only pass jitTokenType if JIT is actually enabled, otherwise use default
+      // This prevents triggering walletAdapter path for regular credit-based uploads
+      const tokenTypeForClient = (options?.jitEnabled && jitTokenType) ? jitTokenType : undefined;
+      const turbo = await createTurboClient(tokenTypeForClient);
 
       // Upload file using the proper uploadFile method for browsers
       const uploadResult = await turbo.uploadFile({
@@ -269,7 +304,7 @@ export function useFileUpload() {
                   { name: 'App-Name', value: APP_NAME },
                   { name: 'App-Feature', value: 'File Upload' },
                   { name: 'App-Version', value: APP_VERSION },
-                  { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                  { name: 'Content-Type', value: getContentType(file) },
                   { name: 'File-Name', value: file.name }
                 ],
                 options.customTags
@@ -278,16 +313,14 @@ export function useFileUpload() {
                 { name: 'App-Name', value: APP_NAME },
                 { name: 'App-Feature', value: 'File Upload' },
                 { name: 'App-Version', value: APP_VERSION },
-                { name: 'Content-Type', value: file.type || 'application/octet-stream' },
+                { name: 'Content-Type', value: getContentType(file) },
                 { name: 'File-Name', value: file.name }
               ]
         },
         events: {
-          // Overall progress (includes both signing and upload)
           onProgress: (progressData: { totalBytes: number; processedBytes: number; step?: string }) => {
-            const { totalBytes, processedBytes, step } = progressData;
+            const { totalBytes, processedBytes } = progressData;
             const percentage = Math.round((processedBytes / totalBytes) * 100);
-            console.log(`Upload progress for ${fileName}: ${percentage}% (${processedBytes}/${totalBytes} bytes, step: ${step || 'unknown'})`);
             setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
             // Update active uploads array with progress
             setActiveUploads(prev => prev.map(upload =>
@@ -297,14 +330,10 @@ export function useFileUpload() {
             ));
           },
           onError: (error: any) => {
-            // Upload error occurred
-            console.error(`Upload error for ${fileName}:`, error);
-            const errorMessage = error?.message || 'Upload failed';
+            const errorMessage = formatUploadError(error?.message || 'Upload failed');
             setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
           },
           onSuccess: () => {
-            // Upload completed successfully
-            console.log(`Upload success for ${fileName}`);
             setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
           }
         }
@@ -316,26 +345,31 @@ export function useFileUpload() {
         timestamp: Date.now(),
         fileName: file.name,
         fileSize: file.size,
-        contentType: file.type || 'application/octet-stream',
+        contentType: getContentType(file),
         receipt: uploadResult // Store the entire upload response as receipt
       };
       
       setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      const errorMessage = formatUploadError(error instanceof Error ? error : 'Upload failed');
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
     }
-  }, [address, walletType, wallets, createTurboClient]);
+  }, [address, walletType, wallets, ethAccount.chainId, createTurboClient, freeUploadLimitBytes]);
 
   const uploadMultipleFiles = useCallback(async (
     files: File[],
     options?: {
-      jitEnabled?: boolean;
-      jitMaxTokenAmount?: number; // In smallest unit
-      jitBufferMultiplier?: number;
+      cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
+      tokenAmount?: number; // Amount to top up in smallest unit (e.g., mARIO)
+      selectedToken?: SupportedTokenType; // Token to use for crypto payment
       customTags?: Array<{ name: string; value: string }>;
+      // Legacy JIT options (deprecated - use cryptoPayment instead)
+      jitEnabled?: boolean;
+      jitMaxTokenAmount?: number;
+      jitBufferMultiplier?: number;
+      selectedJitToken?: SupportedTokenType;
     }
   ) => {
     // Validate wallet state before any operations
@@ -361,6 +395,65 @@ export function useFileUpload() {
     const results: UploadResult[] = [];
     const failedFileNames: string[] = [];
 
+    // Handle crypto payment: top up once for all files before uploading
+    const selectedToken = options?.selectedToken || options?.selectedJitToken;
+    if (options?.cryptoPayment && selectedToken && options?.tokenAmount) {
+      try {
+        const turbo = await createTurboClient(selectedToken);
+        await turbo.topUpWithTokens({
+          tokenAmount: BigInt(options.tokenAmount),
+        });
+        window.dispatchEvent(new CustomEvent('refresh-balance'));
+      } catch (topUpError) {
+        const errorMessage = topUpError instanceof Error ? topUpError.message : 'Unknown error';
+
+        // Check if this is a polling timeout with a valid tx ID
+        // The SDK embeds the tx ID in the error message when polling times out
+        // Transaction hashes are: 0x + 64 hex chars (Ethereum) or 43-44 base64url chars (Arweave/AO)
+        // We specifically match these patterns and exclude ERC20 calldata (which starts with 0xa9059cbb)
+        const txIdMatch = errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/submitFundTransaction\([^)]*\)['":]?\s*([a-zA-Z0-9_-]{43,44})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*(0x[a-fA-F0-9]{64})/i) ||
+                          errorMessage.match(/transaction\s+(?:id|hash)[^:]*:\s*([a-zA-Z0-9_-]{43,44})/i);
+
+        if (txIdMatch && txIdMatch[1]) {
+          const txId = txIdMatch[1].replace(/['"]/g, '');
+          console.log('Detected failed tx ID from polling timeout, attempting retry:', txId);
+
+          // Try to resubmit the transaction to Turbo
+          try {
+            const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
+            const config = getCurrentConfig();
+            const unauthenticatedTurbo = TurboFactory.unauthenticated({
+              paymentServiceConfig: { url: config.paymentServiceUrl },
+              uploadServiceConfig: { url: config.uploadServiceUrl },
+              token: selectedToken as any,
+            });
+
+            // Wait a moment for blockchain confirmation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const retryResult = await unauthenticatedTurbo.submitFundTransaction({ txId });
+            console.log('Retry submitFundTransaction succeeded:', retryResult);
+
+            if (retryResult.status !== 'failed') {
+              window.dispatchEvent(new CustomEvent('refresh-balance'));
+              // Success - continue with uploads
+            } else {
+              throw new Error('Transaction confirmation failed after retry');
+            }
+          } catch (retryError) {
+            setUploading(false);
+            const retryMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
+            throw new Error(`Crypto payment polling timed out. Your transaction (${txId}) may have succeeded - check your balance or try "Buy Credits" to resubmit. Error: ${retryMsg}`);
+          }
+        } else {
+          setUploading(false);
+          throw new Error(`Crypto payment failed: ${errorMessage}`);
+        }
+      }
+    }
+
     for (const file of files) {
       // Check if cancelled
       if (isCancelled) {
@@ -370,19 +463,18 @@ export function useFileUpload() {
       }
 
       try {
-        // Add to active uploads
         setActiveUploads(prev => [
           ...prev.filter(u => u.name !== file.name),
           { name: file.name, progress: 0, size: file.size }
         ]);
 
-        // Starting upload for file
-        const result = await uploadFile(file, options);
+        // If we did a crypto pre-topup, don't pass JIT options to avoid per-file JIT
+        const uploadOptions = (options?.cryptoPayment && selectedToken)
+          ? { customTags: options?.customTags }
+          : options;
+        const result = await uploadFile(file, uploadOptions);
 
-        // Remove from active uploads
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
-
-        // Add to recent files
         setRecentFiles(prev => [
           {
             name: file.name,
@@ -391,56 +483,48 @@ export function useFileUpload() {
             timestamp: Date.now()
           },
           ...prev
-        ].slice(0, 20)); // Keep last 20
+        ].slice(0, 20));
 
-        // Upload completed for file
         results.push(result);
         setUploadResults(prev => [...prev, result]);
         setUploadedCount(prev => prev + 1);
         setUploadedSize(prev => prev + file.size);
 
       } catch (error) {
-        // Remove from active uploads
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
+        const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
 
-        // Add to recent files as error
         setRecentFiles(prev => [
           {
             name: file.name,
             size: file.size,
             status: 'error' as const,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             timestamp: Date.now()
           },
           ...prev
         ].slice(0, 20));
 
-        // Add to upload errors
         setUploadErrors(prev => [
           ...prev,
           {
             fileName: file.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: userFriendlyError,
             retryable: true
           }
         ]);
 
-        // Failed to upload file
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setErrors(prev => ({ ...prev, [file.name]: errorMessage }));
+        setErrors(prev => ({ ...prev, [file.name]: userFriendlyError }));
         failedFileNames.push(file.name);
         setFailedFiles(prev => [...prev, file]);
         setFailedCount(prev => prev + 1);
-        setUploadedCount(prev => prev + 1); // Still count as processed
-
-        // Error details logged for debugging
+        setUploadedCount(prev => prev + 1);
       }
     }
 
     setUploading(false);
-    // Upload summary processed
     return { results, failedFiles: failedFileNames };
-  }, [uploadFile, validateWalletState, isCancelled]);
+  }, [uploadFile, validateWalletState, isCancelled, createTurboClient]);
 
   const reset = useCallback(() => {
     setUploadProgress({});

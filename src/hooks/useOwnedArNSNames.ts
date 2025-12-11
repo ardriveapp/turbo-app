@@ -2,6 +2,9 @@ import { useCallback, useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { getARIO, getANT, WRITE_OPTIONS, createContractSigner } from '../utils';
 import { createAoSigner } from '@ar.io/sdk/web';
+import { useWallets } from '@privy-io/react-auth';
+import { useAccount, useConfig } from 'wagmi';
+import { getConnectorClient } from 'wagmi/actions';
 
 // Helper to decode punycode names for better display
 const decodePunycode = (name: string): string => {
@@ -43,6 +46,35 @@ export function useOwnedArNSNames() {
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
+
+  // Ethereum wallet hooks for provider access
+  const { wallets } = useWallets();
+  const wagmiConfig = useConfig();
+  const ethAccount = useAccount();
+
+  // Helper to get Ethereum provider for ArNS signing (supports Privy, WalletConnect, injected)
+  const getEthereumProvider = useCallback(async (): Promise<any> => {
+    // Priority 1: Privy embedded wallet
+    const privyWallet = wallets.find((w) => w.walletClientType === 'privy');
+    if (privyWallet) {
+      return await privyWallet.getEthereumProvider();
+    }
+
+    // Priority 2: RainbowKit/Wagmi connected wallet
+    if (ethAccount.isConnected && ethAccount.connector) {
+      try {
+        const connectorClient = await getConnectorClient(wagmiConfig, {
+          connector: ethAccount.connector,
+        });
+        return connectorClient.transport;
+      } catch {
+        // Fall through to window.ethereum
+      }
+    }
+
+    // Priority 3: Injected wallet (MetaMask, etc.)
+    return window.ethereum;
+  }, [wallets, wagmiConfig, ethAccount.isConnected, ethAccount.connector]);
 
   // Fetch names owned by current address
   const fetchOwnedNames = useCallback(async (forceRefresh: boolean = false): Promise<ArNSName[]> => {
@@ -153,11 +185,14 @@ export function useOwnedArNSNames() {
     }
 
     setUpdating(prev => ({ ...prev, [name]: true }));
-    
+
     try {
+      // Get Ethereum provider for non-injected wallets (Privy, WalletConnect, etc.)
+      const ethereumProvider = walletType === 'ethereum' ? await getEthereumProvider() : undefined;
+
       // Create wallet-specific contract signer (async for Ethereum setup)
-      const contractSigner = await createContractSigner(walletType);
-      
+      const contractSigner = await createContractSigner(walletType, ethereumProvider);
+
       // Create AO signer using SDK helper (like reference app)
       const aoSigner = createAoSigner(contractSigner);
       
@@ -269,7 +304,7 @@ export function useOwnedArNSNames() {
     } finally {
       setUpdating(prev => ({ ...prev, [name]: false }));
     }
-  }, [names, address, fetchOwnedNames, getOwnedArNSNames, setOwnedArNSNames]);
+  }, [names, address, fetchOwnedNames, getOwnedArNSNames, setOwnedArNSNames, getEthereumProvider]);
 
   // Fetch ANT details for a specific name (on-demand)
   const fetchNameDetails = useCallback(async (name: string): Promise<ArNSName | null> => {

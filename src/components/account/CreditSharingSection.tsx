@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, ArrowDown, ArrowUp, ChevronDown, X, Check } from 'lucide-react';
 import { TurboFactory, TurboAuthenticatedClient, ArconnectSigner } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { useStore } from '../../store/useStore';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { formatWalletAddress } from '../../utils';
 import { wincPerCredit } from '../../constants';
 import CopyButton from '../CopyButton';
-import { useWallets } from '@privy-io/react-auth';
+import { useEthereumTurboClient } from '../../hooks/useEthereumTurboClient';
 
 interface SharedCredits {
   received: {
@@ -39,7 +38,7 @@ interface SharedCredits {
 export default function CreditSharingSection() {
   const { address, walletType } = useStore();
   const turboConfig = useTurboConfig();
-  const { wallets } = useWallets(); // Get Privy wallets
+  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
   const [sharedCredits, setSharedCredits] = useState<SharedCredits | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,57 +46,27 @@ export default function CreditSharingSection() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [revokedApprovals, setRevokedApprovals] = useState<Set<string>>(new Set());
 
-  // Create Turbo client (same pattern as BalanceCheckerPanel)
+  // Create Turbo client
   const createTurboClient = useCallback(async (): Promise<TurboAuthenticatedClient> => {
     if (!address || !walletType) {
       throw new Error('Wallet not connected');
     }
-    
+
     switch (walletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found');
         }
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
+        return TurboFactory.authenticated({
           ...turboConfig,
-          signer 
+          signer
         });
-        
+
       case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        // Use the shared Ethereum Turbo client with custom connect message
+        return createEthereumTurboClient('ethereum');
 
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: "ethereum",
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found');
-          }
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          return TurboFactory.authenticated({
-            token: "ethereum",
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        }
-        
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found');
@@ -108,11 +77,11 @@ export default function CreditSharingSection() {
           walletAdapter: window.solana,
           ...turboConfig,
         });
-        
+
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }
-  }, [address, walletType, turboConfig, wallets]);
+  }, [address, walletType, turboConfig, createEthereumTurboClient]);
 
   // Fetch shared credits data
   useEffect(() => {

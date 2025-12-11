@@ -621,7 +621,7 @@ For more information on how to contribute, please see [CONTRIBUTING.md].
 [examples/vite]: ./examples/vite
 [CONTRIBUTING.md]: ./CONTRIBUTING.md
 [AO Connect]: https://github.com/permaweb/ao/tree/main/connect
-[ARIO Testnet Process]: https://www.ao.link/#/entity/agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
+[ARIO Testnet Process]: https://scan.ar.io/#/entity/agYcCFJtrMG6cqMuZfskIkFTGvUPddICmtQSBIoPdiA
 [ARIO Network Spec]: https://github.com/ar-io/ar-io-network-process?tab=readme-ov-file#contract-spec
 [Winston]: https://www.npmjs.com/package/winston
 [AO]: https://github.com/permaweb/ao

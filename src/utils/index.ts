@@ -129,10 +129,14 @@ export const getExplorerUrl = (txid: string, token: string) => {
     case 'arweave':
       return `https://viewblock.io/arweave/tx/${txid}`;
     case 'ethereum':
+    case 'usdc':
       return `https://etherscan.io/tx/${txid}`;
     case 'base-eth':
+    case 'base-usdc':
+    case 'base-ario':
       return `https://basescan.org/tx/${txid}`;
     case 'pol':
+    case 'polygon-usdc':
       return `https://polygonscan.com/tx/${txid}`;
     case 'solana':
       return `https://solscan.io/tx/${txid}`;
@@ -176,7 +180,36 @@ export const getGatewayBaseUrl = (): string => {
   return baseUrl;
 };
 
-export const getArweaveUrl = (txId: string): string => {
+export const getArweaveUrl = (txId: string, dataCaches?: string[]): string => {
+  // If dataCaches is provided and has entries, use the first one as the gateway
+  // This ensures users browse to a gateway that actually has the bundled data
+  if (dataCaches && dataCaches.length > 0) {
+    let firstCache = dataCaches[0].trim();
+
+    // Validate and sanitize the cache string to avoid malformed URLs
+    // Check if it's a full URL (contains protocol)
+    if (firstCache.startsWith('http://') || firstCache.startsWith('https://')) {
+      try {
+        // Extract origin portion from full URL
+        const url = new URL(firstCache);
+        firstCache = url.host; // host includes hostname and port if present
+      } catch {
+        // If URL parsing fails, strip protocol manually
+        firstCache = firstCache.replace(/^https?:\/\//, '');
+      }
+    } else {
+      // Remove any leading protocol that might be malformed
+      firstCache = firstCache.replace(/^https?:\/\//, '');
+    }
+
+    // Remove any trailing slashes
+    firstCache = firstCache.replace(/\/+$/, '');
+
+    // Ensure exactly one slash between host and txId, always use https
+    return `https://${firstCache}/${txId}`;
+  }
+
+  // Fall back to current gateway detection logic
   const gatewayBase = getGatewayBaseUrl();
 
   // The gateway base URL already handles all the logic:
@@ -267,7 +300,7 @@ export const getCurrentChainId = async (provider: any): Promise<number> => {
 };
 
 // Export address validation utilities
-export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong } from './addressValidation';
+export { validateWalletAddress, getWalletTypeLabel, formatWalletAddress as formatWalletAddressLong, resolveEthereumAddress } from './addressValidation';
 export type { WalletAddressType, AddressValidationResult } from './addressValidation';
 
 // Export AR.IO configuration helpers

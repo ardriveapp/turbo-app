@@ -9,7 +9,7 @@ import CreditSharingSection from '../components/account/CreditSharingSection';
 import ActivityOverview from '../components/account/ActivityOverview';
 
 export default function MyAccountPage() {
-  const { address, walletType } = useStore();
+  const { address, walletType, isPaymentServiceAvailable } = useStore();
   const navigate = useNavigate();
   const { arnsName, profile, loading: loadingArNS } = usePrimaryArNSName(walletType !== 'solana' ? address : null);
   const { names: ownedNames, loading: loadingDomains, fetchOwnedNames } = useOwnedArNSNames();
@@ -70,14 +70,16 @@ export default function MyAccountPage() {
         </div>
       </div>
 
-      {/* Wallet Overview Section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-fg-muted mb-4">Overview</h2>
-        <div className="space-y-4">
-          <BalanceCardsGrid />
-          <CreditSharingSection />
+      {/* Wallet Overview Section - Hide balance/sharing in x402-only mode */}
+      {isPaymentServiceAvailable() && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-fg-muted mb-4">Overview</h2>
+          <div className="space-y-4">
+            <BalanceCardsGrid />
+            <CreditSharingSection />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Domains Section - Only show for Arweave and Ethereum wallets */}
       {(walletType === 'arweave' || walletType === 'ethereum') && (

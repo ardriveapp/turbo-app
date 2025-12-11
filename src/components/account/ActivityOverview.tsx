@@ -70,7 +70,7 @@ export default function ActivityOverview() {
                   </div>
                   <div className="flex items-center gap-1">
                     <a
-                      href={getArweaveUrl(upload.id)}
+                      href={getArweaveUrl(upload.id, upload.dataCaches)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-1 text-link hover:text-fg-muted transition-colors"
@@ -162,7 +162,7 @@ export default function ActivityOverview() {
                     </div>
                     <div className="flex items-center gap-1">
                       <a
-                        href={getArweaveUrl(manifestId)}
+                        href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 text-link hover:text-fg-muted transition-colors"

@@ -4,8 +4,9 @@ import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import useDebounce from '../../hooks/useDebounce';
 import { defaultUSDAmount, minUSDAmount, maxUSDAmount, wincPerCredit, tokenLabels, tokenNetworkLabels, tokenNetworkDescriptions, SupportedTokenType } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check } from 'lucide-react';
+import { Loader2, Lock, CreditCard, DollarSign, Wallet, Info, Shield, AlertCircle, HardDrive, ChevronDown, Check, MapPin } from 'lucide-react';
 import { useWincForOneGiB, useWincForAnyToken } from '../../hooks/useWincForOneGiB';
+import { useCryptoPriceForWinc } from '../../hooks/useCryptoPrice';
 import CryptoConfirmationPanel from './crypto/CryptoConfirmationPanel';
 import CryptoManualPaymentPanel from './crypto/CryptoManualPaymentPanel';
 import PaymentDetailsPanel from './fiat/PaymentDetailsPanel';
@@ -54,6 +55,7 @@ export default function TopUpPanel() {
   const [targetAddressError, setTargetAddressError] = useState('');
   const [targetBalance, setTargetBalance] = useState<number | null>(null);
   const [loadingTargetBalance, setLoadingTargetBalance] = useState(false);
+  const [isRecipientExpanded, setIsRecipientExpanded] = useState(false);
 
   // Wallet modal state
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -61,25 +63,44 @@ export default function TopUpPanel() {
   // Payment flow state
   const [fiatFlowStep, setFiatFlowStep] = useState<'amount' | 'details' | 'confirmation' | 'success'>('amount');
   
-  // Crypto flow state  
+  // Crypto flow state
   const [cryptoFlowStep, setCryptoFlowStep] = useState<'selection' | 'confirmation' | 'manual-payment' | 'complete'>('selection');
   const [selectedTokenType, setSelectedTokenType] = useState<SupportedTokenType>('arweave');
   const [cryptoPaymentResult, setCryptoPaymentResult] = useState<any>(null);
-  
+
+  // Token selection is handled by effect at line ~437 using getAvailableTokens() priority order
+
   const debouncedUsdAmount = useDebounce(usdAmount);
   const debouncedCryptoAmount = useDebounce(cryptoAmount);
   const debouncedStorageAmount = useDebounce(storageAmount);
   const [credits] = useCreditsForFiat(debouncedUsdAmount, setErrorMessage);
   // Use comprehensive hook for all token types
   const { wincForToken: wincForSelectedToken, error: tokenPricingError, loading: tokenPricingLoading } = useWincForAnyToken(selectedTokenType, debouncedCryptoAmount);
-  
+
   // Calculate credits from winc (works for all tokens that have pricing)
   const cryptoCredits = wincForSelectedToken ? Number(wincForSelectedToken) / wincPerCredit : undefined;
   const wincForOneGiB = useWincForOneGiB();
   const [creditsForOneUSD] = useCreditsForFiat(1, () => {});
-  
-  // Calculate storage in GiB
+
+  // Calculate storage in GiB (immediate, no debounce for responsive UI)
+  const storageInGiB = (() => {
+    switch (storageUnit) {
+      case 'MiB':
+        return storageAmount / 1024;
+      case 'TiB':
+        return storageAmount * 1024;
+      default:
+        return storageAmount;
+    }
+  })();
+
+  // Calculate storage in GiB (function for use elsewhere)
   const getStorageInGiB = () => {
+    return storageInGiB;
+  };
+
+  // Calculate crypto amount needed for storage mode (use debounced for API calls)
+  const debouncedStorageInGiB = (() => {
     switch (storageUnit) {
       case 'MiB':
         return debouncedStorageAmount / 1024;
@@ -88,7 +109,12 @@ export default function TopUpPanel() {
       default:
         return debouncedStorageAmount;
     }
-  };
+  })();
+
+  const wincNeededForStorage = wincForOneGiB && debouncedStorageAmount > 0
+    ? (debouncedStorageInGiB * Number(wincForOneGiB))
+    : undefined;
+  const cryptoForStorage = useCryptoPriceForWinc(wincNeededForStorage, selectedTokenType);
   
   // Calculate cost in dollars for storage
   const calculateStorageCost = () => {
@@ -127,8 +153,14 @@ export default function TopUpPanel() {
       return '0 storage';
     }
   };
-  
-  
+
+  // Truncate address for display
+  const truncateAddress = (addr: string) => {
+    if (!addr) return '';
+    if (addr.length <= 16) return addr;
+    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  };
+
   // Helper function to get token amount for USD amount
 
   const presetAmounts = [10, 25, 50, 100, 250, 500];
@@ -138,6 +170,7 @@ export default function TopUpPanel() {
     switch (tokenType) {
       case 'arweave': return [0.5, 1, 5, 10];
       case 'ario': return [50, 100, 500, 1000];
+      case 'base-ario': return [50, 100, 500, 1000]; // Same presets as ARIO
       case 'ethereum': return [0.01, 0.05, 0.1, 0.25];
       case 'base-eth': return [0.01, 0.05, 0.1, 0.25];
       case 'solana': return [0.05, 0.1, 0.25, 0.5];
@@ -185,6 +218,12 @@ export default function TopUpPanel() {
 
   const handleCheckout = async () => {
     const effectiveAmount = getEffectiveUsdAmount();
+
+    // Validate recipient address - block if there's a visible validation error
+    if (targetAddressError) {
+      setErrorMessage('Please fix the recipient address error before continuing');
+      return;
+    }
 
     // Validate amount limits
     if (effectiveAmount < minUSDAmount) {
@@ -310,13 +349,13 @@ export default function TopUpPanel() {
     setPaymentMethod('fiat');
   };
 
-  // Get available tokens based on wallet type
+  // Get available tokens based on wallet type (ordered by priority - first token is default)
   const getAvailableTokens = useCallback((): SupportedTokenType[] => {
     switch (walletType) {
       case 'arweave':
-        return ['arweave', 'ario'];
+        return ['ario', 'arweave']; // ARIO first (preferred default for Arweave wallets)
       case 'ethereum':
-        return ['ethereum', 'base-eth', 'pol', 'usdc', 'base-usdc', 'polygon-usdc'];
+        return ['base-ario', 'ario', 'base-usdc', 'base-eth', 'usdc', 'polygon-usdc', 'pol', 'ethereum']; // Base ARIO first, then ARIO (AO)
       case 'solana':
         return ['solana'];
       default:
@@ -337,7 +376,9 @@ export default function TopUpPanel() {
       case 'arweave':
         return 'Connect an Arweave wallet (like Wander) to pay with AR tokens on Arweave';
       case 'ario':
-        return 'Connect an Arweave wallet (like Wander) to pay with ARIO tokens';
+        return 'Connect an Arweave or Ethereum wallet (like Wander or MetaMask) to pay with ARIO tokens';
+      case 'base-ario':
+        return 'Connect an Ethereum wallet (like MetaMask) to pay with ARIO on Base L2 (fast & low fees)';
       case 'ethereum':
         return 'Connect an Ethereum wallet (like MetaMask) to pay with ETH on Ethereum L1 (higher fees)';
       case 'base-eth':
@@ -453,7 +494,7 @@ export default function TopUpPanel() {
       case 'confirmation':
         return (
           <CryptoConfirmationPanel
-            cryptoAmount={cryptoAmount}
+            cryptoAmount={inputType === 'storage' && cryptoForStorage !== undefined ? cryptoForStorage : cryptoAmount}
             tokenType={selectedTokenType}
             onBack={handleCryptoBackToSelection}
             onPaymentComplete={handleCryptoPaymentComplete}
@@ -604,88 +645,128 @@ export default function TopUpPanel() {
         {/* For logged-in users with fiat - show editable recipient field */}
         {paymentMethod === 'fiat' && address && (
           <div className="mb-6">
-            <div className="bg-surface rounded-lg p-4 border border-default">
-              <label className="block text-sm font-medium text-link mb-3">
-                Recipient Wallet Address
-              </label>
-              <input
-                type="text"
-                value={targetAddressInput || address}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setTargetAddressInput(value);
-                  setTargetAddressError('');
-                  setTargetBalance(null);
-
-                  // If user clears to match their address, set target to their wallet
-                  if (value === address) {
-                    setPaymentTarget(address, walletType);
-                  }
-                }}
-                onBlur={() => {
-                  const trimmed = targetAddressInput.trim();
-                  if (trimmed && trimmed !== address) {
-                    // Validating a different address
-                    const validation = validateWalletAddress(trimmed);
-                    if (validation.isValid && validation.type !== 'unknown') {
-                      setPaymentTarget(trimmed, validation.type);
-                      setTargetAddressError('');
-                    } else {
-                      setTargetAddressError(validation.error || 'Invalid address');
-                      setTargetBalance(null);
-                    }
-                  } else if (!trimmed) {
-                    // Reset to connected wallet if cleared
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  } else {
-                    // It's their own address
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  }
-                }}
-                onFocus={() => {
-                  // If showing connected address, clear input for easy editing
-                  if (!targetAddressInput) {
-                    setTargetAddressInput(address || '');
-                  }
-                }}
-                placeholder="Enter Arweave, Ethereum, or Solana address"
-                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
-                  targetAddressError
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-default focus:border-fg-muted'
-                }`}
-              />
-              {targetAddressError && (
-                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
-              )}
-              {paymentTargetAddress && !targetAddressError && (
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-turbo-green" />
-                    <span className="text-xs text-turbo-green">
-                      {paymentTargetAddress === address
-                        ? 'Credits will be added to your wallet'
-                        : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
-                      }
-                    </span>
+            {!isRecipientExpanded ? (
+              // Collapsed state - summary button
+              <button
+                onClick={() => setIsRecipientExpanded(true)}
+                className="w-full bg-surface rounded-lg p-4 border border-default hover:border-link/50 transition-colors flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-link" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-fg-muted">
+                      Buying for: {truncateAddress(paymentTargetAddress || address)}
+                      {(!paymentTargetAddress || paymentTargetAddress === address) && (
+                        <span className="text-link ml-2">(You)</span>
+                      )}
+                    </div>
+                    {paymentTargetAddress && paymentTargetAddress !== address && (
+                      <div className="text-xs text-link mt-0.5">
+                        {getWalletTypeLabel(paymentTargetType || 'unknown')} address
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
+                <ChevronDown className="w-5 h-5 text-link group-hover:text-fg-muted transition-colors" />
+              </button>
+            ) : (
+              // Expanded state - full input field
+              <div className="bg-surface rounded-lg border border-default">
+                <button
+                  onClick={() => setIsRecipientExpanded(false)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-canvas/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-link" />
+                    <span className="text-sm font-medium text-link">Recipient Wallet Address</span>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-link rotate-180 transition-transform" />
+                </button>
+                <div className="px-4 pb-4">
+                  <input
+                    type="text"
+                    value={targetAddressInput || address}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTargetAddressInput(value);
+                      setTargetAddressError('');
+                      setTargetBalance(null);
+
+                      // If user clears to match their address, set target to their wallet
+                      if (value === address) {
+                        setPaymentTarget(address, walletType);
+                      }
+                    }}
+                    onBlur={() => {
+                      const trimmed = targetAddressInput.trim();
+                      if (trimmed && trimmed !== address) {
+                        // Validating a different address
+                        const validation = validateWalletAddress(trimmed);
+                        if (validation.isValid && validation.type !== 'unknown') {
+                          setPaymentTarget(trimmed, validation.type);
+                          setTargetAddressError('');
+                        } else {
+                          setTargetAddressError(validation.error || 'Invalid address');
+                          setTargetBalance(null);
+                        }
+                      } else if (!trimmed) {
+                        // Reset to connected wallet if cleared
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      } else {
+                        // It's their own address
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      // If showing connected address, clear input for easy editing
+                      if (!targetAddressInput) {
+                        setTargetAddressInput(address || '');
+                      }
+                    }}
+                    placeholder="Enter Arweave, Ethereum, or Solana address"
+                    className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                      targetAddressError
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-default focus:border-fg-muted'
+                    }`}
+                  />
+                  {targetAddressError && (
+                    <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+                  )}
+                  {paymentTargetAddress && !targetAddressError && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-turbo-green" />
+                        <span className="text-xs text-turbo-green">
+                          {paymentTargetAddress === address
+                            ? 'Credits will be added to your wallet'
+                            : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3 text-xs text-link/70">
+                    Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Crypto Token Selection - Show immediately after selecting crypto */}
-        {paymentMethod === 'crypto' && (
+        {/* Hide selector if only one token available (e.g., Solana wallet only has SOL) */}
+        {paymentMethod === 'crypto' && getAvailableTokens().length > 1 && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-link mb-3">Select Cryptocurrency</label>
-            
+
             {!walletType ? (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -717,11 +798,120 @@ export default function TopUpPanel() {
                 </div>
               </div>
             ) : walletType === 'ethereum' ? (
-              // Custom layout for Ethereum wallet with ETH tokens and USDC tokens
-              <div className="space-y-4">
-                {/* ETH Tokens Row */}
-                <div className="grid grid-cols-3 gap-2">
-                  {(['ethereum', 'base-eth', 'pol'] as const).map((tokenType) => (
+              // Compact layout for Ethereum wallet with all token options
+              <div className="space-y-3">
+                {/* Native Tokens Row - Base ARIO, ARIO (AO), ETH options, POL */}
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {(['base-ario', 'ario', 'ethereum', 'base-eth', 'pol'] as const).map((tokenType) => {
+                    const tokenName = tokenType === 'base-ario' ? 'ARIO'
+                      : tokenType === 'ario' ? 'ARIO'
+                      : tokenType === 'ethereum' ? 'ETH'
+                      : tokenType === 'base-eth' ? 'ETH'
+                      : 'POL';
+                    const networkName = tokenType === 'base-ario' ? 'Base'
+                      : tokenType === 'ario' ? 'AO'
+                      : tokenType === 'ethereum' ? 'Ethereum'
+                      : tokenType === 'base-eth' ? 'Base'
+                      : 'Polygon';
+                    const isFast = tokenType === 'base-ario' || tokenType === 'ario' || tokenType === 'base-eth' || tokenType === 'pol';
+                    const isNoFee = tokenType === 'base-ario' || tokenType === 'ario';
+
+                    return (
+                      <button
+                        key={tokenType}
+                        onClick={() => {
+                          setSelectedTokenType(tokenType);
+                          setErrorMessage('');
+                        }}
+                        className={`p-2 rounded-lg border transition-all text-left ${
+                          selectedTokenType === tokenType
+                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-sm">{tokenName}</div>
+                            <div className="text-[10px] opacity-75">{networkName}</div>
+                          </div>
+                          {selectedTokenType === tokenType && (
+                            <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                          )}
+                        </div>
+                        {(isFast || isNoFee) && (
+                          <div className="flex gap-1 mt-1">
+                            {isFast && (
+                              <span className="text-[9px] text-green-400 font-medium">Fast</span>
+                            )}
+                            {isNoFee && (
+                              <span className="text-[9px] text-blue-400 font-medium">No Fee</span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* USDC Stablecoins Row */}
+                <div>
+                  <div className="text-[10px] font-medium text-link mb-1.5 px-1 uppercase tracking-wider">Stablecoins</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => {
+                      const networkName = tokenType === 'usdc' ? 'Ethereum'
+                        : tokenType === 'base-usdc' ? 'Base'
+                        : 'Polygon';
+                      const isFast = tokenType === 'base-usdc' || tokenType === 'polygon-usdc';
+
+                      return (
+                        <button
+                          key={tokenType}
+                          onClick={() => {
+                            setSelectedTokenType(tokenType);
+                            setErrorMessage('');
+                          }}
+                          className={`p-2 rounded-lg border transition-all text-left ${
+                            selectedTokenType === tokenType
+                              ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
+                              : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-sm">USDC</div>
+                              <div className="text-[10px] opacity-75">{networkName}</div>
+                            </div>
+                            {selectedTokenType === tokenType && (
+                              <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                            )}
+                          </div>
+                          {isFast && (
+                            <div className="mt-1">
+                              <span className="text-[9px] text-green-400 font-medium">Fast</span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Compact layout for other wallet types (Arweave, Solana)
+              <div className={`grid gap-1.5 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {getAvailableTokens().map((tokenType) => {
+                  const tokenName = tokenType === 'ario' ? 'ARIO'
+                    : tokenType === 'arweave' ? 'AR'
+                    : tokenType === 'solana' ? 'SOL'
+                    : tokenLabels[tokenType];
+                  const networkName = tokenType === 'ario' ? 'AO Network'
+                    : tokenType === 'arweave' ? 'Arweave'
+                    : tokenType === 'solana' ? 'Solana'
+                    : '';
+                  const isFast = tokenType === 'ario' || tokenType === 'solana';
+                  const isNoFee = tokenType === 'ario';
+
+                  return (
                     <button
                       key={tokenType}
                       onClick={() => {
@@ -734,98 +924,28 @@ export default function TopUpPanel() {
                           : 'border-default text-link hover:bg-surface hover:text-fg-muted'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="font-bold text-base">
-                          {tokenLabels[tokenType]}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-base">{tokenName}</div>
+                          <div className="text-xs opacity-75">{networkName}</div>
                         </div>
-                        {tokenType === 'base-eth' && (
-                          <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            Low Fee
-                          </div>
-                        )}
-                        {tokenType === 'ethereum' && (
-                          <div className="bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                            High Fee
-                          </div>
+                        {selectedTokenType === tokenType && (
+                          <Check className="w-4 h-4 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="text-xs font-medium opacity-90 mb-0.5">
-                        {tokenNetworkLabels[tokenType]}
-                      </div>
-                      <div className="text-[11px] opacity-75 line-clamp-2">
-                        {tokenNetworkDescriptions[tokenType]}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* USDC Stablecoins Row */}
-                <div>
-                  <div className="text-xs font-medium text-link mb-2 px-1">Stablecoins (pegged to $1 USD)</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['usdc', 'base-usdc', 'polygon-usdc'] as const).map((tokenType) => (
-                      <button
-                        key={tokenType}
-                        onClick={() => {
-                          setSelectedTokenType(tokenType);
-                          setErrorMessage('');
-                        }}
-                        className={`p-3 rounded-lg border transition-all text-left ${
-                          selectedTokenType === tokenType
-                            ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                            : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="font-bold text-base">
-                            {tokenLabels[tokenType]}
-                          </div>
-                          {tokenType === 'base-usdc' && (
-                            <div className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-medium">
-                              Fast
-                            </div>
+                      {(isFast || isNoFee) && (
+                        <div className="flex gap-2 mt-1.5">
+                          {isFast && (
+                            <span className="text-[10px] text-green-400 font-medium">Fast</span>
+                          )}
+                          {isNoFee && (
+                            <span className="text-[10px] text-blue-400 font-medium">No Fee</span>
                           )}
                         </div>
-                        <div className="text-xs font-medium opacity-90 mb-0.5">
-                          {tokenNetworkLabels[tokenType]}
-                        </div>
-                        <div className="text-[11px] opacity-75 line-clamp-2">
-                          {tokenNetworkDescriptions[tokenType]}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Default layout for other wallet types (Arweave, Solana)
-              <div className={`grid gap-3 ${getAvailableTokens().length === 1 ? 'grid-cols-1' : getAvailableTokens().length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {getAvailableTokens().map((tokenType) => (
-                  <button
-                    key={tokenType}
-                    onClick={() => {
-                      setSelectedTokenType(tokenType);
-                      setErrorMessage('');
-                    }}
-                    className={`p-4 rounded-lg border transition-all text-left ${
-                      selectedTokenType === tokenType
-                        ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                        : 'border-default text-link hover:bg-surface hover:text-fg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-bold text-lg">
-                        {tokenLabels[tokenType as keyof typeof tokenLabels]}
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium opacity-90 mb-1">
-                      {tokenNetworkLabels[tokenType]}
-                    </div>
-                    <div className="text-xs opacity-75">
-                      {tokenNetworkDescriptions[tokenType]}
-                    </div>
-                  </button>
-                ))}
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -834,83 +954,119 @@ export default function TopUpPanel() {
         {/* Recipient Wallet Address for Crypto - Only if wallet is connected */}
         {paymentMethod === 'crypto' && address && (
           <div className="mb-6">
-            <div className="bg-surface rounded-lg p-4 border border-default">
-              <label className="block text-sm font-medium text-link mb-3">
-                Recipient Wallet Address (Optional)
-              </label>
-              <input
-                type="text"
-                value={targetAddressInput || address}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setTargetAddressInput(value);
-                  setTargetAddressError('');
-                  setTargetBalance(null);
-
-                  // If user clears to match their address, set target to their wallet
-                  if (value === address) {
-                    setPaymentTarget(address, walletType);
-                  }
-                }}
-                onBlur={() => {
-                  const trimmed = targetAddressInput.trim();
-                  if (trimmed && trimmed !== address) {
-                    // Validating a different address
-                    const validation = validateWalletAddress(trimmed);
-                    if (validation.isValid && validation.type !== 'unknown') {
-                      setPaymentTarget(trimmed, validation.type);
-                      setTargetAddressError('');
-                    } else {
-                      setTargetAddressError(validation.error || 'Invalid address');
-                      setTargetBalance(null);
-                    }
-                  } else if (!trimmed) {
-                    // Reset to connected wallet if cleared
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  } else {
-                    // It's their own address
-                    setTargetAddressInput('');
-                    setPaymentTarget(address, walletType);
-                    setTargetAddressError('');
-                    setTargetBalance(null);
-                  }
-                }}
-                onFocus={() => {
-                  // If showing connected address, clear input for easy editing
-                  if (!targetAddressInput) {
-                    setTargetAddressInput(address || '');
-                  }
-                }}
-                placeholder="Enter Arweave, Ethereum, or Solana address"
-                className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
-                  targetAddressError
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-default focus:border-fg-muted'
-                }`}
-              />
-              {targetAddressError && (
-                <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
-              )}
-              {paymentTargetAddress && !targetAddressError && (
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-turbo-green" />
-                    <span className="text-xs text-turbo-green">
-                      {paymentTargetAddress === address
-                        ? 'Credits will be added to your wallet'
-                        : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
-                      }
-                    </span>
+            {!isRecipientExpanded ? (
+              // Collapsed state - summary button
+              <button
+                onClick={() => setIsRecipientExpanded(true)}
+                className="w-full bg-surface rounded-lg p-4 border border-default hover:border-link/50 transition-colors flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-link" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium text-fg-muted">
+                      Buying for: {truncateAddress(paymentTargetAddress || address)}
+                      {(!paymentTargetAddress || paymentTargetAddress === address) && (
+                        <span className="text-link ml-2">(You)</span>
+                      )}
+                    </div>
+                    {paymentTargetAddress && paymentTargetAddress !== address && (
+                      <div className="text-xs text-link mt-0.5">
+                        {getWalletTypeLabel(paymentTargetType || 'unknown')} address
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="mt-3 text-xs text-link/70">
-                Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                <ChevronDown className="w-5 h-5 text-link group-hover:text-fg-muted transition-colors" />
+              </button>
+            ) : (
+              // Expanded state - full input field
+              <div className="bg-surface rounded-lg border border-default">
+                <button
+                  onClick={() => setIsRecipientExpanded(false)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-canvas/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-link" />
+                    <span className="text-sm font-medium text-link">Recipient Wallet Address</span>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-link rotate-180 transition-transform" />
+                </button>
+                <div className="px-4 pb-4">
+                  <input
+                    type="text"
+                    value={targetAddressInput || address}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTargetAddressInput(value);
+                      setTargetAddressError('');
+                      setTargetBalance(null);
+
+                      // If user clears to match their address, set target to their wallet
+                      if (value === address) {
+                        setPaymentTarget(address, walletType);
+                      }
+                    }}
+                    onBlur={() => {
+                      const trimmed = targetAddressInput.trim();
+                      if (trimmed && trimmed !== address) {
+                        // Validating a different address
+                        const validation = validateWalletAddress(trimmed);
+                        if (validation.isValid && validation.type !== 'unknown') {
+                          setPaymentTarget(trimmed, validation.type);
+                          setTargetAddressError('');
+                        } else {
+                          setTargetAddressError(validation.error || 'Invalid address');
+                          setTargetBalance(null);
+                        }
+                      } else if (!trimmed) {
+                        // Reset to connected wallet if cleared
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      } else {
+                        // It's their own address
+                        setTargetAddressInput('');
+                        setPaymentTarget(address, walletType);
+                        setTargetAddressError('');
+                        setTargetBalance(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      // If showing connected address, clear input for easy editing
+                      if (!targetAddressInput) {
+                        setTargetAddressInput(address || '');
+                      }
+                    }}
+                    placeholder="Enter Arweave, Ethereum, or Solana address"
+                    className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted font-mono text-sm focus:outline-none transition-colors ${
+                      targetAddressError
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-default focus:border-fg-muted'
+                    }`}
+                  />
+                  {targetAddressError && (
+                    <div className="mt-2 text-xs text-red-400">{targetAddressError}</div>
+                  )}
+                  {paymentTargetAddress && !targetAddressError && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-turbo-green" />
+                        <span className="text-xs text-turbo-green">
+                          {paymentTargetAddress === address
+                            ? 'Credits will be added to your wallet'
+                            : `Valid ${getWalletTypeLabel(paymentTargetType || 'unknown')} address - sending to another wallet`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3 text-xs text-link/70">
+                    Leave as your address to top up yourself, or enter a different address to send credits to another wallet
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -1063,7 +1219,7 @@ export default function TopUpPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
@@ -1111,20 +1267,6 @@ export default function TopUpPanel() {
                     </div>
                   </div>
 
-                  {/* Cost Display for Storage Mode */}
-                  {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-2xl font-bold text-fg-muted">
-                          ${formatNumber(calculateStorageCost())} USD
-                        </div>
-                        <div className="text-sm text-link mt-2">
-                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </>
@@ -1222,7 +1364,7 @@ export default function TopUpPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 w-full rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
@@ -1270,23 +1412,6 @@ export default function TopUpPanel() {
                     </div>
                   </div>
 
-                  {/* Crypto Cost Display for Storage Mode */}
-                  {wincForOneGiB && creditsForOneUSD && (
-                    <div className="bg-canvas border-2 border-fg-muted rounded-lg p-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-sm text-link mb-1">Estimated Cost</div>
-                        <div className="text-xl font-bold text-fg-muted mb-2">
-                          ${formatNumber(calculateStorageCost())} USD
-                        </div>
-                        <div className="text-sm text-link">
-                          Pay with {tokenLabels[selectedTokenType]}
-                        </div>
-                        <div className="text-xs text-link mt-1">
-                          ≈ {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)} credits
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
@@ -1362,44 +1487,90 @@ export default function TopUpPanel() {
           )}
         </div>
 
-        {/* Credits Preview */}
-        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && credits && usdAmount > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0))) || (paymentMethod === 'crypto' && !tokenPricingError && ((inputType === 'dollars' && cryptoCredits && cryptoCredits > 0) || (inputType === 'storage' && wincForOneGiB && creditsForOneUSD && storageAmount > 0)))) && (
-          <div className="space-y-4 mb-6">
-            {/* Purchase Summary */}
-            <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-              <div className="text-sm text-link mb-1">You'll Purchase</div>
-              <div className="text-4xl font-bold text-fg-muted mb-1">
-                {paymentMethod === 'fiat' 
-                  ? (inputType === 'storage' 
-                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
-                      : credits?.toLocaleString() || '...'
-                    )
-                  : (inputType === 'storage'
-                      ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
-                      : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
-                    )
-                } Credits
+        {/* Purchase Summary - Shopping Cart Style */}
+        {((paymentMethod === 'fiat' && ((inputType === 'dollars' && usdAmount > 0) || (inputType === 'storage' && storageAmount > 0))) || (paymentMethod === 'crypto' && ((inputType === 'dollars' && cryptoAmount > 0) || (inputType === 'storage' && storageAmount > 0)))) && (
+          <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6 mb-6">
+            {/* Header */}
+            <div className="text-sm text-link mb-4">Purchase Summary</div>
+
+            {/* Purchase Details Section */}
+            <div className="space-y-3 mb-4 pb-4 border-b border-default">
+              <div className="flex justify-between items-start">
+                <div className="text-fg-muted font-medium">Credits</div>
+                <div className="text-right">
+                  <div className="text-lg font-medium text-fg-muted">
+                    {paymentMethod === 'fiat'
+                      ? (inputType === 'storage'
+                          ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : credits?.toLocaleString() || '...'
+                        )
+                      : (inputType === 'storage'
+                          ? formatNumber((getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : cryptoCredits?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) || '...'
+                        )
+                    }
+                  </div>
+                  {wincForOneGiB && (
+                    <div className="text-xs text-link">
+                      ~{paymentMethod === 'fiat'
+                        ? (inputType === 'storage'
+                            ? formatStorage(getStorageInGiB())
+                            : credits ? formatStorage((credits * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                          )
+                        : (inputType === 'storage'
+                            ? formatStorage(getStorageInGiB())
+                            : cryptoCredits ? formatStorage((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                          )
+                      }
+                    </div>
+                  )}
+                </div>
               </div>
-              {wincForOneGiB && (
-                <div className="text-sm text-link">
-                  = ~{paymentMethod === 'fiat' 
-                    ? (inputType === 'storage' 
-                        ? formatStorage(getStorageInGiB())
-                        : credits ? formatStorage((credits * wincPerCredit) / Number(wincForOneGiB)) : '...'
-                      )
-                    : (inputType === 'storage'
-                        ? formatStorage(getStorageInGiB())
-                        : cryptoCredits ? formatStorage((cryptoCredits * wincPerCredit) / Number(wincForOneGiB)) : '...'
-                      )
-                  }
+
+              {/* Price Row */}
+              {paymentMethod === 'fiat' && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-link">Price</div>
+                  <div className="text-lg font-medium text-fg-muted">
+                    ${inputType === 'storage' && wincForOneGiB && creditsForOneUSD
+                      ? formatNumber(calculateStorageCost())
+                      : formatNumber(usdAmount)
+                    }
+                  </div>
+                </div>
+              )}
+              {paymentMethod === 'crypto' && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-link">Pay with {tokenLabels[selectedTokenType]}</div>
+                  <div className="text-right">
+                    <div className="text-lg font-medium text-fg-muted">
+                      {inputType === 'storage'
+                        ? (cryptoForStorage !== undefined
+                            ? `${cryptoForStorage.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})} ${tokenLabels[selectedTokenType]}`
+                            : '...'
+                          )
+                        : `${cryptoAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})} ${tokenLabels[selectedTokenType]}`
+                      }
+                    </div>
+                    {creditsForOneUSD && (
+                      <div className="text-xs text-link">
+                        ≈ ${inputType === 'storage' && wincForOneGiB
+                          ? formatNumber(calculateStorageCost())
+                          : cryptoCredits && creditsForOneUSD
+                            ? formatNumber(cryptoCredits / creditsForOneUSD)
+                            : '...'
+                        }
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Balance Comparison */}
-            <div className="bg-surface/50 rounded-lg p-4 space-y-3">
+            {/* Balance Section */}
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-link">Current Balance</span>
+                <div className="text-sm text-link">Current Balance</div>
                 <div className="text-right">
                   {loadingTargetBalance ? (
                     <div className="flex items-center gap-2 text-sm text-link">
@@ -1408,43 +1579,48 @@ export default function TopUpPanel() {
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium text-fg-muted">
-                        {(targetBalance !== null ? targetBalance : creditBalance).toLocaleString()} Credits
-                      </span>
+                      <div className="text-lg font-medium text-fg-muted">
+                        {formatNumber(targetBalance !== null ? targetBalance : creditBalance)}
+                      </div>
                       {wincForOneGiB && (targetBalance !== null ? targetBalance : creditBalance) > 0 && (
                         <div className="text-xs text-link">
-                          ~{(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB
+                          ~{formatStorage(((targetBalance !== null ? targetBalance : creditBalance) * wincPerCredit) / Number(wincForOneGiB))}
                         </div>
                       )}
                     </>
                   )}
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="h-px bg-default"></div>
+
+              {/* New Balance */}
               <div className="flex justify-between items-center">
-                <span className="text-sm text-link">After Purchase</span>
+                <div className="text-sm font-medium text-fg-muted">New Balance</div>
                 <div className="text-right">
-                  <span className="font-bold text-turbo-green text-lg">
+                  <div className="text-lg font-bold text-turbo-green">
                     {paymentMethod === 'fiat'
                       ? (inputType === 'storage'
-                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : credits ? ((targetBalance !== null ? targetBalance : creditBalance) + credits).toLocaleString() : '...'
+                          ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : credits ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + credits) : '...'
                         )
                       : (inputType === 'storage'
-                          ? ((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12).toLocaleString()
-                          : cryptoCredits ? ((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '...'
+                          ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB || 0)) / 1e12)
+                          : cryptoCredits ? formatNumber((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits) : '...'
                         )
-                    } Credits
-                  </span>
+                    }
+                  </div>
                   {wincForOneGiB && (
                     <div className="text-xs text-turbo-green">
                       ~{paymentMethod === 'fiat'
-                        ? (inputType === 'storage' 
-                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
-                            : credits ? formatStorage(((creditBalance + credits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                        ? (inputType === 'storage'
+                            ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : credits ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + credits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
                         : (inputType === 'storage'
-                            ? formatStorage(((creditBalance + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
-                            : cryptoCredits ? formatStorage(((creditBalance + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
+                            ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + (getStorageInGiB() * Number(wincForOneGiB)) / 1e12) * wincPerCredit) / Number(wincForOneGiB))
+                            : cryptoCredits ? formatStorage((((targetBalance !== null ? targetBalance : creditBalance) + cryptoCredits) * wincPerCredit) / Number(wincForOneGiB)) : '...'
                           )
                       }
                     </div>
@@ -1468,13 +1644,15 @@ export default function TopUpPanel() {
           className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={
             (paymentMethod === 'fiat' && (
-              !paymentTargetAddress || // Must have valid target address (either connected wallet or entered)
+              (!paymentTargetAddress && !address) || // Must have either a target address or connected wallet
+              !!targetAddressError || // Block checkout if recipient address validation failed
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
             )) ||
             (paymentMethod === 'crypto' && (
+              !!targetAddressError || // Block checkout if recipient address validation failed
               (inputType === 'dollars' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType) || !!tokenPricingError)) ||
-              (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType)))
+              (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType) || cryptoForStorage === undefined))
             )) ||
             isProcessing
           }

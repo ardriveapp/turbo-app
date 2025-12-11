@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useConnect, useDisconnect } from 'wagmi';
+import React, { useState, useEffect } from 'react';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { usePrivy, useLogin, useWallets, useCreateWallet } from '@privy-io/react-auth';
 import BaseModal from './BaseModal';
 import BlockingMessageModal from './BlockingMessageModal';
 import { useStore } from '../../store/useStore';
+import { getTurboBalance, resolveEthereumAddress } from '../../utils';
+import { clearEthereumTurboClientCache } from '../../hooks/useEthereumTurboClient';
 import { Mail } from 'lucide-react';
 
 const WalletSelectionModal = ({
@@ -23,6 +26,19 @@ const WalletSelectionModal = ({
   const { wallets: privyWallets } = useWallets();
   const { createWallet } = useCreateWallet();
 
+  // Helper function to resolve and set Ethereum address
+  const setEthereumAddress = async (rawAddress: string) => {
+    try {
+      // Resolve the correct address format (checksummed vs lowercase)
+      const resolvedAddress = await resolveEthereumAddress(rawAddress, getTurboBalance);
+      setAddress(resolvedAddress, 'ethereum');
+    } catch (error) {
+      console.error('[Wallet Connection] Error resolving Ethereum address:', error);
+      // Fallback to using the raw address if resolution fails
+      setAddress(rawAddress, 'ethereum');
+    }
+  };
+
   const { login } = useLogin({
     onComplete: async ({ user }) => {
       // Check if user already has a wallet in linkedAccounts
@@ -31,7 +47,7 @@ const WalletSelectionModal = ({
       );
 
       if (existingWallet) {
-        setAddress(existingWallet.address, 'ethereum');
+        await setEthereumAddress(existingWallet.address);
         setConnectingWallet(undefined);
         onClose();
       } else {
@@ -43,7 +59,7 @@ const WalletSelectionModal = ({
           const newWallet = await createWallet();
 
           if (newWallet) {
-            setAddress(newWallet.address, 'ethereum');
+            await setEthereumAddress(newWallet.address);
             setConnectingWallet(undefined);
             onClose();
           } else {
@@ -74,22 +90,24 @@ const WalletSelectionModal = ({
       );
 
       if (privyWallet) {
-        setAddress(privyWallet.address, 'ethereum');
-        setConnectingWallet(undefined);
-        setWaitingForPrivyWallet(false);
-        onClose();
+        setEthereumAddress(privyWallet.address).then(() => {
+          setConnectingWallet(undefined);
+          setWaitingForPrivyWallet(false);
+          onClose();
+        });
       } else {
         // If we have wallets but none match our criteria, use the first one
         const firstWallet = privyWallets[0];
         if (firstWallet) {
-          setAddress(firstWallet.address, 'ethereum');
-          setConnectingWallet(undefined);
-          setWaitingForPrivyWallet(false);
-          onClose();
+          setEthereumAddress(firstWallet.address).then(() => {
+            setConnectingWallet(undefined);
+            setWaitingForPrivyWallet(false);
+            onClose();
+          });
         }
       }
     }
-  }, [privyWallets, waitingForPrivyWallet, setAddress, onClose]);
+  }, [privyWallets, waitingForPrivyWallet, onClose]);
 
   // Check if user is already authenticated with Privy when modal opens
   useEffect(() => {
@@ -101,38 +119,58 @@ const WalletSelectionModal = ({
       const privyWallet = privyWallets.find(w => w.walletClientType === 'privy');
 
       if (privyWallet && privyWallet.address !== currentAddress) {
-        setAddress(privyWallet.address, 'ethereum');
-        onClose();
+        setEthereumAddress(privyWallet.address).then(() => {
+          onClose();
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, privyWallets?.length]); // Only re-run if authentication state or wallet count changes
 
-  // Wagmi hooks for Ethereum
-  const { connectors, connect } = useConnect({
-    mutation: {
-      onSuccess: async (data) => {
-        try {
-          const rawAddress = data.accounts[0];
-          // Ethereum wallet connected
-          
-          // We'll get the native address by creating a temporary authenticated client
-          // This ensures we get the properly converted address for Turbo APIs
-          setAddress(rawAddress, 'ethereum');
-          onClose();
-        } catch {
-          // Failed to process Ethereum connection
-          setConnectingWallet(undefined);
-        }
-      },
-      onError: () => {
-        // Failed to connect wallet
-        setConnectingWallet(undefined);
-      },
-    },
-  });
+  // RainbowKit hooks for Ethereum wallets
+  const { openConnectModal } = useConnectModal();
+  const ethAccount = useAccount();
+  const { disconnectAsync } = useDisconnect();
 
-  const { disconnect } = useDisconnect();
+  // Track if we intentionally opened RainbowKit modal (to avoid auto-connecting on page load)
+  const [intentionalEthConnect, setIntentionalEthConnect] = useState(false);
+
+  // Use a ref to track if we've already handled the connection (prevents infinite loops)
+  const hasHandledEthConnection = React.useRef(false);
+
+  // Listen for RainbowKit/Wagmi Ethereum connection
+  // When user connects via RainbowKit, wagmi state updates and we capture it here
+  useEffect(() => {
+    // Only process if: intentional connect, connected, have address, and haven't already handled it
+    if (
+      intentionalEthConnect &&
+      ethAccount.isConnected &&
+      ethAccount.address &&
+      !hasHandledEthConnection.current
+    ) {
+      // Mark as handled FIRST to prevent re-entry
+      hasHandledEthConnection.current = true;
+
+      // Clear any cached Turbo clients since we have a new wallet
+      clearEthereumTurboClientCache();
+
+      // Resolve and set Ethereum address (handles checksummed vs lowercase)
+      setEthereumAddress(ethAccount.address).then(() => {
+        setIntentionalEthConnect(false);
+        onClose();
+      }).catch((error) => {
+        console.error('[Wallet Connection] Failed to set Ethereum address:', error);
+        // Still close modal on error - address was set via fallback in setEthereumAddress
+        setIntentionalEthConnect(false);
+        onClose();
+      });
+    }
+  }, [ethAccount.isConnected, ethAccount.address, intentionalEthConnect, onClose]);
+
+  // Reset the handled flag when the modal opens (component mounts)
+  useEffect(() => {
+    hasHandledEthConnection.current = false;
+  }, []);
 
   // Solana wallet hooks
   const { setVisible: setSolanaModalVisible } = useWalletModal();
@@ -230,7 +268,7 @@ const WalletSelectionModal = ({
       );
 
       if (privyWallet) {
-        setAddress(privyWallet.address, 'ethereum');
+        await setEthereumAddress(privyWallet.address);
         // Close the modal immediately without waiting
         setTimeout(() => onClose(), 0);
         return;
@@ -274,78 +312,27 @@ const WalletSelectionModal = ({
     }
   };
 
-  const connectMetaMask = async () => {
-    // Be more specific about MetaMask detection to avoid Phantom conflicts
-    const metamask = connectors.find((c) => {
-      // First try to find by name
-      if (c.name === 'MetaMask') return true;
-      // Then check if it's injected and specifically MetaMask
-      if (c.id === 'injected') {
-        // Check if window.ethereum is MetaMask (not Phantom)
-        return (window.ethereum as any)?.isMetaMask === true;
+  const connectEthereumWallet = async () => {
+    try {
+      // If already connected via wagmi, disconnect first to allow wallet switching
+      if (ethAccount.isConnected) {
+        // Clear cached Turbo clients
+        clearEthereumTurboClientCache();
+        await disconnectAsync();
+        // Small delay to allow disconnection to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-      return false;
-    });
-    
-    if (metamask) {
-      setConnectingWallet('Connecting to MetaMask...');
-      try {
-        // Check if the connector is already connected and disconnect first
-        if (metamask.uid && connectors.some(c => c.uid === metamask.uid)) {
-          // Disconnecting existing connector before reconnecting
-          await disconnect();
-          // Small delay to allow disconnection to complete
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        await connect({ connector: metamask });
-      } catch (error) {
-        // Failed to connect MetaMask
 
-        // If we get "already connected" error, try disconnecting first then reconnecting
-        if (error instanceof Error && error.message?.includes('already connected')) {
-          try {
-            // Attempting to disconnect and reconnect
-            await disconnect();
-            await new Promise(resolve => setTimeout(resolve, 200));
-            await connect({ connector: metamask });
-          } catch {
-            // Retry connection failed
-          }
-        }
-      } finally {
-        setConnectingWallet(undefined);
+      // Set the intentional connect flag so we capture the connection in useEffect
+      setIntentionalEthConnect(true);
+
+      // Open RainbowKit modal - this shows MetaMask, WalletConnect, Coinbase, and more
+      if (openConnectModal) {
+        openConnectModal();
       }
-    } else {
-      // If no MetaMask connector found, try direct connection with provider detection
-      setConnectingWallet('Connecting to MetaMask...');
-      try {
-        // Find the MetaMask provider in the providers array (handles multiple wallets)
-        const metaMaskProvider = (window.ethereum as any)?.providers?.find(
-          (provider: any) => provider.isMetaMask,
-        );
-        
-        const targetProvider = metaMaskProvider ?? window.ethereum;
-        
-        if (!(targetProvider as any)?.isMetaMask && !metaMaskProvider) {
-          // MetaMask not found
-          window.open('https://metamask.io/', '_blank');
-          return;
-        }
-        
-        // Connect directly to MetaMask provider
-        await targetProvider.request({ method: 'eth_requestAccounts' });
-        const accounts = await targetProvider.request({ method: 'eth_accounts' });
-        
-        if (accounts && accounts.length > 0) {
-          setAddress(accounts[0], 'ethereum');
-          onClose();
-        }
-      } catch {
-        // MetaMask connection failed
-      } finally {
-        setConnectingWallet(undefined);
-      }
+    } catch (error) {
+      console.error('Failed to open wallet selection:', error);
+      setIntentionalEthConnect(false);
     }
   };
 
@@ -389,12 +376,16 @@ const WalletSelectionModal = ({
 
           <button
             className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
-            onClick={connectMetaMask}
+            onClick={connectEthereumWallet}
           >
-            <img src="/metamask-logo.svg" alt="MetaMask" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#627EEA] rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+              </svg>
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold mb-1 text-base">MetaMask</div>
-              <div className="text-xs sm:text-sm text-link">Ethereum wallet</div>
+              <div className="font-semibold mb-1 text-base">Ethereum Wallets</div>
+              <div className="text-xs sm:text-sm text-link">MetaMask, WalletConnect, Coinbase & more</div>
             </div>
           </button>
 

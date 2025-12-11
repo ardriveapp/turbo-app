@@ -4,14 +4,13 @@ import {
   TurboAuthenticatedClient,
   ArconnectSigner
 } from '@ardrive/turbo-sdk/web';
-import { ethers } from 'ethers';
 import { useStore } from '../../store/useStore';
 import { wincPerCredit } from '../../constants';
 import { useTurboConfig } from '../../hooks/useTurboConfig';
 import { ExternalLink, Shield, ArrowRight, Share2, Book, Lightbulb, Code, CheckCircle } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
-import { useWallets } from '@privy-io/react-auth';
 import { validateWalletAddress, getWalletTypeLabel } from '../../utils/addressValidation';
+import { useEthereumTurboClient } from '../../hooks/useEthereumTurboClient';
 
 interface Approval {
   approvedAddress: string;
@@ -21,82 +20,31 @@ interface Approval {
 
 export default function ShareCreditsPanel() {
   const { address, walletType, creditBalance } = useStore();
-  const { wallets } = useWallets(); // Get Privy wallets
   const wincForOneGiB = useWincForOneGiB();
   const turboConfig = useTurboConfig();
-  
-  // Create authenticated turbo client based on wallet type (same pattern as working BalanceCheckerPanel)
+  const { createEthereumTurboClient } = useEthereumTurboClient(); // Shared Ethereum client with custom connect message
+
+  // Create authenticated turbo client based on wallet type
   const createTurboClient = async (): Promise<TurboAuthenticatedClient> => {
     if (!address || !walletType) {
       throw new Error('Wallet not connected');
     }
-    
+
     switch (walletType) {
       case 'arweave':
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
         const signer = new ArconnectSigner(window.arweaveWallet);
-        return TurboFactory.authenticated({ 
+        return TurboFactory.authenticated({
           ...turboConfig,
-          signer 
+          signer
         });
-        
+
       case 'ethereum':
-        // Check if this is a Privy embedded wallet
-        const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+        // Use the shared Ethereum Turbo client with custom connect message
+        return createEthereumTurboClient('ethereum');
 
-        // Detect token type from current network
-        let tokenType: 'ethereum' | 'base-eth' | 'pol' = 'ethereum';
-
-        if (privyWallet) {
-          // Use Privy embedded wallet
-          const provider = await privyWallet.getEthereumProvider();
-          const ethersProvider = new ethers.BrowserProvider(provider);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network
-          try {
-            const { getTokenTypeFromChainId } = await import('../../utils');
-            const network = await ethersProvider.getNetwork();
-            tokenType = getTokenTypeFromChainId(Number(network.chainId));
-          } catch (error) {
-            console.warn('Failed to detect network, defaulting to ethereum:', error);
-          }
-
-          return TurboFactory.authenticated({
-            token: tokenType,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        } else {
-          // Fallback to regular Ethereum wallet
-          if (!window.ethereum) {
-            throw new Error('Ethereum wallet extension not found. Please install MetaMask or WalletConnect');
-          }
-          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
-          const ethersSigner = await ethersProvider.getSigner();
-
-          // Detect network
-          try {
-            const { getTokenTypeFromChainId } = await import('../../utils');
-            const network = await ethersProvider.getNetwork();
-            tokenType = getTokenTypeFromChainId(Number(network.chainId));
-          } catch (error) {
-            console.warn('Failed to detect network, defaulting to ethereum:', error);
-          }
-
-          return TurboFactory.authenticated({
-            token: tokenType,
-            walletAdapter: {
-              getSigner: () => ethersSigner as any,
-            },
-            ...turboConfig,
-          });
-        }
-        
       case 'solana':
         if (!window.solana) {
           throw new Error('Solana wallet extension not found. Please install Phantom or Solflare');
@@ -107,7 +55,7 @@ export default function ShareCreditsPanel() {
           walletAdapter: window.solana,
           ...turboConfig,
         });
-        
+
       default:
         throw new Error(`Unsupported wallet type: ${walletType}`);
     }

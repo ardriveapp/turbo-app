@@ -16,6 +16,7 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
+      'base-ario': 'https://mainnet.base.org',
       ethereum: 'https://ethereum.publicnode.com',
       'base-eth': 'https://mainnet.base.org',
       solana: 'https://hardworking-restless-sea.solana-mainnet.quiknode.pro/44d938fae3eb6735ec30d8979551827ff70227f5/',
@@ -36,6 +37,7 @@ const PRESET_CONFIGS = {
     tokenMap: {
       arweave: 'https://arweave.net',
       ario: 'https://arweave.net',
+      'base-ario': 'https://sepolia.base.org',
       ethereum: 'https://eth-sepolia.public.blastapi.io',
       'base-eth': 'https://sepolia.base.org',
       solana: 'https://api.devnet.solana.com',
@@ -160,7 +162,10 @@ interface StoreState {
   // Developer configuration state
   configMode: ConfigMode;
   customConfig: DeveloperConfig;
-  
+
+  // X402-only mode (disables payment service features)
+  x402OnlyMode: boolean;
+
   // Actions
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
@@ -224,6 +229,10 @@ interface StoreState {
   updateTokenMap: (token: SupportedTokenType, url: string) => void;
   getCurrentConfig: () => DeveloperConfig;
   resetToDefaults: () => void;
+
+  // X402-only mode actions
+  setX402OnlyMode: (enabled: boolean) => void;
+  isPaymentServiceAvailable: () => boolean;
 }
 
 export const useStore = create<StoreState>()(
@@ -242,7 +251,10 @@ export const useStore = create<StoreState>()(
       // Developer configuration state
       configMode: 'production',
       customConfig: PRESET_CONFIGS.production,
-      
+
+      // X402-only mode (disabled by default)
+      x402OnlyMode: false,
+
       // Payment state
       paymentAmount: undefined,
       paymentIntent: undefined,
@@ -262,6 +274,7 @@ export const useStore = create<StoreState>()(
       jitPaymentEnabled: true, // Default opt-in
       jitMaxTokenAmount: {
         ario: 200,      // 200 ARIO ≈ $20
+        'base-ario': 200, // 200 ARIO ≈ $20 (on Base L2)
         solana: 0.15,   // 0.15 SOL ≈ $22.50
         'base-eth': 0.01, // 0.01 ETH ≈ $25
         'base-usdc': 25,  // 25 USDC = $25 (stablecoin)
@@ -453,6 +466,10 @@ export const useStore = create<StoreState>()(
           set({ customConfig: PRESET_CONFIGS.production });
         }
       },
+
+      // X402-only mode actions
+      setX402OnlyMode: (enabled) => set({ x402OnlyMode: enabled }),
+      isPaymentServiceAvailable: () => !get().x402OnlyMode,
     }),
     {
       name: 'turbo-gateway-store',
@@ -466,6 +483,7 @@ export const useStore = create<StoreState>()(
         uploadStatusCache: state.uploadStatusCache,
         configMode: state.configMode,
         customConfig: state.customConfig,
+        x402OnlyMode: state.x402OnlyMode,
         // JIT payment preferences
         jitPaymentEnabled: state.jitPaymentEnabled,
         jitMaxTokenAmount: state.jitMaxTokenAmount,

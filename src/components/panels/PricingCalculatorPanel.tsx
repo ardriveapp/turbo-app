@@ -1,16 +1,17 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Listbox, Transition } from '@headlessui/react';
 import { Calculator, HardDrive, DollarSign, ArrowRight, Zap, Upload, Globe, CreditCard, ChevronDown, Check } from 'lucide-react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../../hooks/useCreditsForFiat';
 import { useCryptoPriceForWinc, useWincForCrypto } from '../../hooks/useCryptoPrice';
+import { useX402Pricing } from '../../hooks/useX402Pricing';
 import { useStore } from '../../store/useStore';
 import { SupportedTokenType, tokenLabels } from '../../constants';
 import WalletSelectionModal from '../modals/WalletSelectionModal';
 
 export default function PricingCalculatorPanel() {
-  const { address, creditBalance } = useStore();
+  const { address, creditBalance, x402OnlyMode } = useStore();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [inputType, setInputType] = useState<'storage' | 'dollars'>('storage');
   const [storageAmount, setStorageAmount] = useState(1);
@@ -23,21 +24,43 @@ export default function PricingCalculatorPanel() {
     { value: 'TiB', label: 'TiB' },
   ] as const;
 
-  // Currency options
+  // Currency options - x402-only mode shows ONLY USDC (x402)
   type CurrencyType = 'usd' | SupportedTokenType;
-  const currencies: Array<{ value: CurrencyType; label: string; symbol: string }> = [
+  const baseCurrencies: Array<{ value: CurrencyType; label: string; symbol: string }> = [
     { value: 'usd', label: 'USD', symbol: '$' },
     { value: 'arweave', label: tokenLabels.arweave, symbol: 'AR' },
     { value: 'ario', label: tokenLabels.ario, symbol: 'ARIO' },
+    { value: 'base-ario', label: tokenLabels['base-ario'], symbol: 'ARIO' },
     { value: 'ethereum', label: tokenLabels.ethereum, symbol: 'ETH' },
     { value: 'base-eth', label: tokenLabels['base-eth'], symbol: 'ETH' },
     { value: 'solana', label: tokenLabels.solana, symbol: 'SOL' },
     { value: 'pol', label: tokenLabels.pol, symbol: 'POL' },
+    { value: 'base-usdc', label: 'USDC (Base)', symbol: 'USDC' },
   ];
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('usd');
+  // In x402-only mode, ONLY show USDC (x402)
+  const currencies = x402OnlyMode
+    ? [{ value: 'base-usdc' as CurrencyType, label: tokenLabels['base-usdc'] + ' (x402)', symbol: 'USDC' }]
+    : baseCurrencies;
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>(x402OnlyMode ? 'base-usdc' : 'usd');
 
   const [dollarAmount, setDollarAmount] = useState(10);
   const [dollarAmountInput, setDollarAmountInput] = useState('10'); // String for display
+
+  // Normalize selectedCurrency when x402OnlyMode toggles
+  useEffect(() => {
+    if (x402OnlyMode && selectedCurrency !== 'base-usdc') {
+      setSelectedCurrency('base-usdc');
+    } else if (!x402OnlyMode && selectedCurrency === 'base-usdc') {
+      setSelectedCurrency('usd');
+    }
+  }, [x402OnlyMode, selectedCurrency]);
+
+  // Auto-switch to 'storage' mode when base-usdc is selected (x402 doesn't support Budget to Storage)
+  useEffect(() => {
+    if (selectedCurrency === 'base-usdc' && inputType === 'dollars') {
+      setInputType('storage');
+    }
+  }, [selectedCurrency, inputType]);
   
   // Helper to convert crypto display amount to smallest unit (bigint)
   const getTokenSmallestUnit = (tokenType: SupportedTokenType, amount: number): bigint => {
@@ -47,7 +70,8 @@ export default function PricingCalculatorPanel() {
         decimals = 12; // winston
         break;
       case 'ario':
-        decimals = 6; // mARIO - 1 ARIO = 1,000,000 mARIO
+      case 'base-ario':
+        decimals = 6; // mARIO - 1 ARIO = 1,000,000 mARIO (same for AO and Base)
         break;
       case 'ethereum':
       case 'base-eth':
@@ -128,15 +152,31 @@ export default function PricingCalculatorPanel() {
 
   // Get selected currency info
   const selectedCurrencyInfo = currencies.find(c => c.value === selectedCurrency) || currencies[0];
-  
+
   // Calculate storage in bytes for display
   const getStorageInBytes = () => {
     const gib = getStorageInGiB();
     return gib * 1024 * 1024 * 1024; // 1 GiB = 1024^3 bytes
   };
-  
+
+  // X402 pricing: Fetch price for 1 GiB ONCE (just like wincForOneGiB in normal mode)
+  // Fetch when x402-only mode is active OR when base-usdc currency is selected
+  const oneGiBInBytes = 1024 * 1024 * 1024; // 1 GiB = 1,073,741,824 bytes
+  const shouldFetchX402 = x402OnlyMode || selectedCurrency === 'base-usdc';
+  const x402PricingPerGiB = useX402Pricing(shouldFetchX402 ? oneGiBInBytes : 0);
+
   // Calculate cost in dollars for storage
   const calculateStorageCost = () => {
+    // Use x402 pricing when x402-only mode is active OR base-usdc currency is selected
+    if ((x402OnlyMode || selectedCurrency === 'base-usdc') && inputType === 'storage') {
+      if (x402PricingPerGiB.loading) return 0;
+      if (x402PricingPerGiB.error) return 0;
+      // Extrapolate: storage amount * price per GiB
+      const storageInGiB = getStorageInGiB();
+      return storageInGiB * x402PricingPerGiB.usdcAmount;
+    }
+
+    // Regular mode: use winc/credits conversion
     if (!wincForOneGiB || !creditsForOneUSD) return 0;
     const storageInGiB = getStorageInGiB();
     const wincNeeded = storageInGiB * Number(wincForOneGiB);
@@ -197,7 +237,10 @@ export default function PricingCalculatorPanel() {
     return `${formatNumber(tib)} TiB`;
   };
 
-  const isLoading = wincLoading || creditsLoading;
+  // When using x402 pricing (x402-only mode or base-usdc selected), derive loading from x402 state
+  const isLoading = (x402OnlyMode || selectedCurrency === 'base-usdc')
+    ? x402PricingPerGiB.loading
+    : (wincLoading || creditsLoading);
 
   return (
     <div className="px-4 sm:px-6">
@@ -655,7 +698,7 @@ export default function PricingCalculatorPanel() {
                       <span className="text-sm text-link">Credits You'll Get</span>
                       <span className="text-lg font-medium text-fg-muted">
                         {selectedCurrency === 'usd'
-                          ? formatNumber(dollarAmount * creditsForOneUSD)
+                          ? formatNumber(dollarAmount * (creditsForOneUSD || 0))
                           : wincFromCrypto
                             ? formatNumber(wincFromCrypto / 1e12)
                             : '0'

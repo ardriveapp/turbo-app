@@ -6,6 +6,7 @@ import { useStore } from '../store/useStore';
 import WalletSelectionModal from '../components/modals/WalletSelectionModal';
 import { useWincForOneGiB } from '../hooks/useWincForOneGiB';
 import { useCreditsForFiat } from '../hooks/useCreditsForFiat';
+import { useFreeUploadLimit, formatFreeLimit } from '../hooks/useFreeUploadLimit';
 import {
   ArrowRight, Zap, Github, FileCode, Database, Rss,
   CreditCard, Gift, Ticket, Users, Upload, Globe2, Search, Check, Copy, ChevronDown, Info,
@@ -15,6 +16,7 @@ import {
 const LandingPage = () => {
   const { address } = useStore();
   const navigate = useNavigate();
+  const freeUploadLimitBytes = useFreeUploadLimit();
   const loggedIn = address !== null;
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -138,12 +140,12 @@ const LandingPage = () => {
       loginText: 'Buy Credits',
       connectText: 'Connect Wallet to Top Up'
     },
-    { 
-      name: 'Upload', 
-      icon: Upload, 
+    {
+      name: 'Upload',
+      icon: Upload,
       title: 'Upload Files & Folders',
-      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking, just in time payments and instant receipts.',
-      benefits: ['Drag & drop interface', 'Batch uploads', 'Just in time payments', 'Instant receipts'],
+      description: 'Drag and drop files for permanent storage on Arweave. Batch uploads with real-time progress tracking, x402 instant payments and instant receipts.',
+      benefits: ['Drag & drop interface', 'Batch uploads', 'x402 instant payments', 'Instant receipts'],
       action: 'upload',
       loginText: 'Upload Files',
       connectText: 'Connect Wallet to Upload'
@@ -255,7 +257,7 @@ const LandingPage = () => {
 
         {/* Subheadline */}
         <p className="mt-5 text-base sm:text-lg text-center max-w-3xl text-link/90 leading-relaxed">
-          Turbo is a streamlined permaweb service provider with built-in fiat and crypto payments. Top up instantly and ship fast with SDKs designed for developers.
+          Turbo is a streamlined permaweb service provider with built-in fiat and crypto payments. Top up instantly and ship fast with SDKs designed for developers and AI Agents.
         </p>
 
         {/* CTA Section */}
@@ -282,10 +284,12 @@ const LandingPage = () => {
         </div>
 
         {/* Free tier callout */}
-        <div className="mt-3 text-sm text-link/70">
-          <Check className="w-4 h-4 text-green-500 inline mr-1" />
-          Files under 100 KiB are completely FREE
-        </div>
+        {freeUploadLimitBytes > 0 && (
+          <div className="mt-3 text-sm text-link/70">
+            <Check className="w-4 h-4 text-green-500 inline mr-1" />
+            Files under {formatFreeLimit(freeUploadLimitBytes)} are completely FREE
+          </div>
+        )}
 
         {/* Terminal snippet - more integrated */}
         <div className="mt-8 w-full max-w-2xl">
@@ -372,7 +376,7 @@ const LandingPage = () => {
               <h3 className="text-xl font-bold text-fg-muted">Fund</h3>
             </div>
             <p className="text-sm text-link">
-              Buy Turbo Credits instantly with a card or crypto like ETH, SOL, ARIO, Stablecoins and more — ready to upload in seconds.
+              Buy Turbo Credits instantly with a card or crypto like ETH, SOL, ARIO, Stablecoins (via x402), and more — ready to upload in seconds.
             </p>
           </div>
 
@@ -383,7 +387,7 @@ const LandingPage = () => {
               <h3 className="text-xl font-bold text-fg-muted">Upload</h3>
             </div>
             <p className="text-sm text-link">
-              Use the Turbo SDK with your favorite Arweave, Ethereum, or Solana wallet to upload data directly to the Permaweb.
+              Use your favorite Arweave, Ethereum, or Solana wallet to cryptographically sign and upload data.
             </p>
           </div>
 
@@ -442,15 +446,17 @@ const LandingPage = () => {
       <div className="mb-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-fg-muted mb-2">Transparent Pricing</h2>
-          <p className="text-link/80">Pay-as-you-go storage with no subscriptions</p>
+          <p className="text-link/80">Pay-as-you-go storage with no subscriptions, now with x402</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          <div className="bg-gradient-to-br from-turbo-green/10 to-turbo-green/5 rounded-lg border-2 border-turbo-green/50 p-8 text-center">
-            <div className="text-4xl font-bold text-turbo-green mb-2">FREE</div>
-            <div className="text-lg text-fg-muted font-medium mb-1">Files under 100 KiB</div>
-            <div className="text-sm text-link">No credit card required</div>
-          </div>
+          {freeUploadLimitBytes > 0 && (
+            <div className="bg-gradient-to-br from-turbo-green/10 to-turbo-green/5 rounded-lg border-2 border-turbo-green/50 p-8 text-center">
+              <div className="text-4xl font-bold text-turbo-green mb-2">FREE</div>
+              <div className="text-lg text-fg-muted font-medium mb-1">Files under {formatFreeLimit(freeUploadLimitBytes)}</div>
+              <div className="text-sm text-link">No credit card required</div>
+            </div>
+          )}
           <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-lg border border-default p-8 text-center">
             <div className="text-4xl font-bold text-turbo-red mb-2">${pricePerGiB}</div>
             <div className="text-lg text-fg-muted font-medium mb-1">Per GiB</div>
@@ -1001,13 +1007,13 @@ const LandingPage = () => {
               <Zap className="w-6 h-6 text-fg-muted" />
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-fg-muted">Fast Lane</h3>
-                <span className="bg-fg-muted/20 text-fg-muted text-xs px-2 py-1 rounded-full font-medium">
-                  Coming Soon
+                <span className="bg-turbo-green/20 text-turbo-green text-xs px-2 py-1 rounded-full font-medium">
+                  Live
                 </span>
               </div>
             </div>
             <p className="text-sm text-link">
-              Avoid rate limits for you and your data with priority access and dedicated bandwidth with{' '}
+              Priority access and dedicated bandwidth with{' '}
               <a
                 href="https://www.coinbase.com/developer-platform/products/x402"
                 target="_blank"
@@ -1016,7 +1022,7 @@ const LandingPage = () => {
               >
                 x402
               </a>
-              .
+              {' '}— now available for USDC payments on Base network.
             </p>
           </div>
           

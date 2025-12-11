@@ -1,6 +1,7 @@
 import { TurboFactory, ArconnectSigner, ARToTokenAmount, ARIOToTokenAmount, ETHToTokenAmount, SOLToTokenAmount, POLToTokenAmount } from '@ardrive/turbo-sdk/web';
+import { InjectedEthereumSigner } from '@ar.io/sdk/web';
 import { useState } from 'react';
-import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users } from 'lucide-react';
+import { Clock, RefreshCw, Wallet, AlertCircle, CheckCircle, Users, Loader2, XCircle } from 'lucide-react';
 import { useStore } from '../../../store/useStore';
 import {  tokenLabels, tokenNetworkLabels, tokenProcessingTimes, wincPerCredit, SupportedTokenType } from '../../../constants';
 import { useWincForAnyToken, useWincForOneGiB } from '../../../hooks/useWincForOneGiB';
@@ -10,6 +11,8 @@ import { useWallets } from '@privy-io/react-auth';
 import { getWalletTypeLabel } from '../../../utils/addressValidation';
 import CopyButton from '../../CopyButton';
 import { useTurboConfig } from '../../../hooks/useTurboConfig';
+import { useTokenBalance } from '../../../hooks/useTokenBalance';
+import { formatTokenAmount } from '../../../utils/jitPayment';
 
 interface CryptoConfirmationPanelProps {
   cryptoAmount: number;
@@ -43,13 +46,26 @@ export default function CryptoConfirmationPanel({
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
   const { data: turboWallets } = useTurboWallets();
   const wincForOneGiB = useWincForOneGiB();
-  
+
+  // Fetch wallet balance for the selected token (always enabled for Buy Credits)
+  const {
+    balance: tokenBalance,
+    loading: balanceLoading,
+    error: balanceError,
+    isNetworkError,
+  } = useTokenBalance(tokenType, walletType, address, true);
+
   const quote = wincForToken ? {
     tokenAmount: cryptoAmount,
     credits: Number(wincForToken) / wincPerCredit,
     // Calculate storage correctly using actual GiB rate
     gigabytes: wincForOneGiB ? Number(wincForToken) / Number(wincForOneGiB) : 0,
   } : null;
+
+  // Calculate balance after purchase
+  const balanceAfterPurchase = tokenBalance - cryptoAmount;
+  // Balance validation: Block on network errors or insufficient balance, allow on other errors
+  const hasSufficientBalance = (balanceError && !isNetworkError) ? true : (!isNetworkError && tokenBalance >= cryptoAmount);
   
   // Get the turbo wallet address for manual payments
   const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
@@ -71,9 +87,11 @@ export default function CryptoConfirmationPanel({
 
   // Determine if user can pay directly or needs manual payment
   // SDK v1.35.0-alpha.2 officially supports USDC direct wallet payments
+  // ARIO payments from Ethereum wallets use InjectedEthereumSigner from @ar.io/sdk
+  // Base ARIO uses walletAdapter pattern like other Base tokens
   const canPayDirectly = (
     (walletType === 'arweave' && (tokenType === 'arweave' || tokenType === 'ario')) ||
-    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) ||
+    (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'base-ario' || tokenType === 'polygon-usdc' || tokenType === 'ario')) ||
     (walletType === 'solana' && tokenType === 'solana')
   );
 
@@ -118,8 +136,80 @@ export default function CryptoConfirmationPanel({
             tokenType,
             transactionId: result.id,
           });
-        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc')) {
-          // ETH L1/Base ETH/POL/USDC direct payment via Ethereum wallet
+        } else if (walletType === 'ethereum' && tokenType === 'ario') {
+          // ARIO payment via Ethereum wallet using InjectedEthereumSigner
+          // ARIO is an AO-based token, so it requires signing AO data items
+          // We use InjectedEthereumSigner from @ar.io/sdk which can sign AO data items using an Ethereum wallet
+          const { ethers } = await import('ethers');
+
+          // Check if this is a Privy embedded wallet
+          const privyWallet = wallets.find(w => w.walletClientType === 'privy');
+
+          let ethersSigner;
+
+          if (privyWallet) {
+            // Use Privy embedded wallet
+            const privyProvider = await privyWallet.getEthereumProvider();
+            const provider = new ethers.BrowserProvider(privyProvider);
+            ethersSigner = await provider.getSigner();
+          } else if (window.ethereum) {
+            // Fallback to regular Ethereum wallet (MetaMask, WalletConnect)
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            ethersSigner = await provider.getSigner();
+          } else {
+            throw new Error('No Ethereum wallet available');
+          }
+
+          const ethAddress = await ethersSigner.getAddress();
+
+          // Create InjectedEthereumSigner for AO data item signing
+          const injectedProvider = {
+            getSigner: () => ({
+              signMessage: async (message: any) => {
+                const arg = typeof message === 'string' ? message : message.raw || message;
+                return await ethersSigner.signMessage(arg);
+              },
+              getAddress: async () => ethAddress,
+            }),
+          };
+
+          const injectedSigner = new InjectedEthereumSigner(injectedProvider as any);
+
+          // Set public key (required for AO data item signing)
+          // The user will sign a message to derive their public key
+          const connectMessage = 'Sign this message to connect to Turbo Gateway for ARIO payment';
+          const signature = await ethersSigner.signMessage(connectMessage);
+          const messageHash = ethers.hashMessage(connectMessage);
+          const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
+          injectedSigner.publicKey = Buffer.from(ethers.getBytes(recoveredKey));
+
+          // Create Turbo client with the InjectedEthereumSigner
+          // For ARIO (AO-based token), we use `signer` NOT `walletAdapter`
+          const turbo = TurboFactory.authenticated({
+            signer: injectedSigner,
+            token: 'ario',
+            paymentServiceConfig: {
+              url: turboConfig.paymentServiceUrl || 'https://payment.ardrive.io',
+            },
+            gatewayUrl: turboConfig.tokenMap['ario'],
+          });
+
+          // Convert to smallest unit using SDK helper
+          const tokenAmount = ARIOToTokenAmount(cryptoAmount);
+
+          const result = await turbo.topUpWithTokens({
+            tokenAmount,
+            turboCreditDestinationAddress,
+          });
+
+          onPaymentComplete({
+            ...result,
+            quote,
+            tokenType,
+            transactionId: result.id,
+          });
+        } else if (walletType === 'ethereum' && (tokenType === 'ethereum' || tokenType === 'base-eth' || tokenType === 'pol' || tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'base-ario' || tokenType === 'polygon-usdc')) {
+          // ETH L1/Base ETH/POL/USDC/Base-ARIO direct payment via Ethereum wallet
           const { ethers } = await import('ethers');
 
           // Check if this is a Privy embedded wallet
@@ -149,7 +239,7 @@ export default function CryptoConfirmationPanel({
           const isDevMode = turboConfig.paymentServiceUrl?.includes('.dev');
           const expectedChainId = (tokenType === 'ethereum' || tokenType === 'usdc')
             ? (isDevMode ? 17000 : 1)  // Holesky testnet : Ethereum mainnet
-            : (tokenType === 'base-eth' || tokenType === 'base-usdc')
+            : (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
             ? (isDevMode ? 84532 : 8453) // Base Sepolia : Base mainnet
             : (tokenType === 'pol' || tokenType === 'polygon-usdc')
             ? (isDevMode ? 80002 : 137) // Amoy testnet : Polygon mainnet
@@ -170,7 +260,7 @@ export default function CryptoConfirmationPanel({
                 provider = new ethers.BrowserProvider(newPrivyProvider);
                 signer = await provider.getSigner();
               } catch {
-                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc')
+                const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
                   ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
                   : (tokenType === 'pol' || tokenType === 'polygon-usdc')
                   ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
@@ -179,7 +269,7 @@ export default function CryptoConfirmationPanel({
               }
             } else if (window.ethereum) {
               // Only attempt auto-switching for regular wallets
-              if (tokenType === 'base-eth' || tokenType === 'base-usdc') {
+              if (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario') {
                 try {
                   await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -233,7 +323,7 @@ export default function CryptoConfirmationPanel({
                     }
                   } else {
                     const networkName = isDevMode ? 'Base Sepolia testnet' : 'Base Network';
-                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : 'ETH';
+                    const tokenName = tokenType === 'base-usdc' ? 'USDC' : tokenType === 'base-ario' ? 'ARIO' : 'ETH';
                     throw new Error(`Please switch to ${networkName} in your wallet for ${tokenName} payments.`);
                   }
                 }
@@ -341,12 +431,15 @@ export default function CryptoConfirmationPanel({
 
           const turbo = TurboFactory.authenticated(turboConfig_forSDK);
 
-          // Convert to smallest unit (wei for ETH/Base, POL for Polygon, 6 decimals for USDC)
+          // Convert to smallest unit (wei for ETH/Base, POL for Polygon, 6 decimals for USDC/ARIO)
           let tokenAmount;
           if (tokenType === 'pol') {
             tokenAmount = POLToTokenAmount(cryptoAmount);
           } else if (tokenType === 'usdc' || tokenType === 'base-usdc' || tokenType === 'polygon-usdc') {
             // USDC uses 6 decimals
+            tokenAmount = (cryptoAmount * 1e6).toString();
+          } else if (tokenType === 'base-ario') {
+            // Base ARIO uses 6 decimals (same as ARIO on AO)
             tokenAmount = (cryptoAmount * 1e6).toString();
           } else {
             tokenAmount = ETHToTokenAmount(cryptoAmount);
@@ -578,6 +671,74 @@ export default function CryptoConfirmationPanel({
               </div>
             </div>
 
+            {/* Wallet Balance Section */}
+            <div className="bg-surface rounded-lg p-4 border border-default mb-6">
+              <h4 className="font-medium text-fg-muted mb-3">Wallet Balance</h4>
+
+              {balanceLoading ? (
+                <div className="flex items-center gap-2 p-2 bg-surface/50 rounded border border-default">
+                  <Loader2 className="w-4 h-4 text-link animate-spin" />
+                  <span className="text-xs text-link">Checking wallet balance...</span>
+                </div>
+              ) : balanceError ? (
+                <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
+                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-amber-400 font-medium">Unable to fetch balance</div>
+                    <div className="text-xs text-amber-400/70 mt-0.5">{balanceError}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Current Balance */}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-link">Current Balance:</span>
+                    <span className="text-sm font-medium text-fg-muted">
+                      {formatTokenAmount(tokenBalance, tokenType)} {tokenLabels[tokenType]}
+                    </span>
+                  </div>
+
+                  {/* Payment Amount */}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-link">Payment Amount:</span>
+                    <span className="text-sm font-medium text-red-400">
+                      -{formatTokenAmount(cryptoAmount, tokenType)} {tokenLabels[tokenType]}
+                    </span>
+                  </div>
+
+                  {/* After Purchase */}
+                  <div className="flex justify-between items-center py-2 pt-3 border-t border-default/30">
+                    <span className="text-sm font-medium text-fg-muted">After Purchase:</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${hasSufficientBalance ? 'text-turbo-green' : 'text-red-400'}`}>
+                        {formatTokenAmount(Math.max(0, balanceAfterPurchase), tokenType)} {tokenLabels[tokenType]}
+                      </span>
+                      {hasSufficientBalance ? (
+                        <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Insufficient balance warning */}
+                  {!hasSufficientBalance && (
+                    <div className="mt-3 p-2 bg-red-500/10 rounded border border-red-500/20">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-red-400">
+                          <div className="font-medium">Insufficient {tokenLabels[tokenType]} balance</div>
+                          <div className="mt-1">
+                            You need {formatTokenAmount(cryptoAmount - tokenBalance, tokenType)} {tokenLabels[tokenType]} more to complete this purchase.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             {/* Payment Method Info */}
             <div className="bg-surface rounded-lg p-4 border border-default mb-6">
               <div className="flex items-start gap-3">
@@ -621,23 +782,14 @@ export default function CryptoConfirmationPanel({
             {/* Terms */}
             <div className="text-center bg-surface/30 rounded-lg p-4 mb-6">
               <p className="text-xs text-link">
-                By continuing, you agree to our{' '}
-                <a 
-                  href="https://ardrive.io/tos-and-privacy/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                By uploading, you agree to our{' '}
+                <a
+                  href="https://ardrive.io/tos-and-privacy/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-fg-muted hover:text-fg-muted/80 transition-colors"
                 >
                   Terms of Service
-                </a>
-                {' '}and{' '}
-                <a 
-                  href="https://ardrive.io/tos-and-privacy/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-fg-muted hover:text-fg-muted/80 transition-colors"
-                >
-                  Privacy Policy
                 </a>
               </p>
             </div>
@@ -675,7 +827,7 @@ export default function CryptoConfirmationPanel({
               
               <button
                 onClick={handlePayment}
-                disabled={!quote || isProcessing}
+                disabled={!quote || isProcessing || (!hasSufficientBalance && !balanceLoading)}
                 className="px-6 py-3 rounded-lg bg-fg-muted text-black font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (
