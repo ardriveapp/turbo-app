@@ -40,7 +40,7 @@ src/
 ├── pages/                # React Router page components
 ├── store/useStore.ts     # Zustand state management
 ├── providers/            # WalletProviders.tsx (Wagmi, Solana, Privy, Stripe, React Query)
-├── utils/                # Helpers (addressValidation, token utilities)
+├── utils/                # Helpers (addressValidation, token utilities, jitPayment)
 ├── lib/                  # API clients (turboCaptureClient.ts)
 └── constants.ts          # App config, token definitions, X402_CONFIG
 ```
@@ -58,6 +58,8 @@ src/
 **Email Auth (Privy):** Creates embedded Ethereum wallet via `@privy-io/react-auth`
 
 **Ethereum Signer Caching:** The `useEthereumTurboClient` hook caches signers globally so users only sign once per session. Call `clearEthereumTurboClientCache()` when switching wallets.
+
+**Network Switching:** For EVM token transfers (base-ario, base-eth, base-usdc, etc.), the hook automatically switches the wallet to the correct network BEFORE creating the signer. This is critical for Privy embedded wallets.
 
 ### State Management (Zustand)
 
@@ -84,11 +86,13 @@ Access via `useTurboConfig(tokenType)` hook or `getCurrentConfig()` from store.
 ## Token Support
 
 **Supported tokens** (from `constants.ts`):
-`arweave`, `ario`, `ethereum`, `base-eth`, `solana`, `kyve`, `pol`, `usdc`, `base-usdc`, `polygon-usdc`
+`arweave`, `ario`, `base-ario`, `ethereum`, `base-eth`, `solana`, `kyve`, `pol`, `usdc`, `base-usdc`, `polygon-usdc`
 
 **Network detection:** `getTokenTypeFromChainId()` in `utils/index.ts`
 
-**JIT payments supported:** ARIO, SOL, Base-ETH, Base-USDC only
+**JIT payments supported:** `ario`, `base-ario`, `solana`, `base-eth`, `base-usdc` (see `supportsJitPayment()` in `utils/jitPayment.ts`)
+
+**EVM token transfer types** (require network switching): `base-ario`, `base-eth`, `base-usdc`, `polygon-usdc`, `pol`, `usdc`
 
 ## Creating Turbo Clients
 
@@ -100,10 +104,10 @@ import { TurboFactory, ArconnectSigner } from '@ardrive/turbo-sdk/web';
 const signer = new ArconnectSigner(window.arweaveWallet);
 const turbo = TurboFactory.authenticated({ signer, ...turboConfig });
 
-// Ethereum wallet (PREFERRED: use the hook for automatic caching)
+// Ethereum wallet (PREFERRED: use the hook for automatic caching + network switching)
 import { useEthereumTurboClient } from '../hooks/useEthereumTurboClient';
 const { createEthereumTurboClient } = useEthereumTurboClient();
-const turbo = await createEthereumTurboClient('base-eth'); // or 'ethereum', 'base-usdc', etc.
+const turbo = await createEthereumTurboClient('base-ario'); // or 'base-eth', 'base-usdc', etc.
 
 // Manual Ethereum client (for non-hook contexts)
 import { InjectedEthereumSigner } from '@ar.io/sdk/web';
@@ -127,9 +131,9 @@ All uploads include standardized metadata tags:
 
 **Feature-specific:** `Content-Type`, `File-Name`, `File-Path`, `Original-URL`, `Title`, viewport dimensions
 
-## X402 Protocol (Instant USDC Uploads)
+## X402 Protocol (x402-only mode)
 
-Enables uploads without pre-purchased credits via Base network USDC.
+Enables uploads without pre-purchased credits via Base network USDC. Used when connecting to ar.io bundlers that only support x402.
 
 **Key files:**
 - `useX402Upload.ts`: Protocol upload hook
@@ -140,16 +144,18 @@ Enables uploads without pre-purchased credits via Base network USDC.
 - Production: Base Mainnet (chainId 8453)
 - Development: Base Sepolia (chainId 84532)
 
+**x402OnlyMode:** When enabled (via Developer Resources panel), only `base-usdc` payments are available and only Ethereum wallets can make billable uploads/deploys.
+
 ## Wallet Capability Matrix
 
 | Feature | Arweave | Ethereum/Base/Polygon | Solana |
 |---------|---------|----------------------|--------|
 | Buy Credits (Fiat) | ✅ | ✅ | ✅ |
-| Buy Credits (Crypto) | ✅ AR/ARIO | ✅ ETH/Base-ETH/POL/USDC | ✅ SOL |
+| Buy Credits (Crypto) | ✅ AR/ARIO | ✅ ETH/Base-ETH/Base-ARIO/POL/USDC | ✅ SOL |
 | Upload/Deploy/Capture | ✅ | ✅ | ✅ |
 | Share Credits | ✅ | ✅ | ✅ |
 | Update ArNS Records | ✅ | ❌ | ❌ |
-| JIT Payments | ✅ ARIO | ✅ Base-ETH, Base-USDC | ✅ |
+| JIT Payments | ✅ ARIO | ✅ Base-ARIO, Base-ETH, Base-USDC | ✅ SOL |
 | X402 USDC Uploads | ❌ | ✅ (Base only) | ❌ |
 
 ## Environment Variables
@@ -217,18 +223,29 @@ import { clearEthereumTurboClientCache } from '../hooks/useEthereumTurboClient';
 clearEthereumTurboClientCache();
 ```
 
+### Handling Pricing Loading State
+When working with pricing hooks like `useWincForOneGiB()`, always check for null/undefined:
+```typescript
+// useWincForOneGiB returns string | undefined, NOT number
+const wincForOneGiB = useWincForOneGiB();
+const wincNum = wincForOneGiB ? Number(wincForOneGiB) : NaN;
+if (Number.isFinite(wincNum) && wincNum > 0) {
+  // Safe to use wincNum
+}
+```
+
 ## Key Dependencies
 
 - `@ardrive/turbo-sdk`: Turbo services, multi-chain signing, USDC support
-- `@ar.io/sdk`: ArNS resolution
-- `@privy-io/react-auth`: Email auth
+- `@ar.io/sdk`: ArNS resolution, InjectedEthereumSigner
+- `@privy-io/react-auth`: Email auth with embedded wallets
 - `wagmi` + `ethers`: Ethereum wallets
 - `@solana/wallet-adapter-*`: Solana wallets
 - `arbundles`: Data item creation for X402
 - `x402-fetch`: X402 payment protocol
 - `zustand`: State management
 - `@tanstack/react-query`: Server state
-- `@stripe/react-stripe-js`: Payments
+- `@stripe/react-stripe-js`: Fiat payments
 
 ## Routes
 
@@ -243,6 +260,7 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 ## Custom Events
 
 - `refresh-balance`: Dispatched after payments to trigger balance updates across components
+- `walletSwitch`: ArConnect event for Arweave wallet changes
 
 ## Important Hooks
 
@@ -251,15 +269,26 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 | `useTurboConfig(tokenType?)` | Get Turbo SDK config for current mode |
 | `useCreditsForFiat(usdAmount, address)` | USD → credits conversion |
 | `useCreditsForCrypto(tokenType, amount, address)` | Crypto → credits conversion |
-| `useWincForOneGiB()` | Storage pricing |
+| `useWincForOneGiB()` | Storage pricing (returns string, not number!) |
 | `useFileUpload()` | Multi-chain file upload logic |
 | `useFolderUpload()` | Folder upload with manifest generation |
 | `useX402Upload()` | X402 protocol uploads |
 | `useX402Pricing(bytes)` | Calculate USDC cost for X402 |
-| `useEthereumTurboClient()` | Create authenticated Turbo client for ETH wallets (with caching) |
+| `useEthereumTurboClient()` | Create authenticated Turbo client for ETH wallets (with caching + network switching) |
 | `useTurboWallets()` | Unified wallet detection across Arweave/Ethereum/Solana |
 | `usePrimaryArNSName(address)` | Fetch primary ArNS name |
 | `useOwnedArNSNames(address)` | Fetch all owned ArNS names |
-| `usePaymentFlow()` | Shared fiat/gift payment logic |
+| `usePaymentFlow()` | Shared payment flow state for Upload/Capture panels |
 | `useTokenBalance(tokenType)` | Get user's token balance for crypto payments |
 | `useCryptoPrice(tokenType)` | Get current USD price for a token |
+| `useWalletAccountListener()` | Listens for wallet changes across all ecosystems, clears caches on switch |
+
+## Important Utilities
+
+| Utility | Location | Purpose |
+|---------|----------|---------|
+| `supportsJitPayment(tokenType)` | `utils/jitPayment.ts` | Check if token supports JIT payments |
+| `calculateRequiredTokenAmount()` | `utils/jitPayment.ts` | Calculate crypto needed for credits |
+| `getTokenConverter(tokenType)` | `utils/jitPayment.ts` | Get decimal conversion function |
+| `formatTokenAmount()` | `utils/jitPayment.ts` | Format token amounts for display |
+| `clearEthereumTurboClientCache()` | `hooks/useEthereumTurboClient.ts` | Clear cached signers/clients |
