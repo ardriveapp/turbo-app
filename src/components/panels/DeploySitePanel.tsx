@@ -239,8 +239,8 @@ function CryptoPaymentDetails({
           )}
         </div>
 
-        {/* Advanced Settings */}
-        {estimatedCost && (
+        {/* Advanced Settings - hidden for base-usdc since x402 pricing is authoritative */}
+        {estimatedCost && tokenType !== 'base-usdc' && (
           <div className="mt-4 pt-4 border-t border-default/30">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}

@@ -233,8 +233,8 @@ function CryptoPaymentDetails({
           )}
         </div>
 
-        {/* Advanced Settings */}
-        {estimatedCost && (
+        {/* Advanced Settings - hidden for base-usdc since x402 pricing is authoritative */}
+        {estimatedCost && tokenType !== 'base-usdc' && (
           <div className="mt-4 pt-4 border-t border-default/30">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
@@ -551,15 +551,18 @@ export default function UploadPanel() {
   // Use billableFileSize (sum of non-free files) to respect per-file free tiers
   const totalCost = calculateUploadCost(billableFileSize);
 
-  // Auto-enable JIT when user has insufficient credits
+  // Auto-switch to crypto tab when user has insufficient credits
+  // This guides users to the crypto payment option when credits won't cover the upload
   useEffect(() => {
     if (showConfirmModal && totalCost !== null) {
       const creditsNeeded = Math.max(0, totalCost - creditBalance);
       if (creditsNeeded > 0) {
-        setLocalJitEnabled(true); // Auto-enable for insufficient credits
+        setLocalJitEnabled(true); // Enable JIT payment option
+        setPaymentTab('crypto'); // Switch to crypto tab so user sees the payment UI
+        setJitSectionExpanded(true); // Expand the JIT section
       }
     }
-  }, [showConfirmModal, totalCost, creditBalance]);
+  }, [showConfirmModal, totalCost, creditBalance, setPaymentTab, setJitSectionExpanded]);
 
   const handleUpload = () => {
     if (!address) {
@@ -1559,19 +1562,25 @@ export default function UploadPanel() {
                     </button>
                     <button
                       onClick={handleConfirmUpload}
-                      disabled={
-                        // Disable while pricing is loading (totalCost is null)
-                        totalCost === null ||
-                        (creditsNeeded > 0 && !localJitEnabled) ||
-                        (localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient) ||
-                        // Disable if in x402-only mode with non-Ethereum wallet for billable uploads
-                        (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') ||
-                        // Disable while x402 pricing is loading (for crypto payments)
-                        (localJitEnabled && creditsNeeded > 0 && selectedJitToken === 'base-usdc' && x402Pricing?.loading)
-                      }
+                      disabled={(() => {
+                        // Compute shouldEnableJit consistently with handleConfirmUpload
+                        const shouldEnableJit = localJitEnabled && paymentTab === 'crypto';
+                        return (
+                          // Disable while pricing is loading (totalCost is null)
+                          totalCost === null ||
+                          // User needs credits but hasn't opted into crypto payment
+                          (creditsNeeded > 0 && !shouldEnableJit) ||
+                          // User opted into crypto but balance validation failed
+                          (shouldEnableJit && creditsNeeded > 0 && !jitBalanceSufficient) ||
+                          // Disable if in x402-only mode with non-Ethereum wallet for billable uploads
+                          (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') ||
+                          // Disable while x402 pricing is loading (for crypto payments)
+                          (shouldEnableJit && creditsNeeded > 0 && selectedJitToken === 'base-usdc' && x402Pricing?.loading)
+                        );
+                      })()}
                       className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
                     >
-                      {localJitEnabled && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
+                      {localJitEnabled && paymentTab === 'crypto' && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>
                   </div>
                 </>

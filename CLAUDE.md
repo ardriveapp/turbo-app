@@ -28,7 +28,7 @@ Unified Turbo Gateway app consolidating:
 - **turbo-app**: File uploads, gifts, credit sharing, ArNS
 
 ### Key Directories
-```
+```text
 src/
 ├── components/
 │   ├── panels/           # Feature panels (TopUpPanel, UploadPanel, etc.)

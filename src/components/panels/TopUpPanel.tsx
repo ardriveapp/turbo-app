@@ -219,6 +219,12 @@ export default function TopUpPanel() {
   const handleCheckout = async () => {
     const effectiveAmount = getEffectiveUsdAmount();
 
+    // Validate recipient address - block if there's a visible validation error
+    if (targetAddressError) {
+      setErrorMessage('Please fix the recipient address error before continuing');
+      return;
+    }
+
     // Validate amount limits
     if (effectiveAmount < minUSDAmount) {
       setErrorMessage(`Minimum purchase amount is $${minUSDAmount}${inputType === 'storage' ? ' (reduce storage amount)' : ''}`);
@@ -1639,10 +1645,12 @@ export default function TopUpPanel() {
           disabled={
             (paymentMethod === 'fiat' && (
               (!paymentTargetAddress && !address) || // Must have either a target address or connected wallet
+              !!targetAddressError || // Block checkout if recipient address validation failed
               (inputType === 'dollars' && (!credits || usdAmount < minUSDAmount || usdAmount > maxUSDAmount)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || calculateStorageCost() < minUSDAmount || calculateStorageCost() > maxUSDAmount))
             )) ||
             (paymentMethod === 'crypto' && (
+              !!targetAddressError || // Block checkout if recipient address validation failed
               (inputType === 'dollars' && (cryptoAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType) || !!tokenPricingError)) ||
               (inputType === 'storage' && (!wincForOneGiB || !creditsForOneUSD || storageAmount <= 0 || !walletType || !isTokenCompatibleWithWallet(selectedTokenType) || cryptoForStorage === undefined))
             )) ||
