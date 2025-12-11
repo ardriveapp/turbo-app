@@ -370,7 +370,7 @@ function DeployConfirmationModal({
     } else {
       setUsdEquivalent(null);
     }
-  }, [totalCost, wincForOneGiB]);
+  }, [totalCost, wincForOneGiB, wincPerCredit]);
 
   // Calculate billable file size for x402 (total size for deployments)
   const billableFileSize = totalSize;
