@@ -129,15 +129,16 @@ function CryptoPaymentDetails({
 
   // Validate balance and update shortage info
   useEffect(() => {
+    // Keep button disabled while pricing is loading (estimatedCost not yet available)
     if (!estimatedCost) {
-      onBalanceValidation(true);
+      onBalanceValidation(false);
       onShortageUpdate(null);
       return;
     }
 
-    // Don't show warnings while balance is loading
+    // Keep button disabled while balance is loading
     if (balanceLoading) {
-      onBalanceValidation(true);
+      onBalanceValidation(false);
       onShortageUpdate(null);
       return;
     }
@@ -148,6 +149,8 @@ function CryptoPaymentDetails({
       return;
     }
 
+    // If there's a balance error but we have pricing, allow proceeding
+    // (user may still have sufficient balance, we just can't verify)
     if (balanceError) {
       onBalanceValidation(true);
       onShortageUpdate(null);

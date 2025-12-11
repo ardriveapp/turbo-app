@@ -129,9 +129,16 @@ function CryptoPaymentDetails({
 
   // Validate balance and update shortage info
   useEffect(() => {
+    // Keep button disabled while pricing is loading (estimatedCost not yet available)
     if (!estimatedCost) {
-      // Don't call onBalanceValidation - preserve previous state while pricing loads
-      // Clear shortage info since we don't have valid pricing yet
+      onBalanceValidation(false);
+      onShortageUpdate(null);
+      return;
+    }
+
+    // Keep button disabled while balance is loading
+    if (balanceLoading) {
+      onBalanceValidation(false);
       onShortageUpdate(null);
       return;
     }
@@ -142,6 +149,8 @@ function CryptoPaymentDetails({
       return;
     }
 
+    // If there's a balance error but we have pricing, allow proceeding
+    // (user may still have sufficient balance, we just can't verify)
     if (balanceError) {
       onBalanceValidation(true);
       onShortageUpdate(null);
@@ -158,7 +167,7 @@ function CryptoPaymentDetails({
     } else {
       onShortageUpdate(null);
     }
-  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, tokenType, onBalanceValidation, onShortageUpdate]);
+  }, [tokenBalance, estimatedCost, balanceError, isNetworkError, balanceLoading, tokenType, onBalanceValidation, onShortageUpdate]);
 
   const afterUpload = estimatedCost ? Math.max(0, tokenBalance - estimatedCost.tokenAmountReadable) : tokenBalance;
 
