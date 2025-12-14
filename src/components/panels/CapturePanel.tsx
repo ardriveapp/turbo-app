@@ -378,46 +378,6 @@ export default function CapturePanel() {
 
   const totalCost = captureFile ? calculateUploadCost(captureFile.size) : null;
 
-  // USD equivalent for credit pricing
-  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
-
-  // Fetch USD equivalent for credit pricing (only for billable bytes)
-  useEffect(() => {
-    const fetchUsdPrice = async () => {
-      if (!billableFileSize || billableFileSize <= 0 || !showConfirmModal) {
-        setUsdEquivalent(null);
-        return;
-      }
-
-      try {
-        const { getCurrentConfig } = useStore.getState();
-        const turboConfig = getCurrentConfig();
-
-        const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-        const turbo = TurboFactory.unauthenticated({
-          paymentServiceConfig: { url: turboConfig.paymentServiceUrl },
-        });
-
-        const fiatRates = await turbo.getFiatRates();
-        const usdPerGiB = fiatRates.fiat?.usd;
-
-        if (usdPerGiB) {
-          // Calculate USD for billable file size only (excluding free files)
-          const gib = billableFileSize / (1024 * 1024 * 1024);
-          const usdPrice = gib * usdPerGiB;
-          setUsdEquivalent(usdPrice);
-        } else {
-          setUsdEquivalent(null);
-        }
-      } catch (error) {
-        console.error('[USD Pricing] Error fetching USD price:', error);
-        setUsdEquivalent(null);
-      }
-    };
-
-    fetchUsdPrice();
-  }, [billableFileSize, showConfirmModal]);
-
   // Check if URL is valid
   const isValidUrl = (url: string) => {
     if (!url.trim()) return false;
@@ -1041,16 +1001,7 @@ export default function CapturePanel() {
                               {totalCost === 0 ? (
                                 <span className="text-turbo-green font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
-                                <>
-                                  {totalCost.toFixed(6)} Credits
-                                  {usdEquivalent !== null && usdEquivalent > 0 && (
-                                    <span className="text-xs text-link ml-2">
-                                      (≈ ${usdEquivalent < 0.01
-                                        ? usdEquivalent.toFixed(4)
-                                        : usdEquivalent.toFixed(2)})
-                                    </span>
-                                  )}
-                                </>
+                                <>{totalCost.toFixed(6)} Credits</>
                               ) : (
                                 'Calculating...'
                               )}
@@ -1163,16 +1114,7 @@ export default function CapturePanel() {
                               {totalCost === 0 ? (
                                 <span className="text-turbo-green font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
-                                <>
-                                  {totalCost.toFixed(6)} Credits
-                                  {usdEquivalent !== null && usdEquivalent > 0 && (
-                                    <span className="text-xs text-link ml-2">
-                                      (≈ ${usdEquivalent < 0.01
-                                        ? usdEquivalent.toFixed(4)
-                                        : usdEquivalent.toFixed(2)})
-                                    </span>
-                                  )}
-                                </>
+                                <>{totalCost.toFixed(6)} Credits</>
                               ) : (
                                 'Calculating...'
                               )}

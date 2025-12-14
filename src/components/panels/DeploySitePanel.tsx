@@ -5,7 +5,7 @@ import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
 import { useX402Pricing } from '../../hooks/useX402Pricing';
 import { wincPerCredit, SupportedTokenType, tokenLabels } from '../../constants';
 import { useStore } from '../../store/useStore';
-import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X, Wallet, CreditCard } from 'lucide-react';
+import { Globe, XCircle, Loader2, RefreshCw, Info, Receipt, ChevronDown, ChevronUp, CheckCircle, Folder, File, FileText, Image, Code, ExternalLink, Home, AlertTriangle, Archive, Clock, HelpCircle, MoreVertical, Zap, ArrowRight, Copy, X, Wallet, CreditCard, Sparkles } from 'lucide-react';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
 import { supportsJitPayment, calculateRequiredTokenAmount, formatTokenAmount, getTokenConverter } from '../../utils/jitPayment';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
@@ -320,6 +320,10 @@ interface DeployConfirmationModalProps {
   // X402 mode props
   x402OnlyMode: boolean;
   isPaymentServiceAvailable: () => boolean;
+  // Smart Deploy props
+  smartDeployEnabled: boolean;
+  cachedFilesCount: number;
+  billableSize: number;
 }
 
 function DeployConfirmationModal({
@@ -350,6 +354,9 @@ function DeployConfirmationModal({
   onCryptoShortageUpdate,
   x402OnlyMode,
   isPaymentServiceAvailable,
+  smartDeployEnabled,
+  cachedFilesCount,
+  billableSize,
 }: DeployConfirmationModalProps) {
   const creditsNeeded = Math.max(0, totalCost - currentBalance);
   const hasSufficientCredits = creditsNeeded === 0;
@@ -360,21 +367,6 @@ function DeployConfirmationModal({
 
   // Check if deployment is completely free (all files under free limit)
   const isFreeDeployment = totalCost === 0;
-
-  // Calculate USD equivalent for Credits tab
-  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
-  const wincForOneGiB = useWincForOneGiB();
-
-  useEffect(() => {
-    const wincForOneGiBNum = wincForOneGiB ? Number(wincForOneGiB) : NaN;
-    if (totalCost > 0 && Number.isFinite(wincForOneGiBNum) && wincForOneGiBNum > 0) {
-      const usd = (totalCost * wincPerCredit / wincForOneGiBNum) * 10; // $10 per GiB
-      setUsdEquivalent(usd);
-    } else {
-      setUsdEquivalent(null);
-    }
-  }, [totalCost, wincForOneGiB, wincPerCredit]);
-
   // Calculate billable file size for x402 (total size for deployments)
   const billableFileSize = totalSize;
 
@@ -440,8 +432,15 @@ function DeployConfirmationModal({
                   {fileCount} file{fileCount !== 1 ? 's' : ''}
                   {(() => {
                     const freeFilesCount = Array.from(files).filter(file => isFileFree(file.size, freeUploadLimitBytes)).length;
-                    return freeFilesCount > 0 ? (
-                      <span className="text-turbo-green"> ({freeFilesCount} free)</span>
+                    const parts: React.ReactNode[] = [];
+                    if (smartDeployEnabled && cachedFilesCount > 0) {
+                      parts.push(<span key="cached">{cachedFilesCount} cached</span>);
+                    }
+                    if (freeFilesCount > 0) {
+                      parts.push(<span key="free">{freeFilesCount} free</span>);
+                    }
+                    return parts.length > 0 ? (
+                      <span className="text-turbo-green"> ({parts.reduce<React.ReactNode[]>((prev, curr, i) => i === 0 ? [curr] : [...prev, ', ', curr], [])})</span>
                     ) : null;
                   })()}
                 </span>
@@ -469,6 +468,20 @@ function DeployConfirmationModal({
                 <span className="text-xs text-link">Total Size:</span>
                 <span className="text-xs text-fg-muted">
                   {(totalSize / 1024 / 1024).toFixed(2)} MB
+                  {(() => {
+                    // Savings = totalSize - billableSize (what we WON'T pay for)
+                    // billableSize already accounts for both cached files (skipped) and free files
+                    const savings = totalSize - billableSize;
+                    if (savings > 0) {
+                      const savingsMB = savings / 1024 / 1024;
+                      return (
+                        <span className="text-turbo-green">
+                          {' '}(saving {savingsMB < 1 ? `${(savings / 1024).toFixed(1)}KB` : `${savingsMB.toFixed(1)}MB`})
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </span>
               </div>
             </div>
@@ -522,16 +535,7 @@ function DeployConfirmationModal({
                           {totalCost === 0 ? (
                             <span className="text-turbo-green font-medium">FREE</span>
                           ) : typeof totalCost === 'number' ? (
-                            <>
-                              {totalCost.toFixed(6)} Credits
-                              {usdEquivalent !== null && usdEquivalent > 0 && (
-                                <span className="text-xs text-link ml-2">
-                                  (≈ ${usdEquivalent < 0.01
-                                    ? usdEquivalent.toFixed(4)
-                                    : usdEquivalent.toFixed(2)})
-                                </span>
-                              )}
-                            </>
+                            <>{totalCost.toFixed(6)} Credits</>
                           ) : (
                             'Calculating...'
                           )}
@@ -643,16 +647,7 @@ function DeployConfirmationModal({
                           {totalCost === 0 ? (
                             <span className="text-turbo-green font-medium">FREE</span>
                           ) : typeof totalCost === 'number' ? (
-                            <>
-                              {totalCost.toFixed(6)} Credits
-                              {usdEquivalent !== null && usdEquivalent > 0 && (
-                                <span className="text-xs text-link ml-2">
-                                  (≈ ${usdEquivalent < 0.01
-                                    ? usdEquivalent.toFixed(4)
-                                    : usdEquivalent.toFixed(2)})
-                                </span>
-                              )}
-                            </>
+                            <>{totalCost.toFixed(6)} Credits</>
                           ) : (
                             'Calculating...'
                           )}
@@ -776,6 +771,8 @@ export default function DeploySitePanel() {
     setJitMaxTokenAmount,
     x402OnlyMode,
     isPaymentServiceAvailable,
+    smartDeployEnabled,
+    setSmartDeployEnabled,
   } = useStore();
 
   // Fetch and track the bundler's free upload limit
@@ -868,7 +865,13 @@ export default function DeploySitePanel() {
     totalSize,
     uploadedSize,
     retryFailedFiles,
-    cancelUploads
+    cancelUploads,
+    // Smart Deploy
+    analyzeFolder,
+    hashingProgress,
+    hashingStage,
+    deduplicationStats,
+    resetAnalysis
   } = useFolderUpload();
   const { 
     checkUploadStatus, 
@@ -879,6 +882,16 @@ export default function DeploySitePanel() {
     initializeFromCache
   } = useUploadStatus();
   const { updateArNSRecord, refreshSpecificName, names: userArnsNames } = useOwnedArNSNames();
+
+  // Smart Deploy: Analyze folder when selected (hash files for deduplication)
+  // Always analyze to show potential savings - toggle only affects actual deploy
+  useEffect(() => {
+    if (selectedFolder && selectedFolder.length > 0) {
+      analyzeFolder(Array.from(selectedFolder));
+    } else {
+      resetAnalysis();
+    }
+  }, [selectedFolder, analyzeFolder, resetAnalysis]);
 
   // Handle successful domain assignment from modal
   const handleAssignDomainSuccess = (manifestId: string, arnsName: string, undername?: string, transactionId?: string) => {
@@ -1143,22 +1156,35 @@ export default function DeploySitePanel() {
 
   const calculateTotalCost = (): number => {
     if (!wincForOneGiB || !selectedFolder) return 0;
-    
-    // Calculate cost per file, accounting for bundler's free tier
+
+    // If Smart Deploy is enabled and we have stats, use pre-calculated billableSize
+    // This accounts for cached files being skipped
+    if (smartDeployEnabled && deduplicationStats) {
+      const gibSize = deduplicationStats.billableSize / (1024 ** 3);
+      const totalWinc = gibSize * Number(wincForOneGiB);
+      return totalWinc / wincPerCredit;
+    }
+
+    // Smart Deploy disabled OR no stats yet: charge for ALL files (minus free tier)
     let totalWinc = 0;
     Array.from(selectedFolder).forEach(file => {
       if (isFileFree(file.size, freeUploadLimitBytes)) {
-        // File is under free limit - FREE
-        return;
-      } else {
-        // File is over free limit - calculate cost
-        const gibSize = file.size / (1024 ** 3);
-        const fileWinc = gibSize * Number(wincForOneGiB);
-        totalWinc += fileWinc;
+        return; // FREE - under free limit
       }
+      const gibSize = file.size / (1024 ** 3);
+      const fileWinc = gibSize * Number(wincForOneGiB);
+      totalWinc += fileWinc;
     });
-    
+
     return totalWinc / wincPerCredit;
+  };
+
+  // Calculate billable size when Smart Deploy is OFF (all files minus free tier)
+  const calculateBillableSizeWithoutSmartDeploy = (): number => {
+    if (!selectedFolder) return 0;
+    return Array.from(selectedFolder)
+      .filter(file => !isFileFree(file.size, freeUploadLimitBytes))
+      .reduce((sum, file) => sum + file.size, 0);
   };
 
   // Get file type icon based on extension
@@ -1457,7 +1483,7 @@ export default function DeploySitePanel() {
         cryptoPayment: shouldEnableJit,
         tokenAmount: jitMaxTokenAmountSmallest,
         selectedToken: selectedJitToken,
-      });
+      }, smartDeployEnabled);
       
       if (result.manifestId) {
         // Add results to store for persistence
@@ -1661,48 +1687,99 @@ export default function DeploySitePanel() {
         ) : (
           /* Selected Folder Card - replaces drop zone */
           <div className="bg-surface/0 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
+              {/* Folder Header Row */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Folder className="w-5 h-5 text-fg-muted" />
-                  <div>
-                    <h4 className="font-medium text-fg-muted">{folderName}</h4>
-                    <p className="text-xs text-link">{selectedFolder?.length} files</p>
-                  </div>
+                  <span className="font-medium text-fg-muted">{folderName}</span>
+                  <span className="text-xs text-link">· {selectedFolder?.length} files</span>
                 </div>
-                <button 
-                  onClick={() => {
-                    setSelectedFolder(null);
-                    setDeployMessage(null);
-                    setShowFolderContents(false);
-                    setIndexFile('');
-                    setFallbackFile('');
-                    // Clear the file input value to allow re-selecting the same folder
-                    const fileInput = document.getElementById('folder-upload') as HTMLInputElement;
-                    if (fileInput) {
-                      fileInput.value = '';
-                    }
-                  }}
-                  className="text-link hover:text-red-400 transition-colors"
-                  title="Clear folder selection"
-                >
-                  <XCircle className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setShowFolderContents(!showFolderContents)}
+                    className="p-1.5 text-link hover:text-fg-muted transition-colors rounded hover:bg-canvas/50"
+                    title={showFolderContents ? 'Hide folder contents' : 'Show folder contents'}
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedFolder(null);
+                      setDeployMessage(null);
+                      setShowFolderContents(false);
+                      setIndexFile('');
+                      setFallbackFile('');
+                      const fileInput = document.getElementById('folder-upload') as HTMLInputElement;
+                      if (fileInput) {
+                        fileInput.value = '';
+                      }
+                    }}
+                    className="p-1.5 text-link hover:text-red-400 transition-colors"
+                    title="Clear folder selection"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Separator */}
-              <div className="border-t border-default/20 my-4" />
+              {/* Hashing Progress - inline below header */}
+              {hashingStage === 'hashing' && (
+                <div className="mt-3 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 text-turbo-red animate-spin flex-shrink-0" />
+                  <div className="flex-1 bg-canvas rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full bg-turbo-red transition-all duration-300"
+                      style={{ width: `${hashingProgress}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-link flex-shrink-0">{hashingProgress}%</span>
+                </div>
+              )}
 
-              {/* Expandable File Tree */}
-              <button
-                onClick={() => setShowFolderContents(!showFolderContents)}
-                className="flex items-center justify-between w-full text-left hover:bg-canvas/50 rounded p-2 transition-colors"
-              >
-                <span className="text-sm text-fg-muted">View folder contents</span>
-                <ChevronDown className={`w-4 h-4 text-link transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
-              </button>
-                
-                {showFolderContents && (
-                  <div className="mt-3 p-3 bg-surface/50 rounded border border-default/30 max-h-60 overflow-y-auto">
+              {/* Expandable Content: Smart Deploy + File Tree */}
+              {showFolderContents && (
+                  <div className="mt-3 p-3 bg-surface/50 rounded border border-default/30 max-h-72 overflow-y-auto">
+                    {/* Smart Deploy Row - inside expanded area */}
+                    {deduplicationStats && deduplicationStats.cachedFiles > 0 && hashingStage === 'complete' && (
+                      <div className="flex items-center justify-between py-2 mb-3 border-b border-default/20 pb-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Sparkles className="w-4 h-4 text-fg-muted" />
+                          <span className="text-link">
+                            {smartDeployEnabled
+                              ? <>
+                                  <span>{deduplicationStats.cachedFiles} cached</span>
+                                  <span className="text-link/70 ml-1">
+                                    ({deduplicationStats.cachedSize < 1024 * 1024
+                                      ? `${(deduplicationStats.cachedSize / 1024).toFixed(1)}KB`
+                                      : `${(deduplicationStats.cachedSize / 1024 / 1024).toFixed(1)}MB`})
+                                  </span>
+                                  <span className="mx-1">·</span>
+                                  {deduplicationStats.newFiles} new
+                                  <span className="text-link/70 ml-1">
+                                    ({deduplicationStats.newSize < 1024 * 1024
+                                      ? `${(deduplicationStats.newSize / 1024).toFixed(1)}KB`
+                                      : `${(deduplicationStats.newSize / 1024 / 1024).toFixed(1)}MB`})
+                                  </span>
+                                </>
+                              : <span className="text-link/70">Smart Deploy off — all {deduplicationStats.cachedFiles + deduplicationStats.newFiles} files will upload</span>
+                            }
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setSmartDeployEnabled(!smartDeployEnabled)}
+                          className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
+                            smartDeployEnabled ? 'bg-turbo-green' : 'bg-surface border border-default/50'
+                          }`}
+                          title={smartDeployEnabled ? 'Disable Smart Deploy' : 'Enable Smart Deploy'}
+                        >
+                          <div
+                            className={`absolute top-0.5 w-3 h-3 rounded-full transition-transform ${
+                              smartDeployEnabled ? 'translate-x-4 bg-white' : 'translate-x-0.5 bg-fg-muted'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )}
                     <div className="space-y-1 text-xs font-mono">
                       {(() => {
                         const structure = organizeFolderStructure();
@@ -1881,7 +1958,7 @@ export default function DeploySitePanel() {
       {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
         <button
           onClick={() => setShowConfirmModal(true)}
-          disabled={deploying || (arnsEnabled && !selectedArnsName) || (arnsEnabled && showUndername && !selectedUndername)}
+          disabled={deploying || hashingStage === 'hashing' || (arnsEnabled && !selectedArnsName) || (arnsEnabled && showUndername && !selectedUndername)}
           className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {deploying ? (
@@ -2817,6 +2894,9 @@ export default function DeploySitePanel() {
           onCryptoShortageUpdate={setCryptoShortage}
           x402OnlyMode={x402OnlyMode}
           isPaymentServiceAvailable={isPaymentServiceAvailable}
+          smartDeployEnabled={smartDeployEnabled}
+          cachedFilesCount={deduplicationStats?.cachedFiles ?? 0}
+          billableSize={smartDeployEnabled ? (deduplicationStats?.billableSize ?? 0) : calculateBillableSizeWithoutSmartDeploy()}
         />
       )}
 

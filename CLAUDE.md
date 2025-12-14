@@ -68,6 +68,7 @@ src/
 - `uploadHistory`, `deployHistory`, `uploadStatusCache`
 - `configMode`, `customConfig`, `x402OnlyMode`
 - JIT payment preferences (`jitPaymentEnabled`, `jitMaxTokenAmount`, `jitBufferMultiplier`)
+- Smart Deploy (`smartDeployEnabled`, `fileHashCache`)
 
 **Ephemeral state:**
 - `creditBalance`, payment flow state, UI state
@@ -145,6 +146,17 @@ Enables uploads without pre-purchased credits via Base network USDC. Used when c
 - Development: Base Sepolia (chainId 84532)
 
 **x402OnlyMode:** When enabled (via Developer Resources panel), only `base-usdc` payments are available and only Ethereum wallets can make billable uploads/deploys.
+
+## Network Configurations
+
+Network-specific settings in `constants.ts`:
+
+| Config | Production ChainId | Development ChainId | Token Contract |
+|--------|-------------------|---------------------|----------------|
+| `X402_CONFIG` | 8453 (Base) | 84532 (Base Sepolia) | USDC on Base |
+| `BASE_ARIO_CONFIG` | 8453 (Base) | 84532 (Base Sepolia) | ARIO bridged to Base |
+| `ETHEREUM_CONFIG` | 1 (Mainnet) | 11155111 (Sepolia) | USDC on Ethereum |
+| `POLYGON_CONFIG` | 137 (Polygon) | 80002 (Amoy) | USDC on Polygon |
 
 ## Wallet Capability Matrix
 
@@ -250,9 +262,9 @@ if (Number.isFinite(wincNum) && wincNum > 0) {
 ## Routes
 
 ```typescript
-'/', '/topup', '/upload', '/capture', '/deploy', '/share', '/gift', '/account',
-'/domains', '/calculator', '/services-calculator', '/balances', '/redeem',
-'/developer', '/gateway-info', '/deployments'
+'/', '/topup', '/upload', '/capture', '/deploy', '/deployments', '/share', '/gift',
+'/account', '/domains', '/calculator', '/services-calculator', '/balances', '/redeem',
+'/developer', '/gateway-info'
 ```
 
 URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallbackHandler in App.tsx)
@@ -282,6 +294,10 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 | `useTokenBalance(tokenType)` | Get user's token balance for crypto payments |
 | `useCryptoPrice(tokenType)` | Get current USD price for a token |
 | `useWalletAccountListener()` | Listens for wallet changes across all ecosystems, clears caches on switch |
+| `useFreeUploadLimit()` | Fetch bundler's free upload limit, defaults to 0 |
+| `useGatewayInfo(gatewayUrl)` | Fetch gateway capabilities and info |
+| `useTurboCapture()` | Web page capture functionality |
+| `usePrivyWallet()` | Detect and access Privy embedded wallet |
 
 ## Important Utilities
 
@@ -291,4 +307,8 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 | `calculateRequiredTokenAmount()` | `utils/jitPayment.ts` | Calculate crypto needed for credits |
 | `getTokenConverter(tokenType)` | `utils/jitPayment.ts` | Get decimal conversion function |
 | `formatTokenAmount()` | `utils/jitPayment.ts` | Format token amounts for display |
+| `fromSmallestUnit()` | `utils/jitPayment.ts` | Convert smallest unit to readable amount |
+| `getDefaultMaxTokenAmount()` | `utils/jitPayment.ts` | Default max token amount for JIT payments |
 | `clearEthereumTurboClientCache()` | `hooks/useEthereumTurboClient.ts` | Clear cached signers/clients |
+| `isFileFree()` | `hooks/useFreeUploadLimit.ts` | Check if file size is within free limit |
+| `formatFreeLimit()` | `hooks/useFreeUploadLimit.ts` | Format free limit for display |

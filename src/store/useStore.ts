@@ -87,6 +87,15 @@ interface DeployResult {
   arnsError?: string;     // Error message if failed
 }
 
+// File hash cache entry for Smart Deploy deduplication
+interface FileHashEntry {
+  txId: string;
+  hash: string;
+  size: number;
+  contentType: string;
+  timestamp: number;
+}
+
 export interface PaymentInformation {
   paymentMethodId: string;
   email?: string;
@@ -166,6 +175,10 @@ interface StoreState {
   // X402-only mode (disables payment service features)
   x402OnlyMode: boolean;
 
+  // Smart Deploy state (file deduplication)
+  fileHashCache: Record<string, FileHashEntry>;
+  smartDeployEnabled: boolean;
+
   // Actions
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
@@ -233,6 +246,12 @@ interface StoreState {
   // X402-only mode actions
   setX402OnlyMode: (enabled: boolean) => void;
   isPaymentServiceAvailable: () => boolean;
+
+  // Smart Deploy actions
+  updateFileHashCache: (entries: Array<{ hash: string; txId: string; size: number; contentType: string }>) => void;
+  getFileHashEntry: (hash: string) => FileHashEntry | null;
+  clearFileHashCache: () => void;
+  setSmartDeployEnabled: (enabled: boolean) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -254,6 +273,10 @@ export const useStore = create<StoreState>()(
 
       // X402-only mode (disabled by default)
       x402OnlyMode: false,
+
+      // Smart Deploy state (file deduplication)
+      fileHashCache: {},
+      smartDeployEnabled: true, // Default ON
 
       // Payment state
       paymentAmount: undefined,
@@ -346,7 +369,7 @@ export const useStore = create<StoreState>()(
         // Add new results to the beginning of the history (most recent first)
         set({ deployHistory: [...results, ...currentHistory] });
       },
-      clearDeployHistory: () => set({ deployHistory: [] }),
+      clearDeployHistory: () => set({ deployHistory: [], fileHashCache: {} }), // Also clear file hash cache
       setUploadStatus: (txId, status) => {
         const cache = get().uploadStatusCache;
         set({ 
@@ -470,6 +493,49 @@ export const useStore = create<StoreState>()(
       // X402-only mode actions
       setX402OnlyMode: (enabled) => set({ x402OnlyMode: enabled }),
       isPaymentServiceAvailable: () => !get().x402OnlyMode,
+
+      // Smart Deploy actions
+      updateFileHashCache: (entries) => {
+        const cache = get().fileHashCache;
+        const newEntries: Record<string, FileHashEntry> = {};
+        const MAX_CACHE_ENTRIES = 5000; // Limit to prevent localStorage overflow
+
+        entries.forEach(({ hash, txId, size, contentType }) => {
+          newEntries[hash] = {
+            txId,
+            hash,
+            size,
+            contentType,
+            timestamp: Date.now(),
+          };
+        });
+
+        const mergedCache = { ...cache, ...newEntries };
+
+        // LRU eviction: if cache exceeds limit, remove oldest entries
+        const cacheKeys = Object.keys(mergedCache);
+        if (cacheKeys.length > MAX_CACHE_ENTRIES) {
+          // Sort by timestamp (oldest first) and remove excess
+          const sortedEntries = cacheKeys
+            .map(key => ({ key, timestamp: mergedCache[key].timestamp }))
+            .sort((a, b) => a.timestamp - b.timestamp);
+
+          const entriesToRemove = sortedEntries.slice(0, cacheKeys.length - MAX_CACHE_ENTRIES);
+          entriesToRemove.forEach(({ key }) => {
+            delete mergedCache[key];
+          });
+
+          console.log(`Smart Deploy cache: evicted ${entriesToRemove.length} old entries (limit: ${MAX_CACHE_ENTRIES})`);
+        }
+
+        set({ fileHashCache: mergedCache });
+      },
+      getFileHashEntry: (hash) => {
+        const entry = get().fileHashCache[hash];
+        return entry || null; // No expiry - cache is permanent until cleared
+      },
+      clearFileHashCache: () => set({ fileHashCache: {} }),
+      setSmartDeployEnabled: (enabled) => set({ smartDeployEnabled: enabled }),
     }),
     {
       name: 'turbo-gateway-store',
@@ -488,6 +554,9 @@ export const useStore = create<StoreState>()(
         jitPaymentEnabled: state.jitPaymentEnabled,
         jitMaxTokenAmount: state.jitMaxTokenAmount,
         jitBufferMultiplier: state.jitBufferMultiplier,
+        // Smart Deploy state
+        fileHashCache: state.fileHashCache,
+        smartDeployEnabled: state.smartDeployEnabled,
       }),
     }
   )

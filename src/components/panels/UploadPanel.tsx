@@ -340,9 +340,6 @@ export default function UploadPanel() {
     initialJitEnabled: jitPaymentEnabled,
   });
 
-  // USD equivalent for credit pricing
-  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
-
   // Fixed 10% buffer for SDK (not exposed to user)
   const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
@@ -363,49 +360,6 @@ export default function UploadPanel() {
     showConfirmModal &&  // Modal must be open
     (jitSectionExpanded || x402OnlyMode);  // "Pay with Crypto" section expanded OR x402-only mode
   const x402Pricing = useX402Pricing(shouldUseX402 ? billableFileSize : 0);
-
-  // Fetch USD equivalent for credit pricing (only for billable bytes)
-  useEffect(() => {
-    const fetchUsdPrice = async () => {
-      if (billableFileSize <= 0 || !showConfirmModal) {
-        setUsdEquivalent(null);
-        return;
-      }
-
-      try {
-        const { getCurrentConfig } = useStore.getState();
-        const config = getCurrentConfig();
-        const { TurboFactory } = await import('@ardrive/turbo-sdk/web');
-
-        const turbo = TurboFactory.unauthenticated({
-          paymentServiceConfig: { url: config.paymentServiceUrl },
-        });
-
-        // Get USD price per GiB
-        const fiatRates = await turbo.getFiatRates();
-        const usdPerGiB = fiatRates.fiat?.usd || 0;
-
-        console.log('[Credits USD Pricing] getFiatRates response:', fiatRates);
-        console.log('[Credits USD Pricing] USD per GiB:', usdPerGiB);
-
-        if (usdPerGiB > 0) {
-          // Calculate USD for billable file size only (excluding free files)
-          const gib = billableFileSize / (1024 * 1024 * 1024);
-          const usdPrice = gib * usdPerGiB;
-          console.log('[Credits USD Pricing] Billable GiB:', gib);
-          console.log('[Credits USD Pricing] Total USD price:', usdPrice);
-          setUsdEquivalent(usdPrice);
-        } else {
-          setUsdEquivalent(null);
-        }
-      } catch (error) {
-        console.error('[USD Pricing] Error fetching USD price:', error);
-        setUsdEquivalent(null);
-      }
-    };
-
-    fetchUsdPrice();
-  }, [billableFileSize, showConfirmModal]);
 
   const {
     uploadMultipleFiles,
@@ -1347,16 +1301,7 @@ export default function UploadPanel() {
                               {totalCost === 0 ? (
                                 <span className="text-turbo-green font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
-                                <>
-                                  {totalCost.toFixed(6)} Credits
-                                  {usdEquivalent !== null && usdEquivalent > 0 && (
-                                    <span className="text-xs text-link ml-2">
-                                      (≈ ${usdEquivalent < 0.01
-                                        ? usdEquivalent.toFixed(4)
-                                        : usdEquivalent.toFixed(2)})
-                                    </span>
-                                  )}
-                                </>
+                                <>{totalCost.toFixed(6)} Credits</>
                               ) : (
                                 'Calculating...'
                               )}
@@ -1469,16 +1414,7 @@ export default function UploadPanel() {
                               {totalCost === 0 ? (
                                 <span className="text-turbo-green font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
-                                <>
-                                  {totalCost.toFixed(6)} Credits
-                                  {usdEquivalent !== null && usdEquivalent > 0 && (
-                                    <span className="text-xs text-link ml-2">
-                                      (≈ ${usdEquivalent < 0.01
-                                        ? usdEquivalent.toFixed(4)
-                                        : usdEquivalent.toFixed(2)})
-                                    </span>
-                                  )}
-                                </>
+                                <>{totalCost.toFixed(6)} Credits</>
                               ) : (
                                 'Calculating...'
                               )}
