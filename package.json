@@ -8,6 +8,7 @@
     "prebuild": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "build:prod": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build:staging": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=8192 VITE_SOURCEMAPS=true vite build",
     "clean": "cross-env rimraf dist node_modules/.vite tsconfig.tsbuildinfo tsconfig.node.tsbuildinfo",
     "clean:all": "cross-env rimraf dist node_modules tsconfig.tsbuildinfo tsconfig.node.tsbuildinfo && npm install",
     "lint": "cross-env NODE_OPTIONS=--max-old-space-size=2048 eslint .",
