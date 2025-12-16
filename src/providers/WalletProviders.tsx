@@ -13,7 +13,7 @@ import '@rainbow-me/rainbowkit/styles.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 // WalletConnect Project ID - get one from https://cloud.walletconnect.com/
-const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '692e2917daed8533f0f59cd604c3751a';
+const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '9f180997f87a0c8e1ddd5bcd92ae5363';
 
 // Configure Wagmi with RainbowKit - supports MetaMask, WalletConnect, Coinbase, and many more
 // RainbowKit's getDefaultConfig handles session persistence automatically via wagmi's reconnect

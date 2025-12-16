@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
@@ -13,7 +13,7 @@ import { useAccount } from 'wagmi';
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
 import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
-import { hashFiles } from '../utils/fileHash';
+import { hashFilesAsync } from '../utils/fileHash';
 
 // Deduplication stats for Smart Deploy
 export interface DeduplicationStats {
@@ -37,6 +37,8 @@ interface DeployResult {
   }>;
   timestamp?: number;
   receipt?: any; // Store receipt for manifest
+  appName?: string; // User's app/site name
+  appVersion?: string; // User's app/site version
 }
 
 export interface ActiveUpload {
@@ -87,7 +89,8 @@ export function useFolderUpload() {
 
   // Smart Deploy state
   const [hashingProgress, setHashingProgress] = useState<number>(0);
-  const [hashingStage, setHashingStage] = useState<'idle' | 'hashing' | 'complete'>('idle');
+  const [hashingStage, setHashingStage] = useState<'idle' | 'hashing' | 'complete' | 'cancelled'>('idle');
+  const hashingAbortRef = useRef<AbortController | null>(null);
   const [fileHashes, setFileHashes] = useState<Map<string, string> | null>(null);
   const [deduplicationStats, setDeduplicationStats] = useState<DeduplicationStats | null>(null);
 
@@ -129,14 +132,48 @@ export function useFolderUpload() {
   // Analyze folder for Smart Deploy deduplication
   // Always hashes files to show potential savings, regardless of toggle state
   // The toggle only affects whether we USE the cache during deploy
+  // Non-blocking: Uses Web Workers when available, with graceful fallback
   const analyzeFolder = useCallback(async (files: File[]) => {
+    // Cancel any previous hashing operation
+    if (hashingAbortRef.current) {
+      hashingAbortRef.current.abort();
+    }
+
+    // Create new abort controller for this operation
+    const abortController = new AbortController();
+    hashingAbortRef.current = abortController;
+
     setHashingStage('hashing');
     setHashingProgress(0);
+    setFileHashes(null);
+    setDeduplicationStats(null);
 
     try {
-      const hashes = await hashFiles(files, 10, (completed, total) => {
-        setHashingProgress(Math.round((completed / total) * 100));
+      // hashFilesAsync uses:
+      // - Web Workers for non-blocking UI (falls back to main thread if unavailable)
+      // - Dynamic concurrency based on file sizes (50 parallel for tiny, 2 for huge)
+      // - Automatic retry for transient failures
+      // - Cancellation via AbortSignal
+      const result = await hashFilesAsync(files, {
+        signal: abortController.signal,
+        onProgress: (progress) => {
+          setHashingProgress(Math.round((progress.completed / progress.total) * 100));
+        },
       });
+
+      // Check if cancelled
+      if (result.cancelled) {
+        setHashingStage('cancelled');
+        return;
+      }
+
+      // Log any errors (files that failed to hash will be uploaded as "new")
+      if (result.errors.size > 0) {
+        console.warn(`Smart Deploy: ${result.errors.size} files failed to hash (will upload as new):`,
+          Object.fromEntries(result.errors));
+      }
+
+      const hashes = result.results;
       setFileHashes(hashes);
 
       // Calculate deduplication stats (always calculate to show potential savings)
@@ -172,14 +209,22 @@ export function useFolderUpload() {
         newSize,
         billableSize,
       });
+      setHashingStage('complete');
     } catch (error) {
+      // Check if this was a cancellation
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setHashingStage('cancelled');
+        return;
+      }
+
       console.warn('Hashing failed, will upload all files:', error);
       setFileHashes(null);
-      // Calculate billable size for all files
-      let totalSize = 0;
+
+      // Calculate billable size for all files (fallback when hashing fails)
+      let totalSizeCalc = 0;
       let billableSize = 0;
       files.forEach(f => {
-        totalSize += f.size;
+        totalSizeCalc += f.size;
         if (!isFileFree(f.size, freeUploadLimitBytes)) {
           billableSize += f.size;
         }
@@ -189,20 +234,37 @@ export function useFolderUpload() {
         cachedFiles: 0,
         newFiles: files.length,
         cachedSize: 0,
-        newSize: totalSize,
+        newSize: totalSizeCalc,
         billableSize,
       });
-    } finally {
       setHashingStage('complete');
     }
   }, [getFileHashEntry, freeUploadLimitBytes]);
 
-  // Reset analysis state
+  // Reset analysis state and cancel any ongoing hashing
   const resetAnalysis = useCallback(() => {
+    // Cancel any ongoing hashing
+    if (hashingAbortRef.current) {
+      hashingAbortRef.current.abort();
+      hashingAbortRef.current = null;
+    }
     setHashingProgress(0);
     setHashingStage('idle');
     setFileHashes(null);
     setDeduplicationStats(null);
+  }, []);
+
+  // Cleanup worker pool on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing hashing
+      if (hashingAbortRef.current) {
+        hashingAbortRef.current.abort();
+      }
+      // Note: We don't terminate the worker pool here because it's shared
+      // across multiple components. The pool will be cleaned up when the
+      // page unloads.
+    };
   }, []);
 
   // Get config function from store
@@ -328,7 +390,9 @@ export function useFolderUpload() {
     signal: AbortSignal,
     fundingMode: OnDemandFunding | undefined,
     maxRetries = 3,
-    fileHash?: string // Optional SHA-256 hash for Smart Deploy
+    fileHash?: string, // Optional SHA-256 hash for Smart Deploy
+    appName?: string, // User's app name for App-Name tag
+    appVersion?: string // User's app version for App-Version tag
   ): Promise<any> => {
     let lastError;
 
@@ -341,9 +405,9 @@ export function useFolderUpload() {
       try {
         // Build tags array
         const tags = [
-          { name: 'App-Name', value: APP_NAME },
+          { name: 'Deployed-By', value: APP_NAME },
+          { name: 'Deployed-By-Version', value: APP_VERSION },
           { name: 'App-Feature', value: 'Deploy Site' },
-          { name: 'App-Version', value: APP_VERSION },
           { name: 'Content-Type', value: getContentType(file) },
           { name: 'File-Path', value: file.webkitRelativePath || file.name }
         ];
@@ -351,6 +415,14 @@ export function useFolderUpload() {
         // Add hash tag for Smart Deploy deduplication
         if (fileHash) {
           tags.push({ name: 'File-Hash-SHA256', value: fileHash });
+        }
+
+        // Add user's App-Name and App-Version tags if provided
+        if (appName) {
+          tags.push({ name: 'App-Name', value: appName });
+        }
+        if (appVersion) {
+          tags.push({ name: 'App-Version', value: appVersion });
         }
 
         // Add timeout wrapper for upload
@@ -413,6 +485,8 @@ export function useFolderUpload() {
       cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
       tokenAmount?: number; // Amount to top up in smallest unit
       selectedToken?: SupportedTokenType; // Token to use for crypto payment
+      appName?: string; // User's app/site name (for App-Name tag)
+      appVersion?: string; // User's app/site version (for App-Version tag)
     },
     smartDeployEnabled?: boolean // Smart Deploy: skip unchanged files
   ) => {
@@ -616,8 +690,11 @@ export function useFolderUpload() {
             const filePath = file.webkitRelativePath || file.name;
             const hash = fileHashes?.get(filePath);
 
-            // Regular upload with retry logic and timeout (pass hash for Smart Deploy tag)
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode, 3, hash);
+            // Regular upload with retry logic and timeout (pass hash for Smart Deploy tag + app metadata)
+            const fileResult = await uploadFileWithRetry(
+              turbo, file, folderPath, controller.signal, fundingMode, 3, hash,
+              manifestOptions?.appName, manifestOptions?.appVersion
+            );
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -844,18 +921,29 @@ export function useFolderUpload() {
         type: 'application/x.arweave-manifest+json'
       });
 
+      // Build manifest tags
+      const manifestTags = [
+        { name: 'Deployed-By', value: APP_NAME },
+        { name: 'Deployed-By-Version', value: APP_VERSION },
+        { name: 'App-Feature', value: 'Deploy Site' },
+        { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
+        { name: 'Type', value: 'manifest' }
+      ];
+
+      // Add user's App-Name and App-Version tags if provided
+      if (manifestOptions?.appName) {
+        manifestTags.push({ name: 'App-Name', value: manifestOptions.appName });
+      }
+      if (manifestOptions?.appVersion) {
+        manifestTags.push({ name: 'App-Version', value: manifestOptions.appVersion });
+      }
+
       // Upload manifest with Turbo SDK
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
         signal: controller.signal,
         dataItemOpts: {
-          tags: [
-            { name: 'App-Name', value: APP_NAME },
-            { name: 'App-Feature', value: 'Deploy Site' },
-            { name: 'App-Version', value: APP_VERSION },
-            { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-            { name: 'Type', value: 'manifest' }
-          ]
+          tags: manifestTags
         }
       } as any); // Type assertion needed until SDK types are updated
       
@@ -881,7 +969,9 @@ export function useFolderUpload() {
         id: uploadResult.manifestId,
         manifestId: uploadResult.manifestId,
         timestamp: Date.now(),
-        receipt: manifestResult // Store manifest upload result
+        receipt: manifestResult, // Store manifest upload result
+        appName: manifestOptions?.appName,
+        appVersion: manifestOptions?.appVersion,
       });
 
       // Add individual files

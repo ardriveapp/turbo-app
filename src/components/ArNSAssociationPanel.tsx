@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Globe, ExternalLink, AlertCircle, Loader2, RefreshCw, ChevronDown, Check, ChevronRight } from 'lucide-react';
-import { Listbox } from '@headlessui/react';
+import { Combobox } from '@headlessui/react';
 import { useOwnedArNSNames } from '../hooks/useOwnedArNSNames';
 import { sanitizeUndername, hasInvalidCharacters } from '../utils/undernames';
 
@@ -34,6 +34,17 @@ export default function ArNSAssociationPanel({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [ttlMode, setTTLMode] = useState<'existing' | 'custom'>('existing');
   const [customTTLInput, setCustomTTLInput] = useState<string>('600');
+  const [nameQuery, setNameQuery] = useState('');
+
+  // Filter names based on search query
+  const filteredNames = useMemo(() => {
+    if (!nameQuery) return names;
+    const query = nameQuery.toLowerCase();
+    return names.filter(name =>
+      name.name.toLowerCase().includes(query) ||
+      name.displayName.toLowerCase().includes(query)
+    );
+  }, [names, nameQuery]);
 
   // Use external state if provided, otherwise use internal state
   const showUndername = externalShowUndername !== undefined ? externalShowUndername : internalShowUndername;
@@ -181,10 +192,11 @@ export default function ArNSAssociationPanel({
                     Refresh
                   </button>
                 </div>
-                <Listbox 
-                  value={selectedName} 
-                  onChange={async (name) => {
+                <Combobox
+                  value={selectedName}
+                  onChange={async (name: string) => {
                     onNameChange(name);
+                    setNameQuery('');
                     // Fetch ANT details on-demand when name is selected
                     if (name) {
                       await fetchNameDetails(name);
@@ -193,64 +205,77 @@ export default function ArNSAssociationPanel({
                   disabled={loading}
                 >
                   <div className="relative">
-                    <Listbox.Button className="relative w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:border-turbo-yellow focus:outline-none disabled:opacity-50 text-left cursor-pointer">
-                      <span className="block truncate">
-                        {selectedName ? (
-                          names.find(n => n.name === selectedName)?.displayName !== selectedName
-                            ? `${names.find(n => n.name === selectedName)?.displayName} (${selectedName})`
-                            : selectedName
-                        ) : (
-                          <span className="text-link">Choose a name...</span>
-                        )}
-                      </span>
-                      <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <div className="relative w-full">
+                      <Combobox.Input
+                        className="w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:border-turbo-yellow focus:outline-none focus:ring-1 focus:ring-turbo-yellow disabled:opacity-50 pr-10"
+                        displayValue={(name: string) => {
+                          if (!name) return '';
+                          const found = names.find(n => n.name === name);
+                          return found?.displayName !== found?.name
+                            ? `${found?.displayName} (${name})`
+                            : name;
+                        }}
+                        onChange={(e) => setNameQuery(e.target.value)}
+                        placeholder="Type to search or click to browse..."
+                      />
+                      <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
                         {loadingDetails[selectedName] ? (
                           <Loader2 className="h-4 w-4 text-link animate-spin" aria-hidden="true" />
                         ) : (
                           <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
                         )}
-                      </span>
-                    </Listbox.Button>
-                      <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
-                        <Listbox.Option
-                          value=""
-                          className={({ active }) =>
-                            `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
-                              active ? 'bg-canvas text-fg-muted' : 'text-link'
-                            }`
-                          }
-                        >
-                          <span className="block truncate">Choose a name...</span>
-                        </Listbox.Option>
-                        {names.map(name => (
-                          <Listbox.Option
-                            key={name.name}
-                            value={name.name}
-                            className={({ active }) =>
-                              `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
-                                active ? 'bg-canvas text-fg-muted' : 'text-fg-muted'
-                              }`
-                            }
-                          >
-                            {({ selected }) => (
-                              <>
-                                <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                  {name.displayName !== name.name 
-                                    ? `${name.displayName} (${name.name})` 
-                                    : name.displayName}
-                                </span>
-                                {selected && (
-                                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-turbo-yellow">
-                                    <Check className="h-4 w-4" aria-hidden="true" />
+                      </Combobox.Button>
+                    </div>
+                    <Combobox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                      {filteredNames.length === 0 && nameQuery !== '' ? (
+                        <div className="relative cursor-default select-none py-3 px-4 text-link">
+                          No names found matching "{nameQuery}"
+                        </div>
+                      ) : (
+                        <>
+                          {!nameQuery && (
+                            <Combobox.Option
+                              value=""
+                              className={({ active }) =>
+                                `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                                  active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                }`
+                              }
+                            >
+                              <span className="block truncate">Choose a name...</span>
+                            </Combobox.Option>
+                          )}
+                          {filteredNames.map(name => (
+                            <Combobox.Option
+                              key={name.name}
+                              value={name.name}
+                              className={({ active }) =>
+                                `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                                  active ? 'bg-canvas text-fg-muted' : 'text-fg-muted'
+                                }`
+                              }
+                            >
+                              {({ selected }) => (
+                                <>
+                                  <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                    {name.displayName !== name.name
+                                      ? `${name.displayName} (${name.name})`
+                                      : name.displayName}
                                   </span>
-                                )}
-                              </>
-                            )}
-                          </Listbox.Option>
-                        ))}
-                      </Listbox.Options>
+                                  {selected && (
+                                    <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-turbo-yellow">
+                                      <Check className="h-4 w-4" aria-hidden="true" />
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </Combobox.Option>
+                          ))}
+                        </>
+                      )}
+                    </Combobox.Options>
                   </div>
-                </Listbox>
+                </Combobox>
               </div>
 
               {/* Undername Option */}

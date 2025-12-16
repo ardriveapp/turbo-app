@@ -301,18 +301,18 @@ export function useFileUpload() {
           tags: options?.customTags
             ? mergeTags(
                 [
-                  { name: 'App-Name', value: APP_NAME },
+                  { name: 'Deployed-By', value: APP_NAME },
+                  { name: 'Deployed-By-Version', value: APP_VERSION },
                   { name: 'App-Feature', value: 'File Upload' },
-                  { name: 'App-Version', value: APP_VERSION },
                   { name: 'Content-Type', value: getContentType(file) },
                   { name: 'File-Name', value: file.name }
                 ],
                 options.customTags
               )
             : [
-                { name: 'App-Name', value: APP_NAME },
+                { name: 'Deployed-By', value: APP_NAME },
+                { name: 'Deployed-By-Version', value: APP_VERSION },
                 { name: 'App-Feature', value: 'File Upload' },
-                { name: 'App-Version', value: APP_VERSION },
                 { name: 'Content-Type', value: getContentType(file) },
                 { name: 'File-Name', value: file.name }
               ]

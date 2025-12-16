@@ -282,9 +282,9 @@ export default function CapturePanel() {
     try {
       // Build capture-specific tags to be set during upload
       const customTags = [
-        { name: 'App-Name', value: APP_NAME },
+        { name: 'Deployed-By', value: APP_NAME },
+        { name: 'Deployed-By-Version', value: APP_VERSION },
         { name: 'App-Feature', value: 'Capture' },
-        { name: 'App-Version', value: APP_VERSION },
         { name: 'Original-URL', value: captureResult.finalUrl },
         { name: 'Title', value: captureResult.title },
         { name: 'Viewport-Width', value: captureResult.viewport.width.toString() },

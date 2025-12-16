@@ -85,6 +85,9 @@ interface DeployResult {
   targetId?: string;      // Transaction ID the name now points to
   arnsStatus?: 'success' | 'failed' | 'pending';
   arnsError?: string;     // Error message if failed
+  // App metadata fields (user-provided)
+  appName?: string;       // User's app/site name
+  appVersion?: string;    // User's app/site version
 }
 
 // File hash cache entry for Smart Deploy deduplication
@@ -94,6 +97,12 @@ interface FileHashEntry {
   size: number;
   contentType: string;
   timestamp: number;
+}
+
+// Deployed app metadata for App Details feature
+interface DeployedAppEntry {
+  appVersion: string;
+  lastDeployed: number; // timestamp
 }
 
 export interface PaymentInformation {
@@ -179,6 +188,10 @@ interface StoreState {
   fileHashCache: Record<string, FileHashEntry>;
   smartDeployEnabled: boolean;
 
+  // App Details state (deployed apps history)
+  deployedApps: Record<string, DeployedAppEntry>; // Keyed by app name
+  lastDeployedAppName: string | null; // Most recently deployed app for pre-fill
+
   // Actions
   setAddress: (address: string | null, type: 'arweave' | 'ethereum' | 'solana' | null) => void;
   clearAddress: () => void;
@@ -252,6 +265,12 @@ interface StoreState {
   getFileHashEntry: (hash: string) => FileHashEntry | null;
   clearFileHashCache: () => void;
   setSmartDeployEnabled: (enabled: boolean) => void;
+
+  // App Details actions
+  saveDeployedApp: (appName: string, appVersion: string) => void;
+  getDeployedApp: (appName: string) => DeployedAppEntry | null;
+  getRecentAppNames: (limit?: number) => string[];
+  getLastDeployedApp: () => { appName: string; appVersion: string } | null;
 }
 
 export const useStore = create<StoreState>()(
@@ -277,6 +296,10 @@ export const useStore = create<StoreState>()(
       // Smart Deploy state (file deduplication)
       fileHashCache: {},
       smartDeployEnabled: true, // Default ON
+
+      // App Details state (deployed apps history)
+      deployedApps: {},
+      lastDeployedAppName: null,
 
       // Payment state
       paymentAmount: undefined,
@@ -536,6 +559,39 @@ export const useStore = create<StoreState>()(
       },
       clearFileHashCache: () => set({ fileHashCache: {} }),
       setSmartDeployEnabled: (enabled) => set({ smartDeployEnabled: enabled }),
+
+      // App Details actions
+      saveDeployedApp: (appName, appVersion) => {
+        if (!appName.trim()) return; // Don't save empty app names
+        const apps = get().deployedApps;
+        set({
+          deployedApps: {
+            ...apps,
+            [appName]: {
+              appVersion,
+              lastDeployed: Date.now(),
+            },
+          },
+          lastDeployedAppName: appName,
+        });
+      },
+      getDeployedApp: (appName) => {
+        return get().deployedApps[appName] || null;
+      },
+      getRecentAppNames: (limit = 5) => {
+        const apps = get().deployedApps;
+        return Object.entries(apps)
+          .sort(([, a], [, b]) => b.lastDeployed - a.lastDeployed)
+          .slice(0, limit)
+          .map(([name]) => name);
+      },
+      getLastDeployedApp: () => {
+        const { lastDeployedAppName, deployedApps } = get();
+        if (!lastDeployedAppName) return null;
+        const app = deployedApps[lastDeployedAppName];
+        if (!app) return null;
+        return { appName: lastDeployedAppName, appVersion: app.appVersion };
+      },
     }),
     {
       name: 'turbo-gateway-store',
@@ -557,6 +613,9 @@ export const useStore = create<StoreState>()(
         // Smart Deploy state
         fileHashCache: state.fileHashCache,
         smartDeployEnabled: state.smartDeployEnabled,
+        // App Details state
+        deployedApps: state.deployedApps,
+        lastDeployedAppName: state.lastDeployedAppName,
       }),
     }
   )
