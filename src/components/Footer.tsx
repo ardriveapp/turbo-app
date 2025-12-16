@@ -18,7 +18,7 @@ export default function Footer() {
               className="text-xs text-link/60 hover:text-link transition-colors cursor-pointer flex-shrink-0" 
               title={`Built: ${import.meta.env.BUILD_TIME || 'Unknown'} • Click to view source code`}
             >
-              v{import.meta.env.PACKAGE_VERSION || '0.2.0'}
+              v{import.meta.env.PACKAGE_VERSION || '0.9.0'}
             </a>
           </div>
           
