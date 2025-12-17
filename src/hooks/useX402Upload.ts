@@ -15,15 +15,11 @@ import type { Signer as X402Signer } from 'x402-fetch';
 /**
  * Adapts a viem WalletClient to x402's Signer type.
  *
- * x402-fetch v1.0 expects a SignerWallet (viem Client with PublicActions & WalletActions),
- * but a WalletClient only has WalletActions. At runtime, the signing functionality
- * works correctly since both use the same underlying viem signing methods.
- *
- * This adapter makes the type conversion explicit rather than inline casting.
+ * x402-fetch only requires signing capabilities (WalletActions), which WalletClient provides.
+ * The cast is needed because x402's Signer type definition is stricter than necessary,
+ * including PublicActions in the union even though they're not used for signing.
  */
 function toX402Signer(walletClient: WalletClient<Transport, Chain, Account>): X402Signer {
-  // The WalletClient has all the signing capabilities needed by x402
-  // The type mismatch is due to x402 expecting PublicActions which aren't needed for signing
   return walletClient as unknown as X402Signer;
 }
 
