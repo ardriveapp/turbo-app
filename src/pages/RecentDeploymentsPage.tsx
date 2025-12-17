@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Globe, Receipt, Folder, ExternalLink, Zap, RefreshCw, XCircle, Archive, Clock, HelpCircle, MoreVertical, Code, ChevronDown, CheckCircle, Copy } from 'lucide-react';
+import { Globe, Receipt, Folder, ExternalLink, Zap, RefreshCw, XCircle, Archive, Clock, HelpCircle, MoreVertical, Code, ChevronDown, CheckCircle, Copy, Package } from 'lucide-react';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { useStore } from '../store/useStore';
 import { getArweaveUrl, getArweaveRawUrl } from '../utils';
@@ -349,13 +349,36 @@ export default function RecentDeploymentsPage() {
                       <div className="flex items-center justify-between gap-2 mb-3">
                         {/* Main Info Row */}
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {/* Globe Icon - Indicates site manifest */}
-                          <Globe className="w-4 h-4 text-fg-muted" />
-                          
-                          {/* ArNS Name or Shortened Transaction ID */}
-                          {arnsAssociation && arnsAssociation.arnsName ? (
+                          {/* Package Icon if app name exists, Globe otherwise */}
+                          {group.manifest.appName ? (
+                            <Package className="w-4 h-4 text-turbo-red" />
+                          ) : (
+                            <Globe className="w-4 h-4 text-fg-muted" />
+                          )}
+
+                          {/* App Name with Version if available, else ArNS Name or Shortened Transaction ID */}
+                          {group.manifest.appName ? (
                             <div className="flex items-center gap-2">
-                              <a 
+                              <span className="text-sm font-medium text-fg-muted">
+                                {group.manifest.appName}
+                              </span>
+                              {group.manifest.appVersion && (
+                                <span className="text-xs text-link">v{group.manifest.appVersion}</span>
+                              )}
+                              {arnsAssociation && arnsAssociation.arnsName && (
+                                <a
+                                  href={`https://${arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}${arnsAssociation.arnsName}.ar.io`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-turbo-green hover:underline transition-colors"
+                                >
+                                  {arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}{arnsAssociation.arnsName}
+                                </a>
+                              )}
+                            </div>
+                          ) : arnsAssociation && arnsAssociation.arnsName ? (
+                            <div className="flex items-center gap-2">
+                              <a
                                 href={`https://${arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}${arnsAssociation.arnsName}.ar.io`}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -375,7 +398,7 @@ export default function RecentDeploymentsPage() {
                               {manifestId.substring(0, 6)}...
                             </div>
                           )}
-                          
+
                           {/* Timestamp - Desktop only */}
                           {group.manifest.timestamp && (
                             <span className="text-xs text-link hidden sm:inline">

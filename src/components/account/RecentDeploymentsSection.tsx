@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, Receipt, Globe2, Folder, ExternalLink } from 'lucide-react';
+import { Globe, Receipt, Globe2, Folder, ExternalLink, Package } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { getArweaveUrl } from '../../utils';
 import { useUploadStatus } from '../../hooks/useUploadStatus';
@@ -88,8 +88,23 @@ export default function RecentDeploymentsSection() {
             {/* Deployment Header */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Globe2 className="w-4 h-4 text-turbo-green" />
-                <span className="font-medium text-fg-muted">Site Deployment</span>
+                {/* Package Icon if app name exists, Globe otherwise */}
+                {group.manifest?.appName ? (
+                  <Package className="w-4 h-4 text-turbo-red" />
+                ) : (
+                  <Globe2 className="w-4 h-4 text-turbo-green" />
+                )}
+                {/* App Name with Version if available, else "Site Deployment" */}
+                {group.manifest?.appName ? (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-fg-muted">{group.manifest.appName}</span>
+                    {group.manifest?.appVersion && (
+                      <span className="text-xs text-link">v{group.manifest.appVersion}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="font-medium text-fg-muted">Site Deployment</span>
+                )}
                 {group.manifest?.timestamp && (
                   <span className="text-xs text-link">
                     {new Date(group.manifest.timestamp).toLocaleDateString()}
