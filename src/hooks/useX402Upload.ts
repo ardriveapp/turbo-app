@@ -5,12 +5,27 @@ import { useAccount, useConfig } from 'wagmi';
 import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { ethers } from 'ethers';
 import { X402Funding } from '@ardrive/turbo-sdk/web';
-import { createWalletClient, custom } from 'viem';
+import { createWalletClient, custom, type WalletClient, type Transport, type Chain, type Account } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { APP_NAME, APP_VERSION, X402_CONFIG } from '../constants';
 import { getContentType } from '../utils/mimeTypes';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
 import type { Signer as X402Signer } from 'x402-fetch';
+
+/**
+ * Adapts a viem WalletClient to x402's Signer type.
+ *
+ * x402-fetch v1.0 expects a SignerWallet (viem Client with PublicActions & WalletActions),
+ * but a WalletClient only has WalletActions. At runtime, the signing functionality
+ * works correctly since both use the same underlying viem signing methods.
+ *
+ * This adapter makes the type conversion explicit rather than inline casting.
+ */
+function toX402Signer(walletClient: WalletClient<Transport, Chain, Account>): X402Signer {
+  // The WalletClient has all the signing capabilities needed by x402
+  // The type mismatch is due to x402 expecting PublicActions which aren't needed for signing
+  return walletClient as unknown as X402Signer;
+}
 
 export interface X402UploadOptions {
   maxUsdcAmount: number; // In USDC (6 decimals), e.g., 2.5 for 2.5 USDC
@@ -48,13 +63,14 @@ async function createX402Signer(
   const account = accounts[0] as `0x${string}`;
   const chain = useMainnet ? base : baseSepolia;
 
-  // Create a wallet client that matches the x402Signer type
-  // The SDK expects a viem WalletClient
-  return createWalletClient({
+  // Create a wallet client for x402 payments
+  const walletClient = createWalletClient({
     account,
     chain,
     transport: custom(ethProvider),
-  }) as unknown as X402Signer;
+  });
+
+  return toX402Signer(walletClient);
 }
 
 // Module-level cache for x402 signer only (Turbo client is shared via useEthereumTurboClient)
