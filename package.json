@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@ar.io/sdk": "^3.19.0-alpha.10",
-    "@ardrive/turbo-sdk": "^1.39.0-alpha.1",
+    "@ardrive/turbo-sdk": "^1.39.2",
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
     "@permaweb/aoconnect": "^0.0.69",
@@ -47,7 +47,7 @@
     "validator": "^13.12.0",
     "viem": "2.x",
     "wagmi": "^2.12.5",
-    "x402-fetch": "^0.7.0",
+    "x402-fetch": "^1.0.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
