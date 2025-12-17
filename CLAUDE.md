@@ -299,7 +299,7 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 | `useCryptoPrice(tokenType)` | Get current USD price for a token |
 | `useWalletAccountListener()` | Listens for wallet changes across all ecosystems, clears caches on switch |
 | `useFreeUploadLimit()` | Fetch bundler's free upload limit, defaults to 0 |
-| `useGatewayInfo(gatewayUrl)` | Fetch gateway capabilities and info |
+| `useGatewayInfo()` | Fetch gateway capabilities and info |
 | `useTurboCapture()` | Web page capture functionality |
 | `usePrivyWallet()` | Detect and access Privy embedded wallet |
 
