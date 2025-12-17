@@ -5,6 +5,20 @@
 
 import { createSHA256 } from 'hash-wasm';
 
+/**
+ * Convert Uint8Array to base64url string (no padding)
+ * Matches ar.io gateway X-AR-IO-DIGEST format
+ */
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  // Convert to base64url: replace + with -, / with _, remove padding
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 // Message types for worker communication
 export interface HashWorkerRequest {
   type: 'hash';
@@ -35,7 +49,7 @@ async function ensureInitialized(): Promise<void> {
     const testHasher = await createSHA256();
     testHasher.init();
     testHasher.update(new Uint8Array([0]));
-    testHasher.digest('hex');
+    testHasher.digest('binary');
     isInitialized = true;
   }
 }
@@ -73,7 +87,9 @@ async function hashFileStreaming(
     reader.releaseLock();
   }
 
-  return hasher.digest('hex');
+  // Return base64url encoded hash (matches ar.io gateway X-AR-IO-DIGEST format)
+  const hashBytes = hasher.digest('binary');
+  return toBase64Url(new Uint8Array(hashBytes));
 }
 
 // Handle messages from main thread

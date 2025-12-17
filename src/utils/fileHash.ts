@@ -13,6 +13,20 @@
 
 import { createSHA256 } from 'hash-wasm';
 
+/**
+ * Convert Uint8Array to base64url string (no padding)
+ * Matches ar.io gateway X-AR-IO-DIGEST format
+ */
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  // Convert to base64url: replace + with -, / with _, remove padding
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -111,7 +125,7 @@ async function checkWorkerSupport(): Promise<boolean> {
           createSHA256().then(hasher => {
             hasher.init();
             hasher.update(new Uint8Array([1, 2, 3]));
-            const result = hasher.digest('hex');
+            const result = hasher.digest('binary');
             self.postMessage({ success: true, result });
           }).catch(err => {
             self.postMessage({ success: false, error: err.message });
@@ -243,7 +257,9 @@ async function hashFileMainThread(
     reader.releaseLock();
   }
 
-  return hasher.digest('hex');
+  // Return base64url encoded hash (matches ar.io gateway X-AR-IO-DIGEST format)
+  const hashBytes = hasher.digest('binary');
+  return toBase64Url(new Uint8Array(hashBytes));
 }
 
 // ============================================================================
