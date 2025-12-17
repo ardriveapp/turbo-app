@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ethers } from 'ethers';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useStore } from '../store/useStore';
 import { SupportedTokenType, X402_CONFIG, ERC20_ABI, ETHEREUM_CONFIG, POLYGON_CONFIG, BASE_ARIO_CONFIG } from '../constants';
 import { getSolanaConnection } from '../utils/solanaConnection';
+import { useAccount, useConfig } from 'wagmi';
+import { getConnectorClient } from 'wagmi/actions';
+import { useWallets } from '@privy-io/react-auth';
 
 /**
  * Result of token balance fetch
@@ -42,6 +45,59 @@ export function useTokenBalance(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
+
+  // Wagmi hooks for getting the correct Ethereum provider
+  const wagmiConfig = useConfig();
+  const ethAccount = useAccount();
+  const { wallets: privyWallets } = useWallets();
+
+  // Cache the provider to avoid recreating on every fetch
+  const ethProviderRef = useRef<any>(null);
+  const providerSourceRef = useRef<string | null>(null);
+
+  /**
+   * Get the Ethereum provider from the correct source:
+   * 1. Privy embedded wallet (if user logged in via email)
+   * 2. Wagmi connector (if user connected via RainbowKit)
+   * 3. window.ethereum fallback (if direct injection)
+   *
+   * This ensures we use the same wallet the user connected with,
+   * not a random wallet extension that happens to be at window.ethereum
+   */
+  const getEthereumProvider = useCallback(async (): Promise<any> => {
+    // Check for Privy wallet first (email login users)
+    const privyWallet = privyWallets.find((w) => w.walletClientType === 'privy');
+    if (privyWallet) {
+      const provider = await privyWallet.getEthereumProvider();
+      ethProviderRef.current = provider;
+      providerSourceRef.current = 'privy';
+      return provider;
+    }
+
+    // Check for wagmi-connected wallet (RainbowKit users)
+    if (ethAccount.isConnected && ethAccount.connector) {
+      try {
+        const connectorClient = await getConnectorClient(wagmiConfig, {
+          connector: ethAccount.connector,
+        });
+        // The transport from viem connector client works as an EIP-1193 provider
+        ethProviderRef.current = connectorClient.transport;
+        providerSourceRef.current = 'wagmi';
+        return connectorClient.transport;
+      } catch (err) {
+        console.warn('Failed to get wagmi connector client, falling back to window.ethereum:', err);
+      }
+    }
+
+    // Fallback to window.ethereum (direct MetaMask or other injected wallet)
+    if (window.ethereum) {
+      ethProviderRef.current = window.ethereum;
+      providerSourceRef.current = 'window.ethereum';
+      return window.ethereum;
+    }
+
+    throw new Error('No Ethereum wallet found. Please connect a wallet first.');
+  }, [privyWallets, ethAccount.isConnected, ethAccount.connector, wagmiConfig]);
 
   /**
    * Fetch ARIO balance using AR.IO SDK
@@ -162,11 +218,8 @@ export function useTokenBalance(
    */
   const fetchBaseEthBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -193,18 +246,15 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-ETH balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch BASE-USDC balance using ethers.js and ERC-20 contract
    */
   const fetchBaseUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -240,7 +290,7 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-USDC balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch BASE-ARIO balance using ethers.js and ERC-20 contract
@@ -248,11 +298,8 @@ export function useTokenBalance(
    */
   const fetchBaseArioBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network (same chain IDs as base-usdc/base-eth)
       const network = await provider.getNetwork();
@@ -288,18 +335,15 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-ARIO balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch Ethereum L1 ETH balance using ethers.js
    */
   const fetchEthereumBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -326,18 +370,15 @@ export function useTokenBalance(
       console.error('Failed to fetch Ethereum balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch Polygon POL balance using ethers.js
    */
   const fetchPolBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -364,18 +405,15 @@ export function useTokenBalance(
       console.error('Failed to fetch POL balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch USDC balance on Ethereum L1 using ethers.js and ERC-20 contract
    */
   const fetchUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -411,18 +449,15 @@ export function useTokenBalance(
       console.error('Failed to fetch USDC balance on Ethereum:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Fetch USDC balance on Polygon using ethers.js and ERC-20 contract
    */
   const fetchPolygonUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      if (!window.ethereum) {
-        throw new Error('No Ethereum wallet found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Check current network
       const network = await provider.getNetwork();
@@ -458,7 +493,7 @@ export function useTokenBalance(
       console.error('Failed to fetch USDC balance on Polygon:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode]);
+  }, [configMode, getEthereumProvider]);
 
   /**
    * Main fetch function that routes to appropriate token-specific fetcher

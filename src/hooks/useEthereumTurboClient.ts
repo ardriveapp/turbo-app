@@ -4,7 +4,7 @@ import { InjectedEthereumSigner } from '@ar.io/sdk/web';
 import { ethers } from 'ethers';
 import { useWallets } from '@privy-io/react-auth';
 import { useAccount, useConfig } from 'wagmi';
-import { getConnectorClient } from 'wagmi/actions';
+import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { useStore } from '../store/useStore';
 
 // Custom connect message for Ethereum wallet uploads (instead of SDK's generic message)
@@ -234,8 +234,27 @@ export function useEthereumTurboClient() {
               throw new Error(`Failed to switch to ${networkName}. Please switch networks manually and try again.`);
             }
           }
+        } else if (ethAccount.isConnected && ethAccount.connector) {
+          // For wagmi-connected wallets (RainbowKit): Use wagmi's switchChain action
+          // This ensures we use the same wallet the user connected with
+          try {
+            const currentChainId = ethAccount.chainId;
+
+            if (currentChainId !== expectedChainId) {
+              await switchChain(wagmiConfig, { chainId: expectedChainId });
+              // Wait for switch to complete
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch {
+            const networkName = (tokenType === 'base-eth' || tokenType === 'base-usdc' || tokenType === 'base-ario')
+              ? (isDevMode ? 'Base Sepolia testnet' : 'Base network')
+              : (tokenType === 'pol' || tokenType === 'polygon-usdc')
+              ? (isDevMode ? 'Polygon Amoy testnet' : 'Polygon Mainnet')
+              : (isDevMode ? 'Ethereum Holesky testnet' : 'Ethereum Mainnet');
+            throw new Error(`Please switch to ${networkName} in your wallet for ${tokenType} payments.`);
+          }
         } else if (window.ethereum) {
-          // For regular wallets: Check and switch network
+          // Fallback for direct window.ethereum injection (no wagmi connection)
           try {
             const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
             const currentChainId = parseInt(chainIdHex, 16);

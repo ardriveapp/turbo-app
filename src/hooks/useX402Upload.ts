@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { useAccount, useConfig } from 'wagmi';
-import { getConnectorClient } from 'wagmi/actions';
+import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { ethers } from 'ethers';
 import { X402Funding } from '@ardrive/turbo-sdk/web';
 import { createWalletClient, custom } from 'viem';
@@ -133,14 +133,32 @@ export function useX402Upload() {
 
         if (currentChainId !== chainId) {
           console.log(`Network mismatch. Current: ${currentChainId}, Expected: ${chainId}`);
+          const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
 
-          // Only attempt auto-switching for injected wallets (not Privy, not WalletConnect)
-          // WalletConnect wallets need to switch in the mobile app
-          const isInjectedWallet = window.ethereum && !privyWallet &&
-            (!ethAccount.connector || ethAccount.connector.id === 'injected' || ethAccount.connector.id === 'metaMask');
+          // For wagmi-connected wallets (RainbowKit): Use wagmi's switchChain action
+          // This ensures we use the same wallet the user connected with
+          if (!privyWallet && ethAccount.isConnected && ethAccount.connector) {
+            try {
+              await switchChain(wagmiConfig, { chainId });
+              console.log(`Switched to chain ID ${chainId} via wagmi`);
 
-          if (isInjectedWallet && window.ethereum) {
-            // We've confirmed window.ethereum exists, store reference for type safety
+              // Wait for network switch to complete
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+
+              // Refresh provider and signer after switch
+              const connectorClient = await getConnectorClient(wagmiConfig, {
+                connector: ethAccount.connector,
+              });
+              ethersProvider = new ethers.BrowserProvider(connectorClient.transport, 'any');
+              ethersSigner = await ethersProvider.getSigner();
+            } catch (switchError: any) {
+              console.warn('Wagmi switchChain failed:', switchError);
+              throw new Error(
+                `Please switch to ${networkName} in your wallet for X402 payments.`
+              );
+            }
+          } else if (window.ethereum && !privyWallet) {
+            // Fallback for direct window.ethereum injection (no wagmi connection)
             const ethereum = window.ethereum;
 
             try {
@@ -159,7 +177,6 @@ export function useX402Upload() {
             } catch (switchError: any) {
               // Error 4902 means the network doesn't exist in MetaMask - add it first
               if (switchError.code === 4902) {
-                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
                 const rpcUrl = useMainnet
                   ? 'https://mainnet.base.org'
                   : 'https://sepolia.base.org';
@@ -198,14 +215,12 @@ export function useX402Upload() {
                   );
                 }
               } else {
-                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
                 throw new Error(
                   `Please switch to ${networkName} in your wallet for X402 payments.`
                 );
               }
             }
           } else {
-            const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
             throw new Error(
               `Please switch to ${networkName} in your wallet for X402 payments.`
             );
