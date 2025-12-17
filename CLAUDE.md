@@ -125,10 +125,14 @@ const turbo = TurboFactory.authenticated({ signer: injectedSigner, token: 'base-
 
 All uploads include standardized metadata tags:
 
-**Common tags:**
-- `App-Name`: 'Turbo-App' (from `APP_NAME` constant)
+**Deployment tool tags (always included):**
+- `Deployed-By`: 'Turbo-App' (from `APP_NAME` constant) - identifies the deployment tool
+- `Deployed-By-Version`: Dynamic from package.json - version of the deployment tool
 - `App-Feature`: 'File Upload' | 'Deploy Site' | 'Capture'
-- `App-Version`: Dynamic from package.json
+
+**User app tags (optional, for site deployments):**
+- `App-Name`: User-provided app/site name
+- `App-Version`: User-provided app version
 
 **Feature-specific:** `Content-Type`, `File-Name`, `File-Path`, `Original-URL`, `Title`, viewport dimensions
 
