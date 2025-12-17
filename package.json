@@ -1,6 +1,6 @@
 {
   "name": "turbo-gateway-app",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "Unified Turbo Gateway Application",
   "scripts": {
@@ -8,6 +8,7 @@
     "prebuild": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "build:prod": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build:staging": "npm run prebuild && cross-env NODE_OPTIONS=--max-old-space-size=8192 VITE_SOURCEMAPS=true vite build",
     "clean": "cross-env rimraf dist node_modules/.vite tsconfig.tsbuildinfo tsconfig.node.tsbuildinfo",
     "clean:all": "cross-env rimraf dist node_modules tsconfig.tsbuildinfo tsconfig.node.tsbuildinfo && npm install",
     "lint": "cross-env NODE_OPTIONS=--max-old-space-size=2048 eslint .",
@@ -16,7 +17,7 @@
   },
   "dependencies": {
     "@ar.io/sdk": "^3.19.0-alpha.10",
-    "@ardrive/turbo-sdk": "^1.39.0-alpha.1",
+    "@ardrive/turbo-sdk": "^1.39.2",
     "@fontsource/rubik": "^5.0.21",
     "@headlessui/react": "^2.1.2",
     "@permaweb/aoconnect": "^0.0.69",
@@ -37,6 +38,7 @@
     "arbundles": "^0.11.1",
     "arconnect": "^1.0.3",
     "ethers": "^6.13.3",
+    "hash-wasm": "^4.12.0",
     "lottie-react": "^2.4.0",
     "lucide-react": "^0.454.0",
     "react": "^18.3.1",
@@ -45,7 +47,7 @@
     "validator": "^13.12.0",
     "viem": "2.x",
     "wagmi": "^2.12.5",
-    "x402-fetch": "^0.7.0",
+    "x402-fetch": "^1.0.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

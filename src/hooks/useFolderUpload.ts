@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   TurboFactory,
   TurboAuthenticatedClient,
@@ -12,7 +12,18 @@ import { useAccount } from 'wagmi';
 // supportsJitPayment import removed - using pre-topup flow instead of per-file JIT
 import { APP_NAME, APP_VERSION, SupportedTokenType } from '../constants';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
-import { useFreeUploadLimit } from './useFreeUploadLimit';
+import { useFreeUploadLimit, isFileFree } from './useFreeUploadLimit';
+import { hashFilesAsync } from '../utils/fileHash';
+
+// Deduplication stats for Smart Deploy
+export interface DeduplicationStats {
+  totalFiles: number;
+  cachedFiles: number;
+  newFiles: number;
+  cachedSize: number;
+  newSize: number;
+  billableSize: number; // newSize minus files under free limit
+}
 
 interface DeployResult {
   type: 'manifest' | 'files';
@@ -26,6 +37,8 @@ interface DeployResult {
   }>;
   timestamp?: number;
   receipt?: any; // Store receipt for manifest
+  appName?: string; // User's app/site name
+  appVersion?: string; // User's app/site version
 }
 
 export interface ActiveUpload {
@@ -74,6 +87,17 @@ export function useFolderUpload() {
   const [isCancelled, setIsCancelled] = useState<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Smart Deploy state
+  const [hashingProgress, setHashingProgress] = useState<number>(0);
+  const [hashingStage, setHashingStage] = useState<'idle' | 'hashing' | 'complete' | 'cancelled'>('idle');
+  const hashingAbortRef = useRef<AbortController | null>(null);
+  const [fileHashes, setFileHashes] = useState<Map<string, string> | null>(null);
+  const [deduplicationStats, setDeduplicationStats] = useState<DeduplicationStats | null>(null);
+
+  // Get store functions for file hash cache
+  const getFileHashEntry = useStore((state) => state.getFileHashEntry);
+  const updateFileHashCache = useStore((state) => state.updateFileHashCache);
+
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
     if (!address || !walletType) {
@@ -104,6 +128,144 @@ export function useFolderUpload() {
         break;
     }
   }, [address, walletType, wallets, ethAccount.isConnected]);
+
+  // Analyze folder for Smart Deploy deduplication
+  // Always hashes files to show potential savings, regardless of toggle state
+  // The toggle only affects whether we USE the cache during deploy
+  // Non-blocking: Uses Web Workers when available, with graceful fallback
+  const analyzeFolder = useCallback(async (files: File[]) => {
+    // Cancel any previous hashing operation
+    if (hashingAbortRef.current) {
+      hashingAbortRef.current.abort();
+    }
+
+    // Create new abort controller for this operation
+    const abortController = new AbortController();
+    hashingAbortRef.current = abortController;
+
+    setHashingStage('hashing');
+    setHashingProgress(0);
+    setFileHashes(null);
+    setDeduplicationStats(null);
+
+    try {
+      // hashFilesAsync uses:
+      // - Web Workers for non-blocking UI (falls back to main thread if unavailable)
+      // - Dynamic concurrency based on file sizes (50 parallel for tiny, 2 for huge)
+      // - Automatic retry for transient failures
+      // - Cancellation via AbortSignal
+      const result = await hashFilesAsync(files, {
+        signal: abortController.signal,
+        onProgress: (progress) => {
+          setHashingProgress(Math.round((progress.completed / progress.total) * 100));
+        },
+      });
+
+      // Check if cancelled
+      if (result.cancelled) {
+        setHashingStage('cancelled');
+        return;
+      }
+
+      // Log any errors (files that failed to hash will be uploaded as "new")
+      if (result.errors.size > 0) {
+        console.warn(`Smart Deploy: ${result.errors.size} files failed to hash (will upload as new):`,
+          Object.fromEntries(result.errors));
+      }
+
+      const hashes = result.results;
+      setFileHashes(hashes);
+
+      // Calculate deduplication stats (always calculate to show potential savings)
+      let cachedFilesCount = 0;
+      let cachedSize = 0;
+      let newFilesCount = 0;
+      let newSize = 0;
+      let billableSize = 0;
+
+      files.forEach(file => {
+        const path = file.webkitRelativePath || file.name;
+        const hash = hashes.get(path);
+        const cached = hash ? getFileHashEntry(hash) : null;
+
+        if (cached) {
+          cachedFilesCount++;
+          cachedSize += file.size;
+        } else {
+          newFilesCount++;
+          newSize += file.size;
+          // Only add to billable if over free limit
+          if (!isFileFree(file.size, freeUploadLimitBytes)) {
+            billableSize += file.size;
+          }
+        }
+      });
+
+      setDeduplicationStats({
+        totalFiles: files.length,
+        cachedFiles: cachedFilesCount,
+        newFiles: newFilesCount,
+        cachedSize,
+        newSize,
+        billableSize,
+      });
+      setHashingStage('complete');
+    } catch (error) {
+      // Check if this was a cancellation
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setHashingStage('cancelled');
+        return;
+      }
+
+      console.warn('Hashing failed, will upload all files:', error);
+      setFileHashes(null);
+
+      // Calculate billable size for all files (fallback when hashing fails)
+      let totalSizeCalc = 0;
+      let billableSize = 0;
+      files.forEach(f => {
+        totalSizeCalc += f.size;
+        if (!isFileFree(f.size, freeUploadLimitBytes)) {
+          billableSize += f.size;
+        }
+      });
+      setDeduplicationStats({
+        totalFiles: files.length,
+        cachedFiles: 0,
+        newFiles: files.length,
+        cachedSize: 0,
+        newSize: totalSizeCalc,
+        billableSize,
+      });
+      setHashingStage('complete');
+    }
+  }, [getFileHashEntry, freeUploadLimitBytes]);
+
+  // Reset analysis state and cancel any ongoing hashing
+  const resetAnalysis = useCallback(() => {
+    // Cancel any ongoing hashing
+    if (hashingAbortRef.current) {
+      hashingAbortRef.current.abort();
+      hashingAbortRef.current = null;
+    }
+    setHashingProgress(0);
+    setHashingStage('idle');
+    setFileHashes(null);
+    setDeduplicationStats(null);
+  }, []);
+
+  // Cleanup worker pool on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any ongoing hashing
+      if (hashingAbortRef.current) {
+        hashingAbortRef.current.abort();
+      }
+      // Note: We don't terminate the worker pool here because it's shared
+      // across multiple components. The pool will be cleaned up when the
+      // page unloads.
+    };
+  }, []);
 
   // Get config function from store
   const getCurrentConfig = useStore((state) => state.getCurrentConfig);
@@ -227,7 +389,10 @@ export function useFolderUpload() {
     folderPath: string,
     signal: AbortSignal,
     fundingMode: OnDemandFunding | undefined,
-    maxRetries = 3
+    maxRetries = 3,
+    fileHash?: string, // Optional SHA-256 hash for Smart Deploy
+    appName?: string, // User's app name for App-Name tag
+    appVersion?: string // User's app version for App-Version tag
   ): Promise<any> => {
     let lastError;
 
@@ -238,19 +403,35 @@ export function useFolderUpload() {
       }
 
       try {
+        // Build tags array
+        const tags = [
+          { name: 'Deployed-By', value: APP_NAME },
+          { name: 'Deployed-By-Version', value: APP_VERSION },
+          { name: 'App-Feature', value: 'Deploy Site' },
+          { name: 'Content-Type', value: getContentType(file) },
+          { name: 'File-Path', value: file.webkitRelativePath || file.name }
+        ];
+
+        // Add hash tag for Smart Deploy deduplication
+        if (fileHash) {
+          tags.push({ name: 'File-Hash-SHA256', value: fileHash });
+        }
+
+        // Add user's App-Name and App-Version tags if provided
+        if (appName) {
+          tags.push({ name: 'App-Name', value: appName });
+        }
+        if (appVersion) {
+          tags.push({ name: 'App-Version', value: appVersion });
+        }
+
         // Add timeout wrapper for upload
         const uploadPromise = turbo.uploadFile({
           file: file,
           signal: signal, // Pass the abort signal to the SDK
           fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
           dataItemOpts: {
-            tags: [
-              { name: 'App-Name', value: APP_NAME },
-              { name: 'App-Feature', value: 'Deploy Site' },
-              { name: 'App-Version', value: APP_VERSION },
-              { name: 'Content-Type', value: getContentType(file) },
-              { name: 'File-Path', value: file.webkitRelativePath || file.name }
-            ]
+            tags
           },
           events: {
             // Track progress for individual files
@@ -304,10 +485,39 @@ export function useFolderUpload() {
       cryptoPayment?: boolean; // If true, top up with crypto first (one payment for all files)
       tokenAmount?: number; // Amount to top up in smallest unit
       selectedToken?: SupportedTokenType; // Token to use for crypto payment
-    }
+      appName?: string; // User's app/site name (for App-Name tag)
+      appVersion?: string; // User's app/site version (for App-Version tag)
+    },
+    smartDeployEnabled?: boolean // Smart Deploy: skip unchanged files
   ) => {
     // Validate wallet state before any operations
     validateWalletState();
+
+    // Separate cached vs new files for Smart Deploy
+    const cachedFilesForManifest: Array<{ file: File; hash: string; txId: string }> = [];
+    const filesToUpload: File[] = [];
+
+    if (smartDeployEnabled && fileHashes) {
+      files.forEach(file => {
+        const path = file.webkitRelativePath || file.name;
+        const hash = fileHashes.get(path);
+
+        if (hash) {
+          const cached = getFileHashEntry(hash);
+          if (cached) {
+            cachedFilesForManifest.push({ file, hash, txId: cached.txId });
+          } else {
+            filesToUpload.push(file);
+          }
+        } else {
+          // Hash not found (hashing failed for this file), treat as new
+          filesToUpload.push(file);
+        }
+      });
+    } else {
+      // Smart Deploy disabled or hashing failed - upload all files
+      filesToUpload.push(...files);
+    }
 
     setDeploying(true);
     setErrors({});
@@ -316,7 +526,7 @@ export function useFolderUpload() {
     setDeployStage('uploading');
     setCurrentFile('');
     setUploadedCount(0);
-    setTotalFilesCount(files.length);
+    setTotalFilesCount(filesToUpload.length); // Only count files being uploaded
     setFailedCount(0);
     setActiveUploads([]);
     setRecentFiles([]);
@@ -328,8 +538,8 @@ export function useFolderUpload() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Calculate total size
-    const totalSizeBytes = files.reduce((sum, file) => sum + file.size, 0);
+    // Calculate total size (only for files being uploaded)
+    const totalSizeBytes = filesToUpload.reduce((sum, file) => sum + file.size, 0);
     setTotalSize(totalSizeBytes);
     setUploadedSize(0);
 
@@ -404,13 +614,14 @@ export function useFolderUpload() {
       const turbo = await createTurboClient(undefined);
       
       // Starting folder deployment
-      
-      // Create folder structure for Turbo SDK
+
+      // Create folder structure for Turbo SDK (use original files for folder name)
       const folderPath = files[0]?.webkitRelativePath?.split('/')[0] || 'site';
-      
+
       // Upload files with concurrent batching for better performance
       // For web browser, we need to upload files individually and create a manifest
       // Uploading files with concurrent batches to avoid hanging
+      // Note: Only uploading filesToUpload (Smart Deploy skips cached files)
 
       const fileUploadResults: Array<{
         id: string;
@@ -418,13 +629,20 @@ export function useFolderUpload() {
         size: number;
         receipt: any;
       }> = [];
-      const totalFiles = files.length;
+      const totalFiles = filesToUpload.length;
       const BATCH_SIZE = 5; // Upload 5 files concurrently
       let completedFiles = 0;
       const failedUploads: { file: File; error: Error }[] = [];
 
-      // Process files in batches
-      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      // Smart Deploy: Fast path when all files are cached
+      if (totalFiles === 0 && cachedFilesForManifest.length > 0) {
+        console.log(`Smart Deploy: All ${cachedFilesForManifest.length} files are cached, skipping uploads`);
+        setCurrentFile('All files cached - creating manifest...');
+        setDeployProgress(90); // Jump to manifest stage
+        // Skip upload loop, go straight to manifest creation
+      } else {
+        // Process files in batches (only filesToUpload - Smart Deploy)
+      for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
         // Check if cancelled
         if (isCancelled) {
           setDeploying(false);
@@ -432,7 +650,7 @@ export function useFolderUpload() {
           return { results: fileUploadResults, failedFileNames: [] };
         }
 
-        const batch = files.slice(i, Math.min(i + BATCH_SIZE, files.length));
+        const batch = filesToUpload.slice(i, Math.min(i + BATCH_SIZE, filesToUpload.length));
 
         // Clear completed files from previous batch and add new batch files
         // This ensures smooth transition without empty state
@@ -468,8 +686,15 @@ export function useFolderUpload() {
               return newProgress;
             });
 
-            // Regular upload with retry logic and timeout
-            const fileResult = await uploadFileWithRetry(turbo, file, folderPath, controller.signal, fundingMode);
+            // Get the hash for this file (for Smart Deploy tagging)
+            const filePath = file.webkitRelativePath || file.name;
+            const hash = fileHashes?.get(filePath);
+
+            // Regular upload with retry logic and timeout (pass hash for Smart Deploy tag + app metadata)
+            const fileResult = await uploadFileWithRetry(
+              turbo, file, folderPath, controller.signal, fundingMode, 3, hash,
+              manifestOptions?.appName, manifestOptions?.appVersion
+            );
 
             // Mark file as complete in active uploads (keep at 100%)
             setActiveUploads(prev => prev.map(u =>
@@ -574,15 +799,16 @@ export function useFolderUpload() {
         // No need to pre-add files anymore - the UI handles transitions smoothly
       }
 
-      // If some files failed but not too many, log them but continue
-      if (failedUploads.length > 0) {
-        console.warn(`${failedUploads.length} files failed to upload:`, failedUploads);
-        // Optionally continue with successful uploads
-        if (fileUploadResults.length === 0) {
-          throw new Error('All file uploads failed');
+        // If some files failed but not too many, log them but continue
+        if (failedUploads.length > 0) {
+          console.warn(`${failedUploads.length} files failed to upload:`, failedUploads);
+          // Optionally continue with successful uploads
+          if (fileUploadResults.length === 0 && cachedFilesForManifest.length === 0) {
+            throw new Error('All file uploads failed');
+          }
         }
-      }
-      
+      } // End of else block for non-cached files
+
       // Check if cancelled before manifest creation
       if (isCancelled || controller.signal.aborted) {
         setDeploying(false);
@@ -598,43 +824,85 @@ export function useFolderUpload() {
 
       // Clear all active uploads since we're done with file uploads
       setActiveUploads([]);
-      
+
+      // Smart Deploy: Combine cached files with newly uploaded files for manifest
+      const allFilesForManifest: Array<{
+        id: string;
+        path: string;
+        size: number;
+      }> = [
+        // Cached files (reused from previous deployments)
+        ...cachedFilesForManifest.map(({ file, txId }) => ({
+          id: txId,
+          path: file.webkitRelativePath || file.name,
+          size: file.size,
+        })),
+        // Newly uploaded files
+        ...fileUploadResults.map(result => ({
+          id: result.id,
+          path: result.path,
+          size: result.size,
+        })),
+      ];
+
+      // Update file hash cache with newly uploaded files
+      if (smartDeployEnabled && fileHashes && fileUploadResults.length > 0) {
+        const newCacheEntries = fileUploadResults
+          .map(result => {
+            const hash = fileHashes.get(result.path);
+            if (!hash) return null;
+            const file = filesToUpload.find(f => (f.webkitRelativePath || f.name) === result.path);
+            return {
+              hash,
+              txId: result.id,
+              size: result.size,
+              contentType: file ? getContentType(file) : 'application/octet-stream',
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+        if (newCacheEntries.length > 0) {
+          updateFileHashCache(newCacheEntries);
+        }
+      }
+
       // Create manifest using version 0.2.0 spec with fallback support
       const manifestData = {
         manifest: 'arweave/paths',
         version: '0.2.0',
         index: {
-          path: manifestOptions?.indexFile 
-            ? (manifestOptions.indexFile.startsWith(folderPath + '/') 
+          path: manifestOptions?.indexFile
+            ? (manifestOptions.indexFile.startsWith(folderPath + '/')
                 ? manifestOptions.indexFile.substring(folderPath.length + 1)
                 : manifestOptions.indexFile)
             : 'index.html'
         },
         ...(manifestOptions?.fallbackFile && (() => {
           // Find the fallback file by exact path match or relative path match
-          const fallbackFile = fileUploadResults.find(file => {
-            const relativePath = file.path.startsWith(folderPath + '/') 
+          // Search in all files (both cached and newly uploaded)
+          const fallbackFile = allFilesForManifest.find(file => {
+            const relativePath = file.path.startsWith(folderPath + '/')
               ? file.path.substring(folderPath.length + 1)
               : file.path;
-            
+
             return file.path === manifestOptions.fallbackFile ||
                    relativePath === manifestOptions.fallbackFile ||
                    file.path.endsWith('/' + manifestOptions.fallbackFile);
           });
-          
+
           if (!fallbackFile) {
             console.warn(`Warning: Specified fallback file "${manifestOptions.fallbackFile}" not found in uploaded files. No fallback will be set.`);
             return {};
           }
-          
+
           return {
             fallback: {
               id: fallbackFile.id
             }
           };
         })()),
-        paths: fileUploadResults.reduce((acc, file) => {
-          const relativePath = file.path.startsWith(folderPath + '/') 
+        paths: allFilesForManifest.reduce((acc, file) => {
+          const relativePath = file.path.startsWith(folderPath + '/')
             ? file.path.substring(folderPath.length + 1)
             : file.path;
           acc[relativePath] = {
@@ -653,40 +921,59 @@ export function useFolderUpload() {
         type: 'application/x.arweave-manifest+json'
       });
 
+      // Build manifest tags
+      const manifestTags = [
+        { name: 'Deployed-By', value: APP_NAME },
+        { name: 'Deployed-By-Version', value: APP_VERSION },
+        { name: 'App-Feature', value: 'Deploy Site' },
+        { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
+        { name: 'Type', value: 'manifest' }
+      ];
+
+      // Add user's App-Name and App-Version tags if provided
+      if (manifestOptions?.appName) {
+        manifestTags.push({ name: 'App-Name', value: manifestOptions.appName });
+      }
+      if (manifestOptions?.appVersion) {
+        manifestTags.push({ name: 'App-Version', value: manifestOptions.appVersion });
+      }
+
       // Upload manifest with Turbo SDK
       const manifestResult = await turbo.uploadFile({
         file: manifestFile,
         signal: controller.signal,
         dataItemOpts: {
-          tags: [
-            { name: 'App-Name', value: APP_NAME },
-            { name: 'App-Feature', value: 'Deploy Site' },
-            { name: 'App-Version', value: APP_VERSION },
-            { name: 'Content-Type', value: 'application/x.arweave-manifest+json' },
-            { name: 'Type', value: 'manifest' }
-          ]
+          tags: manifestTags
         }
       } as any); // Type assertion needed until SDK types are updated
       
       const uploadResult = {
         manifestId: manifestResult.id,
-        files: fileUploadResults
+        // Include all files in manifest (cached + newly uploaded)
+        files: allFilesForManifest.map(f => ({
+          id: f.id,
+          path: f.path,
+          size: f.size,
+          receipt: fileUploadResults.find(r => r.path === f.path)?.receipt // Only new uploads have receipts
+        }))
       };
-      
+
       // Folder deployment completed
-      
+
       // Create results structure
       const results: DeployResult[] = [];
-      
+
       // Add manifest result
       results.push({
         type: 'manifest',
         id: uploadResult.manifestId,
         manifestId: uploadResult.manifestId,
         timestamp: Date.now(),
-        receipt: manifestResult // Store manifest upload result
+        receipt: manifestResult, // Store manifest upload result
+        appName: manifestOptions?.appName,
+        appVersion: manifestOptions?.appVersion,
       });
-      
+
       // Add individual files
       if (uploadResult.files && uploadResult.files.length > 0) {
         results.push({
@@ -718,7 +1005,7 @@ export function useFolderUpload() {
     } finally {
       setDeploying(false);
     }
-  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType, freeUploadLimitBytes, getContentType]);
+  }, [createTurboClient, validateWalletState, isCancelled, uploadFileWithRetry, walletType, freeUploadLimitBytes, getContentType, fileHashes, getFileHashEntry, updateFileHashCache]);
 
   const reset = useCallback(() => {
     setDeployProgress(0);
@@ -804,5 +1091,11 @@ export function useFolderUpload() {
     uploadedSize,
     retryFailedFiles,
     cancelUploads,
+    // Smart Deploy state
+    analyzeFolder,
+    hashingProgress,
+    hashingStage,
+    deduplicationStats,
+    resetAnalysis,
   };
 }

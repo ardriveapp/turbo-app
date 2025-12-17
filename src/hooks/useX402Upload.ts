@@ -2,15 +2,26 @@ import { useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useWallets } from '@privy-io/react-auth';
 import { useAccount, useConfig } from 'wagmi';
-import { getConnectorClient } from 'wagmi/actions';
+import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { ethers } from 'ethers';
 import { X402Funding } from '@ardrive/turbo-sdk/web';
-import { createWalletClient, custom } from 'viem';
+import { createWalletClient, custom, type WalletClient, type Transport, type Chain, type Account } from 'viem';
 import { base, baseSepolia } from 'viem/chains';
 import { APP_NAME, APP_VERSION, X402_CONFIG } from '../constants';
 import { getContentType } from '../utils/mimeTypes';
 import { useEthereumTurboClient } from './useEthereumTurboClient';
 import type { Signer as X402Signer } from 'x402-fetch';
+
+/**
+ * Adapts a viem WalletClient to x402's Signer type.
+ *
+ * x402-fetch only requires signing capabilities (WalletActions), which WalletClient provides.
+ * The cast is needed because x402's Signer type definition is stricter than necessary,
+ * including PublicActions in the union even though they're not used for signing.
+ */
+function toX402Signer(walletClient: WalletClient<Transport, Chain, Account>): X402Signer {
+  return walletClient as unknown as X402Signer;
+}
 
 export interface X402UploadOptions {
   maxUsdcAmount: number; // In USDC (6 decimals), e.g., 2.5 for 2.5 USDC
@@ -48,13 +59,14 @@ async function createX402Signer(
   const account = accounts[0] as `0x${string}`;
   const chain = useMainnet ? base : baseSepolia;
 
-  // Create a wallet client that matches the x402Signer type
-  // The SDK expects a viem WalletClient
-  return createWalletClient({
+  // Create a wallet client for x402 payments
+  const walletClient = createWalletClient({
     account,
     chain,
     transport: custom(ethProvider),
-  }) as unknown as X402Signer;
+  });
+
+  return toX402Signer(walletClient);
 }
 
 // Module-level cache for x402 signer only (Turbo client is shared via useEthereumTurboClient)
@@ -133,14 +145,32 @@ export function useX402Upload() {
 
         if (currentChainId !== chainId) {
           console.log(`Network mismatch. Current: ${currentChainId}, Expected: ${chainId}`);
+          const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
 
-          // Only attempt auto-switching for injected wallets (not Privy, not WalletConnect)
-          // WalletConnect wallets need to switch in the mobile app
-          const isInjectedWallet = window.ethereum && !privyWallet &&
-            (!ethAccount.connector || ethAccount.connector.id === 'injected' || ethAccount.connector.id === 'metaMask');
+          // For wagmi-connected wallets (RainbowKit): Use wagmi's switchChain action
+          // This ensures we use the same wallet the user connected with
+          if (!privyWallet && ethAccount.isConnected && ethAccount.connector) {
+            try {
+              await switchChain(wagmiConfig, { chainId });
+              console.log(`Switched to chain ID ${chainId} via wagmi`);
 
-          if (isInjectedWallet && window.ethereum) {
-            // We've confirmed window.ethereum exists, store reference for type safety
+              // Wait for network switch to complete
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+
+              // Refresh provider and signer after switch
+              const connectorClient = await getConnectorClient(wagmiConfig, {
+                connector: ethAccount.connector,
+              });
+              ethersProvider = new ethers.BrowserProvider(connectorClient.transport, 'any');
+              ethersSigner = await ethersProvider.getSigner();
+            } catch (switchError: any) {
+              console.warn('Wagmi switchChain failed:', switchError);
+              throw new Error(
+                `Please switch to ${networkName} in your wallet for X402 payments.`
+              );
+            }
+          } else if (window.ethereum && !privyWallet) {
+            // Fallback for direct window.ethereum injection (no wagmi connection)
             const ethereum = window.ethereum;
 
             try {
@@ -159,7 +189,6 @@ export function useX402Upload() {
             } catch (switchError: any) {
               // Error 4902 means the network doesn't exist in MetaMask - add it first
               if (switchError.code === 4902) {
-                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
                 const rpcUrl = useMainnet
                   ? 'https://mainnet.base.org'
                   : 'https://sepolia.base.org';
@@ -198,14 +227,12 @@ export function useX402Upload() {
                   );
                 }
               } else {
-                const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
                 throw new Error(
                   `Please switch to ${networkName} in your wallet for X402 payments.`
                 );
               }
             }
           } else {
-            const networkName = useMainnet ? 'Base Network' : 'Base Sepolia testnet';
             throw new Error(
               `Please switch to ${networkName} in your wallet for X402 payments.`
             );
@@ -244,9 +271,9 @@ export function useX402Upload() {
 
         // Prepare tags
         const tags = [
-          { name: 'App-Name', value: APP_NAME },
+          { name: 'Deployed-By', value: APP_NAME },
+          { name: 'Deployed-By-Version', value: APP_VERSION },
           { name: 'App-Feature', value: 'File Upload' },
-          { name: 'App-Version', value: APP_VERSION },
           { name: 'Content-Type', value: getContentType(file) },
           { name: 'File-Name', value: file.name },
           ...(options.tags || []),
