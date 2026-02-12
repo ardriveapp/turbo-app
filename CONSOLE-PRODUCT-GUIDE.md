@@ -1,6 +1,6 @@
-# Turbo App Product Guide
+# ar.io Console Product Guide
 
-*A comprehensive guide to all features and capabilities of the unified Turbo Gateway Application*
+*A comprehensive guide to all features and capabilities of the ar.io Console*
 
 ---
 
@@ -13,7 +13,7 @@
 5. [Payment System](#payment-system)
 6. [File Management](#file-management)
 7. [ArNS Domain System](#arns-domain-system)
-8. [Developer Tools](#developer-tools)
+8. [Settings](#developer-tools)
 9. [Multi-Chain Wallet Support](#multi-chain-wallet-support)
 10. [Navigation & User Experience](#navigation--user-experience)
 11. [Advanced Features](#advanced-features)
@@ -23,7 +23,7 @@
 
 ## Overview
 
-The Turbo Gateway Application is a unified platform that consolidates all ArDrive Turbo services into a single, powerful interface. Built for the AR.IO Network, it provides seamless access to:
+The ar.io Console is a unified platform that consolidates all ArDrive Turbo services into a single, powerful interface. Built for the AR.IO Network, it provides seamless access to:
 
 - **Credit Management**: Buy, share, and gift Turbo credits with fiat and crypto
 - **File Storage**: Upload files to the permaweb via Arweave with Just-in-Time payments
@@ -40,7 +40,7 @@ The application serves both end-users and developers with an intuitive interface
 
 ### Accessing the Application
 
-The Turbo App is accessible through any modern web browser at the deployment URL. No downloads or installations required.
+The ar.io Console is accessible through any modern web browser at the deployment URL. No downloads or installations required.
 
 ### First-Time Setup
 
@@ -67,25 +67,19 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 ### 🏠 Landing Page & Navigation
 
 **Public Landing Page**
-- Hero section with "How does it work?" explanation
-- Turbo by the Numbers: Real performance metrics (20B+ files, 200+ TiB, ~860 files/sec, 99.9% uptime)
-- Trusted by the Best: Carousel with Forward Research, Drip Haus, Manifold, Meta, RedStone, KYVE, Metaplex, Load Network, Solana Mobile
-- Interactive Feature Explorer: Browse all 9 service features with dropdown/sidebar navigation
-- Build Section: 6 cards organized by function
-  - Getting Started
-  - Paying for Uploads
-  - Host Decentralized Websites
-  - Accessing Data
-  - Advanced Uploading
-  - Run a Gateway
-- Resources Section: 13 cards organized into 3 categories
-  - API Documentation (3 cards): Upload Service API, Payment Service API, Turbo Gateway API
-  - Learn (6 cards): AR.IO Gateways, ArNS, Wayfinder, Credit Sharing, AR.IO Network, ANS-104 Bundles
-  - Source Code (4 cards): Turbo SDK, Upload Services, Payment Service, AR.IO Node
-- The Expanding Turbo Ecosystem: Data Indexer, Fast Lane (with x402 link), Data Feeds
-- ArDrive Section: No-code solution promotion with link to ardrive.net
-- Terminal Quick Start: npm install command with copy functionality
-- Free Tier Callout: Files under 100 KiB completely FREE
+- Hero section with "How does it work?" explanation and Try It Now feature
+- Announcement Banner: Configurable banner for important updates (dismissible, persists in localStorage)
+- Trusted by the Best: Enterprise logos carousel
+- Service Metrics: Real performance metrics (20B+ files, 200+ TiB, ~860 files/sec, 99.9% uptime)
+- How it Works: Step-by-step explanation of the upload process
+- Transparent Pricing: Clear pricing display with private pricing CTA and Book a Demo
+- Features Grid: Key capabilities overview
+- Builder's Journey: Interactive 9-step learning path from first upload to running infrastructure
+  - Each step links to relevant documentation or tools
+  - Visual snake-line connecting all steps
+  - Special styling for start (Learn) and end (Join Community) steps
+- ArDrive Section: No-code solution promotion with link to ardrive.io
+- Final CTA: Book a Demo with Cal.com integration (opens in modal)
 
 **Navigation System**
 - **Waffle Menu**: Grid3x3 icon in header providing access to all services
@@ -199,7 +193,7 @@ All captures include standardized tags:
 6. **Receipt**: Receive transaction ID and Arweave link
 
 **Configuration**
-- Capture service URL configurable in Developer Resources
+- Capture service URL configurable in Settings
 - Separate production/development URLs supported
 - Dynamic configuration via store settings
 
@@ -474,7 +468,7 @@ All captures include standardized tags:
 **Token Gateway Configuration**
 - Configurable RPC endpoints per token type
 - Production and development environment presets
-- Custom configuration support in Developer Tools
+- Custom configuration support in Settings
 - Automatic network detection and switching
 
 ---
@@ -709,25 +703,18 @@ All captures include standardized tags:
 
 ---
 
-## Developer Tools
+## Settings
 
-### 📚 Developer Resources Page
+### 📚 Developer Documentation (External)
 
-**Tab Navigation**
-- Quick Start: Installation and basic examples
-- API Endpoints: Complete API documentation with examples
-- Guides: Curated learning resources
-- Configuration: Environment and endpoint settings
-- On the Horizon: Upcoming features preview
+Developer documentation is available at **docs.ar.io** with comprehensive guides and API references:
 
-**Quick Start Tab**
-- Installation instructions: `npm i @ardrive/turbo-sdk`
-- Basic upload example with copy button
-- Create top-up example with Stripe
-- Upload folder example
-- All code examples with syntax highlighting and copy functionality
+**Getting Started**
+- Installation: `npm i @ardrive/turbo-sdk`
+- Quick start guides with code examples
+- Upload, payment, and deployment tutorials
 
-**API Endpoints Tab**
+**API Documentation**
 - **Upload Service API** (https://upload.ardrive.io/api-docs)
   - POST /tx - Upload signed data item
   - GET /tx/:id/status - Check upload status
@@ -740,15 +727,17 @@ All captures include standardized tags:
   - GET /ar-io/resolver/:name - Resolve ArNS name
   - POST /graphql - GraphQL query interface
 
-**Guides Tab** (Aligned with Homepage Build Section)
-- **Getting Started**: Create your first upload integration (https://docs.ar.io/build/upload/bundling-services)
-- **Paying for Uploads**: Turbo Credits as payment medium (https://docs.ar.io/build/upload/turbo-credits)
-- **Host Decentralized Websites**: Deploy webpage/app to Arweave with ArNS (https://docs.ar.io/build/guides/hosting-decentralized-websites)
-- **Accessing Data**: Resilient decentralized access (https://docs.ar.io/build/access)
-- **Advanced Uploading**: Code-first examples (https://docs.ar.io/build/upload/advanced-uploading-with-turbo)
-- **Run a Gateway**: Join decentralized network (https://docs.ar.io/build/run-a-gateway)
+**Learning Resources** (docs.ar.io)
+- **Getting Started**: Create your first upload integration
+- **Paying for Uploads**: Turbo Credits as payment medium
+- **Host Decentralized Websites**: Deploy webpage/app to Arweave with ArNS
+- **Accessing Data**: Resilient decentralized access
+- **Advanced Uploading**: Code-first examples
+- **Run a Gateway**: Join decentralized network
 
-**Configuration Tab**
+### ⚙️ Settings Page (`/settings`)
+
+**Service Configuration**
 - Environment selection: Production / Development / Custom
 - Endpoint configuration:
   - Payment Service URL
@@ -758,15 +747,11 @@ All captures include standardized tags:
   - AR.IO Process ID
 - Token Gateway Map (collapsible):
   - Configurable RPC URLs per token type
-  - Support for: arweave, ario, ethereum, base-eth, solana, kyve, matic, pol
+  - Support for: arweave, ario, ethereum, base-eth, solana, kyve, pol
 - Apply Changes button (triggers page reload)
 - Reset to Production button
-- Warning for non-production endpoints
-
-**On the Horizon Tab**
-- **Data Indexer**: Register custom on-chain indexes of Arweave data
-- **Fast Lane**: Avoid rate limits with priority access and dedicated bandwidth with x402 (https://www.coinbase.com/developer-platform/products/x402)
-- **Data Feeds**: Subscribe to real-time notifications for new data uploads
+- Warning indicator for non-production endpoints
+- X402-only mode toggle for Base USDC payments
 
 ### 🧮 Pricing Calculators
 
@@ -790,26 +775,18 @@ All captures include standardized tags:
 - Interactive cost modeling
 - Comparison across different service combinations
 
-### 🔧 Gateway Information (`/gateway-info`)
+### 🌐 External Network Tools
 
-**Service Endpoints Display**
-- Payment service URL with copy button
-- Upload service URL with copy button
-- Gateway URL configuration
-- Environment indicator (production/development/custom)
-- AR.IO Process ID display
+**Network Explorer (scan.ar.io)**
+- Search transactions and messages on the ar.io network
+- View block details and transaction history
+- Explore network activity and data
 
-**Configuration Details**
-- Current configuration mode
-- Token map with all RPC URLs
-- Stripe configuration status
-- Network connectivity indicators
-
-**Gateway Metrics** (if available)
-- Service uptime statistics
-- Request processing times
-- Storage capacity information
-- Network health indicators
+**Gateway Dashboard (gateways.ar.io)**
+- View all gateways on the ar.io network
+- Delegate stake to gateway operators
+- Monitor gateway performance and health
+- View epoch observers and network metrics
 
 ---
 
@@ -945,18 +922,22 @@ All captures include standardized tags:
 - Capture Page (`/capture`)
 - Deploy Site (`/deploy`)
 - Share Credits (`/share`)
+- Redeem Gift (`/redeem`)
 - Send Gift (`/gift`)
-- Account (`/account`)
 
 *Tools Section* (Public Access):
 - Search Domains (`/domains`)
-- Developer Resources (`/developer`)
 - Pricing Calculator (`/calculator`)
-- Services Calculator (`/services-calculator`)
 - Check Balance (`/balances`)
-- Redeem Gift (`/redeem`)
-- Service Info (`/gateway-info`)
-- Recent Deployments (`/deployments`)
+- Network Explorer (external: scan.ar.io)
+- Gateway Dashboard (external: gateways.ar.io)
+- Developer Docs (external: docs.ar.io)
+
+*Profile Dropdown* (Logged In Users):
+- My Account (with explorer link)
+- Settings (`/settings`)
+- Export Private Key (Privy users only)
+- Disconnect/Logout
 
 **React Router Integration**
 - Full client-side routing with BrowserRouter
@@ -969,8 +950,9 @@ All captures include standardized tags:
 
 **URL Structure**
 - Landing: `/`
-- Services: `/topup`, `/upload`, `/deploy`, `/share`, `/gift`, `/account`
-- Tools: `/domains`, `/developer`, `/calculator`, `/services-calculator`, `/balances`, `/redeem`, `/gateway-info`, `/deployments`
+- Services: `/topup`, `/upload`, `/capture`, `/deploy`, `/share`, `/gift`, `/redeem`, `/account`
+- Tools: `/domains`, `/calculator`, `/services-calculator`, `/balances`, `/settings`, `/deployments`
+- External: scan.ar.io (Explorer), gateways.ar.io (Gateway Dashboard), docs.ar.io (Developer Docs)
 - Payment callbacks integrated with route parameters
 
 ### 📱 Responsive Design
@@ -1010,58 +992,70 @@ All captures include standardized tags:
 
 ### 🎨 Design System
 
-**Brand Colors**
-- **Turbo Red** (#FE0230) - Primary brand color for:
+**ar.io Brand Colors (Light Mode)**
+- **Primary Purple** (#5427C8) - Primary brand color for:
   - Call-to-action buttons
   - Active states and highlights
-  - Error states and warnings
-  - Brand logo and accents
-- **Turbo Green** (#18A957) - Success states only:
-  - Confirmation messages
-  - Success indicators
-  - Positive feedback
-- **Turbo Purple** (#3142C4 variant) - Informational elements:
-  - Developer resources
-  - Educational content
-  - Secondary highlights
-- **Turbo Yellow** - Domain-related features:
-  - ArNS domain cards
-  - Search results
+  - Links and accents
+  - Brand logo elements
+- **Lavender** (#DFD6F7) - Supporting color for:
+  - Gradients and backgrounds
+  - Footer area
+  - Subtle highlights
+  - Announcement banners
+- **Black** (#23232D) - Foreground color for:
+  - Primary text
+  - Dark UI elements
+  - High contrast buttons
+- **White** (#FFFFFF) - Background color for:
+  - Page backgrounds
+  - Clean surfaces
+- **Card Surface** (#F0F0F0) - Card backgrounds
 
-**Dark Theme (Default)**
-- **Canvas**: #171717 - Main background color
-- **Surface**: #1F1F1F - Elevated surfaces (cards, modals)
-- **Default Border**: rgba(255,255,255,0.1) - Subtle borders
-- **Primary Text** (fg-muted): #ededed - High contrast text
-- **Secondary Text** (link): #A3A3AD - Lower contrast text
+**Light Theme (Default)**
+- **Background**: #FFFFFF - Main page background
+- **Foreground**: #23232D - Primary text color
+- **Card**: #F0F0F0 - Card and elevated surface backgrounds
+- **Primary**: #5427C8 - Brand purple for CTAs and accents
+- **Lavender**: #DFD6F7 - Gradient backgrounds and footer
+- **Border**: Border with 20% opacity for subtle separation
 - **Hover States**: Opacity adjustments (80-90%)
 
 **Component Patterns**
 
-*Service Panel Design* (Consistent across all services):
+*Service Panel Header* (Consistent across all services):
 ```jsx
-// Inline Header with Icon
 <div className="flex items-start gap-3 mb-6">
-  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-    <IconComponent className="w-5 h-5 text-primary" />
+  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card">
+    <Icon className="h-5 w-5 text-foreground" />
   </div>
   <div>
-    <h3 className="text-2xl font-bold text-fg-muted mb-1">[Service Name]</h3>
-    <p className="text-sm text-link">[Service Description]</p>
+    <h3 className="font-heading text-2xl font-extrabold text-foreground mb-1">[Name]</h3>
+    <p className="text-sm text-foreground/80">[Description]</p>
   </div>
-</div>
-
-// Gradient Container
-<div className="bg-gradient-to-br from-primary/5 to-primary/3 rounded-xl border border-default p-6 mb-6">
-  {/* Main service content */}
 </div>
 ```
 
+*Card Component*:
+```jsx
+<div className="rounded-2xl border border-border/20 bg-card p-6 shadow-sm">
+  {/* Card content */}
+</div>
+```
+
+*Primary Button*:
+```jsx
+<button className="inline-flex items-center gap-2 bg-foreground text-white px-5 py-2.5 rounded-full font-semibold hover:opacity-90 transition-opacity">
+  Button Text
+</button>
+```
+
 **Typography**
-- **Font Family**: Plus Jakarta Sans (body), Besley (headings) - Applied throughout entire application
+- **Headings**: Besley (font-heading), weight 800 (extra bold)
+- **Body text**: Plus Jakarta Sans (font-body)
 - **Responsive Scaling**: Base 16px with scale modifiers (text-xs to text-4xl)
 - **Line Heights**: 1.5 for body text, 1.2 for headings
-- **Font Weights**: 400 (normal), 500 (medium), 700 (bold)
+- **Font Weights**: 400 (normal), 500 (medium), 700 (bold), 800 (extra bold for headings)
 - **Copy Pattern**: `<CopyButton textToCopy={value} />` for all copyable content
 
 **Interactive States**
@@ -1352,7 +1346,7 @@ interface DeveloperConfig {
 }
 ```
 
-**Configuration Interface** (Developer Tools → Configuration Tab)
+**Configuration Interface** (Settings → Configuration Tab)
 - Mode selector: Production / Development / Custom
 - Editable fields for all endpoints (Custom mode only)
 - Copy buttons for quick sharing of URLs
@@ -1563,7 +1557,7 @@ interface DeveloperConfig {
 
 ## Conclusion
 
-The Turbo Gateway Application represents a comprehensive solution for interacting with the AR.IO Network and Arweave ecosystem. With its multi-chain wallet support (Arweave, Ethereum, Solana) plus email authentication, intuitive user interface, and powerful feature set including Just-in-Time payments, it serves as the primary gateway for users and developers working with permanent data storage and decentralized naming systems.
+The ar.io Console is the unified platform for interacting with the AR.IO Network and Arweave ecosystem. Built for developers, enterprises, and platforms, it provides seamless access to permanent data storage with multi-chain wallet support (Arweave, Ethereum, Solana) plus email authentication.
 
 ### Key Capabilities
 
@@ -1575,26 +1569,33 @@ The Turbo Gateway Application represents a comprehensive solution for interactin
 - Multi-chain wallet support for flexibility
 
 **For Developers**
-- Complete SDK with code examples and documentation
+- Complete SDK with code examples at docs.ar.io
 - Configurable environments for testing and development
 - API documentation with live endpoints
 - Open-source codebase for contributions and customization
-- Comprehensive developer resources and guides
+- Network tools: Explorer (scan.ar.io) and Gateway Dashboard (gateways.ar.io)
+
+**For Enterprises**
+- Transparent, predictable pricing
+- Private pricing options for high-volume needs
+- Direct access to the ar.io team via Book a Demo
+- Enterprise-ready tools and workflows
 
 **For the Ecosystem**
+- Central hub connecting all ar.io network tools
 - Promotes AR.IO Network adoption
 - Demonstrates best practices for Turbo SDK integration
 - Showcases multi-chain capabilities
-- Educational resource for permanent storage
 - Community-driven development
 
-Whether you're uploading files, managing domains, sharing credits, deploying websites, or developing applications, the Turbo App provides the tools and infrastructure needed to succeed in the decentralized web ecosystem.
+Whether you're uploading files, managing domains, sharing credits, deploying websites, or building on the permanent web, the ar.io Console provides the tools and infrastructure needed to succeed.
 
 ---
 
-*Last Updated: Version 0.7.0 | October 2025*
+*Last Updated: February 2025*
 
 *For the latest features, technical implementation details, and development guidelines, please refer to:*
 - `CLAUDE.md` - Development and architecture guide
 - `README.md` - Project overview and setup instructions
-- GitHub Repository - Latest code and releases
+- [docs.ar.io](https://docs.ar.io) - Official documentation
+- [GitHub Repository](https://github.com/ardriveapp/turbo-app) - Latest code and releases
