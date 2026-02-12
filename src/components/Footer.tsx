@@ -17,7 +17,7 @@ export default function Footer() {
               </span>
               <span className="text-foreground/30">•</span>
               <a
-                href="https://github.com/ar-io/ario-app"
+                href="https://github.com/ar-io/ar-io-console"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-foreground/60 hover:text-foreground transition-colors"
