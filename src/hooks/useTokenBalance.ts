@@ -5,8 +5,73 @@ import { useStore } from '../store/useStore';
 import { SupportedTokenType, X402_CONFIG, ERC20_ABI, ETHEREUM_CONFIG, POLYGON_CONFIG, BASE_ARIO_CONFIG } from '../constants';
 import { getSolanaConnection } from '../utils/solanaConnection';
 import { useAccount, useConfig } from 'wagmi';
-import { getConnectorClient } from 'wagmi/actions';
+import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { useWallets } from '@privy-io/react-auth';
+
+/**
+ * Network parameters for wallet_addEthereumChain
+ * Used when a chain hasn't been added to the user's wallet yet
+ */
+function getNetworkParams(chainId: number): {
+  chainId: string;
+  chainName: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  rpcUrls: string[];
+  blockExplorerUrls: string[];
+} | null {
+  const configs: Record<number, ReturnType<typeof getNetworkParams>> = {
+    // Base Mainnet
+    8453: {
+      chainId: '0x2105',
+      chainName: 'Base',
+      nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://mainnet.base.org'],
+      blockExplorerUrls: ['https://basescan.org'],
+    },
+    // Base Sepolia
+    84532: {
+      chainId: '0x14a34',
+      chainName: 'Base Sepolia',
+      nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://sepolia.base.org'],
+      blockExplorerUrls: ['https://sepolia.basescan.org'],
+    },
+    // Ethereum Mainnet (usually pre-configured, but included for completeness)
+    1: {
+      chainId: '0x1',
+      chainName: 'Ethereum Mainnet',
+      nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://eth.drpc.org'],
+      blockExplorerUrls: ['https://etherscan.io'],
+    },
+    // Sepolia Testnet
+    11155111: {
+      chainId: '0xaa36a7',
+      chainName: 'Sepolia',
+      nativeCurrency: { name: 'Ethereum', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://rpc.sepolia.org'],
+      blockExplorerUrls: ['https://sepolia.etherscan.io'],
+    },
+    // Polygon Mainnet
+    137: {
+      chainId: '0x89',
+      chainName: 'Polygon',
+      nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+      rpcUrls: ['https://polygon-rpc.com'],
+      blockExplorerUrls: ['https://polygonscan.com'],
+    },
+    // Polygon Amoy Testnet
+    80002: {
+      chainId: '0x13882',
+      chainName: 'Polygon Amoy',
+      nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+      rpcUrls: ['https://rpc-amoy.polygon.technology'],
+      blockExplorerUrls: ['https://amoy.polygonscan.com'],
+    },
+  };
+
+  return configs[chainId] || null;
+}
 
 /**
  * Result of token balance fetch
@@ -98,6 +163,109 @@ export function useTokenBalance(
 
     throw new Error('No Ethereum wallet found. Please connect a wallet first.');
   }, [privyWallets, ethAccount.isConnected, ethAccount.connector, wagmiConfig]);
+
+  /**
+   * Ensure the wallet is on the correct network, switching automatically if needed.
+   * This provides a seamless UX for Privy users who may be on a different default network.
+   *
+   * @param expectedChainId - The chain ID required for this token
+   * @param networkName - Human-readable network name for error messages
+   * @returns Promise that resolves when on correct network
+   * @throws Error if switch fails or user rejects
+   */
+  const ensureCorrectNetwork = useCallback(async (
+    expectedChainId: number,
+    networkName: string
+  ): Promise<void> => {
+    // Check for Privy wallet first (email login users)
+    const privyWallet = privyWallets.find((w) => w.walletClientType === 'privy');
+
+    if (privyWallet) {
+      // For Privy: Check current chain and switch if needed
+      const currentChainId = privyWallet.chainId;
+      const currentChainIdNum = currentChainId?.startsWith('eip155:')
+        ? Number(currentChainId.split(':')[1])
+        : Number(currentChainId);
+
+      if (currentChainIdNum !== expectedChainId) {
+        try {
+          console.log(`[useTokenBalance] Switching Privy wallet from chain ${currentChainIdNum} to ${expectedChainId} (${networkName})`);
+          await privyWallet.switchChain(expectedChainId);
+          // Wait for switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          console.log(`[useTokenBalance] Successfully switched to ${networkName}`);
+        } catch (err) {
+          console.error(`[useTokenBalance] Failed to switch Privy wallet to ${networkName}:`, err);
+          throw new Error(`Failed to switch to ${networkName}. Please switch networks manually in your wallet settings.`);
+        }
+      }
+      return;
+    }
+
+    // For wagmi-connected wallets (RainbowKit users)
+    if (ethAccount.isConnected && ethAccount.connector) {
+      const currentChainId = ethAccount.chainId;
+
+      if (currentChainId !== expectedChainId) {
+        try {
+          console.log(`[useTokenBalance] Switching wagmi wallet from chain ${currentChainId} to ${expectedChainId} (${networkName})`);
+          await switchChain(wagmiConfig, { chainId: expectedChainId });
+          // Wait for switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log(`[useTokenBalance] Successfully switched to ${networkName}`);
+        } catch (err) {
+          console.error(`[useTokenBalance] Failed to switch wagmi wallet to ${networkName}:`, err);
+          throw new Error(`Please switch to ${networkName} in your wallet to view balance.`);
+        }
+      }
+      return;
+    }
+
+    // Fallback for direct window.ethereum injection
+    if (window.ethereum) {
+      try {
+        const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+        const currentChainId = parseInt(chainIdHex, 16);
+
+        if (currentChainId !== expectedChainId) {
+          console.log(`[useTokenBalance] Switching window.ethereum from chain ${currentChainId} to ${expectedChainId} (${networkName})`);
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
+            });
+          } catch (switchError: any) {
+            // Error code 4902 means the chain hasn't been added to the wallet
+            if (switchError?.code === 4902) {
+              console.log(`[useTokenBalance] Chain ${expectedChainId} not found, adding ${networkName}...`);
+              const networkParams = getNetworkParams(expectedChainId);
+              if (networkParams) {
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [networkParams],
+                });
+                // Retry switch after adding
+                await window.ethereum.request({
+                  method: 'wallet_switchEthereumChain',
+                  params: [{ chainId: `0x${expectedChainId.toString(16)}` }],
+                });
+              } else {
+                throw switchError; // Unknown chain, rethrow
+              }
+            } else {
+              throw switchError; // Other error, rethrow
+            }
+          }
+          // Wait for switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log(`[useTokenBalance] Successfully switched to ${networkName}`);
+        }
+      } catch (err) {
+        console.error(`[useTokenBalance] Failed to switch window.ethereum to ${networkName}:`, err);
+        throw new Error(`Please switch to ${networkName} in your wallet to view balance.`);
+      }
+    }
+  }, [privyWallets, ethAccount.isConnected, ethAccount.connector, ethAccount.chainId, wagmiConfig]);
 
   /**
    * Fetch ARIO balance using AR.IO SDK
@@ -215,24 +383,21 @@ export function useTokenBalance(
 
   /**
    * Fetch BASE-ETH balance using ethers.js
+   * Automatically switches network if needed
    */
   const fetchBaseEthBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? X402_CONFIG.chainIds.development
         : X402_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       const balanceInWei = await provider.getBalance(ethAddress);
       const balanceInEth = Number(ethers.formatEther(balanceInWei));
@@ -246,28 +411,25 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-ETH balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch BASE-USDC balance using ethers.js and ERC-20 contract
+   * Automatically switches network if needed
    */
   const fetchBaseUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? X402_CONFIG.chainIds.development
         : X402_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Get USDC contract address for current network
       const usdcAddress = configMode === 'development'
@@ -290,29 +452,26 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-USDC balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch BASE-ARIO balance using ethers.js and ERC-20 contract
    * ARIO tokens bridged to Base L2 network
+   * Automatically switches network if needed
    */
   const fetchBaseArioBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network (same chain IDs as base-usdc/base-eth)
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? BASE_ARIO_CONFIG.chainIds.development
         : BASE_ARIO_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Base Sepolia' : 'Base';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Get Base ARIO contract address for current network
       const arioAddress = configMode === 'development'
@@ -335,28 +494,25 @@ export function useTokenBalance(
       console.error('Failed to fetch BASE-ARIO balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch Ethereum L1 ETH balance using ethers.js
+   * Automatically switches network if needed
    */
   const fetchEthereumBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? ETHEREUM_CONFIG.chainIds.development
         : ETHEREUM_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Sepolia' : 'Ethereum Mainnet';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Sepolia' : 'Ethereum Mainnet';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       const balanceInWei = await provider.getBalance(ethAddress);
       const balanceInEth = Number(ethers.formatEther(balanceInWei));
@@ -370,28 +526,25 @@ export function useTokenBalance(
       console.error('Failed to fetch Ethereum balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch Polygon POL balance using ethers.js
+   * Automatically switches network if needed
    */
   const fetchPolBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? POLYGON_CONFIG.chainIds.development
         : POLYGON_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Polygon Amoy' : 'Polygon';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Polygon Amoy' : 'Polygon';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       const balanceInWei = await provider.getBalance(ethAddress);
       const balanceInPol = Number(ethers.formatEther(balanceInWei));
@@ -405,28 +558,25 @@ export function useTokenBalance(
       console.error('Failed to fetch POL balance:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch USDC balance on Ethereum L1 using ethers.js and ERC-20 contract
+   * Automatically switches network if needed
    */
   const fetchUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? ETHEREUM_CONFIG.chainIds.development
         : ETHEREUM_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Sepolia' : 'Ethereum Mainnet';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Sepolia' : 'Ethereum Mainnet';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Get USDC contract address for current network
       const usdcAddress = configMode === 'development'
@@ -449,28 +599,25 @@ export function useTokenBalance(
       console.error('Failed to fetch USDC balance on Ethereum:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Fetch USDC balance on Polygon using ethers.js and ERC-20 contract
+   * Automatically switches network if needed
    */
   const fetchPolygonUsdcBalance = useCallback(async (ethAddress: string): Promise<{ readable: number; smallest: number }> => {
     try {
-      const ethProvider = await getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethProvider);
-
-      // Check current network
-      const network = await provider.getNetwork();
-      const currentChainId = Number(network.chainId);
       const expectedChainId = configMode === 'development'
         ? POLYGON_CONFIG.chainIds.development
         : POLYGON_CONFIG.chainIds.production;
+      const networkName = configMode === 'development' ? 'Polygon Amoy' : 'Polygon';
 
-      // If wrong network, return 0 balance with clear error
-      if (currentChainId !== expectedChainId) {
-        const networkName = configMode === 'development' ? 'Polygon Amoy' : 'Polygon';
-        throw new Error(`Please switch to ${networkName} network to view balance`);
-      }
+      // Automatically switch to correct network if needed
+      await ensureCorrectNetwork(expectedChainId, networkName);
+
+      // Now get provider (after potential network switch)
+      const ethProvider = await getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethProvider);
 
       // Get USDC contract address for current network
       const usdcAddress = configMode === 'development'
@@ -493,7 +640,7 @@ export function useTokenBalance(
       console.error('Failed to fetch USDC balance on Polygon:', err);
       throw err; // Re-throw to preserve error message
     }
-  }, [configMode, getEthereumProvider]);
+  }, [configMode, getEthereumProvider, ensureCorrectNetwork]);
 
   /**
    * Main fetch function that routes to appropriate token-specific fetcher

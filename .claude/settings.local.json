@@ -53,7 +53,17 @@
       "Bash(npm pack:*)",
       "Bash(npm info:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(npm run build:prod:*)"
+      "Bash(npm run build:prod:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:docs.metamask.io)",
+      "Bash(findstr:*)",
+      "Bash(npx grep:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(dir:*)",
+      "Bash(git -C \"C:/Source/turbo-gateway\" show main:app/src/styles/globals.css)",
+      "Bash(git -C \"C:/Source/turbo-gateway\" show origin/main:app/src/styles/globals.css)",
+      "Bash(git -C \"C:/Source/turbo-gateway\" branch -a)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

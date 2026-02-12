@@ -13,21 +13,21 @@ interface ReceiptModalProps {
 
 const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModalProps) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'details'>('summary');
-  const { 
-    checkUploadStatus, 
-    statusChecking, 
+  const {
+    checkUploadStatus,
+    statusChecking,
     uploadStatuses,
     formatFileSize,
     formatWinc,
     getStatusColor,
     getStatusIcon,
-    getStatusDescription 
+    getStatusDescription
   } = useUploadStatus();
-  
+
   // Current status (either from initial prop or fetched)
   const currentStatus = uploadStatuses[uploadId] || initialStatus;
   const isLoadingStatus = statusChecking[uploadId];
-  
+
   // Auto-fetch status when modal opens
   useEffect(() => {
     if (!currentStatus && uploadId) {
@@ -70,7 +70,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `turbo-receipt-${uploadId.substring(0, 8)}.json`;
+    a.download = `receipt-${uploadId.substring(0, 8)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -79,34 +79,34 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
 
   return (
     <BaseModal onClose={onClose} showCloseButton={false}>
-      <div className="w-[90vw] sm:w-[672px] h-[85vh] sm:h-[75vh] flex flex-col text-fg-muted max-w-[90vw]">
+      <div className="w-[90vw] sm:w-[672px] h-[85vh] sm:h-[75vh] flex flex-col text-foreground max-w-[90vw]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-default/30">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border/20">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-turbo-red" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-lg sm:text-xl font-bold">Upload Receipt</h3>
-              <p className="text-xs sm:text-sm text-link">Transaction status and details</p>
+              <p className="text-xs sm:text-sm text-foreground/80">Transaction status and details</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-surface rounded transition-colors flex-shrink-0"
+            className="p-2 hover:bg-card rounded transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Simplified Tabs */}
-        <div className="flex border-b border-default/30">
+        <div className="flex border-b border-border/20">
           <button
             onClick={() => setActiveTab('summary')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
               activeTab === 'summary'
-                ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
-                : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
+                ? 'text-primary border-primary bg-primary/5'
+                : 'text-foreground/80 hover:text-foreground hover:bg-card/50 border-transparent'
             }`}
           >
             <FileText className="w-4 h-4 inline mr-2" />
@@ -116,8 +116,8 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
             onClick={() => setActiveTab('details')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
               activeTab === 'details'
-                ? 'text-turbo-red border-turbo-red bg-turbo-red/5'
-                : 'text-link hover:text-fg-muted hover:bg-surface/50 border-transparent'
+                ? 'text-primary border-primary bg-primary/5'
+                : 'text-foreground/80 hover:text-foreground hover:bg-card/50 border-transparent'
             }`}
           >
             <Code className="w-4 h-4 inline mr-2" />
@@ -144,7 +144,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                          currentStatus.status === 'FAILED' ? 'Upload Failed' :
                          'Checking Status'}
                       </div>
-                      <p className="text-sm text-link">
+                      <p className="text-sm text-foreground/80">
                         {getStatusDescription(currentStatus.status, currentStatus.info)}
                       </p>
                     </div>
@@ -152,37 +152,37 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   <button
                     onClick={() => checkUploadStatus(uploadId, true)}
                     disabled={isLoadingStatus}
-                    className="p-2 hover:bg-surface rounded transition-colors disabled:opacity-50"
+                    className="p-2 hover:bg-card rounded transition-colors disabled:opacity-50"
                     title="Refresh status"
                   >
-                    <RefreshCw className={`w-4 h-4 text-link ${isLoadingStatus ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 text-foreground/80 ${isLoadingStatus ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
               )}
 
               {/* File Information */}
               <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-fg-muted flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-turbo-red" />
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
                   File Information
                 </h4>
-                
-                <div className="bg-surface rounded-lg p-4 space-y-3">
+
+                <div className="bg-card rounded-2xl p-4 space-y-3">
                   {/* File Size & Type */}
                   <div className="grid grid-cols-2 gap-4">
                     {currentStatus?.rawContentLength && (
                       <div>
-                        <div className="text-xs text-link mb-1">Size</div>
-                        <div className="text-sm text-fg-muted">
+                        <div className="text-xs text-foreground/80 mb-1">Size</div>
+                        <div className="text-sm text-foreground">
                           {formatFileSize(currentStatus.rawContentLength)}
                         </div>
                       </div>
                     )}
-                    
+
                     {currentStatus?.payloadContentType && (
                       <div>
-                        <div className="text-xs text-link mb-1">Type</div>
-                        <div className="text-sm text-fg-muted">
+                        <div className="text-xs text-foreground/80 mb-1">Type</div>
+                        <div className="text-sm text-foreground">
                           {currentStatus.payloadContentType.split('/').pop()?.toUpperCase() || 'File'}
                         </div>
                       </div>
@@ -192,8 +192,8 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   {/* Upload Cost */}
                   {(currentStatus?.winc || receipt?.winc) && (
                     <div>
-                      <div className="text-xs text-link mb-1">Upload Cost</div>
-                      <div className="text-sm font-medium text-fg-muted">
+                      <div className="text-xs text-foreground/80 mb-1">Upload Cost</div>
+                      <div className="text-sm font-medium text-foreground">
                         {formatWinc(currentStatus?.winc || receipt?.winc)}
                       </div>
                     </div>
@@ -202,8 +202,8 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   {/* Upload Time */}
                   {receipt?.timestamp && (
                     <div>
-                      <div className="text-xs text-link mb-1">Uploaded</div>
-                      <div className="text-sm text-fg-muted">
+                      <div className="text-xs text-foreground/80 mb-1">Uploaded</div>
+                      <div className="text-sm text-foreground">
                         {formatTimestamp(receipt.timestamp)}
                       </div>
                     </div>
@@ -213,33 +213,33 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
 
               {/* Transaction IDs - Collapsible for cleaner look */}
               <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-fg-muted flex items-center gap-2">
-                  <Archive className="w-4 h-4 text-turbo-red" />
+                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Archive className="w-4 h-4 text-primary" />
                   Transaction Details
                 </h4>
-                
+
                 <div className="space-y-3">
                   {/* Data Item ID */}
-                  <div className="bg-surface rounded-lg p-3">
+                  <div className="bg-card rounded-2xl p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-link">Data Item ID</span>
+                      <span className="text-xs text-foreground/80">Data Item ID</span>
                       <div className="flex items-center gap-1">
                         <CopyButton textToCopy={uploadId} />
                       </div>
                     </div>
-                    <div className="font-mono text-xs text-fg-muted break-all">
+                    <div className="font-mono text-xs text-foreground break-all">
                       {uploadId}
                     </div>
                   </div>
 
                   {/* Parent Bundle ID */}
                   {currentStatus?.bundleId && (
-                    <div className="bg-surface rounded-lg p-3">
+                    <div className="bg-card rounded-2xl p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-link">Parent Bundle ID</span>
+                        <span className="text-xs text-foreground/80">Parent Bundle ID</span>
                         <CopyButton textToCopy={currentStatus.bundleId} />
                       </div>
-                      <div className="font-mono text-xs text-fg-muted break-all">
+                      <div className="font-mono text-xs text-foreground break-all">
                         {currentStatus.bundleId}
                       </div>
                     </div>
@@ -251,7 +251,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
               <div className="flex gap-2">
                 <button
                   onClick={downloadReceipt}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-default rounded-lg text-sm text-link hover:text-fg-muted hover:border-turbo-red/50 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-card border border-border/20 rounded-2xl text-sm text-foreground/80 hover:text-foreground hover:border-primary/50 transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   Download Receipt
@@ -260,7 +260,7 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
                   href={`https://arweave.net/${uploadId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg text-sm hover:bg-turbo-red/90 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-full text-sm hover:bg-primary/90 transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                   View on Arweave
@@ -273,11 +273,11 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
               {/* Receipt JSON */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-fg-muted">Upload Receipt</h4>
+                  <h4 className="text-sm font-semibold text-foreground">Upload Receipt</h4>
                   <CopyButton textToCopy={JSON.stringify(receipt, null, 2)} />
                 </div>
-                <div className="bg-canvas rounded-lg p-3 border border-default">
-                  <pre className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                <div className="bg-card rounded-2xl p-3 border border-border/20">
+                  <pre className="font-mono text-[10px] sm:text-xs text-foreground overflow-auto max-h-48 whitespace-pre-wrap break-words">
                     {JSON.stringify(receipt, null, 2)}
                   </pre>
                 </div>
@@ -287,11 +287,11 @@ const ReceiptModal = ({ onClose, receipt, uploadId, initialStatus }: ReceiptModa
               {currentStatus && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-fg-muted">Status Response</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Status Response</h4>
                     <CopyButton textToCopy={JSON.stringify(currentStatus, null, 2)} />
                   </div>
-                  <div className="bg-canvas rounded-lg p-3 border border-default">
-                    <pre className="font-mono text-[10px] sm:text-xs text-link overflow-auto max-h-48 whitespace-pre-wrap break-words">
+                  <div className="bg-card rounded-2xl p-3 border border-border/20">
+                    <pre className="font-mono text-[10px] sm:text-xs text-foreground overflow-auto max-h-48 whitespace-pre-wrap break-words">
                       {JSON.stringify(currentStatus, null, 2)}
                     </pre>
                   </div>

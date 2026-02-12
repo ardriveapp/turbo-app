@@ -111,6 +111,7 @@ export interface PaymentInformation {
 }
 
 export type ConfigMode = 'production' | 'development' | 'custom';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface DeveloperConfig {
   paymentServiceUrl: string;
@@ -127,7 +128,7 @@ interface StoreState {
   address: string | null;
   walletType: 'arweave' | 'ethereum' | 'solana' | null;
   creditBalance: number;
-  
+
   // ArNS state
   arnsNamesCache: Record<string, { name: string; logo?: string; timestamp: number }>;
   ownedArnsCache: Record<string, { names: Array<{name: string; processId: string; currentTarget?: string; undernames?: string[]; ttl?: number; undernameTTLs?: Record<string, number>}>; timestamp: number }>;
@@ -176,6 +177,9 @@ interface StoreState {
 
   // UI state
   showResumeTransactionPanel: boolean;
+
+  // Theme state
+  theme: ThemeMode;
   
   // Developer configuration state
   configMode: ConfigMode;
@@ -244,6 +248,9 @@ interface StoreState {
   setShowResumeTransactionPanel: (show: boolean) => void;
   clearAllPaymentState: () => void;
 
+  // Theme actions
+  setTheme: (theme: ThemeMode) => void;
+
   // Just-in-time payment actions
   setJitPaymentEnabled: (enabled: boolean) => void;
   setJitMaxTokenAmount: (token: SupportedTokenType, amount: number) => void;
@@ -280,12 +287,16 @@ export const useStore = create<StoreState>()(
       address: null,
       walletType: null,
       creditBalance: 0,
+
       arnsNamesCache: {},
       ownedArnsCache: {},
       uploadHistory: [],
       deployHistory: [],
       uploadStatusCache: {},
       
+      // Theme state
+      theme: 'system', // Default to system preference
+
       // Developer configuration state
       configMode: 'production',
       customConfig: PRESET_CONFIGS.production,
@@ -443,6 +454,9 @@ export const useStore = create<StoreState>()(
         cryptoTopupResponse: undefined,
         showResumeTransactionPanel: false,
       }),
+
+      // Theme action
+      setTheme: (theme) => set({ theme }),
 
       // Just-in-time payment actions
       setJitPaymentEnabled: (enabled) => set({ jitPaymentEnabled: enabled }),
@@ -603,6 +617,7 @@ export const useStore = create<StoreState>()(
         uploadHistory: state.uploadHistory,
         deployHistory: state.deployHistory,
         uploadStatusCache: state.uploadStatusCache,
+        theme: state.theme,
         configMode: state.configMode,
         customConfig: state.customConfig,
         x402OnlyMode: state.x402OnlyMode,

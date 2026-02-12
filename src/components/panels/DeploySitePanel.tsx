@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useWincForOneGiB } from '../../hooks/useWincForOneGiB';
 import { useFolderUpload } from '../../hooks/useFolderUpload';
 import { useFreeUploadLimit, isFileFree } from '../../hooks/useFreeUploadLimit';
@@ -116,10 +116,10 @@ const AppDetailsFields = React.memo(function AppDetailsFields({
   const currentApp = localName ? deployedApps[localName] : null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 mb-3 border-b border-default/20">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 mb-3 border-b border-border/20">
       {/* App Name Field */}
       <div className="relative">
-        <label className="block text-xs text-link mb-1">App Name</label>
+        <label className="block text-xs text-foreground/80 mb-1">App Name</label>
         <input
           type="text"
           value={localName}
@@ -131,22 +131,22 @@ const AppDetailsFields = React.memo(function AppDetailsFields({
           }}
           placeholder="My Awesome App"
           maxLength={100}
-          className="w-full px-3 py-2 bg-canvas border border-default rounded-lg text-fg-muted text-sm placeholder:text-link/50 focus:outline-none focus:border-turbo-red/50 transition-colors"
+          className="w-full px-3 py-2 bg-card border border-border/20 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
         />
         {/* Suggestions Dropdown */}
         {showSuggestions && filteredSuggestions.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-surface border border-default rounded-lg shadow-lg overflow-hidden">
-            <div className="px-3 py-1.5 text-xs text-link border-b border-default/30">Recent Apps</div>
+          <div className="absolute z-10 w-full mt-1 bg-card border border-border/20 rounded-lg shadow-lg overflow-hidden">
+            <div className="px-3 py-1.5 text-xs text-foreground/80 border-b border-border/10">Recent Apps</div>
             {filteredSuggestions.map((name) => {
               const app = deployedApps[name];
               return (
                 <button
                   key={name}
                   onClick={() => handleSelect(name)}
-                  className="w-full px-3 py-2 text-left text-sm text-fg-muted hover:bg-canvas transition-colors flex items-center justify-between"
+                  className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-card transition-colors flex items-center justify-between"
                 >
                   <span>{name}</span>
-                  {app && <span className="text-xs text-link">v{app.appVersion}</span>}
+                  {app && <span className="text-xs text-foreground/80">v{app.appVersion}</span>}
                 </button>
               );
             })}
@@ -155,7 +155,7 @@ const AppDetailsFields = React.memo(function AppDetailsFields({
       </div>
       {/* Version Field */}
       <div>
-        <label className="block text-xs text-link mb-1">Version</label>
+        <label className="block text-xs text-foreground/80 mb-1">Version</label>
         <input
           type="text"
           value={localVersion}
@@ -163,10 +163,10 @@ const AppDetailsFields = React.memo(function AppDetailsFields({
           onBlur={() => onAppVersionChange(localVersion)} // Sync to parent on blur
           placeholder="1.0.0"
           maxLength={50}
-          className="w-full px-3 py-2 bg-canvas border border-default rounded-lg text-fg-muted text-sm placeholder:text-link/50 focus:outline-none focus:border-turbo-red/50 transition-colors"
+          className="w-full px-3 py-2 bg-card border border-border/20 rounded-lg text-foreground text-sm placeholder:text-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
         />
         {currentApp && localVersion !== currentApp.appVersion && (
-          <p className="mt-1 text-xs text-link">Last: v{currentApp.appVersion}</p>
+          <p className="mt-1 text-xs text-foreground/80">Last: v{currentApp.appVersion}</p>
         )}
       </div>
     </div>
@@ -324,20 +324,20 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
   return (
     <div className="mb-4">
-      <div className="bg-surface rounded-lg border border-default p-4">
+      <div className="bg-card rounded-lg border border-border/20 p-4">
         <div className="space-y-2.5">
           {/* Cost */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Cost:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Cost:</span>
+            <span className="text-sm text-foreground font-medium">
               {estimatedCost ? (
                 estimatedCost.tokenAmountReadable === 0 ? (
-                  <span className="text-turbo-green font-medium">FREE</span>
+                  <span className="text-success font-medium">FREE</span>
                 ) : (
                   <>
                     ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
                     {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
-                      <span className="text-xs text-link ml-2">
+                      <span className="text-xs text-foreground/80 ml-2">
                         (≈ ${estimatedCost.estimatedUSD < 0.01
                           ? estimatedCost.estimatedUSD.toFixed(4)
                           : estimatedCost.estimatedUSD.toFixed(2)})
@@ -353,15 +353,15 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
           {/* Current Balance */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Current Balance:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Current Balance:</span>
+            <span className="text-sm text-foreground font-medium">
               {balanceLoading ? (
                 <span className="flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Checking...
                 </span>
               ) : balanceError ? (
-                <span className="text-amber-400">Unable to fetch</span>
+                <span className="text-warning">Unable to fetch</span>
               ) : (
                 `${formatTokenAmount(tokenBalance, tokenType)} ${tokenLabel}`
               )}
@@ -370,9 +370,9 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
           {/* After Deployment */}
           {estimatedCost && !balanceLoading && !balanceError && (
-            <div className="flex justify-between items-center pt-2 border-t border-default/30">
-              <span className="text-xs text-link">After Deployment:</span>
-              <span className="text-sm text-fg-muted font-medium">
+            <div className="flex justify-between items-center pt-2 border-t border-border/10">
+              <span className="text-xs text-foreground/80">After Deployment:</span>
+              <span className="text-sm text-foreground font-medium">
                 {formatTokenAmount(afterDeployment, tokenType)} {tokenLabel}
               </span>
             </div>
@@ -380,11 +380,11 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
           {/* Network Error Warning */}
           {isNetworkError && (
-            <div className="pt-3 mt-3 border-t border-default/30">
-              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="pt-3 mt-3 border-t border-border/10">
+              <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-lg border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-amber-400 font-medium mb-1">
+                  <div className="text-xs text-warning font-medium mb-1">
                     {balanceError}
                   </div>
                 </div>
@@ -395,10 +395,10 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
         {/* Advanced Settings - hidden for base-usdc since x402 pricing is authoritative */}
         {estimatedCost && tokenType !== 'base-usdc' && (
-          <div className="mt-4 pt-4 border-t border-default/30">
+          <div className="mt-4 pt-4 border-t border-border/10">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+              className="text-xs text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1"
             >
               {showAdvanced ? (
                 <ChevronUp className="w-3 h-3" />
@@ -410,7 +410,7 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
 
             {showAdvanced && (
               <div className="mt-3">
-                <label className="text-xs text-link block mb-2">
+                <label className="text-xs text-foreground/80 block mb-2">
                   Safety Buffer (0-20%):
                 </label>
                 <div className="flex items-center gap-2">
@@ -426,9 +426,9 @@ const CryptoPaymentDetails = React.memo(function CryptoPaymentDetails({
                         setBufferPercentage(value);
                       }
                     }}
-                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-canvas text-fg-muted focus:outline-none focus:border-fg-muted"
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-border/20 bg-card text-foreground focus:outline-none focus:border-foreground"
                   />
-                  <span className="text-xs text-link">%</span>
+                  <span className="text-xs text-foreground/80">%</span>
                 </div>
               </div>
             )}
@@ -552,12 +552,12 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
     <BaseModal onClose={onClose}>
       <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5 text-turbo-red" />
+          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Zap className="w-5 h-5 text-primary" />
           </div>
           <div className="text-left">
-            <h3 className="text-lg font-bold text-fg-muted">Ready to Deploy</h3>
-            <p className="text-xs text-link">Confirm your deployment details</p>
+            <h3 className="text-lg font-bold text-foreground">Ready to Deploy</h3>
+            <p className="text-xs text-foreground/80">Confirm your deployment details</p>
           </div>
         </div>
 
@@ -566,14 +566,14 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
 
         {/* Deployment Summary */}
         <div className="mb-4">
-          <div className="bg-surface rounded-lg p-3">
+          <div className="bg-card rounded-lg p-3">
             <div className="space-y-2">
               {/* App Name/Version at top if provided */}
               {appName && (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-link">App:</span>
-                  <span className="text-xs text-fg-muted font-medium">
-                    {appName}{appVersion && <span className="text-link font-normal ml-1">v{appVersion}</span>}
+                  <span className="text-xs text-foreground/80">App:</span>
+                  <span className="text-xs text-foreground font-medium">
+                    {appName}{appVersion && <span className="text-foreground/80 font-normal ml-1">v{appVersion}</span>}
                   </span>
                 </div>
               )}
@@ -581,20 +581,20 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               {/* ArNS Domain */}
               {arnsEnabled && arnsName && (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-link">Domain:</span>
-                  <span className="text-xs text-fg-muted">
+                  <span className="text-xs text-foreground/80">Domain:</span>
+                  <span className="text-xs text-foreground">
                     {undername ? undername + '_' : ''}{arnsName}.ar.io
                   </span>
                 </div>
               )}
 
               <div className="flex justify-between items-center">
-                <span className="text-xs text-link">Folder:</span>
-                <span className="text-xs text-fg-muted">{folderName}</span>
+                <span className="text-xs text-foreground/80">Folder:</span>
+                <span className="text-xs text-foreground">{folderName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-link">Files:</span>
-                <span className="text-xs text-fg-muted">
+                <span className="text-xs text-foreground/80">Files:</span>
+                <span className="text-xs text-foreground">
                   {fileCount} file{fileCount !== 1 ? 's' : ''}
                   {(() => {
                     const freeFilesCount = Array.from(files).filter(file => isFileFree(file.size, freeUploadLimitBytes)).length;
@@ -606,7 +606,7 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                       parts.push(<span key="free">{freeFilesCount} free</span>);
                     }
                     return parts.length > 0 ? (
-                      <span className="text-turbo-green"> ({parts.reduce<React.ReactNode[]>((prev, curr, i) => i === 0 ? [curr] : [...prev, ', ', curr], [])})</span>
+                      <span className="text-success"> ({parts.reduce<React.ReactNode[]>((prev, curr, i) => i === 0 ? [curr] : [...prev, ', ', curr], [])})</span>
                     ) : null;
                   })()}
                 </span>
@@ -617,22 +617,22 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                 <>
                   {indexFile && (
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-link">Homepage:</span>
-                      <span className="text-xs text-fg-muted">{indexFile}</span>
+                      <span className="text-xs text-foreground/80">Homepage:</span>
+                      <span className="text-xs text-foreground">{indexFile}</span>
                     </div>
                   )}
                   {fallbackFile && (
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-link">Error page:</span>
-                      <span className="text-xs text-fg-muted">{fallbackFile}</span>
+                      <span className="text-xs text-foreground/80">Error page:</span>
+                      <span className="text-xs text-foreground">{fallbackFile}</span>
                     </div>
                   )}
                 </>
               )}
 
               <div className="flex justify-between items-center">
-                <span className="text-xs text-link">Total Size:</span>
-                <span className="text-xs text-fg-muted">
+                <span className="text-xs text-foreground/80">Total Size:</span>
+                <span className="text-xs text-foreground">
                   {(totalSize / 1024 / 1024).toFixed(2)} MB
                   {(() => {
                     // Savings = totalSize - billableSize (what we WON'T pay for)
@@ -641,7 +641,7 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                     if (savings > 0) {
                       const savingsMB = savings / 1024 / 1024;
                       return (
-                        <span className="text-turbo-green">
+                        <span className="text-success">
                           {' '}(saving {savingsMB < 1 ? `${(savings / 1024).toFixed(1)}KB` : `${savingsMB.toFixed(1)}MB`})
                         </span>
                       );
@@ -661,14 +661,14 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               {/* Payment Method Tabs - Only show for wallets that support JIT, non-free deployments, payment service available, and not x402-only mode */}
               {canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && !x402OnlyMode && (
                 <div className="mb-4">
-                  <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
+                  <div className="inline-flex bg-card rounded-lg p-1 border border-border/20 w-full">
                     <button
                       type="button"
                       onClick={handleCreditsTabClick}
                       className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                         paymentTab === 'credits'
-                          ? 'bg-fg-muted text-black'
-                          : 'text-link hover:text-fg-muted'
+                          ? 'bg-foreground text-card'
+                          : 'text-foreground/80 hover:text-foreground'
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
@@ -679,8 +679,8 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                       onClick={handleCryptoTabClick}
                       className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                         paymentTab === 'crypto'
-                          ? 'bg-fg-muted text-black'
-                          : 'text-link hover:text-fg-muted'
+                          ? 'bg-foreground text-card'
+                          : 'text-foreground/80 hover:text-foreground'
                       }`}
                     >
                       <Wallet className="w-4 h-4" />
@@ -693,13 +693,13 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
               {paymentTab === 'credits' && canUseJit && !isFreeDeployment && isPaymentServiceAvailable() && !x402OnlyMode && (
                 <div className="mb-4">
-                  <div className="bg-surface rounded-lg border border-default p-4">
+                  <div className="bg-card rounded-lg border border-border/20 p-4">
                     <div className="space-y-2.5">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-link">Cost:</span>
-                        <span className="text-sm text-fg-muted font-medium">
+                        <span className="text-xs text-foreground/80">Cost:</span>
+                        <span className="text-sm text-foreground font-medium">
                           {totalCost === 0 ? (
-                            <span className="text-turbo-green font-medium">FREE</span>
+                            <span className="text-success font-medium">FREE</span>
                           ) : typeof totalCost === 'number' ? (
                             <>{totalCost.toFixed(6)} Credits</>
                           ) : (
@@ -712,15 +712,15 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                       {!isFreeDeployment && (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-link">Current Balance:</span>
-                            <span className="text-sm text-fg-muted font-medium">
+                            <span className="text-xs text-foreground/80">Current Balance:</span>
+                            <span className="text-sm text-foreground font-medium">
                               {currentBalance.toFixed(6)} Credits
                             </span>
                           </div>
                           {typeof totalCost === 'number' && (
-                            <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                              <span className="text-xs text-link">After Deployment:</span>
-                              <span className="text-sm text-fg-muted font-medium">
+                            <div className="flex justify-between items-center pt-2 border-t border-border/10">
+                              <span className="text-xs text-foreground/80">After Deployment:</span>
+                              <span className="text-sm text-foreground font-medium">
                                 {Math.max(0, currentBalance - totalCost).toFixed(6)} Credits
                               </span>
                             </div>
@@ -730,20 +730,20 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
 
                       {/* Insufficient Credits Warning */}
                       {!isFreeDeployment && !hasSufficientCredits && typeof totalCost === 'number' && (
-                        <div className="pt-3 mt-3 border-t border-default/30">
-                          <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="pt-3 mt-3 border-t border-border/10">
+                          <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                            <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <div className="text-xs text-red-400 font-medium mb-1">
+                              <div className="text-xs text-error font-medium mb-1">
                                 Need {creditsNeeded.toFixed(6)} more credits
                               </div>
-                              <div className="text-xs text-red-400/80">
+                              <div className="text-xs text-error/80">
                                 {canUseJit && (
                                   <>
-                                    • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-red-300">Crypto tab</button> to pay with crypto<br />
+                                    • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-error/80">Crypto tab</button> to pay with crypto<br />
                                   </>
                                 )}
-                                • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                                • <a href="/topup" className="underline hover:text-error/80">Top up credits</a> to continue
                               </div>
                             </div>
                           </div>
@@ -759,12 +759,12 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                 <>
                   {/* X402-only mode: Non-Ethereum wallet warning */}
                   {x402OnlyMode && walletType !== 'ethereum' && (
-                    <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                    <div className="mb-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
                       <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-medium text-yellow-400 text-sm mb-1">Ethereum Wallet Required</div>
-                          <div className="text-xs text-yellow-400/80">
+                          <div className="font-medium text-warning text-sm mb-1">Ethereum Wallet Required</div>
+                          <div className="text-xs text-warning/80">
                             X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.
                           </div>
                         </div>
@@ -805,13 +805,13 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               {/* Credits-Only Payment (for wallets without JIT support or free deployments) */}
               {(!canUseJit || isFreeDeployment) && (
                 <div className="mb-4">
-                  <div className="bg-surface rounded-lg border border-default p-4">
+                  <div className="bg-card rounded-lg border border-border/20 p-4">
                     <div className="space-y-2.5">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-link">Cost:</span>
-                        <span className="text-sm text-fg-muted font-medium">
+                        <span className="text-xs text-foreground/80">Cost:</span>
+                        <span className="text-sm text-foreground font-medium">
                           {totalCost === 0 ? (
-                            <span className="text-turbo-green font-medium">FREE</span>
+                            <span className="text-success font-medium">FREE</span>
                           ) : typeof totalCost === 'number' ? (
                             <>{totalCost.toFixed(6)} Credits</>
                           ) : (
@@ -824,15 +824,15 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
                       {!isFreeDeployment && (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-link">Current Balance:</span>
-                            <span className="text-sm text-fg-muted font-medium">
+                            <span className="text-xs text-foreground/80">Current Balance:</span>
+                            <span className="text-sm text-foreground font-medium">
                               {currentBalance.toFixed(6)} Credits
                             </span>
                           </div>
                           {typeof totalCost === 'number' && (
-                            <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                              <span className="text-xs text-link">After Deployment:</span>
-                              <span className="text-sm text-fg-muted font-medium">
+                            <div className="flex justify-between items-center pt-2 border-t border-border/10">
+                              <span className="text-xs text-foreground/80">After Deployment:</span>
+                              <span className="text-sm text-foreground font-medium">
                                 {Math.max(0, currentBalance - totalCost).toFixed(6)} Credits
                               </span>
                             </div>
@@ -842,15 +842,15 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
 
                       {/* Insufficient Credits Warning */}
                       {!isFreeDeployment && !hasSufficientCredits && typeof totalCost === 'number' && (
-                        <div className="pt-3 mt-3 border-t border-default/30">
-                          <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="pt-3 mt-3 border-t border-border/10">
+                          <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                            <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                             <div className="flex-1 min-w-0">
-                              <div className="text-xs text-red-400 font-medium mb-1">
+                              <div className="text-xs text-error font-medium mb-1">
                                 Need {creditsNeeded.toFixed(6)} more credits
                               </div>
-                              <div className="text-xs text-red-400/80">
-                                • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                              <div className="text-xs text-error/80">
+                                • <a href="/topup" className="underline hover:text-error/80">Top up credits</a> to continue
                               </div>
                             </div>
                           </div>
@@ -864,16 +864,16 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               {/* Crypto Shortage Warning (when on Crypto tab with insufficient balance) */}
               {paymentTab === 'crypto' && cryptoShortage && !jitBalanceSufficient && (
                 <div className="mb-4">
-                  <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                    <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                    <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-red-400 font-medium mb-1">
+                      <div className="text-xs text-error font-medium mb-1">
                         Insufficient {tokenLabels[cryptoShortage.tokenType]} balance
                       </div>
-                      <div className="text-xs text-red-400/80">
-                        • Switch to <button onClick={handleCreditsTabClick} className="underline hover:text-red-300">Credits tab</button> to use credits<br />
+                      <div className="text-xs text-error/80">
+                        • Switch to <button onClick={handleCreditsTabClick} className="underline hover:text-error/80">Credits tab</button> to use credits<br />
                         • Add {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} to your wallet<br />
-                        • <a href="/topup" className="underline hover:text-red-300">Buy credits</a> instead
+                        • <a href="/topup" className="underline hover:text-error/80">Buy credits</a> instead
                       </div>
                     </div>
                   </div>
@@ -884,14 +884,14 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
         })()}
 
         {/* Terms and Conditions */}
-        <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
-          <p className="text-xs text-link text-center">
+        <div className="bg-card/30 rounded-lg px-3 py-2 mb-4">
+          <p className="text-xs text-foreground/80 text-center">
             By deploying, you agree to our{' '}
             <a
               href="https://ardrive.io/tos-and-privacy/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
+              className="text-primary hover:text-primary/80 transition-colors underline"
             >
               Terms of Service
             </a>
@@ -901,7 +901,7 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
         <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+            className="flex-1 py-3 px-4 rounded-lg border border-border/20 text-foreground/80 hover:text-foreground hover:border-border/10 transition-colors"
           >
             Cancel
           </button>
@@ -915,7 +915,7 @@ const DeployConfirmationModal = React.memo(function DeployConfirmationModal({
               // Disable if in x402-only mode with non-Ethereum wallet for billable deployments
               (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum')
             }
-            className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
+            className="flex-1 py-3 px-4 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-foreground/80"
           >
             {paymentTab === 'crypto' && creditsNeeded > 0 ? 'Deploy & Auto-Pay' : 'Deploy Now'}
           </button>
@@ -1080,6 +1080,50 @@ export default function DeploySitePanel() {
       setAppVersion('');
     }
   }, [selectedFolder, lastDeployedAppName, deployedApps]);
+
+  // Image preview management for folder files
+  const MAX_FOLDER_PREVIEWS = 30; // Lower limit for folders since they can have many files
+  const previewUrlsRef = useRef<Map<string, string>>(new Map());
+
+  const isPreviewableImage = useCallback((fileName: string): boolean => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico'];
+    return imageExtensions.includes(ext);
+  }, []);
+
+  // Generate preview URLs for image files in the folder
+  const imagePreviewUrls = useMemo(() => {
+    // Revoke old URLs first
+    previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    previewUrlsRef.current.clear();
+
+    if (!selectedFolder) return new Map<string, string>();
+
+    const newUrls = new Map<string, string>();
+    let imageCount = 0;
+
+    Array.from(selectedFolder).forEach(file => {
+      if (imageCount >= MAX_FOLDER_PREVIEWS) return;
+
+      const path = file.webkitRelativePath || file.name;
+      if (isPreviewableImage(file.name)) {
+        const url = URL.createObjectURL(file);
+        newUrls.set(path, url);
+        previewUrlsRef.current.set(path, url);
+        imageCount++;
+      }
+    });
+
+    return newUrls;
+  }, [selectedFolder, isPreviewableImage]);
+
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+      previewUrlsRef.current.clear();
+    };
+  }, []);
 
   // Handle successful domain assignment from modal
   const handleAssignDomainSuccess = (manifestId: string, arnsName: string, undername?: string, transactionId?: string) => {
@@ -1403,17 +1447,17 @@ export default function DeploySitePanel() {
   const renderStatusIcon = (iconName: string) => {
     switch (iconName) {
       case 'check-circle':
-        return <CheckCircle className="w-3 h-3 text-turbo-green" />;
+        return <CheckCircle className="w-3 h-3 text-success" />;
       case 'clock':
-        return <Clock className="w-3 h-3 text-yellow-500" />;
+        return <Clock className="w-3 h-3 text-warning" />;
       case 'archive':
-        return <Archive className="w-3 h-3 text-turbo-blue" />;
+        return <Archive className="w-3 h-3 text-info" />;
       case 'x-circle':
-        return <XCircle className="w-3 h-3 text-red-400" />;
+        return <XCircle className="w-3 h-3 text-error" />;
       case 'help-circle':
-        return <HelpCircle className="w-3 h-3 text-link" />;
+        return <HelpCircle className="w-3 h-3 text-foreground/80" />;
       default:
-        return <Clock className="w-3 h-3 text-yellow-500" />;
+        return <Clock className="w-3 h-3 text-warning" />;
     }
   };
 
@@ -1563,7 +1607,7 @@ export default function DeploySitePanel() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `turbo-deployments-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `ario-deployments-${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -1763,8 +1807,8 @@ export default function DeploySitePanel() {
   if (!address) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-bold mb-4">Connect Wallet Required</h3>
-        <p className="text-link">Connect your wallet to deploy sites</p>
+        <h3 className="text-xl font-heading font-bold mb-4">Connect Wallet Required</h3>
+        <p className="text-foreground/80">Connect your wallet to deploy sites</p>
       </div>
     );
   }
@@ -1778,59 +1822,62 @@ export default function DeploySitePanel() {
       {/* Success-focused header when deployment is complete */}
       {deploySuccessInfo ? (
         <div className="flex items-start gap-3 mb-6">
-          <div className="w-10 h-10 bg-turbo-green/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-            <CheckCircle className="w-5 h-5 text-turbo-green" />
+          <div className="w-10 h-10 bg-success/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+            <CheckCircle className="w-5 h-5 text-success" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-fg-muted mb-1">
-              {deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
-                'Site Deployed with Domain' : 
+            <h3 className="text-2xl font-heading font-bold text-foreground mb-1">
+              {deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ?
+                'Site Deployed with Domain' :
                 'Site Deployed'
               }
             </h3>
-            <p className="text-sm text-link">
-              Success! Your site is live on the permanent web.
+            <p className="text-sm text-foreground/80">
+              Success! Your site is live on the permanent cloud.
             </p>
           </div>
         </div>
       ) : (
         /* Normal deploy header when not showing success */
         <div className="flex items-start gap-3 mb-6">
-          <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-            <Zap className="w-5 h-5 text-turbo-red" />
+          <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+            <Zap className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-fg-muted mb-1">Deploy Site</h3>
-            <p className="text-sm text-link">
-              Deploy NFT collections, static sites and apps to the permanent web
+            <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Deploy Site</h3>
+            <p className="text-sm text-foreground/80">
+              Deploy NFT collections, static sites and apps to the permanent cloud
             </p>
           </div>
         </div>
       )}
 
-      {/* Main Content Container with Gradient - Hide during success and deployment */}
+      {/* Main Content Container with Red Gradient - Hide during success and deployment */}
       {!deploySuccessInfo && !deploying && (
-        <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Dynamic Zone: Drop Zone OR Selected Folder */}
         {!selectedFolder || selectedFolder.length === 0 ? (
           /* Drop Zone when no folder selected */
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${
               isDragging
-                ? 'border-turbo-red bg-turbo-red/5'
-                : 'border-link/30 hover:border-turbo-red/50'
+                ? 'border-primary bg-primary/10'
+                : 'border-primary/30 bg-card/80 hover:border-primary/50'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <p className="text-lg font-medium mb-2">
-              Drop site folder here or click to browse
-            </p>
-            <p className="text-sm text-link mb-4">
-              Select your site folder (HTML, CSS, JS, assets) for deployment
-            </p>
+            <div className="mb-4">
+              <Zap className="w-12 h-12 text-primary mx-auto mb-2" />
+              <p className="text-lg font-medium mb-2">
+                Drop site folder here or click to browse
+              </p>
+              <p className="text-sm text-foreground/80">
+                Select your site folder (HTML, CSS, JS, assets) for deployment
+              </p>
+            </div>
             <input
               type="file"
               {...({ webkitdirectory: 'true', directory: 'true' } as any)}
@@ -1841,23 +1888,23 @@ export default function DeploySitePanel() {
             />
             <label
               htmlFor="folder-upload"
-              className="inline-block px-4 py-2 rounded bg-fg-muted text-black font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+              className="inline-block px-4 py-2 rounded-full bg-foreground text-card font-medium cursor-pointer hover:bg-foreground/90 transition-colors"
             >
               Select Site Folder
             </label>
           </div>
         ) : (
           /* Selected Folder Card - replaces drop zone */
-          <div className="bg-surface/50 rounded-xl border border-default/30 p-4">
+          <div className="bg-card rounded-xl border border-primary/20 p-4">
               {/* Folder Header Row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Folder className="w-4 h-4 text-turbo-red" />
+                  <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Folder className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <span className="font-medium text-fg-muted">{folderName}</span>
-                    <span className="text-xs text-link ml-2">
+                    <span className="font-medium text-foreground">{folderName}</span>
+                    <span className="text-xs text-foreground/80 ml-2">
                       · {selectedFolder?.length} files · {
                         totalFileSize < 1024 ? `${totalFileSize} B` :
                         totalFileSize < 1024 * 1024 ? `${(totalFileSize / 1024).toFixed(1)} KB` :
@@ -1870,7 +1917,7 @@ export default function DeploySitePanel() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setShowFolderContents(!showFolderContents)}
-                    className="p-1.5 text-link hover:text-fg-muted transition-colors rounded hover:bg-canvas/50"
+                    className="p-1.5 text-foreground/80 hover:text-foreground transition-colors rounded hover:bg-card/50"
                     title={showFolderContents ? 'Hide folder contents' : 'Show folder contents'}
                   >
                     <ChevronDown className={`w-4 h-4 transition-transform ${showFolderContents ? 'rotate-180' : ''}`} />
@@ -1889,7 +1936,7 @@ export default function DeploySitePanel() {
                         fileInput.value = '';
                       }
                     }}
-                    className="p-1.5 text-link hover:text-red-400 transition-colors"
+                    className="p-1.5 text-foreground/80 hover:text-error transition-colors"
                     title="Clear folder selection"
                   >
                     <XCircle className="w-5 h-5" />
@@ -1900,20 +1947,20 @@ export default function DeploySitePanel() {
               {/* Hashing Progress - inline below header */}
               {hashingStage === 'hashing' && (
                 <div className="mt-3 flex items-center gap-3">
-                  <Loader2 className="w-4 h-4 text-turbo-red animate-spin flex-shrink-0" />
-                  <div className="flex-1 bg-canvas rounded-full h-1.5 overflow-hidden">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+                  <div className="flex-1 bg-card rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="h-full bg-turbo-red transition-all duration-300"
+                      className="h-full bg-primary transition-all duration-300"
                       style={{ width: `${hashingProgress}%` }}
                     />
                   </div>
-                  <span className="text-xs text-link flex-shrink-0">{hashingProgress}%</span>
+                  <span className="text-xs text-foreground/80 flex-shrink-0">{hashingProgress}%</span>
                 </div>
               )}
 
               {/* Expandable Content: App Details + Smart Deploy + File Tree */}
               {showFolderContents && (
-                  <div className="mt-3 p-3 bg-surface/50 rounded border border-default/30 max-h-96 overflow-y-auto">
+                  <div className="mt-3 p-3 bg-card rounded-lg border border-border/20 max-h-96 overflow-y-auto">
                     {/* App Details Fields - Memoized for performance */}
                     <AppDetailsFields
                       appName={appName}
@@ -1925,40 +1972,40 @@ export default function DeploySitePanel() {
 
                     {/* Smart Deploy Row - inside expanded area */}
                     {deduplicationStats && deduplicationStats.cachedFiles > 0 && hashingStage === 'complete' && (
-                      <div className="flex items-center justify-between py-2 mb-3 border-b border-default/20 pb-3">
+                      <div className="flex items-center justify-between py-2 mb-3 border-b border-border/20 pb-3">
                         <div className="flex items-center gap-2 text-sm">
-                          <Sparkles className="w-4 h-4 text-fg-muted" />
-                          <span className="text-link">
+                          <Sparkles className="w-4 h-4 text-foreground" />
+                          <span className="text-foreground/80">
                             {smartDeployEnabled
                               ? <>
                                   <span>{deduplicationStats.cachedFiles} cached</span>
-                                  <span className="text-link/70 ml-1">
+                                  <span className="text-foreground/60 ml-1">
                                     ({deduplicationStats.cachedSize < 1024 * 1024
                                       ? `${(deduplicationStats.cachedSize / 1024).toFixed(1)}KB`
                                       : `${(deduplicationStats.cachedSize / 1024 / 1024).toFixed(1)}MB`})
                                   </span>
                                   <span className="mx-1">·</span>
                                   {deduplicationStats.newFiles} new
-                                  <span className="text-link/70 ml-1">
+                                  <span className="text-foreground/60 ml-1">
                                     ({deduplicationStats.newSize < 1024 * 1024
                                       ? `${(deduplicationStats.newSize / 1024).toFixed(1)}KB`
                                       : `${(deduplicationStats.newSize / 1024 / 1024).toFixed(1)}MB`})
                                   </span>
                                 </>
-                              : <span className="text-link/70">Smart Deploy off — all {deduplicationStats.cachedFiles + deduplicationStats.newFiles} files will upload</span>
+                              : <span className="text-foreground/60">Smart Deploy off — all {deduplicationStats.cachedFiles + deduplicationStats.newFiles} files will upload</span>
                             }
                           </span>
                         </div>
                         <button
                           onClick={() => setSmartDeployEnabled(!smartDeployEnabled)}
                           className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
-                            smartDeployEnabled ? 'bg-turbo-green' : 'bg-surface border border-default/50'
+                            smartDeployEnabled ? 'bg-success' : 'bg-card border border-border/10'
                           }`}
                           title={smartDeployEnabled ? 'Disable Smart Deploy' : 'Enable Smart Deploy'}
                         >
                           <div
                             className={`absolute top-0.5 w-3 h-3 rounded-full transition-transform ${
-                              smartDeployEnabled ? 'translate-x-4 bg-white' : 'translate-x-0.5 bg-fg-muted'
+                              smartDeployEnabled ? 'translate-x-4 bg-background' : 'translate-x-0.5 bg-foreground'
                             }`}
                           />
                         </button>
@@ -1973,8 +2020,8 @@ export default function DeploySitePanel() {
                           <div key={folderPath}>
                             {/* Folder Header */}
                             {folderPath !== 'root' && (
-                              <div className="flex items-center gap-2 text-fg-muted font-medium mb-1">
-                                <Folder className="w-3 h-3 text-fg-muted" />
+                              <div className="flex items-center gap-2 text-foreground font-medium mb-1">
+                                <Folder className="w-3 h-3 text-foreground" />
                                 <span>{folderPath}/</span>
                               </div>
                             )}
@@ -1986,32 +2033,45 @@ export default function DeploySitePanel() {
                                 .map(({ file, path }, index) => {
                                   const FileIcon = getFileIcon(file.name);
                                   const fileName = path.split('/').pop() || file.name;
-                                  const fileSize = file.size < 1024 
-                                    ? `${file.size}B` 
-                                    : file.size < 1024 * 1024 
+                                  const fileSize = file.size < 1024
+                                    ? `${file.size}B`
+                                    : file.size < 1024 * 1024
                                     ? `${(file.size / 1024).toFixed(1)}KB`
                                     : `${(file.size / 1024 / 1024).toFixed(1)}MB`;
-                                  
+
                                   const fullPath = file.webkitRelativePath || file.name;
                                   const isHtml = fileName.toLowerCase().endsWith('.html') || fileName.toLowerCase().endsWith('.htm');
                                   const isIndex = indexFile === fullPath;
                                   const isFallback = fallbackFile === fullPath;
-                                  
+                                  const previewUrl = imagePreviewUrls.get(fullPath);
+                                  const isImage = isPreviewableImage(file.name);
+
                                   return (
-                                    <div key={index} className="flex items-center justify-between text-link hover:text-fg-muted transition-colors py-1 px-1 rounded">
+                                    <div key={index} className="flex items-center justify-between text-foreground/80 hover:text-foreground transition-colors py-1 px-1 rounded">
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <FileIcon className="w-3 h-3 text-link flex-shrink-0" />
+                                        {/* Thumbnail for images, icon for others */}
+                                        {isImage && previewUrl ? (
+                                          <div className="w-6 h-6 rounded overflow-hidden bg-card border border-border/20 flex-shrink-0">
+                                            <img
+                                              src={previewUrl}
+                                              alt={fileName}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <FileIcon className="w-3 h-3 text-foreground/80 flex-shrink-0" />
+                                        )}
                                         <span className="truncate">{fileName}</span>
                                         
                                         {/* Badges for selected files */}
                                         {isIndex && (
-                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-turbo-green/20 text-turbo-green rounded text-xs font-medium">
+                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-success/20 text-success rounded text-xs font-medium">
                                             <Home className="w-3 h-3" />
                                             INDEX
                                           </div>
                                         )}
                                         {isFallback && (
-                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 text-yellow-600 rounded text-xs font-medium">
+                                          <div className="flex items-center gap-1 px-2 py-0.5 bg-warning/20 text-warning rounded text-xs font-medium">
                                             <AlertTriangle className="w-3 h-3" />
                                             FALLBACK
                                           </div>
@@ -2026,7 +2086,7 @@ export default function DeploySitePanel() {
                                             {!isIndex && (
                                               <button
                                                 onClick={() => setIndexFile(fullPath)}
-                                                className="px-2 py-0.5 text-xs bg-turbo-green/10 text-turbo-green rounded hover:bg-turbo-green/20 transition-colors"
+                                                className="px-2 py-0.5 text-xs bg-success/10 text-success rounded hover:bg-success/20 transition-colors"
                                                 title="Set as Index"
                                               >
                                                 Set Index
@@ -2035,7 +2095,7 @@ export default function DeploySitePanel() {
                                             {!isFallback && (
                                               <button
                                                 onClick={() => setFallbackFile(fullPath)}
-                                                className="px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-600 rounded hover:bg-yellow-500/20 transition-colors"
+                                                className="px-2 py-0.5 text-xs bg-warning/10 text-warning rounded hover:bg-warning/20 transition-colors"
                                                 title="Set as Fallback"
                                               >
                                                 Set Fallback
@@ -2048,7 +2108,7 @@ export default function DeploySitePanel() {
                                         {isIndex && (
                                           <button
                                             onClick={() => setIndexFile('')}
-                                            className="px-2 py-0.5 text-xs text-link hover:text-red-400 rounded transition-colors"
+                                            className="px-2 py-0.5 text-xs text-foreground/80 hover:text-error rounded transition-colors"
                                             title="Clear Index"
                                           >
                                             Clear
@@ -2057,16 +2117,16 @@ export default function DeploySitePanel() {
                                         {isFallback && (
                                           <button
                                             onClick={() => setFallbackFile('')}
-                                            className="px-2 py-0.5 text-xs text-link hover:text-red-400 rounded transition-colors"
+                                            className="px-2 py-0.5 text-xs text-foreground/80 hover:text-error rounded transition-colors"
                                             title="Clear Fallback"
                                           >
                                             Clear
                                           </button>
                                         )}
 
-                                        <span className="text-link/70 text-xs">
+                                        <span className="text-foreground/60 text-xs">
                                           {fileSize}
-                                          {isFileFree(file.size, freeUploadLimitBytes) && <span className="ml-1 text-turbo-green">• FREE</span>}
+                                          {isFileFree(file.size, freeUploadLimitBytes) && <span className="ml-1 text-success">• FREE</span>}
                                         </span>
                                         
                                       </div>
@@ -2083,14 +2143,14 @@ export default function DeploySitePanel() {
 
             {/* SPA Routing Info - Only show when we couldn't auto-detect proper fallback */}
             {(!indexFile || !fallbackFile || fallbackFile !== indexFile) && (
-              <div className="mt-4 p-3 bg-turbo-red/10 border border-turbo-red/20 rounded-lg">
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
                 <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-turbo-red flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-link">
-                    <strong className="text-fg-muted">SPA Routing Configuration:</strong> We couldn't automatically detect your fallback file. For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
-                    <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">index.html</code>
+                  <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-foreground/80">
+                    <strong className="text-foreground">SPA Routing Configuration:</strong> We couldn't automatically detect your fallback file. For React/Vue/Angular apps, set the <strong>Fallback</strong> to your main HTML file (usually{' '}
+                    <code className="px-1 py-0.5 bg-primary/20 rounded text-primary font-mono text-xs">index.html</code>
                     ) to enable client-side routing. This ensures URLs like{' '}
-                    <code className="px-1 py-0.5 bg-turbo-red/20 rounded text-turbo-red font-mono text-xs">/topup</code>
+                    <code className="px-1 py-0.5 bg-primary/20 rounded text-primary font-mono text-xs">/topup</code>
                     {' '}work correctly instead of showing 404 errors.
                   </div>
                 </div>
@@ -2119,16 +2179,16 @@ export default function DeploySitePanel() {
 
       {/* Summary Panel - After ArNS configuration, hide during success and deployment */}
       {selectedFolder && selectedFolder.length > 0 && !deploySuccessInfo && !deploying && (
-        <div className="mt-4 p-4 bg-surface/50 rounded-lg">
+        <div className="mt-4 p-4 bg-card rounded-lg border border-primary/20">
             <div className="flex justify-between mb-2">
-              <span className="text-xs text-link">Total Size:</span>
-              <span className="text-xs text-fg-muted">{(totalFileSize / 1024 / 1024).toFixed(2)} MB</span>
+              <span className="text-xs text-foreground/80">Total Size:</span>
+              <span className="text-xs text-foreground">{(totalFileSize / 1024 / 1024).toFixed(2)} MB</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs text-link">Estimated Cost:</span>
-              <span className="text-xs text-fg-muted">
+              <span className="text-xs text-foreground/80">Estimated Cost:</span>
+              <span className="text-xs text-foreground">
                 {totalCost === 0 ? (
-                  <span className="text-turbo-green font-medium">FREE</span>
+                  <span className="text-success font-medium">FREE</span>
                 ) : (
                   <span>{totalCost.toFixed(6)} Credits</span>
                 )}
@@ -2143,7 +2203,7 @@ export default function DeploySitePanel() {
         <button
           onClick={() => setShowConfirmModal(true)}
           disabled={deploying || hashingStage === 'hashing' || (arnsEnabled && !selectedArnsName) || (arnsEnabled && showUndername && !selectedUndername)}
-          className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full mt-4 py-4 px-6 rounded-lg bg-primary text-white font-bold text-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {deploying ? (
             <>
@@ -2179,19 +2239,19 @@ export default function DeploySitePanel() {
 
       {/* Non-upload stages (manifest, ArNS update) */}
       {deploying && selectedFolder && deployStage !== 'uploading' && (
-        <div className="mt-4 p-4 bg-surface rounded-lg border border-turbo-red/20">
+        <div className="mt-4 p-4 bg-card rounded-lg border border-primary/20">
           <div className="space-y-4">
             {/* Stage Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 text-turbo-red animate-spin" />
-                <span className="font-medium text-fg-muted">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <span className="font-medium text-foreground">
                   {deployStage === 'manifest' && 'Creating Manifest'}
                   {deployStage === 'updating-arns' && 'Updating ArNS Name'}
                   {deployStage === 'complete' && 'Complete'}
                 </span>
               </div>
-              <span className="text-sm text-link">
+              <span className="text-sm text-foreground/80">
                 {deployStage === 'manifest' && 'Finalizing deployment...'}
                 {deployStage === 'updating-arns' && `Updating ${selectedUndername ? selectedUndername + '_' : ''}${selectedArnsName}.ar.io`}
                 {deployStage === 'complete' && 'Deployment complete!'}
@@ -2199,25 +2259,25 @@ export default function DeploySitePanel() {
             </div>
 
             {/* Overall Progress Bar */}
-            <div className="w-full bg-[#090909] rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-card-elevated rounded-full h-2 overflow-hidden">
               <div
-                className="bg-turbo-red h-full transition-all duration-300"
+                className="bg-primary h-full transition-all duration-300"
                 style={{ width: `${deployProgress}%` }}
               />
             </div>
 
             {/* Current File/Stage Info */}
             {(currentFile || deployStage === 'updating-arns') && (
-              <div className="flex items-center gap-2 text-sm text-link">
+              <div className="flex items-center gap-2 text-sm text-foreground/80">
                 {deployStage === 'manifest' && (
                   <>
-                    <div className="w-2 h-2 bg-turbo-red rounded-full animate-pulse" />
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                     <span>{currentFile}</span>
                   </>
                 )}
                 {deployStage === 'updating-arns' && (
                   <>
-                    <div className="w-2 h-2 bg-turbo-yellow rounded-full animate-pulse" />
+                    <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
                     <span>Connecting {selectedUndername ? selectedUndername + '_' : ''}{selectedArnsName}.ar.io to your site...</span>
                   </>
                 )}
@@ -2241,7 +2301,7 @@ export default function DeploySitePanel() {
                       text: 'Site deployed successfully! ArNS update was cancelled.'
                     });
                   }}
-                  className="px-4 py-2 text-sm bg-surface border border-default rounded-lg text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+                  className="px-4 py-2 text-sm bg-card border border-border/20 rounded-lg text-foreground/80 hover:text-foreground hover:border-border/10 transition-colors"
                 >
                   Skip ArNS Update
                 </button>
@@ -2255,15 +2315,15 @@ export default function DeploySitePanel() {
 
       {/* Rich Success Display */}
       {deploySuccessInfo && (
-        <div className="border border-turbo-green rounded-xl p-6 bg-surface">
+        <div className="border border-success rounded-xl p-6 bg-card">
 
 
           {/* Site Details */}
-          <div className="bg-surface rounded-lg p-4 mb-4 space-y-3">
+          <div className="bg-card rounded-lg p-4 mb-4 space-y-3">
             <div>
-              <div className="text-sm text-link mb-2">Your site URL:</div>
-              <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
-                <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+              <div className="text-sm text-foreground/80 mb-2">Your site URL:</div>
+              <div className="flex items-center gap-2 p-3 bg-card rounded border border-border/10">
+                <span className="font-mono text-sm text-foreground flex-1 min-w-0 truncate">
                   {deploySuccessInfo.arnsConfigured && deploySuccessInfo.arnsName ? 
                     `https://${deploySuccessInfo.undername ? deploySuccessInfo.undername + '_' : ''}${deploySuccessInfo.arnsName}.ar.io` :
                     `https://arweave.net/${deploySuccessInfo.manifestId}`
@@ -2279,9 +2339,9 @@ export default function DeploySitePanel() {
 
             {/* Permanent ID */}
             <div>
-              <div className="text-sm text-link mb-2">Deployment Transaction ID:</div>
-              <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
-                <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+              <div className="text-sm text-foreground/80 mb-2">Deployment Transaction ID:</div>
+              <div className="flex items-center gap-2 p-3 bg-card rounded border border-border/10">
+                <span className="font-mono text-sm text-foreground flex-1 min-w-0 truncate">
                   {deploySuccessInfo.manifestId}
                 </span>
                 <CopyButton textToCopy={deploySuccessInfo.manifestId} />
@@ -2291,9 +2351,9 @@ export default function DeploySitePanel() {
             {/* ArNS Transaction ID - Only show if ArNS was configured */}
             {deploySuccessInfo.arnsTransactionId && (
               <div>
-                <div className="text-sm text-link mb-2">Domain Update Transaction ID:</div>
-                <div className="flex items-center gap-2 p-3 bg-canvas rounded border border-default/30">
-                  <span className="font-mono text-sm text-fg-muted flex-1 min-w-0 truncate">
+                <div className="text-sm text-foreground/80 mb-2">Domain Update Transaction ID:</div>
+                <div className="flex items-center gap-2 p-3 bg-card rounded border border-border/10">
+                  <span className="font-mono text-sm text-foreground flex-1 min-w-0 truncate">
                     {deploySuccessInfo.arnsTransactionId}
                   </span>
                   <CopyButton textToCopy={deploySuccessInfo.arnsTransactionId} />
@@ -2311,7 +2371,7 @@ export default function DeploySitePanel() {
                   `https://arweave.net/${deploySuccessInfo.manifestId}`,
                 '_blank'
               )}
-              className="flex-1 py-3 px-4 bg-turbo-green text-white rounded-lg font-medium hover:bg-turbo-green/90 transition-colors"
+              className="flex-1 py-3 px-4 bg-success text-white rounded-lg font-medium hover:bg-success/90 transition-colors"
             >
               Visit Your Site
             </button>
@@ -2325,7 +2385,7 @@ export default function DeploySitePanel() {
                 setPostDeployShowUndername(false);
                 setPostDeployArNSEnabled(false);
               }}
-              className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas hover:border-turbo-red/50 transition-colors"
+              className="flex-1 py-3 px-4 bg-card border border-border/20 rounded-lg text-foreground hover:bg-card hover:border-primary/50 transition-colors"
             >
               Deploy Another Site
             </button>
@@ -2338,14 +2398,14 @@ export default function DeploySitePanel() {
       {deploySuccessInfo && !deploySuccessInfo.arnsConfigured && 
        ((walletType !== 'arweave' && walletType !== 'ethereum') || userArnsNames.length === 0) && (
         <div className="mt-6">
-          <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6">
+          <div className="bg-gradient-to-br from-warning/5 to-warning/5 rounded-xl border border-warning/20 p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                <Globe className="w-5 h-5 text-turbo-yellow" />
+              <div className="w-10 h-10 bg-warning/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <Globe className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <h4 className="text-lg font-bold text-fg-muted mb-1">Want a Friendly Domain Name?</h4>
-                <p className="text-sm text-link">
+                <h4 className="text-lg font-bold text-foreground mb-1">Want a Friendly Domain Name?</h4>
+                <p className="text-sm text-foreground/80">
                   Your site is live, but you can make it even better with an ArNS domain name
                 </p>
               </div>
@@ -2353,27 +2413,27 @@ export default function DeploySitePanel() {
 
             <div className="grid md:grid-cols-3 gap-3 mb-4 text-xs">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-3 h-3 text-turbo-green" />
-                <span className="text-link">Human-readable URLs</span>
+                <CheckCircle className="w-3 h-3 text-success" />
+                <span className="text-foreground/80">Human-readable URLs</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-3 h-3 text-turbo-green" />
-                <span className="text-link">Lease or Permanently own</span>
+                <CheckCircle className="w-3 h-3 text-success" />
+                <span className="text-foreground/80">Lease or Permanently own</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-3 h-3 text-turbo-green" />
-                <span className="text-link">Global propagation across the AR.IO Network</span>
+                <CheckCircle className="w-3 h-3 text-success" />
+                <span className="text-foreground/80">Global propagation across the AR.IO Network</span>
               </div>
             </div>
             
-            <div className="bg-surface/50 rounded-lg p-4 mb-4">
-              <div className="text-sm text-link mb-2">Instead of:</div>
-              <div className="font-mono text-xs text-fg-muted/60 mb-3 break-all">
+            <div className="bg-card/50 rounded-lg p-4 mb-4">
+              <div className="text-sm text-foreground/80 mb-2">Instead of:</div>
+              <div className="font-mono text-xs text-foreground/60 mb-3 break-all">
                 https://arweave.net/{deploySuccessInfo.manifestId}
               </div>
               
-              <div className="text-sm text-link mb-2">Get something like:</div>
-              <div className="font-mono text-sm text-turbo-yellow font-medium">
+              <div className="text-sm text-foreground/80 mb-2">Get something like:</div>
+              <div className="font-mono text-sm text-warning font-medium">
                 https://mysite.ar.io
               </div>
             </div>
@@ -2381,13 +2441,13 @@ export default function DeploySitePanel() {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => window.location.href = '/domains'}
-                className="flex-1 py-3 px-4 bg-turbo-yellow text-black rounded-lg font-medium hover:bg-turbo-yellow/90 transition-colors"
+                className="flex-1 py-3 px-4 bg-warning text-foreground rounded-lg font-medium hover:bg-warning/90 transition-colors"
               >
                 Search for Your Name
               </button>
               <button
                 onClick={() => window.open('https://docs.ar.io/arns', '_blank')}
-                className="flex-1 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas transition-colors"
+                className="flex-1 py-3 px-4 bg-card border border-border/20 rounded-lg text-foreground hover:bg-card transition-colors"
               >
                 Learn More
               </button>
@@ -2485,7 +2545,7 @@ export default function DeploySitePanel() {
                   setPostDeployArNSUpdating(false);
                 }}
                 disabled={!postDeployArNSName || postDeployArNSUpdating || (postDeployShowUndername && !postDeployUndername)}
-                className="w-full py-3 px-4 bg-turbo-yellow text-black rounded-lg hover:bg-turbo-yellow/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                className="w-full py-3 px-4 bg-warning text-foreground rounded-lg hover:bg-warning/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
               >
                 {postDeployArNSUpdating ? (
                   <>
@@ -2505,10 +2565,10 @@ export default function DeploySitePanel() {
       {deployMessage && (
         <div className={`mt-4 p-3 rounded-lg ${
           deployMessage.type === 'error' 
-            ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+            ? 'bg-error/10 border border-error/20 text-error'
             : deployMessage.type === 'success'
-            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
-            : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+            ? 'bg-success/10 border border-success/20 text-success' 
+            : 'bg-info/10 border border-info/20 text-info'
         }`}>
           <div className="flex items-center justify-between">
             <span>{deployMessage.text}</span>
@@ -2525,23 +2585,23 @@ export default function DeploySitePanel() {
 
       {/* Deploy Results - Unified Design with Recent Deployments Page */}
       {deployHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 border border-turbo-red/20 rounded-xl">
+        <div className="mt-4 sm:mt-6 bg-gradient-to-br from-primary/5 to-primary/3 border border-primary/20 rounded-xl">
           {/* Collapsible Header with Actions on Same Row */}
           <div className={`flex items-center justify-between p-4 ${showDeployResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
               onClick={() => setShowDeployResults(!showDeployResults)}
-              className="flex items-start gap-2 hover:text-turbo-green transition-colors text-left"
+              className="flex items-start gap-2 hover:text-success transition-colors text-left"
               type="button"
             >
-              <Zap className="w-5 h-5 text-turbo-red flex-shrink-0 mt-0.5" />
+              <Zap className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                <span className="font-bold text-fg-muted">Recent</span>
-                <span className="text-xs text-link">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
+                <span className="font-bold text-foreground">Recent</span>
+                <span className="text-xs text-foreground/80">({recentDeploymentEntries.length}{Object.keys(deploymentGroups).length > 5 ? ' of ' + Object.keys(deploymentGroups).length : ''})</span>
               </div>
               {showDeployResults ? (
-                <ChevronUp className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
+                <ChevronUp className="w-4 h-4 text-foreground/80 flex-shrink-0 mt-0.5" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-link flex-shrink-0 mt-0.5" />
+                <ChevronDown className="w-4 h-4 text-foreground/80 flex-shrink-0 mt-0.5" />
               )}
             </button>
             
@@ -2550,7 +2610,7 @@ export default function DeploySitePanel() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={exportDeployToCSV}
-                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-card border border-border/20 rounded text-foreground hover:bg-card hover:text-foreground transition-colors"
                   title="Export deployment history to CSV"
                 >
                   <Archive className="w-3 h-3" />
@@ -2568,7 +2628,7 @@ export default function DeploySitePanel() {
                     checkMultipleStatuses(allIds, true);
                   }}
                   disabled={Object.values(statusChecking).some(checking => checking)}
-                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-card border border-border/20 rounded text-foreground hover:bg-card hover:text-foreground transition-colors disabled:opacity-50"
                   title="Check status for recent deployed files"
                 >
                   <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
@@ -2576,7 +2636,7 @@ export default function DeploySitePanel() {
                 </button>
                 <button
                   onClick={clearDeployHistory}
-                  className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-red-400 border border-default/30 rounded hover:border-red-400/50 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-foreground/80 hover:text-error border border-border/10 rounded hover:border-error/50 transition-colors"
                   title="Clear all deployment history"
                 >
                   <XCircle className="w-3 h-3" />
@@ -2594,7 +2654,7 @@ export default function DeploySitePanel() {
                   const arnsAssociation = getArNSAssociation(manifestId);
                   
                   return (
-                    <div key={manifestId} className="bg-bg-[#090909] border border-turbo-red/20 rounded-lg p-4">
+                    <div key={manifestId} className="bg-card border border-border/20 rounded-lg p-4">
                       {/* Unified Header Row - Manifest Info + Actions */}
                       {group.manifest && (
                         <div className="flex items-center justify-between gap-2 mb-3">
@@ -2602,26 +2662,26 @@ export default function DeploySitePanel() {
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             {/* Package Icon if app name exists, Globe otherwise */}
                             {group.manifest.appName ? (
-                              <Package className="w-4 h-4 text-turbo-red" />
+                              <Package className="w-4 h-4 text-primary" />
                             ) : (
-                              <Globe className="w-4 h-4 text-fg-muted" />
+                              <Globe className="w-4 h-4 text-foreground" />
                             )}
 
                             {/* App Name with Version if available, else ArNS Name or Transaction ID */}
                             {group.manifest.appName ? (
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-fg-muted">
+                                <span className="text-sm font-medium text-foreground">
                                   {group.manifest.appName}
                                 </span>
                                 {group.manifest.appVersion && (
-                                  <span className="text-xs text-link">v{group.manifest.appVersion}</span>
+                                  <span className="text-xs text-foreground/80">v{group.manifest.appVersion}</span>
                                 )}
                                 {arnsAssociation && arnsAssociation.arnsName && (
                                   <a
                                     href={`https://${arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}${arnsAssociation.arnsName}.ar.io`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-link hover:text-turbo-green transition-colors"
+                                    className="text-xs text-foreground/80 hover:text-success transition-colors"
                                   >
                                     {arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}{arnsAssociation.arnsName}.ar.io
                                   </a>
@@ -2633,26 +2693,26 @@ export default function DeploySitePanel() {
                                   href={`https://${arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}${arnsAssociation.arnsName}.ar.io`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-sm font-medium text-fg-muted hover:text-turbo-green hover:underline transition-colors"
+                                  className="text-sm font-medium text-foreground hover:text-success hover:underline transition-colors"
                                 >
                                   {arnsAssociation.undername ? arnsAssociation.undername + '_' : ''}{arnsAssociation.arnsName}
                                 </a>
                                 {arnsAssociation.arnsStatus === 'failed' && (
-                                  <span className="text-xs text-red-400">(failed)</span>
+                                  <span className="text-xs text-error">(failed)</span>
                                 )}
                                 {arnsAssociation.arnsStatus === 'pending' && (
-                                  <span className="text-xs text-yellow-400">(updating...)</span>
+                                  <span className="text-xs text-warning">(updating...)</span>
                                 )}
                               </div>
                             ) : (
-                              <div className="font-mono text-sm text-fg-muted">
+                              <div className="font-mono text-sm text-foreground">
                                 {manifestId.substring(0, 6)}...
                               </div>
                             )}
                             
                             {/* Timestamp - Desktop only */}
                             {group.manifest.timestamp && (
-                              <span className="text-xs text-link hidden sm:inline">
+                              <span className="text-xs text-foreground/80 hidden sm:inline">
                                 {new Date(group.manifest.timestamp).toLocaleString()}
                               </span>
                             )}
@@ -2672,7 +2732,7 @@ export default function DeploySitePanel() {
                             <CopyButton textToCopy={manifestId} />
                             <button
                               onClick={() => setShowReceiptModal(manifestId)}
-                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                              className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                               title="View Receipt"
                             >
                               <Receipt className="w-4 h-4" />
@@ -2680,7 +2740,7 @@ export default function DeploySitePanel() {
                             <button
                               onClick={() => checkUploadStatus(manifestId, true)}
                               disabled={!!statusChecking[manifestId]}
-                              className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
+                              className="p-1.5 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-50"
                               title="Check Status"
                             >
                               <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
@@ -2689,7 +2749,7 @@ export default function DeploySitePanel() {
                               href={getArweaveRawUrl(manifestId)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                              className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                               title="View Raw Manifest JSON"
                             >
                               <Code className="w-4 h-4" />
@@ -2698,7 +2758,7 @@ export default function DeploySitePanel() {
                               href={getArweaveUrl(manifestId, group.manifest?.receipt?.dataCaches)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                              className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                               title="Visit Deployed Site"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -2707,7 +2767,7 @@ export default function DeploySitePanel() {
                             {(walletType === 'arweave' || walletType === 'ethereum') && (
                               <button
                                 onClick={() => setShowAssignDomainModal(manifestId)}
-                                className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                                className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                                 title={arnsAssociation ? "Change Domain" : "Assign Domain"}
                               >
                                 <Globe className="w-4 h-4" />
@@ -2728,10 +2788,10 @@ export default function DeploySitePanel() {
                             )}
                             
                             <Popover className="relative">
-                              <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                              <PopoverButton className="p-1.5 text-foreground/80 hover:text-foreground transition-colors">
                                 <MoreVertical className="w-4 h-4" />
                               </PopoverButton>
-                              <PopoverPanel anchor="bottom end" className="w-48 bg-surface border border-default rounded-lg shadow-lg z-[9999] py-1 mt-1">
+                              <PopoverPanel anchor="bottom end" className="w-48 bg-card border border-border/20 rounded-lg shadow-lg z-[9999] py-1 mt-1">
                                 {({ close }) => (
                                   <>
                                     <button
@@ -2751,11 +2811,11 @@ export default function DeploySitePanel() {
                                           }, 500);
                                         }, 1000);
                                       }}
-                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                      className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                     >
                                       {copiedItems.has(manifestId) ? (
                                         <>
-                                          <CheckCircle className="w-4 h-4 text-green-500" />
+                                          <CheckCircle className="w-4 h-4 text-success" />
                                           Copied!
                                         </>
                                       ) : (
@@ -2770,7 +2830,7 @@ export default function DeploySitePanel() {
                                         setShowReceiptModal(manifestId);
                                         close();
                                       }}
-                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                      className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                     >
                                       <Receipt className="w-4 h-4" />
                                       View Receipt
@@ -2781,7 +2841,7 @@ export default function DeploySitePanel() {
                                         close();
                                       }}
                                       disabled={!!statusChecking[manifestId]}
-                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                      className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2 disabled:opacity-50"
                                     >
                                       <RefreshCw className={`w-4 h-4 ${statusChecking[manifestId] ? 'animate-spin' : ''}`} />
                                       Check Status
@@ -2791,7 +2851,7 @@ export default function DeploySitePanel() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={() => close()}
-                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                      className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                     >
                                       <Code className="w-4 h-4" />
                                       View Raw JSON
@@ -2801,7 +2861,7 @@ export default function DeploySitePanel() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={() => close()}
-                                      className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                      className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                     >
                                       <ExternalLink className="w-4 h-4" />
                                       Visit Deployed Site
@@ -2813,7 +2873,7 @@ export default function DeploySitePanel() {
                                           setShowAssignDomainModal(manifestId);
                                           close();
                                         }}
-                                        className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                        className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                       >
                                         <Globe className="w-4 h-4" />
                                         {arnsAssociation ? "Change Domain" : "Assign Domain"}
@@ -2829,18 +2889,18 @@ export default function DeploySitePanel() {
                       
                       {/* Mobile Timestamp Row */}
                       {group.manifest && group.manifest.timestamp && (
-                        <div className="text-xs text-link sm:hidden mb-3">
+                        <div className="text-xs text-foreground/80 sm:hidden mb-3">
                           {new Date(group.manifest.timestamp).toLocaleString()}
                         </div>
                       )}
 
                       {/* Files Section - Integrated into same card */}
                       {group.files && group.files.files && (
-                        <details className="border-t border-default/30 pt-3">
-                          <summary className="cursor-pointer text-sm text-fg-muted flex items-center gap-2 hover:text-white transition-colors">
+                        <details className="border-t border-border/10 pt-3">
+                          <summary className="cursor-pointer text-sm text-foreground/80 flex items-center gap-2 hover:text-foreground transition-colors">
                             <Folder className="w-4 h-4" />
                             Files ({group.files.files.length})
-                            <ChevronDown className="w-3 h-3 text-link ml-auto" />
+                            <ChevronDown className="w-3 h-3 text-foreground/80 ml-auto" />
                           </summary>
                           <div className="pt-3 space-y-2 max-h-60 overflow-y-auto pl-1">
                             {group.files.files.map((file: any, fileIndex: number) => {
@@ -2848,18 +2908,18 @@ export default function DeploySitePanel() {
                               const isChecking = statusChecking[file.id];
                               
                               return (
-                                <div key={fileIndex} className="bg-[#090909] border border-default/20 rounded p-3">
+                                <div key={fileIndex} className="bg-card border border-border/20 rounded p-3">
                                   <div className="space-y-2">
                                     {/* Row 1: Status Icon + Shortened TxID + File Path + Actions */}
                                     <div className="flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2">
                                         {/* Shortened Transaction ID */}
-                                        <div className="font-mono text-sm text-fg-muted">
+                                        <div className="font-mono text-sm text-foreground">
                                           {file.id.substring(0, 6)}...
                                         </div>
                                         
                                         {/* File Path */}
-                                        <div className="text-sm text-fg-muted truncate" title={file.path}>
+                                        <div className="text-sm text-foreground truncate" title={file.path}>
                                           {file.path.split('/').pop() || file.path}
                                         </div>
                                       </div>
@@ -2878,7 +2938,7 @@ export default function DeploySitePanel() {
                                         <CopyButton textToCopy={file.id} />
                                         <button
                                           onClick={() => setShowReceiptModal(file.id)}
-                                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                                           title="View Receipt"
                                         >
                                           <Receipt className="w-4 h-4" />
@@ -2886,7 +2946,7 @@ export default function DeploySitePanel() {
                                         <button
                                           onClick={() => checkUploadStatus(file.id, true)}
                                           disabled={isChecking}
-                                          className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
+                                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-50"
                                           title="Check Status"
                                         >
                                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
@@ -2895,7 +2955,7 @@ export default function DeploySitePanel() {
                                           href={getArweaveUrl(file.id, file.receipt?.dataCaches)}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                                           title="View File"
                                         >
                                           <ExternalLink className="w-4 h-4" />
@@ -2914,10 +2974,10 @@ export default function DeploySitePanel() {
                                           </div>
                                         )}
                                         <Popover className="relative">
-                                          <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                                          <PopoverButton className="p-1.5 text-foreground/80 hover:text-foreground transition-colors">
                                             <MoreVertical className="w-4 h-4" />
                                           </PopoverButton>
-                                          <PopoverPanel anchor="bottom end" className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[9999] py-1 mt-1">
+                                          <PopoverPanel anchor="bottom end" className="w-40 bg-card border border-border/20 rounded-lg shadow-lg z-[9999] py-1 mt-1">
                                             {({ close }) => (
                                               <>
                                                 <button
@@ -2937,11 +2997,11 @@ export default function DeploySitePanel() {
                                                       }, 500);
                                                     }, 1000);
                                                   }}
-                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                                 >
                                                   {copiedItems.has(file.id) ? (
                                                     <>
-                                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                                      <CheckCircle className="w-4 h-4 text-success" />
                                                       Copied!
                                                     </>
                                                   ) : (
@@ -2956,7 +3016,7 @@ export default function DeploySitePanel() {
                                                     setShowReceiptModal(file.id);
                                                     close();
                                                   }}
-                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                                 >
                                                   <Receipt className="w-4 h-4" />
                                                   View Receipt
@@ -2967,7 +3027,7 @@ export default function DeploySitePanel() {
                                                     close();
                                                   }}
                                                   disabled={isChecking}
-                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2 disabled:opacity-50"
                                                 >
                                                   <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                                                   Check Status
@@ -2977,7 +3037,7 @@ export default function DeploySitePanel() {
                                                   target="_blank"
                                                   rel="noopener noreferrer"
                                                   onClick={() => close()}
-                                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                                 >
                                                   <ExternalLink className="w-4 h-4" />
                                                   View File
@@ -2990,7 +3050,7 @@ export default function DeploySitePanel() {
                                     </div>
 
                                     {/* Row 2: Content Type + File Size */}
-                                    <div className="flex items-center gap-2 text-sm text-link">
+                                    <div className="flex items-center gap-2 text-sm text-foreground/80">
                                       <span>
                                         {getDisplayContentType(
                                           file.path,
@@ -3008,10 +3068,10 @@ export default function DeploySitePanel() {
                                     </div>
 
                                     {/* Row 3: Cost + Deploy Timestamp */}
-                                    <div className="flex items-center gap-2 text-sm text-link">
+                                    <div className="flex items-center gap-2 text-sm text-foreground/80">
                                       <span>
                                         {isFileFree(file.size, freeUploadLimitBytes) ? (
-                                          <span className="text-turbo-green">FREE</span>
+                                          <span className="text-success">FREE</span>
                                         ) : wincForOneGiB ? (
                                           `${((file.size / (1024 ** 3)) * Number(wincForOneGiB) / wincPerCredit).toFixed(6)} Credits`
                                         ) : (
@@ -3042,14 +3102,14 @@ export default function DeploySitePanel() {
           
           {/* View All Button at Bottom - only show when expanded and there are deployments */}
           {showDeployResults && Object.keys(deploymentGroups).length > 0 && (
-            <div className="border-t border-default mt-4">
+            <div className="border-t border-border/20 mt-4">
               <div className="p-4">
                 <button
                   onClick={() => {
                     navigate('/deployments');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-foreground hover:text-foreground/80 transition-colors font-medium"
                 >
                   View All Deployments <ArrowRight className="w-4 h-4" />
                 </button>

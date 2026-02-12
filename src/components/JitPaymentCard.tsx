@@ -128,12 +128,12 @@ export function JitPaymentCard({
                   (typeof totalCost === 'number' && totalCost > 0);
 
   return (
-    <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-lg border border-default p-3">
+    <div className="bg-card rounded-2xl border border-border/20 p-3">
       {/* Message when no files selected */}
       {!hasCost && (
         <div className="text-center py-4">
-          <div className="text-sm text-link mb-1">Select files to see cost estimate</div>
-          <div className="text-xs text-link/70">
+          <div className="text-sm text-foreground/80 mb-1">Select files to see cost estimate</div>
+          <div className="text-xs text-foreground/70">
             Payment will be processed automatically when uploading
           </div>
         </div>
@@ -143,13 +143,13 @@ export function JitPaymentCard({
       {estimatedCost && (
         <>
           <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs text-link">Estimated cost:</span>
+            <span className="text-xs text-foreground/80">Estimated cost:</span>
             <div className="text-right">
-              <div className="text-sm font-medium text-fg-muted">
+              <div className="text-sm font-medium text-foreground">
                 ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
               </div>
               {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
-                <div className="text-xs text-link">
+                <div className="text-xs text-foreground/80">
                   ≈ ${estimatedCost.estimatedUSD < 0.0001
                     ? estimatedCost.estimatedUSD.toFixed(6)
                     : estimatedCost.estimatedUSD < 0.01
@@ -163,36 +163,36 @@ export function JitPaymentCard({
           {/* Balance Display */}
           <div className="mb-3 mt-3">
             {balanceLoading ? (
-              <div className="flex items-center gap-2 p-2 bg-surface/50 rounded border border-default">
-                <Loader2 className="w-4 h-4 text-link animate-spin" />
-                <span className="text-xs text-link">Checking wallet balance...</span>
+              <div className="flex items-center gap-2 p-2 bg-card/50 rounded border border-border/20">
+                <Loader2 className="w-4 h-4 text-foreground/80 animate-spin" />
+                <span className="text-xs text-foreground/80">Checking wallet balance...</span>
               </div>
             ) : balanceError ? (
-              <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <div className="flex items-center gap-2 p-2 bg-warning/10 rounded border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-amber-400 font-medium">Unable to fetch balance</div>
-                  <div className="text-xs text-amber-400/70 mt-0.5">{balanceError}</div>
+                  <div className="text-xs text-warning font-medium">Unable to fetch balance</div>
+                  <div className="text-xs text-warning/70 mt-0.5">{balanceError}</div>
                 </div>
               </div>
             ) : hasSufficientBalance ? (
-              <div className="flex items-center gap-2 p-2 bg-turbo-green/10 rounded border border-turbo-green/20">
-                <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0" />
+              <div className="flex items-center gap-2 p-2 bg-success/10 rounded border border-success/20">
+                <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-turbo-green font-medium">
+                  <div className="text-xs text-success font-medium">
                     Your Balance: {formatTokenAmount(tokenBalance, tokenType)} {tokenLabel}
                   </div>
-                  <div className="text-xs text-turbo-green/70">Sufficient funds available</div>
+                  <div className="text-xs text-success/70">Sufficient funds available</div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded border border-red-500/20">
-                <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <div className="flex items-center gap-2 p-2 bg-error/10 rounded border border-error/20">
+                <XCircle className="w-4 h-4 text-error flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-red-400 font-medium">
+                  <div className="text-xs text-error font-medium">
                     Your Balance: {formatTokenAmount(tokenBalance, tokenType)} {tokenLabel}
                   </div>
-                  <div className="text-xs text-red-400 flex items-center gap-1 mt-0.5">
+                  <div className="text-xs text-error flex items-center gap-1 mt-0.5">
                     <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                     <span>Need {formatTokenAmount(shortfall, tokenType)} {tokenLabel} more</span>
                   </div>
@@ -201,14 +201,14 @@ export function JitPaymentCard({
             )}
           </div>
 
-          <div className="text-xs text-link mb-2">
+          <div className="text-xs text-foreground/80 mb-2">
             Up to ~{formatTokenAmount(maxTokenAmount, tokenType)} {tokenLabel} with safety margin
           </div>
 
           {/* Advanced settings - collapsible */}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="mt-2 text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+            className="mt-2 text-xs text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1"
           >
             {showAdvanced ? (
               <ChevronUp className="w-3 h-3" />
@@ -219,9 +219,9 @@ export function JitPaymentCard({
           </button>
 
           {showAdvanced && (
-            <div className="mt-2 pt-2 border-t border-default/30">
+            <div className="mt-2 pt-2 border-t border-border/20">
               <div>
-                <label className="text-xs text-link block mb-1">
+                <label className="text-xs text-foreground/80 block mb-1">
                   Max {tokenLabel}:
                 </label>
                 <input
@@ -233,9 +233,9 @@ export function JitPaymentCard({
                     const value = parseFloat(e.target.value) || 0;
                     onMaxTokenAmountChange(value);
                   }}
-                  className="w-full px-2.5 py-1.5 bg-canvas rounded border border-default text-xs text-fg-muted focus:border-fg-muted focus:outline-none"
+                  className="w-full px-2.5 py-1.5 bg-card rounded border border-border/20 text-xs text-foreground focus:border-foreground focus:outline-none"
                 />
-                <div className="text-xs text-link mt-0.5">
+                <div className="text-xs text-foreground/80 mt-0.5">
                   Auto-calculated spending limit (adjustable)
                 </div>
               </div>

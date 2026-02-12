@@ -84,23 +84,23 @@ export default function UploadProgressSummary({
   if (compact) {
     // Compact mode for inline display
     return (
-      <div className={`bg-surface rounded-lg p-3 ${className}`}>
+      <div className={`bg-card rounded-2xl p-3 ${className}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-fg-muted">
+          <span className="text-sm font-medium text-foreground">
             {uploadedCount} / {totalCount} files
           </span>
-          <span className="text-xs text-link">
+          <span className="text-xs text-foreground/80">
             {formatSize(uploadedSize)} / {formatSize(totalSize)}
           </span>
         </div>
-        <div className="w-full bg-canvas rounded-full h-2 overflow-hidden">
+        <div className="w-full bg-card rounded-full h-2 overflow-hidden">
           <div
-            className="bg-turbo-red h-full transition-all duration-300"
+            className="bg-primary h-full transition-all duration-300"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
         {failedCount > 0 && (
-          <div className="mt-2 text-xs text-red-400">
+          <div className="mt-2 text-xs text-error">
             {failedCount} failed
           </div>
         )}
@@ -111,23 +111,23 @@ export default function UploadProgressSummary({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Summary Card */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-turbo-red/20 p-4">
+      <div className="bg-gradient-to-br from-primary/5 to-primary/3 rounded-2xl border border-primary/20 p-4">
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <FileText className="w-5 h-5 text-turbo-red" />
+          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <FileText className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1">
-            <h4 className="text-lg font-bold text-fg-muted mb-1">Upload Progress</h4>
-            <p className="text-sm text-link">
+            <h4 className="text-lg font-bold text-foreground mb-1">Upload Progress</h4>
+            <p className="text-sm text-foreground/80">
               {uploadedCount} of {totalCount} files ({progressPercentage}%)
             </p>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-canvas rounded-full h-3 overflow-hidden mb-4">
+        <div className="w-full bg-card rounded-full h-3 overflow-hidden mb-4">
           <div
-            className="bg-turbo-red h-full transition-all duration-300 relative"
+            className="bg-primary h-full transition-all duration-300 relative"
             style={{ width: `${progressPercentage}%` }}
           >
             <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -136,39 +136,39 @@ export default function UploadProgressSummary({
 
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-surface/50 rounded-lg p-3">
+          <div className="bg-card/50 rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="w-4 h-4 text-turbo-green" />
-              <span className="text-xs text-link">Success</span>
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-xs text-foreground/80">Success</span>
             </div>
-            <p className="text-lg font-bold text-fg-muted">{successCount}</p>
+            <p className="text-lg font-bold text-foreground">{successCount}</p>
           </div>
 
-          <div className="bg-surface/50 rounded-lg p-3">
+          <div className="bg-card/50 rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <XCircle className="w-4 h-4 text-red-400" />
-              <span className="text-xs text-link">Failed</span>
+              <XCircle className="w-4 h-4 text-error" />
+              <span className="text-xs text-foreground/80">Failed</span>
             </div>
-            <p className="text-lg font-bold text-fg-muted">{failedCount}</p>
+            <p className="text-lg font-bold text-foreground">{failedCount}</p>
           </div>
 
-          <div className="bg-surface/50 rounded-lg p-3">
+          <div className="bg-card/50 rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-4 h-4 text-link" />
-              <span className="text-xs text-link">Remaining</span>
+              <Clock className="w-4 h-4 text-foreground/80" />
+              <span className="text-xs text-foreground/80">Remaining</span>
             </div>
-            <p className="text-lg font-bold text-fg-muted">{totalCount - uploadedCount}</p>
+            <p className="text-lg font-bold text-foreground">{totalCount - uploadedCount}</p>
           </div>
 
-          <div className="bg-surface/50 rounded-lg p-3">
+          <div className="bg-card/50 rounded-2xl p-3">
             <div className="flex items-center gap-2 mb-1">
-              <HardDrive className="w-4 h-4 text-link" />
-              <span className="text-xs text-link">Size</span>
+              <HardDrive className="w-4 h-4 text-foreground/80" />
+              <span className="text-xs text-foreground/80">Size</span>
             </div>
-            <p className="text-lg font-bold text-fg-muted">
+            <p className="text-lg font-bold text-foreground">
               {formatSize(uploadedSize)}
             </p>
-            <p className="text-xs text-link">
+            <p className="text-xs text-foreground/80">
               of {formatSize(totalSize)}
             </p>
           </div>
@@ -177,16 +177,16 @@ export default function UploadProgressSummary({
 
       {/* Active Upload - Single file display for smooth UI */}
       {activeUploads.length > 0 && (
-        <div className="bg-surface rounded-xl border border-default p-4">
+        <div className="bg-card rounded-2xl border border-border/20 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-turbo-red animate-spin" />
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
               Uploading Files
             </h4>
             {onCancel && (
               <button
                 onClick={onCancel}
-                className="px-3 py-1 rounded-lg border border-red-400/50 text-xs font-medium text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-1"
+                className="px-3 py-1 rounded-full border border-error/50 text-xs font-medium text-error hover:bg-error/10 transition-colors flex items-center gap-1"
                 title="Cancel all uploads"
               >
                 <X className="w-3 h-3" />
@@ -208,14 +208,14 @@ export default function UploadProgressSummary({
               }, activeUploads[0]);
 
               return (
-                <div className="bg-canvas rounded-lg p-3">
+                <div className="bg-card rounded-2xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-fg-muted truncate max-w-[60%]">
+                    <span className="text-sm font-medium text-foreground truncate max-w-[60%]">
                       {displayFile.name}
                     </span>
-                    <span className="text-xs text-link">
+                    <span className="text-xs text-foreground/80">
                       {activeUploads.length > 1 && (
-                        <span className="mr-2 text-turbo-red">
+                        <span className="mr-2 text-primary">
                           +{activeUploads.length - 1} more
                         </span>
                       )}
@@ -223,9 +223,9 @@ export default function UploadProgressSummary({
                     </span>
                   </div>
                   <div className="space-y-2">
-                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-card rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-turbo-red h-full transition-all duration-300 relative"
+                        className="bg-primary h-full transition-all duration-300 relative"
                         style={{ width: `${displayFile.progress || 0}%` }}
                       >
                         {displayFile.progress > 0 && (
@@ -233,7 +233,7 @@ export default function UploadProgressSummary({
                         )}
                       </div>
                     </div>
-                    <div className="flex justify-between text-xs text-link">
+                    <div className="flex justify-between text-xs text-foreground/80">
                       <span>
                         {activeUploads.length > 1
                           ? `Processing batch (${activeUploads.length} concurrent)`
@@ -252,19 +252,19 @@ export default function UploadProgressSummary({
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="bg-surface rounded-xl border border-red-400/20 p-4">
+        <div className="bg-card rounded-2xl border border-error/20 p-4">
           <button
             onClick={() => setShowErrors(!showErrors)}
             className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
           >
-            <h4 className="text-sm font-bold text-fg-muted flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-error" />
               Upload Errors ({errors.length})
             </h4>
             {showErrors ? (
-              <ChevronUp className="w-4 h-4 text-link" />
+              <ChevronUp className="w-4 h-4 text-foreground/80" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-link" />
+              <ChevronDown className="w-4 h-4 text-foreground/80" />
             )}
           </button>
 
@@ -272,17 +272,17 @@ export default function UploadProgressSummary({
             <>
               <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
                 {errors.slice(0, 10).map((error, index) => (
-                  <div key={index} className="bg-canvas/50 rounded p-2">
-                    <p className="text-xs font-medium text-fg-muted truncate">
+                  <div key={index} className="bg-card/50 rounded p-2">
+                    <p className="text-xs font-medium text-foreground truncate">
                       {error.fileName}
                     </p>
-                    <p className="text-xs text-red-400 mt-1">
+                    <p className="text-xs text-error mt-1">
                       {error.error}
                     </p>
                   </div>
                 ))}
                 {errors.length > 10 && (
-                  <p className="text-xs text-link text-center">
+                  <p className="text-xs text-foreground/80 text-center">
                     +{errors.length - 10} more errors
                   </p>
                 )}
@@ -291,7 +291,7 @@ export default function UploadProgressSummary({
               {onRetryFailed && errors.some(e => e.retryable) && (
                 <button
                   onClick={onRetryFailed}
-                  className="w-full py-2 px-3 rounded-lg bg-turbo-red text-white text-sm font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 rounded-full bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Retry Failed Uploads

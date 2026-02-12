@@ -34,7 +34,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
   // Get appropriate blockchain explorer URL
   const getExplorerUrl = (txId: string, tokenType?: SupportedTokenType): string | null => {
     if (!tokenType) return null;
-    
+
     switch (tokenType) {
       case 'ethereum':
         return `https://etherscan.io/tx/${txId}`;
@@ -61,28 +61,28 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
   const isCryptoPayment = cryptoAmount && tokenType;
 
   // Extract payment details based on payment type
-  const paymentAmount = isCryptoPayment 
+  const paymentAmount = isCryptoPayment
     ? cryptoAmount
-    : paymentIntentResult?.paymentIntent?.amount 
-      ? paymentIntentResult.paymentIntent.amount / 100 
+    : paymentIntentResult?.paymentIntent?.amount
+      ? paymentIntentResult.paymentIntent.amount / 100
       : 0;
-    
-  const paymentId = isCryptoPayment 
+
+  const paymentId = isCryptoPayment
     ? transactionId || ''
     : paymentIntentResult?.paymentIntent?.id || '';
 
   return (
     <div>
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-gradient-to-br from-success/5 to-success/3 rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Success Icon and Message */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-turbo-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-turbo-green" />
+          <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-success" />
           </div>
-          <h4 className="text-2xl font-bold text-turbo-green mb-2">Payment Complete!</h4>
-          <p className="text-link">
+          <h4 className="text-2xl font-heading font-bold text-success mb-2">Payment Complete!</h4>
+          <p className="text-foreground/80">
             {isCryptoPayment && tokenType === 'arweave'
               ? 'Your account will be credited in 15-30 minutes.'
               : 'Your credits are now available.'
@@ -92,14 +92,14 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
 
         {/* Show cross-wallet top-up info if sending to a different address */}
         {((recipient && owner && recipient !== owner) || (targetAddress && targetAddress !== address)) && (
-          <div className="mb-6 bg-turbo-green/10 border border-turbo-green/20 rounded-lg p-4">
+          <div className="mb-6 bg-success/10 border border-success/20 rounded-2xl p-4">
             {/* Highlighted recipient address */}
-            <div className="flex items-center gap-2 text-turbo-green mb-3">
+            <div className="flex items-center gap-2 text-success mb-3">
               <Users className="w-4 h-4" />
               <span className="font-medium text-sm">Credits sent to:</span>
             </div>
             <div className="flex items-center gap-2 mb-3">
-              <code className="text-sm text-turbo-green font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+              <code className="text-sm text-success font-mono break-all flex-1 p-2 bg-card/50 rounded">
                 {recipient || targetAddress}
               </code>
               <CopyButton textToCopy={recipient || targetAddress || ''} />
@@ -107,10 +107,10 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
 
             {/* Smaller text showing who paid */}
             {owner && (
-              <div className="pt-3 border-t border-turbo-green/20">
-                <div className="text-xs text-link/70 mb-1">Paid from your wallet:</div>
+              <div className="pt-3 border-t border-success/20">
+                <div className="text-xs text-foreground/80/70 mb-1">Paid from your wallet:</div>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs text-link/80 font-mono break-all flex-1">
+                  <code className="text-xs text-foreground/80/80 font-mono break-all flex-1">
                     {owner}
                   </code>
                   <CopyButton textToCopy={owner} />
@@ -121,42 +121,42 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
         )}
 
         {/* Payment Summary */}
-        <div className="bg-canvas rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-link">Payment Amount:</span>
-              <span className="font-medium text-fg-muted">
-                {isCryptoPayment 
+              <span className="text-sm text-foreground/80">Payment Amount:</span>
+              <span className="font-medium text-foreground">
+                {isCryptoPayment
                   ? `${paymentAmount} ${tokenLabels[tokenType!]}`
                   : `$${paymentAmount.toFixed(2)}`
                 }
               </span>
             </div>
-            
+
             {creditsReceived && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-link">Credits Received:</span>
-                <span className="font-bold text-turbo-green text-lg">
+                <span className="text-sm text-foreground/80">Credits Received:</span>
+                <span className="font-bold text-success text-lg">
                   +{creditsReceived.toFixed(4)} Credits
                 </span>
               </div>
             )}
-            
+
             <div className="flex justify-between items-center">
-              <span className="text-sm text-link">Current Balance:</span>
-              <span className="font-bold text-turbo-green text-lg">
+              <span className="text-sm text-foreground/80">Current Balance:</span>
+              <span className="font-bold text-success text-lg">
                 {creditBalance.toLocaleString()} Credits
               </span>
             </div>
-            
+
             {paymentId && (
-              <div className="pt-4 border-t border-default">
+              <div className="pt-4 border-t border-border/20">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-link">
+                  <span className="text-xs text-foreground/80">
                     {isCryptoPayment ? 'Transaction ID:' : 'Payment ID:'}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-fg-muted">
+                    <span className="font-mono text-xs text-foreground">
                       <span className="hidden sm:inline">{paymentId}</span>
                       <span className="sm:hidden">{formatTxId(paymentId, true)}</span>
                     </span>
@@ -165,7 +165,7 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                         href={getExplorerUrl(paymentId, tokenType)!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-link hover:text-fg-muted transition-colors"
+                        className="text-foreground/80 hover:text-foreground transition-colors"
                         title="View on blockchain explorer"
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -179,22 +179,22 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
         </div>
 
         {/* Next Steps - Call to Actions */}
-        <div className="bg-surface/50 rounded-lg p-4 mb-6">
-          <h5 className="font-medium text-fg-muted mb-4">What's Next?</h5>
+        <div className="bg-card rounded-2xl p-4 mb-6">
+          <h5 className="font-heading font-medium text-foreground mb-4">What's Next?</h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => {
                 onComplete();
                 navigate('/upload');
               }}
-              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-turbo-red/30 text-left"
+              className="flex items-center gap-3 p-3 bg-card hover:bg-card/80 transition-colors rounded-2xl border border-border/20 hover:border-primary/30 text-left"
             >
-              <div className="w-8 h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Upload className="w-4 h-4 text-turbo-red" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Upload className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <div className="text-sm font-medium text-fg-muted">Upload Files</div>
-                <div className="text-xs text-link">Store files permanently</div>
+                <div className="text-sm font-medium text-foreground">Upload Files</div>
+                <div className="text-xs text-foreground/80">Store files permanently</div>
               </div>
             </button>
 
@@ -203,14 +203,14 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                 onComplete();
                 navigate('/deploy');
               }}
-              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-turbo-red/30 text-left"
+              className="flex items-center gap-3 p-3 bg-card hover:bg-card/80 transition-colors rounded-2xl border border-border/20 hover:border-primary/30 text-left"
             >
-              <div className="w-8 h-8 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Zap className="w-4 h-4 text-turbo-red" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Zap className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <div className="text-sm font-medium text-fg-muted">Deploy Site</div>
-                <div className="text-xs text-link">Launch your app or site</div>
+                <div className="text-sm font-medium text-foreground">Deploy Site</div>
+                <div className="text-xs text-foreground/80">Launch your app or site</div>
               </div>
             </button>
 
@@ -219,14 +219,14 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                 onComplete();
                 navigate('/domains');
               }}
-              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-turbo-yellow/30 text-left"
+              className="flex items-center gap-3 p-3 bg-card hover:bg-card/80 transition-colors rounded-2xl border border-border/20 hover:border-primary/30 text-left"
             >
-              <div className="w-8 h-8 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Globe className="w-4 h-4 text-turbo-yellow" />
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Globe className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <div className="text-sm font-medium text-fg-muted">Register Domain</div>
-                <div className="text-xs text-link">Get a permanent domain name</div>
+                <div className="text-sm font-medium text-foreground">Register Domain</div>
+                <div className="text-xs text-foreground/80">Get a permanent domain name</div>
               </div>
             </button>
 
@@ -235,14 +235,14 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
                 onComplete();
                 navigate('/share');
               }}
-              className="flex items-center gap-3 p-3 bg-canvas hover:bg-surface transition-colors rounded-lg border border-default hover:border-fg-muted/30 text-left w-full"
+              className="flex items-center gap-3 p-3 bg-card hover:bg-card/80 transition-colors rounded-2xl border border-border/20 hover:border-foreground/30 text-left w-full"
             >
-              <div className="w-8 h-8 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Share2 className="w-4 h-4 text-fg-muted" />
+              <div className="w-8 h-8 bg-foreground/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-border/20">
+                <Share2 className="w-4 h-4 text-foreground" />
               </div>
               <div>
-                <div className="text-sm font-medium text-fg-muted">Share Credits</div>
-                <div className="text-xs text-link">Transfer credits to other wallets</div>
+                <div className="text-sm font-medium text-foreground">Share Credits</div>
+                <div className="text-xs text-foreground/80">Transfer credits to other wallets</div>
               </div>
             </button>
           </div>
@@ -250,12 +250,12 @@ const PaymentSuccessPanel: React.FC<PaymentSuccessPanelProps> = ({
 
         {/* Support Link */}
         <div className="text-center mt-4 sm:mt-6">
-          <p className="text-xs text-link mb-2">
+          <p className="text-xs text-foreground/80 mb-2">
             Need help? Contact our support team
           </p>
           <a
             href="mailto:support@ardrive.io"
-            className="text-xs text-fg-muted hover:text-fg-muted/80 transition-colors inline-flex items-center gap-1"
+            className="text-xs text-foreground hover:text-foreground/80 transition-colors inline-flex items-center gap-1"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -69,7 +69,7 @@ The Turbo App is accessible through any modern web browser at the deployment URL
 **Public Landing Page**
 - Hero section with "How does it work?" explanation
 - Turbo by the Numbers: Real performance metrics (20B+ files, 200+ TiB, ~860 files/sec, 99.9% uptime)
-- Trusted by Web3 Leaders: Carousel with Forward Research, Drip Haus, Manifold, Meta, RedStone, KYVE, Metaplex, Load Network, Solana Mobile
+- Trusted by the Best: Carousel with Forward Research, Drip Haus, Manifold, Meta, RedStone, KYVE, Metaplex, Load Network, Solana Mobile
 - Interactive Feature Explorer: Browse all 9 service features with dropdown/sidebar navigation
 - Build Section: 6 cards organized by function
   - Getting Started
@@ -741,7 +741,7 @@ All captures include standardized tags:
   - POST /graphql - GraphQL query interface
 
 **Guides Tab** (Aligned with Homepage Build Section)
-- **Getting Started**: AR.IO guide that walks through uploads with Turbo (https://docs.ar.io/build/upload/bundling-services)
+- **Getting Started**: Create your first upload integration (https://docs.ar.io/build/upload/bundling-services)
 - **Paying for Uploads**: Turbo Credits as payment medium (https://docs.ar.io/build/upload/turbo-credits)
 - **Host Decentralized Websites**: Deploy webpage/app to Arweave with ArNS (https://docs.ar.io/build/guides/hosting-decentralized-websites)
 - **Accessing Data**: Resilient decentralized access (https://docs.ar.io/build/access)
@@ -1042,8 +1042,8 @@ All captures include standardized tags:
 ```jsx
 // Inline Header with Icon
 <div className="flex items-start gap-3 mb-6">
-  <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-    <IconComponent className="w-5 h-5 text-turbo-red" />
+  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+    <IconComponent className="w-5 h-5 text-primary" />
   </div>
   <div>
     <h3 className="text-2xl font-bold text-fg-muted mb-1">[Service Name]</h3>
@@ -1052,13 +1052,13 @@ All captures include standardized tags:
 </div>
 
 // Gradient Container
-<div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-6 mb-6">
+<div className="bg-gradient-to-br from-primary/5 to-primary/3 rounded-xl border border-default p-6 mb-6">
   {/* Main service content */}
 </div>
 ```
 
 **Typography**
-- **Font Family**: Rubik (@fontsource/rubik) - Applied throughout entire application
+- **Font Family**: Plus Jakarta Sans (body), Besley (headings) - Applied throughout entire application
 - **Responsive Scaling**: Base 16px with scale modifiers (text-xs to text-4xl)
 - **Line Heights**: 1.5 for body text, 1.2 for headings
 - **Font Weights**: 400 (normal), 500 (medium), 700 (bold)
@@ -1067,9 +1067,9 @@ All captures include standardized tags:
 **Interactive States**
 - **Hover**: Opacity 80-90%, transition 200ms
 - **Active**: Scale 95%, pressed appearance
-- **Focus**: Ring with turbo-red color, 2px width
+- **Focus**: Ring with primary color, 2px width
 - **Disabled**: Opacity 50%, cursor not-allowed
-- **Loading**: Spinner with turbo-red color, scale animation
+- **Loading**: Spinner with primary color, scale animation
 
 **Modal System**
 - **BaseModal**: Foundation with portal rendering

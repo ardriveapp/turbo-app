@@ -158,8 +158,8 @@ export default function ShareCreditsPanel() {
   if (!address) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-bold mb-4">Connect Wallet Required</h3>
-        <p className="text-link">Connect your wallet to share credits</p>
+        <h3 className="text-xl font-heading font-bold mb-4">Connect Wallet Required</h3>
+        <p className="text-foreground/80">Connect your wallet to share credits</p>
       </div>
     );
   }
@@ -173,29 +173,29 @@ export default function ShareCreditsPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Share2 className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Share2 className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Share Credits</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Share Credits</h3>
+          <p className="text-sm text-foreground/80">
             Delegate credits to other wallets for collaborative uploads and distributed payments
           </p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-gradient-to-br from-fg-muted/5 to-fg-muted/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
       
       {/* Current Balance */}
       {balance && (
-        <div className="bg-surface rounded-lg p-4 mb-6">
+        <div className="bg-card rounded-2xl p-4 mb-6">
           <div className="flex justify-between items-center">
-            <span className="text-link">Available to Share:</span>
+            <span className="text-foreground/80">Available to Share:</span>
             <div className="text-right">
-              <span className="font-bold text-fg-muted">{spendPower} Credits</span>
+              <span className="font-bold text-foreground">{spendPower} Credits</span>
               {wincForOneGiB && (
-                <div className="text-xs text-link">
+                <div className="text-xs text-foreground/80">
                   ~{((creditBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
                 </div>
               )}
@@ -203,7 +203,7 @@ export default function ShareCreditsPanel() {
           </div>
           {+sharedCredits > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-link">Already Shared:</span>
+              <span className="text-foreground/80">Already Shared:</span>
               <span>{sharedCredits} Credits</span>
             </div>
           )}
@@ -240,22 +240,22 @@ export default function ShareCreditsPanel() {
                 setCreditAmount(finalAmount);
                 setCreditAmountInput(String(finalAmount));
               }}
-              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
+              className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground focus:border-foreground focus:outline-none transition-colors"
               placeholder="Minimum 0.01 credits"
               inputMode="decimal"
             />
             {creditAmount >= 0.01 && wincForOneGiB && (
-              <div className="mt-2 text-xs text-link">
+              <div className="mt-2 text-xs text-foreground/80">
                 ~{((creditAmount * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB storage
               </div>
             )}
             {creditAmount > 0 && creditAmount < 0.01 && (
-              <div className="mt-2 text-xs text-yellow-500">
+              <div className="mt-2 text-xs text-warning">
                 Minimum share amount is 0.01 credits
               </div>
             )}
             {creditAmount > creditBalance && (
-              <div className="mt-2 text-xs text-red-500">
+              <div className="mt-2 text-xs text-error">
                 Exceeds available balance ({creditBalance.toFixed(2)} credits)
               </div>
             )}
@@ -289,22 +289,22 @@ export default function ShareCreditsPanel() {
                   setRecipientWalletType(null);
                 }
               }}
-              className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
+              className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground font-mono text-sm focus:border-foreground focus:outline-none transition-colors"
               placeholder="Arweave, Ethereum, or Solana address"
             />
             {recipientWalletType && recipientWalletType !== 'unknown' && (
-              <div className="mt-2 text-xs text-turbo-green flex items-center gap-1">
+              <div className="mt-2 text-xs text-success flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" />
                 Valid {getWalletTypeLabel(recipientWalletType)} address
               </div>
             )}
             {recipientWalletType === 'unknown' && (
-              <div className="mt-2 text-xs text-red-500">
+              <div className="mt-2 text-xs text-error">
                 Invalid wallet address format
               </div>
             )}
             {!recipientWalletType && (
-              <div className="mt-2 text-xs text-link">
+              <div className="mt-2 text-xs text-foreground/80">
                 e.g., 1seRanklLU_1VTGkEk7P0x...
               </div>
             )}
@@ -316,40 +316,40 @@ export default function ShareCreditsPanel() {
           <div className="grid grid-cols-4 gap-2 mb-3">
             <button
               onClick={() => setExpiresBySeconds(3600)}
-              className={`py-2 px-3 rounded-lg border text-sm transition-all ${
+              className={`py-2 px-3 rounded-2xl border text-sm transition-all ${
                 expiresBySeconds === 3600
-                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                  : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                  ? 'border-foreground bg-foreground/10 text-foreground'
+                  : 'border-border/20 text-foreground/80 hover:bg-card hover:text-foreground'
               }`}
             >
               1 hour
             </button>
             <button
               onClick={() => setExpiresBySeconds(86400)}
-              className={`py-2 px-3 rounded-lg border text-sm transition-all ${
+              className={`py-2 px-3 rounded-2xl border text-sm transition-all ${
                 expiresBySeconds === 86400
-                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                  : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                  ? 'border-foreground bg-foreground/10 text-foreground'
+                  : 'border-border/20 text-foreground/80 hover:bg-card hover:text-foreground'
               }`}
             >
               1 day
             </button>
             <button
               onClick={() => setExpiresBySeconds(604800)}
-              className={`py-2 px-3 rounded-lg border text-sm transition-all ${
+              className={`py-2 px-3 rounded-2xl border text-sm transition-all ${
                 expiresBySeconds === 604800
-                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                  : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                  ? 'border-foreground bg-foreground/10 text-foreground'
+                  : 'border-border/20 text-foreground/80 hover:bg-card hover:text-foreground'
               }`}
             >
               1 week
             </button>
             <button
               onClick={() => setExpiresBySeconds(0)}
-              className={`py-2 px-3 rounded-lg border text-sm transition-all ${
+              className={`py-2 px-3 rounded-2xl border text-sm transition-all ${
                 expiresBySeconds === 0
-                  ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-                  : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+                  ? 'border-foreground bg-foreground/10 text-foreground'
+                  : 'border-border/20 text-foreground/80 hover:bg-card hover:text-foreground'
               }`}
             >
               Never
@@ -359,13 +359,13 @@ export default function ShareCreditsPanel() {
             type="number"
             value={expiresBySeconds}
             onChange={(e) => setExpiresBySeconds(Number(e.target.value))}
-            className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground focus:border-foreground focus:outline-none transition-colors"
             placeholder="Custom time in seconds (0 = no expiration)"
             min="0"
           />
           {expiresBySeconds > 0 && (
-            <p className="text-xs text-link mt-1">
-              Expires in {expiresBySeconds < 3600 
+            <p className="text-xs text-foreground/80 mt-1">
+              Expires in {expiresBySeconds < 3600
                 ? `${expiresBySeconds} seconds`
                 : expiresBySeconds < 86400
                 ? `${(expiresBySeconds / 3600).toFixed(1)} hours`
@@ -382,12 +382,12 @@ export default function ShareCreditsPanel() {
         )}
 
         {success && (
-          <div className="text-turbo-green text-sm p-4 bg-turbo-green/10 rounded-lg border border-turbo-green/20">
+          <div className="text-success text-sm p-4 bg-success/10 rounded-2xl border border-success/20">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="w-4 h-4" />
               <span className="font-medium">Credits shared successfully!</span>
             </div>
-            <p className="text-xs text-link">
+            <p className="text-xs text-foreground/80">
               {creditAmount} credits are now available for the recipient to use. Your balance has been updated.
             </p>
           </div>
@@ -396,7 +396,7 @@ export default function ShareCreditsPanel() {
         <button
           onClick={handleShare}
           disabled={sending || !address || creditAmount < 0.01 || creditAmount > creditBalance || !approvedAddress}
-          className="w-full py-4 px-6 rounded-lg bg-fg-muted text-black font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-4 px-6 rounded-full bg-foreground text-card font-bold text-lg hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {sending ? (
             <>
@@ -415,15 +415,15 @@ export default function ShareCreditsPanel() {
 
       {/* Active Approvals */}
       {givenApprovals.length > 0 && (
-        <div className="mt-8 pt-8 border-t border-default">
+        <div className="mt-8 pt-8 border-t border-border/20">
           <h4 className="font-semibold mb-4">Active Approvals</h4>
           <div className="space-y-3">
             {givenApprovals.map((approval: Approval) => (
-              <div key={approval.approvedAddress} className="bg-surface rounded-lg p-3">
+              <div key={approval.approvedAddress} className="bg-card rounded-2xl p-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-mono text-sm">{approval.approvedAddress}</p>
-                    <p className="text-sm text-link">
+                    <p className="text-sm text-foreground/80">
                       {(+approval.approvedWincAmount / wincPerCredit).toFixed(4)} Credits
                       {approval.expirationDate && (
                         <span className="ml-2">
@@ -445,19 +445,19 @@ export default function ShareCreditsPanel() {
 
           {/* Revoke Form */}
           {revokeAddress && (
-            <div className="mt-4 p-4 bg-surface rounded-lg">
+            <div className="mt-4 p-4 bg-card rounded-2xl">
               <p className="text-sm mb-3">Revoke credits from: {revokeAddress}</p>
               <div className="flex gap-3">
                 <button
                   onClick={handleRevoke}
                   disabled={revoking}
-                  className="px-4 py-2 rounded bg-error text-white font-medium disabled:opacity-50"
+                  className="px-4 py-2 rounded-full bg-error text-white font-medium disabled:opacity-50"
                 >
                   {revoking ? 'Revoking...' : 'Confirm Revoke'}
                 </button>
                 <button
                   onClick={() => setRevokeAddress('')}
-                  className="px-4 py-2 rounded border border-default text-link"
+                  className="px-4 py-2 rounded-full border border-border/20 text-foreground/80"
                 >
                   Cancel
                 </button>
@@ -476,16 +476,16 @@ export default function ShareCreditsPanel() {
             href="https://docs.ardrive.io/docs/turbo/credit-sharing.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
+            className="bg-card rounded-2xl p-4 hover:bg-card/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Book className="w-5 h-5 text-fg-muted" />
+              <Book className="w-5 h-5 text-foreground" />
               <span className="font-medium">Documentation</span>
             </div>
-            <p className="text-xs text-link">
+            <p className="text-xs text-foreground/80">
               Complete guide to credit sharing features and API
             </p>
-            <div className="flex items-center gap-1 mt-2 text-xs text-link group-hover:text-fg-muted">
+            <div className="flex items-center gap-1 mt-2 text-xs text-foreground/80 group-hover:text-foreground">
               <span>Read guide</span>
               <ExternalLink className="w-3 h-3" />
             </div>
@@ -496,16 +496,16 @@ export default function ShareCreditsPanel() {
             href="https://docs.ardrive.io/docs/turbo/credit-sharing.html#use-cases"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
+            className="bg-card rounded-2xl p-4 hover:bg-card/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Lightbulb className="w-5 h-5 text-fg-muted" />
+              <Lightbulb className="w-5 h-5 text-foreground" />
               <span className="font-medium">Use Cases</span>
             </div>
-            <p className="text-xs text-link">
+            <p className="text-xs text-foreground/80">
               Examples and scenarios for credit sharing
             </p>
-            <div className="flex items-center gap-1 mt-2 text-xs text-link group-hover:text-fg-muted">
+            <div className="flex items-center gap-1 mt-2 text-xs text-foreground/80 group-hover:text-foreground">
               <span>View examples</span>
               <ExternalLink className="w-3 h-3" />
             </div>
@@ -516,16 +516,16 @@ export default function ShareCreditsPanel() {
             href="https://github.com/ardriveapp/turbo-sdk?tab=readme-ov-file#sharecredits-approvedaddress-approvedwincamount-expiresbyseconds-"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-surface rounded-lg p-4 hover:bg-surface/80 transition-colors group"
+            className="bg-card rounded-2xl p-4 hover:bg-card/80 transition-colors group"
           >
             <div className="flex items-center gap-3 mb-2">
-              <Code className="w-5 h-5 text-fg-muted" />
+              <Code className="w-5 h-5 text-foreground" />
               <span className="font-medium">SDK Reference</span>
             </div>
-            <p className="text-xs text-link">
+            <p className="text-xs text-foreground/80">
               Technical implementation details on GitHub
             </p>
-            <div className="flex items-center gap-1 mt-2 text-xs text-link group-hover:text-fg-muted">
+            <div className="flex items-center gap-1 mt-2 text-xs text-foreground/80 group-hover:text-foreground">
               <span>View code</span>
               <ExternalLink className="w-3 h-3" />
             </div>

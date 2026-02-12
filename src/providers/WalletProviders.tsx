@@ -18,15 +18,15 @@ const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID |
 // Configure Wagmi with RainbowKit - supports MetaMask, WalletConnect, Coinbase, and many more
 // RainbowKit's getDefaultConfig handles session persistence automatically via wagmi's reconnect
 const wagmiConfig = getDefaultConfig({
-  appName: 'Turbo Gateway',
+  appName: 'ar.io',
   projectId: WALLETCONNECT_PROJECT_ID,
   chains: [mainnet, base, polygon, polygonAmoy],
   ssr: false,
 });
 
-// Custom RainbowKit theme to match Turbo Gateway's dark theme
-const turboRainbowTheme = darkTheme({
-  accentColor: '#FE0230', // turbo-red
+// Custom RainbowKit theme to match ar.io's dark theme
+const arioRainbowTheme = darkTheme({
+  accentColor: '#FE0230', // primary
   accentColorForeground: 'white',
   borderRadius: 'medium',
   fontStack: 'system',
@@ -66,14 +66,14 @@ export function WalletProviders({ children }: WalletProvidersProps) {
         loginMethods: ['email'], // Email-only, no wallet connections through Privy
         appearance: {
           theme: 'dark',
-          accentColor: '#FE0230', // Turbo red
+          accentColor: '#FE0230', // primary
           showWalletLoginFirst: false,
         },
       }}
     >
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider theme={turboRainbowTheme}>
+          <RainbowKitProvider theme={arioRainbowTheme}>
             <ConnectionProvider endpoint={import.meta.env.VITE_SOLANA_RPC || 'https://api.mainnet-beta.solana.com'}>
               <WalletProvider wallets={solanaWallets} autoConnect={false}>
                 <WalletModalProvider>

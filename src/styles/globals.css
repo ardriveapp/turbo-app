@@ -1,25 +1,49 @@
-@import '@fontsource/rubik/400.css';
-@import '@fontsource/rubik/500.css';
-@import '@fontsource/rubik/600.css';
-@import '@fontsource/rubik/700.css';
+/* ar.io App - Global Styles */
+
+/* Font imports - Variable fonts for optimal flexibility */
+@import '@fontsource-variable/besley';
+@import '@fontsource-variable/plus-jakarta-sans';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ar.io brand colors (light mode only) */
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+
+    /* Core brand colors */
+    --color-primary: 84 39 200;        /* #5427C8 - Primary purple */
+    --color-lavender: 223 214 247;     /* #DFD6F7 - Secondary/decorative */
+    --color-foreground: 35 35 45;      /* #23232D - Primary text, dark elements */
+    --color-background: 255 255 255;   /* #FFFFFF - Page background */
+    --color-card: 240 240 240;         /* #F0F0F0 - Card surfaces */
+    --color-border: 35 35 45;          /* #23232D at 12% opacity for borders */
+    --color-code-surface: 35 35 45;    /* #23232D - Code block backgrounds */
+
+    /* Semantic status colors */
+    --color-success: 22 163 74;        /* #16a34a - Success/positive states */
+    --color-error: 220 38 38;          /* #dc2626 - Error/danger states */
+    --color-warning: 217 119 6;        /* #d97706 - Warning/caution states */
+    --color-info: 37 99 235;           /* #2563eb - Informational states */
   }
-  
+
   body {
-    @apply bg-canvas text-fg-muted antialiased;
-    font-family: 'Rubik', sans-serif;
+    @apply text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', sans-serif;
+    /* Gradient background is applied in Layout.tsx to match ar.io public site pattern */
+    min-height: 100vh;
   }
-  
-  /* Ensure dark mode colors are applied */
-  .dark {
-    @apply bg-canvas text-fg-muted;
+
+  /* Headings use Besley */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Besley Variable', 'Besley', serif;
+  }
+
+  /* Smooth transitions for interactive elements */
+  button, a, input, select, textarea {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 }
 
@@ -47,4 +71,29 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Font utility classes */
+  .font-heading {
+    font-family: 'Besley Variable', 'Besley', serif;
+  }
+  .font-body {
+    font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  /*
+   * Typography Scale (aligned with ar.io public site)
+   * ================================================
+   * Fonts:
+   *   - Headings: Besley (font-heading)
+   *   - Body: Plus Jakarta Sans (font-body / font-sans)
+   *
+   * Sizes & Weights:
+   *   - Hero/Page titles: text-4xl/5xl font-heading font-bold
+   *   - Section headings: text-3xl font-heading font-bold
+   *   - Panel titles: text-2xl font-heading font-bold
+   *   - Card titles: text-xl font-heading font-bold (or text-lg font-bold)
+   *   - Body text: text-base (16px)
+   *   - Secondary/muted text: text-sm text-foreground/80
+   *   - Labels/small: text-xs, often uppercase tracking-wide
+   */
 }

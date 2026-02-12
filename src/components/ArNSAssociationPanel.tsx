@@ -123,10 +123,10 @@ export default function ArNSAssociationPanel({
     }
   }, [currentTTL]);
   return (
-    <div className="bg-gradient-to-br from-turbo-yellow/5 to-turbo-yellow/3 rounded-xl border border-turbo-yellow/20 p-6 mb-6">
+    <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-primary/30 p-6 mb-6">
       <div className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 bg-turbo-yellow/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Globe className="w-5 h-5 text-turbo-yellow" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Globe className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -135,14 +135,14 @@ export default function ArNSAssociationPanel({
               id="arns-enabled"
               checked={enabled}
               onChange={(e) => onEnabledChange(e.target.checked)}
-              className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors"
+              className="w-4 h-4 bg-card border-2 border-border/20 rounded focus:ring-0 checked:bg-card checked:border-border/20 accent-white transition-colors"
             />
-            <label htmlFor="arns-enabled" className="font-medium text-fg-muted cursor-pointer">
-              Associate with ArNS name
+            <label htmlFor="arns-enabled" className="font-medium text-foreground cursor-pointer">
+              Add domain name
             </label>
           </div>
-          <p className="text-sm text-link">
-            Give your site a friendly, decentralized domain name
+          <p className="text-sm text-foreground/80">
+            Give your site a friendly, smart domain name
           </p>
         </div>
       </div>
@@ -150,24 +150,24 @@ export default function ArNSAssociationPanel({
       {enabled && (
         <div className="space-y-4">
           {loading ? (
-            <div className="flex items-center gap-2 text-sm text-link">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading your ArNS names...
             </div>
           ) : names.length === 0 ? (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+            <div className="bg-warning/10 border border-warning/20 rounded-2xl p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-sm font-medium text-fg-muted mb-1">
+                  <div className="text-sm font-medium text-foreground mb-1">
                     No ArNS names found
                   </div>
-                  <div className="text-sm text-link mb-3">
+                  <div className="text-sm text-foreground/80 mb-3">
                     You need to own an ArNS name first. You can purchase names from the AR.IO Network.
                   </div>
                   <button
                     onClick={() => window.open('https://ar.io/arns', '_blank')}
-                    className="px-3 py-1.5 bg-turbo-yellow text-black rounded text-xs hover:bg-turbo-yellow/90 transition-colors"
+                    className="px-3 py-1.5 bg-primary text-white rounded-full text-xs hover:bg-primary/90 transition-colors"
                   >
                     Learn More About ArNS
                   </button>
@@ -179,13 +179,13 @@ export default function ArNSAssociationPanel({
               {/* Name Selection */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-fg-muted">
-                    Select ArNS name:
+                  <label className="text-sm font-medium text-foreground">
+                    Select name:
                   </label>
                   <button
                     onClick={() => fetchOwnedNames(true)}
                     disabled={loading}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-turbo-yellow hover:text-turbo-yellow/80 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-foreground hover:text-foreground/80 transition-colors disabled:opacity-50"
                     title="Refresh ArNS names"
                   >
                     <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
@@ -207,7 +207,7 @@ export default function ArNSAssociationPanel({
                   <div className="relative">
                     <div className="relative w-full">
                       <Combobox.Input
-                        className="w-full px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted focus:border-turbo-yellow focus:outline-none focus:ring-1 focus:ring-turbo-yellow disabled:opacity-50 pr-10"
+                        className="w-full px-3 py-2 bg-card border border-border/20 rounded-2xl text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 pr-10"
                         displayValue={(name: string) => {
                           if (!name) return '';
                           const found = names.find(n => n.name === name);
@@ -220,15 +220,15 @@ export default function ArNSAssociationPanel({
                       />
                       <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
                         {loadingDetails[selectedName] ? (
-                          <Loader2 className="h-4 w-4 text-link animate-spin" aria-hidden="true" />
+                          <Loader2 className="h-4 w-4 text-foreground/80 animate-spin" aria-hidden="true" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                          <ChevronDown className="h-4 w-4 text-foreground/80" aria-hidden="true" />
                         )}
                       </Combobox.Button>
                     </div>
-                    <Combobox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                    <Combobox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-card border border-border/20 shadow-lg focus:outline-none">
                       {filteredNames.length === 0 && nameQuery !== '' ? (
-                        <div className="relative cursor-default select-none py-3 px-4 text-link">
+                        <div className="relative cursor-default select-none py-3 px-4 text-foreground/80">
                           No names found matching "{nameQuery}"
                         </div>
                       ) : (
@@ -238,7 +238,7 @@ export default function ArNSAssociationPanel({
                               value=""
                               className={({ active }) =>
                                 `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
-                                  active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                  active ? 'bg-card text-foreground' : 'text-foreground/80'
                                 }`
                               }
                             >
@@ -251,7 +251,7 @@ export default function ArNSAssociationPanel({
                               value={name.name}
                               className={({ active }) =>
                                 `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
-                                  active ? 'bg-canvas text-fg-muted' : 'text-fg-muted'
+                                  active ? 'bg-card text-foreground' : 'text-foreground'
                                 }`
                               }
                             >
@@ -263,7 +263,7 @@ export default function ArNSAssociationPanel({
                                       : name.displayName}
                                   </span>
                                   {selected && (
-                                    <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-turbo-yellow">
+                                    <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-primary">
                                       <Check className="h-4 w-4" aria-hidden="true" />
                                     </span>
                                   )}
@@ -293,51 +293,51 @@ export default function ArNSAssociationPanel({
                         onUndernameChange('');
                       }
                     }}
-                    className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-4 h-4 bg-card border-2 border-border/20 rounded focus:ring-0 checked:bg-card checked:border-border/20 accent-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   />
-                  <span className="text-sm text-fg-muted">Use undername (subdomain)</span>
+                  <span className="text-sm text-foreground">Use undername (subdomain)</span>
                 </label>
-                
+
                 {showUndername && (
                   <div className="mt-3 space-y-3">
                     {/* Show existing undernames if any */}
                     {selectedNameRecord?.undernames && selectedNameRecord.undernames.length > 0 && (
                       <div>
-                        <div className="text-sm font-medium text-fg-muted mb-2">Existing undernames:</div>
-                        <div className="bg-surface/50 rounded-lg p-3 border border-default/30">
+                        <div className="text-sm font-medium text-foreground mb-2">Existing undernames:</div>
+                        <div className="bg-card rounded-2xl p-3 border border-primary/20">
                           <div className="flex flex-wrap gap-2">
                             {selectedNameRecord.undernames.map(undername => (
                               <button
                                 key={undername}
                                 onClick={() => onUndernameChange(undername)}
-                                className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
+                                className={`px-3 py-1.5 rounded-2xl text-sm transition-colors border ${
                                   selectedUndername === undername
-                                    ? 'bg-turbo-yellow text-black border-turbo-yellow'
-                                    : 'bg-surface border-default text-fg-muted hover:border-turbo-yellow/50 hover:text-turbo-yellow'
+                                    ? 'bg-primary text-white border-primary'
+                                    : 'bg-card border-border/20 text-foreground hover:border-primary/50 hover:text-foreground'
                                 }`}
                               >
                                 {undername}
                               </button>
                             ))}
                           </div>
-                          <p className="text-xs text-link mt-2">
+                          <p className="text-xs text-foreground/80 mt-2">
                             Click to select an existing undername, or enter a new one below
                           </p>
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Create new undername */}
                     <div>
-                      <label className="block text-sm font-medium text-fg-muted mb-2">
-                        {selectedNameRecord?.undernames && selectedNameRecord.undernames.length > 0 
-                          ? 'Or create new undername:' 
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        {selectedNameRecord?.undernames && selectedNameRecord.undernames.length > 0
+                          ? 'Or create new undername:'
                           : 'Enter undername:'}
                       </label>
-                      
+
                       {/* Info for first-time users */}
                       {(!selectedNameRecord?.undernames || selectedNameRecord.undernames.length === 0) && (
-                        <div className="text-xs text-link mb-2 bg-turbo-yellow/5 rounded p-2 border border-turbo-yellow/20">
+                        <div className="text-xs text-foreground/80 mb-2 bg-primary/10 rounded p-2 border border-primary/30">
                           This will be the first undername for {selectedName}
                         </div>
                       )}
@@ -356,25 +356,25 @@ export default function ArNSAssociationPanel({
                           }
                         }}
                         placeholder="my_blog, docs, app..."
-                        className={`w-full px-3 py-2 bg-surface border rounded-lg text-fg-muted focus:ring-2 text-sm transition-colors ${
+                        className={`w-full px-3 py-2 bg-card border rounded-2xl text-foreground focus:ring-2 text-sm transition-colors ${
                           selectedUndername && hasInvalidCharacters(selectedUndername)
-                            ? 'border-yellow-500 focus:ring-yellow-500'
-                            : 'border-default focus:ring-turbo-yellow'
+                            ? 'border-warning focus:ring-warning'
+                            : 'border-border/20 focus:ring-primary'
                         }`}
                       />
                       <p className="text-xs mt-1">
                         {selectedUndername ? (
                           hasInvalidCharacters(selectedUndername) ? (
-                            <span className="text-yellow-500">
+                            <span className="text-warning">
                               Will be sanitized to: {sanitizeUndername(selectedUndername)}_{selectedName}.ar.io
                             </span>
                           ) : (
-                            <span className="text-link">
+                            <span className="text-foreground/80">
                               Will {selectedNameRecord?.undernames?.includes(selectedUndername) ? 'update existing' : 'create new'} undername: {selectedUndername}_{selectedName}.ar.io
                             </span>
                           )
                         ) : (
-                          <span className="text-link">
+                          <span className="text-foreground/80">
                             Lowercase letters, numbers, hyphens, and underscores. Cannot start/end with - or _.
                           </span>
                         )}
@@ -386,15 +386,15 @@ export default function ArNSAssociationPanel({
 
               {/* Preview */}
               {selectedName && (
-                <div className="bg-surface/50 rounded-lg p-4 space-y-3">
+                <div className="bg-card rounded-2xl p-4 space-y-3 border border-primary/20">
                   <div>
-                    <div className="text-sm font-medium text-fg-muted mb-2">Preview:</div>
+                    <div className="text-sm font-medium text-foreground mb-2">Preview:</div>
                     <div className="flex items-center gap-2 mb-2">
-                      <a 
+                      <a
                         href={previewUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-mono text-turbo-yellow hover:underline flex items-center gap-1"
+                        className="text-sm font-mono text-foreground hover:underline flex items-center gap-1"
                       >
                         {fullDomainName}.ar.io
                         <ExternalLink className="w-3 h-3" />
@@ -402,19 +402,19 @@ export default function ArNSAssociationPanel({
                     </div>
                     {/* Only show current target for base name or when no undername is selected */}
                     {!selectedUndername && currentTarget && (
-                      <div className="text-xs text-link">
+                      <div className="text-xs text-foreground/80">
                         Currently points to: {currentTarget.substring(0, 6)}...
                       </div>
                     )}
                     {/* Show status for new undernames */}
                     {isNewUndername && (
-                      <div className="text-xs text-turbo-green">
+                      <div className="text-xs text-success">
                         New undername - will be created on deployment
                       </div>
                     )}
                     {/* Show status for existing undernames */}
                     {isExistingUndername && (
-                      <div className="text-xs text-link">
+                      <div className="text-xs text-foreground/80">
                         Existing undername - will be updated
                       </div>
                     )}
@@ -425,19 +425,19 @@ export default function ArNSAssociationPanel({
 
               {/* Advanced Settings */}
               {selectedName && (
-                <div className="border-t border-turbo-yellow/20 pt-4">
+                <div className="border-t border-primary/20 pt-4">
                   <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-turbo-yellow transition-colors w-full"
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 transition-colors w-full"
                   >
                     <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
                     Advanced Settings
                   </button>
 
                   {showAdvanced && (
-                    <div className="mt-4 space-y-4 bg-surface/30 rounded-lg p-4 border border-turbo-yellow/10">
+                    <div className="mt-4 space-y-4 bg-card rounded-2xl p-4 border border-primary/20">
                       <div>
-                        <div className="text-sm font-medium text-fg-muted mb-3">
+                        <div className="text-sm font-medium text-foreground mb-3">
                           TTL (Time to Live)
                         </div>
 
@@ -449,13 +449,13 @@ export default function ArNSAssociationPanel({
                               name="ttl-mode"
                               checked={ttlMode === 'existing'}
                               onChange={() => setTTLMode('existing')}
-                              className="mt-0.5 w-4 h-4 bg-surface border-2 border-default rounded-full checked:bg-canvas checked:border-turbo-yellow transition-colors"
+                              className="mt-0.5 w-4 h-4 bg-card border-2 border-border/20 rounded-full checked:bg-card checked:border-primary transition-colors"
                             />
                             <div className="flex-1">
-                              <div className="text-sm text-fg-muted group-hover:text-turbo-yellow transition-colors">
+                              <div className="text-sm text-foreground group-hover:text-foreground/80 transition-colors">
                                 Keep existing TTL
                               </div>
-                              <div className="text-xs text-link mt-0.5">
+                              <div className="text-xs text-foreground/80 mt-0.5">
                                 Preserve current setting ({formatTTL(currentTTL)} / {currentTTL} seconds)
                               </div>
                             </div>
@@ -467,10 +467,10 @@ export default function ArNSAssociationPanel({
                               name="ttl-mode"
                               checked={ttlMode === 'custom'}
                               onChange={() => setTTLMode('custom')}
-                              className="mt-0.5 w-4 h-4 bg-surface border-2 border-default rounded-full checked:bg-canvas checked:border-turbo-yellow transition-colors"
+                              className="mt-0.5 w-4 h-4 bg-card border-2 border-border/20 rounded-full checked:bg-card checked:border-primary transition-colors"
                             />
                             <div className="flex-1">
-                              <div className="text-sm text-fg-muted group-hover:text-turbo-yellow transition-colors">
+                              <div className="text-sm text-foreground group-hover:text-foreground/80 transition-colors">
                                 Set custom TTL
                               </div>
                               {ttlMode === 'custom' && (
@@ -482,10 +482,10 @@ export default function ArNSAssociationPanel({
                                       max="86400"
                                       value={customTTLInput}
                                       onChange={(e) => setCustomTTLInput(e.target.value)}
-                                      className="flex-1 px-3 py-2 bg-surface border border-default rounded-lg text-fg-muted text-sm focus:border-turbo-yellow focus:outline-none focus:ring-1 focus:ring-turbo-yellow"
+                                      className="flex-1 px-3 py-2 bg-card border border-border/20 rounded-2xl text-foreground text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                       placeholder="600"
                                     />
-                                    <span className="px-3 py-2 bg-surface/50 border border-default rounded-lg text-link text-sm flex items-center">
+                                    <span className="px-3 py-2 bg-card/50 border border-border/20 rounded-2xl text-foreground/80 text-sm flex items-center">
                                       seconds
                                     </span>
                                   </div>
@@ -495,28 +495,28 @@ export default function ArNSAssociationPanel({
                                     <button
                                       type="button"
                                       onClick={() => setCustomTTLInput('300')}
-                                      className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      className="px-3 py-1.5 bg-card border border-border/20 rounded text-xs text-foreground/80 hover:border-primary hover:text-foreground transition-colors"
                                     >
                                       5 min
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setCustomTTLInput('600')}
-                                      className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      className="px-3 py-1.5 bg-card border border-border/20 rounded text-xs text-foreground/80 hover:border-primary hover:text-foreground transition-colors"
                                     >
                                       10 min
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setCustomTTLInput('900')}
-                                      className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      className="px-3 py-1.5 bg-card border border-border/20 rounded text-xs text-foreground/80 hover:border-primary hover:text-foreground transition-colors"
                                     >
                                       15 min
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setCustomTTLInput('3600')}
-                                      className="px-3 py-1.5 bg-surface border border-default rounded text-xs text-link hover:border-turbo-yellow hover:text-turbo-yellow transition-colors"
+                                      className="px-3 py-1.5 bg-card border border-border/20 rounded text-xs text-foreground/80 hover:border-primary hover:text-foreground transition-colors"
                                     >
                                       1 hour
                                     </button>
@@ -528,8 +528,8 @@ export default function ArNSAssociationPanel({
                         </div>
 
                         {/* Help Text */}
-                        <div className="mt-3 text-xs text-link bg-turbo-yellow/5 rounded p-3 border border-turbo-yellow/20">
-                          <div className="font-medium text-fg-muted mb-1">What is TTL?</div>
+                        <div className="mt-3 text-xs text-foreground/80 bg-primary/10 rounded p-3 border border-primary/30">
+                          <div className="font-medium text-foreground mb-1">What is TTL?</div>
                           TTL controls how long AR.IO gateways cache your content before checking for updates. Lower values (5-10 min) are better for frequently updated content, while higher values (1 hour+) work well for static sites and reduce network requests.
                         </div>
                       </div>

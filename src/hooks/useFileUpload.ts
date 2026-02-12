@@ -96,6 +96,8 @@ export function useFileUpload() {
 
   // Validate wallet state to prevent cross-wallet conflicts
   const validateWalletState = useCallback((): void => {
+    console.log('[useFileUpload] validateWalletState:', { address, walletType });
+
     if (!address || !walletType) {
       throw new Error('Wallet not connected');
     }
@@ -106,12 +108,17 @@ export function useFileUpload() {
     // WALLET ISOLATION: Verify correct wallet is available and connected
     switch (walletType) {
       case 'arweave':
+        console.log('[useFileUpload] Checking window.arweaveWallet:', {
+          exists: !!window.arweaveWallet,
+          type: typeof window.arweaveWallet,
+          keys: window.arweaveWallet ? Object.keys(window.arweaveWallet) : []
+        });
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet not available. Please reconnect your Arweave wallet.');
         }
         break;
       case 'ethereum':
-        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, or direct window.ethereum
+        // For Ethereum, check multiple sources: Privy, RainbowKit/Wagmi, direct window.ethereum
         // WalletConnect and other remote wallets won't have window.ethereum
         if (!hasPrivyWallet && !ethAccount.isConnected && !window.ethereum) {
           throw new Error('Ethereum wallet not connected. Please reconnect your wallet.');
@@ -130,8 +137,16 @@ export function useFileUpload() {
 
   // Create Turbo client with proper walletAdapter based on wallet type
   const createTurboClient = useCallback(async (tokenTypeOverride?: string): Promise<TurboAuthenticatedClient> => {
+    console.log('[useFileUpload] Creating Turbo client...', { walletType, tokenTypeOverride });
     // Validate wallet state first
     validateWalletState();
+
+    const config = getCurrentConfig();
+    const turboConfig = {
+      paymentServiceConfig: { url: config.paymentServiceUrl },
+      uploadServiceConfig: { url: config.uploadServiceUrl },
+      processId: config.processId,
+    };
 
     // Get turbo config based on the token type (use override if provided, otherwise use wallet type)
     const effectiveTokenType = tokenTypeOverride || walletType;
@@ -144,11 +159,10 @@ export function useFileUpload() {
     ) {
       return turboClientCache.current.client;
     }
-    const config = getCurrentConfig();
-    const turboConfig = {
-      paymentServiceConfig: { url: config.paymentServiceUrl },
-      uploadServiceConfig: { url: config.uploadServiceUrl },
-      processId: config.processId,
+
+    // Add gateway URL
+    const fullTurboConfig = {
+      ...turboConfig,
       ...(effectiveTokenType && config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap]
         ? { gatewayUrl: config.tokenMap[effectiveTokenType as keyof typeof config.tokenMap] }
         : {})
@@ -159,9 +173,35 @@ export function useFileUpload() {
         if (!window.arweaveWallet) {
           throw new Error('Wander wallet extension not found. Please install from https://wander.app');
         }
+        console.log('[useFileUpload] Verifying Wander wallet connection...');
+        // Pre-flight check: verify the wallet is actually connected and accessible
+        // The arweaveWallet object may exist but return "No wallets added" when methods are called
+        // This commonly happens on mobile when the wallet session has expired
+        try {
+          const activeAddr = await window.arweaveWallet.getActiveAddress();
+          console.log('[useFileUpload] Wander wallet verified, active address:', activeAddr);
+          if (!activeAddr) {
+            throw new Error('No active wallet address returned');
+          }
+        } catch (wanderError: any) {
+          const errorMsg = wanderError?.message || String(wanderError);
+          console.error('[useFileUpload] Wander wallet verification failed:', errorMsg);
+          // Provide user-friendly error message for common mobile issues
+          if (errorMsg.toLowerCase().includes('no wallets added') ||
+              errorMsg.toLowerCase().includes('no wallet') ||
+              errorMsg.toLowerCase().includes('not connected')) {
+            throw new Error(
+              'Wander wallet session expired. Please tap "Connect" in the Wander app to reconnect, ' +
+              'then try uploading again.'
+            );
+          }
+          throw new Error(`Wander wallet error: ${errorMsg}`);
+        }
+        console.log('[useFileUpload] Creating ArconnectSigner...');
         const signer = new ArconnectSigner(window.arweaveWallet);
+        console.log('[useFileUpload] ArconnectSigner created, creating TurboFactory.authenticated...');
         const arweaveClient = TurboFactory.authenticated({
-          ...turboConfig,
+          ...fullTurboConfig,
           signer,
           // Use token type override if provided (for JIT with ARIO)
           ...(tokenTypeOverride && tokenTypeOverride !== 'arweave' ? { token: tokenTypeOverride as any } : {})
@@ -179,6 +219,7 @@ export function useFileUpload() {
         return arweaveClient;
 
       case 'ethereum':
+        // Ethereum wallet (Privy, RainbowKit, etc.)
         const ethereumClient = await createEthereumTurboClient(tokenTypeOverride || 'ethereum');
 
         // Also cache in local ref for consistency with other wallet types
@@ -200,7 +241,7 @@ export function useFileUpload() {
         const solanaClient = TurboFactory.authenticated({
           token: "solana",
           walletAdapter: window.solana,
-          ...turboConfig,
+          ...fullTurboConfig,
         });
 
         // Cache the client
@@ -291,53 +332,127 @@ export function useFileUpload() {
       // Only pass jitTokenType if JIT is actually enabled, otherwise use default
       // This prevents triggering walletAdapter path for regular credit-based uploads
       const tokenTypeForClient = (options?.jitEnabled && jitTokenType) ? jitTokenType : undefined;
+      console.log('[useFileUpload] Getting Turbo client for upload...');
       const turbo = await createTurboClient(tokenTypeForClient);
+      console.log('[useFileUpload] Turbo client ready, starting upload for:', fileName, 'size:', file.size);
 
-      // Upload file using the proper uploadFile method for browsers
-      const uploadResult = await turbo.uploadFile({
-        file: file,  // Pass the File object directly
-        fundingMode, // Pass JIT funding mode (TypeScript types don't include this yet, but runtime supports it)
-        dataItemOpts: {
-          tags: options?.customTags
-            ? mergeTags(
-                [
-                  { name: 'Deployed-By', value: APP_NAME },
-                  { name: 'Deployed-By-Version', value: APP_VERSION },
-                  { name: 'App-Feature', value: 'File Upload' },
-                  { name: 'Content-Type', value: getContentType(file) },
-                  { name: 'File-Name', value: file.name }
-                ],
-                options.customTags
-              )
-            : [
-                { name: 'Deployed-By', value: APP_NAME },
-                { name: 'Deployed-By-Version', value: APP_VERSION },
-                { name: 'App-Feature', value: 'File Upload' },
-                { name: 'Content-Type', value: getContentType(file) },
-                { name: 'File-Name', value: file.name }
-              ]
-        },
-        events: {
-          onProgress: (progressData: { totalBytes: number; processedBytes: number; step?: string }) => {
-            const { totalBytes, processedBytes } = progressData;
-            const percentage = Math.round((processedBytes / totalBytes) * 100);
-            setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
-            // Update active uploads array with progress
-            setActiveUploads(prev => prev.map(upload =>
-              upload.name === fileName
-                ? { ...upload, progress: percentage }
-                : upload
-            ));
-          },
-          onError: (error: any) => {
-            const errorMessage = formatUploadError(error?.message || 'Upload failed');
-            setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
-          },
-          onSuccess: () => {
-            setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
+      // Build tags for the upload
+      const uploadTags = options?.customTags
+        ? mergeTags(
+            [
+              { name: 'Deployed-By', value: APP_NAME },
+              { name: 'Deployed-By-Version', value: APP_VERSION },
+              { name: 'App-Feature', value: 'File Upload' },
+              { name: 'Content-Type', value: getContentType(file) },
+              { name: 'File-Name', value: file.name }
+            ],
+            options.customTags
+          )
+        : [
+            { name: 'Deployed-By', value: APP_NAME },
+            { name: 'Deployed-By-Version', value: APP_VERSION },
+            { name: 'App-Feature', value: 'File Upload' },
+            { name: 'Content-Type', value: getContentType(file) },
+            { name: 'File-Name', value: file.name }
+          ];
+
+      // Check if ReadableStream uploading is supported (fails on some mobile browsers)
+      // Mobile in-app browsers (MetaMask, Wander, etc.) often have ReadableStream
+      // but don't support it for fetch uploads
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileInAppBrowser =
+        userAgent.includes('metamaskmobile') ||
+        userAgent.includes('wander') ||
+        userAgent.includes('arconnect') ||
+        // Generic mobile WebView detection
+        (userAgent.includes('mobile') && (
+          userAgent.includes('wv') || // Android WebView
+          userAgent.includes('webview') ||
+          // iOS in-app browsers often don't identify themselves clearly
+          (userAgent.includes('iphone') && !userAgent.includes('safari'))
+        ));
+
+      const supportsStreamUpload = typeof ReadableStream !== 'undefined' &&
+        typeof file.stream === 'function' &&
+        !isMobileInAppBrowser;
+
+      console.log('[useFileUpload] Stream support check:', {
+        hasReadableStream: typeof ReadableStream !== 'undefined',
+        hasFileStream: typeof file.stream === 'function',
+        isMobileInAppBrowser,
+        supportsStreamUpload
+      });
+
+      let uploadResult;
+
+      if (supportsStreamUpload) {
+        // Use streaming upload for desktop browsers (better for large files)
+        console.log('[useFileUpload] Using streaming upload');
+        uploadResult = await turbo.uploadFile({
+          file: file,
+          fundingMode,
+          dataItemOpts: { tags: uploadTags },
+          events: {
+            onProgress: (progressData: { totalBytes: number; processedBytes: number; step?: string }) => {
+              const { totalBytes, processedBytes } = progressData;
+              const percentage = Math.round((processedBytes / totalBytes) * 100);
+              setUploadProgress(prev => ({ ...prev, [fileName]: percentage }));
+              setActiveUploads(prev => prev.map(upload =>
+                upload.name === fileName ? { ...upload, progress: percentage } : upload
+              ));
+            },
+            onError: (error: any) => {
+              console.error('[useFileUpload] onError callback:', error);
+              const errorMessage = formatUploadError(error?.message || 'Upload failed');
+              setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
+            },
+            onSuccess: () => {
+              setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
+            }
           }
+        } as any);
+      } else {
+        // Fallback for mobile browsers that don't support ReadableStream uploads
+        // The Turbo SDK internally creates ReadableStream which fails on mobile WebViews
+        // Workaround: Read file as Blob and use chunked upload mode which may handle it differently
+        console.log('[useFileUpload] Using mobile browser fallback (Blob + chunked mode)');
+        setUploadProgress(prev => ({ ...prev, [fileName]: 10 }));
+
+        // Read file as ArrayBuffer, then create a Blob with proper content type
+        const arrayBuffer = await file.arrayBuffer();
+        new Blob([arrayBuffer], { type: getContentType(file) }); // Create blob for content type validation
+        setUploadProgress(prev => ({ ...prev, [fileName]: 20 }));
+
+        // Try using uploadFile with explicit stream factories that return the blob/buffer directly
+        // This may work better on some mobile browsers
+        try {
+          uploadResult = await turbo.uploadFile({
+            fileStreamFactory: () => new Uint8Array(arrayBuffer),
+            fileSizeFactory: () => file.size,
+            dataItemOpts: { tags: uploadTags },
+            // Force chunked upload mode which may bypass streaming issues
+            chunkingMode: 'force',
+            ...(fundingMode ? { fundingMode } : {}),
+            events: {
+              onProgress: (progressData: { totalBytes: number; processedBytes: number }) => {
+                const percentage = Math.round((progressData.processedBytes / progressData.totalBytes) * 100);
+                setUploadProgress(prev => ({ ...prev, [fileName]: 20 + percentage * 0.8 }));
+              },
+              onError: (error: any) => {
+                console.error('[useFileUpload] Mobile upload error:', error);
+              }
+            }
+          } as any);
+        } catch (mobileError: any) {
+          // If chunked mode also fails, provide clear error message
+          console.error('[useFileUpload] Mobile browser upload failed:', mobileError);
+          throw new Error(
+            `Mobile browser upload not supported: ${mobileError?.message || 'ReadableStream uploads not available'}. ` +
+            `Please try using a desktop browser or the native wallet app.`
+          );
         }
-      } as any); // Type assertion needed until SDK types are updated
+        setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
+      }
       
       // Add timestamp, file metadata, and capture full receipt for display
       const result = {
@@ -352,6 +467,8 @@ export function useFileUpload() {
       setUploadProgress(prev => ({ ...prev, [fileName]: 100 }));
       return result;
     } catch (error) {
+      // Log raw error for debugging (especially on mobile where console is hard to access)
+      console.error(`[useFileUpload] Upload failed for ${fileName}:`, error);
       const errorMessage = formatUploadError(error instanceof Error ? error : 'Upload failed');
       setErrors(prev => ({ ...prev, [fileName]: errorMessage }));
       throw error;
@@ -372,6 +489,7 @@ export function useFileUpload() {
       selectedJitToken?: SupportedTokenType;
     }
   ) => {
+    console.log('[useFileUpload] uploadMultipleFiles called with', files.length, 'file(s)');
     // Validate wallet state before any operations
     validateWalletState();
 
@@ -492,14 +610,18 @@ export function useFileUpload() {
 
       } catch (error) {
         setActiveUploads(prev => prev.filter(u => u.name !== file.name));
-        const userFriendlyError = formatUploadError(error instanceof Error ? error : 'Unknown error');
+        // Preserve raw error for debugging, especially on mobile
+        const rawError = error instanceof Error ? error.message : String(error);
+        console.error(`[uploadMultipleFiles] Failed for ${file.name}:`, rawError, error);
+        // Use raw error for now to help debug mobile issues
+        const errorToShow = rawError.length < 200 ? rawError : formatUploadError(error instanceof Error ? error : 'Unknown error');
 
         setRecentFiles(prev => [
           {
             name: file.name,
             size: file.size,
             status: 'error' as const,
-            error: userFriendlyError,
+            error: errorToShow,
             timestamp: Date.now()
           },
           ...prev
@@ -509,13 +631,13 @@ export function useFileUpload() {
           ...prev,
           {
             fileName: file.name,
-            error: userFriendlyError,
+            error: errorToShow,
             retryable: true
           }
         ]);
 
-        setErrors(prev => ({ ...prev, [file.name]: userFriendlyError }));
-        failedFileNames.push(file.name);
+        setErrors(prev => ({ ...prev, [file.name]: errorToShow }));
+        failedFileNames.push(`${file.name}: ${errorToShow}`); // Include error in filename for display
         setFailedFiles(prev => [...prev, file]);
         setFailedCount(prev => prev + 1);
         setUploadedCount(prev => prev + 1);

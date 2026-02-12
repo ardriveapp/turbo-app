@@ -8,7 +8,7 @@ import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { useStore } from '../store/useStore';
 
 // Custom connect message for Ethereum wallet uploads (instead of SDK's generic message)
-const ETHEREUM_CONNECT_MESSAGE = 'Sign this message to connect to Turbo Gateway';
+const ETHEREUM_CONNECT_MESSAGE = 'Sign this message to connect to ar.io';
 
 // Cache structure for the Ethereum signer (shared across all token types)
 // The signer is independent of token type - only address and config matter
@@ -79,6 +79,7 @@ export function useEthereumTurboClient() {
 
     // Create new signer
     const createSigner = async (): Promise<CachedEthereumSigner> => {
+      console.log('[useEthereumTurboClient] Creating new signer...');
       // Get Ethereum provider - priority: Privy > RainbowKit/Wagmi > window.ethereum
       const privyWallet = wallets.find((w) => w.walletClientType === 'privy');
       let ethersSigner: ethers.JsonRpcSigner;
@@ -114,9 +115,18 @@ export function useEthereumTurboClient() {
 
       // Create InjectedEthereumSigner with custom provider
       // The signer's signMessage can receive string, Uint8Array, or object with raw property
+      let signatureRequestCount = 0;
       const injectedProvider = {
         getSigner: () => ({
           signMessage: async (message: string | Uint8Array | { raw?: string }) => {
+            signatureRequestCount++;
+            const msgPreview = typeof message === 'string'
+              ? message.slice(0, 50)
+              : message instanceof Uint8Array
+                ? `[Uint8Array ${message.length} bytes]`
+                : `[Object: ${JSON.stringify(message).slice(0, 50)}]`;
+            console.log(`[useEthereumTurboClient] signMessage #${signatureRequestCount}:`, msgPreview);
+
             // Handle different message types:
             // - string: pass directly
             // - Uint8Array: pass directly (ethers handles it)
@@ -136,7 +146,9 @@ export function useEthereumTurboClient() {
 
       // Manually set the public key using our custom connect message
       // THIS IS THE ONLY SIGNATURE REQUEST - shared across all token types
+      console.log('[useEthereumTurboClient] Requesting signature for connect message...');
       const signature = await ethersSigner.signMessage(ETHEREUM_CONNECT_MESSAGE);
+      console.log('[useEthereumTurboClient] Signature received');
       const messageHash = ethers.hashMessage(ETHEREUM_CONNECT_MESSAGE);
       const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
       const publicKey = Buffer.from(ethers.getBytes(recoveredKey));

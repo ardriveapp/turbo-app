@@ -1,5 +1,3 @@
-import Lottie from 'lottie-react';
-import turboLoading from '../../animations/lottie-turbo.json';
 import BaseModal from './BaseModal';
 
 interface BlockingMessageModalProps {
@@ -12,13 +10,14 @@ export default function BlockingMessageModal({ message, onClose }: BlockingMessa
     <BaseModal onClose={onClose} showCloseButton={false}>
       <div className="flex w-[24.5rem] flex-col items-center justify-center p-8">
         <div className="flex size-[4.5rem] items-center justify-center pb-4">
-          <Lottie
-            animationData={turboLoading}
-            loop={true}
-            style={{ width: 72, height: 72 }}
+          <img
+            src="/brand/ario-token-logo.svg"
+            alt="Loading"
+            className="w-16 h-16 animate-spin"
+            style={{ animationDuration: '2s' }}
           />
         </div>
-        <div className="text-fg-muted text-sm text-center">{message}</div>
+        <div className="text-foreground text-sm text-center">{message}</div>
       </div>
     </BaseModal>
   );

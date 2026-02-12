@@ -27,8 +27,8 @@ export default function BaseModal({ onClose, children, showCloseButton = false }
       />
       
       {/* Modal content - perfectly centered */}
-      <div 
-        className="fixed z-[9999] bg-canvas border border-default rounded-lg shadow-xl overflow-hidden"
+      <div
+        className="fixed z-[9999] bg-card border border-border/20 rounded-2xl shadow-xl overflow-hidden"
         style={{
           position: 'fixed',
           top: '50%',
@@ -42,7 +42,7 @@ export default function BaseModal({ onClose, children, showCloseButton = false }
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-fg-muted hover:text-white transition-colors z-10"
+            className="absolute top-4 right-4 text-foreground/80 hover:text-foreground transition-colors z-10"
           >
             <X className="w-5 h-5" />
           </button>

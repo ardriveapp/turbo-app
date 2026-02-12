@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Quick Start
+
+```bash
+npm install          # Install dependencies
+npm run dev          # Start dev server at http://localhost:3000
+npm run lint         # ESLint validation
+npm run type-check   # TypeScript checking (strict mode)
+npm run build:prod   # Production build (requires 8GB memory)
+```
+
+**Path alias:** Use `@/` for imports from `src/` (e.g., `import { useStore } from '@/store/useStore'`).
+
+## Critical Gotchas
+
+Before diving in, these are the most common issues:
+
+1. **Pricing hooks return strings**: `useWincForOneGiB()` returns `string | undefined`, not number:
+   ```typescript
+   const wincForOneGiB = useWincForOneGiB();
+   const wincNum = wincForOneGiB ? Number(wincForOneGiB) : NaN;
+   if (Number.isFinite(wincNum) && wincNum > 0) { /* safe */ }
+   ```
+
+2. **Clear signer cache on wallet switch**: Call `clearEthereumTurboClientCache()` when user disconnects or switches wallets.
+
+3. **Network switching is automatic**: `useEthereumTurboClient` automatically switches EVM wallets to the correct network before creating signers.
+
+4. **Balance refresh after payments**: Dispatch `window.dispatchEvent(new CustomEvent('refresh-balance'))` after any payment.
+
+5. **JSX brace escaping**: For API endpoint display: `<code>/endpoint/{"{txId}"}</code>`
+
+6. **destinationAddress required**: All pricing API calls need `destinationAddress`. Use `address || 'pricing-lookup'` as fallback.
+
+7. **TypeScript strict mode**: The codebase uses `strict: true`. Handle nullable types explicitly; avoid `!` assertions unless certain.
+
+8. **Async wallet operations may fail**: Always wrap `createEthereumTurboClient()`, `fundAndUpload()`, and similar async wallet operations in try/catch blocks with user-friendly error handling.
+
 ## Development Commands
 
 ```bash
@@ -16,16 +53,18 @@ npm run clean:all    # Full clean and reinstall
 
 **Notes:**
 - Uses yarn (packageManager: yarn@1.22.22) but npm works
-- All scripts use `cross-env NODE_OPTIONS=--max-old-space-size` (2GB-8GB) for complex wallet integrations
+- Memory allocation via `cross-env NODE_OPTIONS=--max-old-space-size` (2GB dev, 8GB prod build)
 - No test framework configured
+- Path alias: `@/` maps to `src/` (configured in tsconfig.json and vite.config.ts)
 
 ## Architecture Overview
 
 ### Application Structure
-Unified Turbo Gateway app consolidating:
-- **turbo-landing-page**: Informational content
-- **turbo-topup**: Payment flows and wallet integration
-- **turbo-app**: File uploads, gifts, credit sharing, ArNS
+ar.io App - a unified application for uploading and accessing permanent data through the ar.io Network:
+- **File uploads**: Drag & drop with instant confirmation
+- **Site deployment**: Deploy static sites with ArNS domain support
+- **Credit management**: Purchase, share, and gift credits
+- **ArNS domains**: Search and manage domain names
 
 ### Key Directories
 ```text
@@ -110,13 +149,32 @@ import { useEthereumTurboClient } from '../hooks/useEthereumTurboClient';
 const { createEthereumTurboClient } = useEthereumTurboClient();
 const turbo = await createEthereumTurboClient('base-ario'); // or 'base-eth', 'base-usdc', etc.
 
-// Manual Ethereum client (for non-hook contexts)
+// Solana wallet
+import { TurboFactory } from '@ardrive/turbo-sdk/web';
+import { useWallet } from '@solana/wallet-adapter-react';
+const { publicKey, signMessage } = useWallet();
+// Create adapter that implements TurboWalletSigner interface
+const solanaAdapter = {
+  publicKey,
+  signMessage: async (message: Uint8Array) => signMessage!(message),
+};
+const turbo = TurboFactory.authenticated({ signer: solanaAdapter, token: 'solana', ...turboConfig });
+
+// Manual Ethereum client (for non-hook contexts - prefer the hook above)
 import { InjectedEthereumSigner } from '@ar.io/sdk/web';
 import { getConnectorClient } from 'wagmi/actions';
 const connectorClient = await getConnectorClient(wagmiConfig, { connector: ethAccount.connector });
 const ethersProvider = new ethers.BrowserProvider(connectorClient.transport, 'any');
 const ethersSigner = await ethersProvider.getSigner();
-const injectedSigner = new InjectedEthereumSigner(provider);
+const userAddress = await ethersSigner.getAddress();
+// InjectedEthereumSigner expects a provider with getSigner() returning signMessage/getAddress
+const injectedProvider = {
+  getSigner: () => ({
+    signMessage: async (msg: string) => ethersSigner.signMessage(msg),
+    getAddress: async () => userAddress,
+  }),
+};
+const injectedSigner = new InjectedEthereumSigner(injectedProvider as any);
 await injectedSigner.setPublicKey(); // Requests signature
 const turbo = TurboFactory.authenticated({ signer: injectedSigner, token: 'base-eth', ...turboConfig });
 ```
@@ -126,7 +184,7 @@ const turbo = TurboFactory.authenticated({ signer: injectedSigner, token: 'base-
 All uploads include standardized metadata tags:
 
 **Deployment tool tags (always included):**
-- `Deployed-By`: 'Turbo-App' (from `APP_NAME` constant) - identifies the deployment tool
+- `Deployed-By`: 'ar.io App' (from `APP_NAME` constant) - identifies the deployment tool
 - `Deployed-By-Version`: Dynamic from package.json - version of the deployment tool
 - `App-Feature`: 'File Upload' | 'Deploy Site' | 'Capture'
 
@@ -135,6 +193,39 @@ All uploads include standardized metadata tags:
 - `App-Version`: User-provided app version
 
 **Feature-specific:** `Content-Type`, `File-Name`, `File-Path`, `Original-URL`, `Title`, viewport dimensions
+
+## Upload Workflow
+
+The app supports three upload modes with different payment strategies:
+
+**1. Pre-funded Credits (Traditional)**
+- User buys credits via fiat or crypto first
+- Upload deducts from credit balance
+- Works with all wallet types
+
+**2. JIT (Just-In-Time) Payments**
+- No pre-purchase required; crypto sent at upload time
+- Uses `fundAndUpload()` from Turbo SDK
+- Supported tokens: `ario`, `base-ario`, `solana`, `base-eth`, `base-usdc`
+- Configurable via store: `jitPaymentEnabled`, `jitMaxTokenAmount`, `jitBufferMultiplier`
+
+**3. X402 Protocol (Base USDC)**
+- Pay-per-upload via HTTP 402 payment flow
+- Only works with Ethereum wallets on Base network
+- Used when `x402OnlyMode` is enabled or connecting to x402-only bundlers
+
+**Upload Flow Decision Tree:**
+```
+1. Check if file is free (under bundler's free limit)
+   → Yes: Upload without payment
+   → No: Continue to payment check
+
+2. Check wallet type and mode
+   → x402OnlyMode + Ethereum wallet: Use X402
+   → JIT enabled + supported token: Use fundAndUpload
+   → Has sufficient credits: Use standard upload
+   → None: Prompt user to buy credits
+```
 
 ## X402 Protocol (x402-only mode)
 
@@ -187,28 +278,55 @@ Service URLs managed by store's configuration system, overridable via Developer 
 
 ## Styling
 
-**Dark theme (default):**
-- `bg-canvas`: #171717, `bg-surface`: #1F1F1F
-- `text-fg-muted`: #ededed, `text-link`: #A3A3AD
+### ar.io Brand Colors (Light Mode)
 
-**Brand colors:**
-- `turbo-red`: #FE0230 (primary), `turbo-green`: #18A957 (success)
+| Color | Hex | CSS Variable | Usage |
+|-------|-----|--------------|-------|
+| Primary | #5427C8 | `--color-primary` | CTAs, links, accents |
+| Lavender | #DFD6F7 | `--color-lavender` | Gradients, backgrounds, footer |
+| Black | #23232D | `--color-foreground` | Primary text, dark elements |
+| White | #FFFFFF | `--color-background` | Page background |
+| Card Surface | #F0F0F0 | `--color-card` | Card backgrounds |
 
-**Font:** Rubik via @fontsource/rubik
+### Typography
+
+- **Headings**: Besley (font-heading), weight 800 (extra bold)
+- **Body text**: Plus Jakarta Sans (font-body)
+- Both fonts loaded via `@fontsource-variable`
+
+### Key Files
+
+- `src/styles/globals.css` - CSS custom properties
+- `tailwind.config.js` - Tailwind color tokens and font families
+- `STYLE_GUIDE.md` - Comprehensive component patterns
 
 ## Common Patterns
 
 ### Service Panel Header
 ```jsx
 <div className="flex items-start gap-3 mb-6">
-  <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-    <Icon className="w-5 h-5 text-turbo-red" />
+  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card">
+    <Icon className="h-5 w-5 text-foreground" />
   </div>
   <div>
-    <h3 className="text-2xl font-bold text-fg-muted mb-1">[Name]</h3>
-    <p className="text-sm text-link">[Description]</p>
+    <h3 className="font-heading text-2xl font-extrabold text-foreground mb-1">[Name]</h3>
+    <p className="text-sm text-foreground/80">[Description]</p>
   </div>
 </div>
+```
+
+### Card Component
+```jsx
+<div className="rounded-2xl border border-border/20 bg-card p-6 shadow-sm">
+  {/* Card content */}
+</div>
+```
+
+### Primary Button
+```jsx
+<button className="inline-flex items-center gap-2 bg-foreground text-white px-5 py-2.5 rounded-full font-semibold hover:opacity-90 transition-opacity">
+  Button Text
+</button>
 ```
 
 ### Privy Wallet Detection
@@ -218,35 +336,6 @@ const privyWallet = wallets.find(w => w.walletClientType === 'privy');
 if (privyWallet) {
   const provider = await privyWallet.getEthereumProvider();
   // Use provider for Turbo client
-}
-```
-
-### API Endpoint Display (escape braces in JSX)
-```jsx
-<code>/endpoint/{"{txId}"}</code>  // Correct
-```
-
-### Dispatching Balance Refresh
-```typescript
-window.dispatchEvent(new CustomEvent('refresh-balance'));
-```
-
-### Clearing Wallet Caches on Disconnect
-```typescript
-import { clearEthereumTurboClientCache } from '../hooks/useEthereumTurboClient';
-
-// Call when user disconnects or switches wallet
-clearEthereumTurboClientCache();
-```
-
-### Handling Pricing Loading State
-When working with pricing hooks like `useWincForOneGiB()`, always check for null/undefined:
-```typescript
-// useWincForOneGiB returns string | undefined, NOT number
-const wincForOneGiB = useWincForOneGiB();
-const wincNum = wincForOneGiB ? Number(wincForOneGiB) : NaN;
-if (Number.isFinite(wincNum) && wincNum > 0) {
-  // Safe to use wincNum
 }
 ```
 
@@ -280,39 +369,37 @@ URL params: `?payment=success`, `?payment=cancelled` (handled by PaymentCallback
 
 ## Important Hooks
 
-| Hook | Purpose |
-|------|---------|
-| `useTurboConfig(tokenType?)` | Get Turbo SDK config for current mode |
-| `useCreditsForFiat(usdAmount, address)` | USD → credits conversion |
-| `useCreditsForCrypto(tokenType, amount, address)` | Crypto → credits conversion |
-| `useWincForOneGiB()` | Storage pricing (returns string, not number!) |
-| `useFileUpload()` | Multi-chain file upload logic |
-| `useFolderUpload()` | Folder upload with manifest generation |
-| `useX402Upload()` | X402 protocol uploads |
-| `useX402Pricing(bytes)` | Calculate USDC cost for X402 |
-| `useEthereumTurboClient()` | Create authenticated Turbo client for ETH wallets (with caching + network switching) |
-| `useTurboWallets()` | Unified wallet detection across Arweave/Ethereum/Solana |
-| `usePrimaryArNSName(address)` | Fetch primary ArNS name |
-| `useOwnedArNSNames(address)` | Fetch all owned ArNS names |
-| `usePaymentFlow()` | Shared payment flow state for Upload/Capture panels |
-| `useTokenBalance(tokenType)` | Get user's token balance for crypto payments |
-| `useCryptoPrice(tokenType)` | Get current USD price for a token |
-| `useWalletAccountListener()` | Listens for wallet changes across all ecosystems, clears caches on switch |
-| `useFreeUploadLimit()` | Fetch bundler's free upload limit, defaults to 0 |
-| `useGatewayInfo()` | Fetch gateway capabilities and info |
-| `useTurboCapture()` | Web page capture functionality |
-| `usePrivyWallet()` | Detect and access Privy embedded wallet |
+**Core Hooks:**
+- `useTurboConfig(tokenType?)` - Get Turbo SDK config for current mode
+- `useEthereumTurboClient()` - Create authenticated Turbo client for ETH wallets (with caching + network switching)
+- `useTurboWallets()` - Unified wallet detection across Arweave/Ethereum/Solana
+- `useWalletAccountListener()` - Listens for wallet changes, clears caches on switch
+
+**Upload Hooks:**
+- `useFileUpload()` - Multi-chain file upload logic
+- `useFolderUpload()` - Folder upload with manifest generation
+- `useX402Upload()` - X402 protocol uploads
+- `useFreeUploadLimit()` - Fetch bundler's free upload limit
+
+**Pricing Hooks:**
+- `useWincForOneGiB()` - Storage pricing (returns `string | undefined`!)
+- `useCreditsForFiat(usdAmount, address)` - USD → credits conversion
+- `useCreditsForCrypto(tokenType, amount, address)` - Crypto → credits conversion
+- `useX402Pricing(bytes)` - Calculate USDC cost for X402
+- `useTokenBalance(tokenType)` - User's token balance for crypto payments
+- `useCryptoPrice(tokenType)` - Current USD price for a token
+
+**ArNS Hooks:**
+- `usePrimaryArNSName(address)` - Fetch primary ArNS name
+- `useOwnedArNSNames(address)` - Fetch all owned ArNS names
 
 ## Important Utilities
 
-| Utility | Location | Purpose |
-|---------|----------|---------|
-| `supportsJitPayment(tokenType)` | `utils/jitPayment.ts` | Check if token supports JIT payments |
-| `calculateRequiredTokenAmount()` | `utils/jitPayment.ts` | Calculate crypto needed for credits |
-| `getTokenConverter(tokenType)` | `utils/jitPayment.ts` | Get decimal conversion function |
-| `formatTokenAmount()` | `utils/jitPayment.ts` | Format token amounts for display |
-| `fromSmallestUnit()` | `utils/jitPayment.ts` | Convert smallest unit to readable amount |
-| `getDefaultMaxTokenAmount()` | `utils/jitPayment.ts` | Default max token amount for JIT payments |
-| `clearEthereumTurboClientCache()` | `hooks/useEthereumTurboClient.ts` | Clear cached signers/clients |
-| `isFileFree()` | `hooks/useFreeUploadLimit.ts` | Check if file size is within free limit |
-| `formatFreeLimit()` | `hooks/useFreeUploadLimit.ts` | Format free limit for display |
+**JIT Payment Utils** (`utils/jitPayment.ts`):
+- `supportsJitPayment(tokenType)` - Check if token supports JIT payments
+- `calculateRequiredTokenAmount()` - Calculate crypto needed for credits
+- `formatTokenAmount()` / `fromSmallestUnit()` - Token amount formatting
+
+**Other:**
+- `clearEthereumTurboClientCache()` (`hooks/useEthereumTurboClient.ts`) - Clear cached signers/clients
+- `isFileFree()` / `formatFreeLimit()` (`hooks/useFreeUploadLimit.ts`) - Free upload limit checks

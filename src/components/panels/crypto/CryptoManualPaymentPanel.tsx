@@ -64,7 +64,7 @@ export default function CryptoManualPaymentPanel({
   const submitTransactionToTurbo = async () => {
     setPaymentError(undefined);
     if (turboUnauthenticatedClient && transferTransactionResult) {
-      setSigningMessage('Submitting Transaction to Turbo...');
+      setSigningMessage('Submitting transaction to ar.io...');
       try {
         const response = await turboUnauthenticatedClient.submitFundTransaction({
           txId: transferTransactionResult.txid,
@@ -140,41 +140,41 @@ export default function CryptoManualPaymentPanel({
     <div className="px-4 sm:px-6 space-y-6">
       {/* Header matching your design system */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Copy className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Copy className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Submit Transactions</h3>
-          <p className="text-sm text-link">Complete your {tokenLabels[tokenType]} payment on {tokenNetworkLabels[tokenType]} to Turbo</p>
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Submit Transactions</h3>
+          <p className="text-sm text-foreground/80">Complete your {tokenLabels[tokenType]} payment on {tokenNetworkLabels[tokenType]} to ar.io</p>
         </div>
       </div>
 
       {/* Amount Summary in your gradient container style */}
-      <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-default p-6">
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-border/20 p-6">
         <div className="text-center">
-          <div className="text-2xl font-bold text-turbo-red mb-1">
+          <div className="text-2xl font-bold text-primary mb-1">
             {Number(cryptoTopupValue).toFixed(6)} {tokenLabels[tokenType]}
           </div>
-          <div className="text-sm text-link">Payment amount required</div>
+          <div className="text-sm text-foreground/80">Payment amount required</div>
         </div>
       </div>
 
       {/* Step 1 - Send Payment */}
-      <div className="bg-surface rounded-lg border border-default">
+      <div className="bg-card rounded-2xl border border-border/20">
         <div className="p-6">
           <div className="flex items-center gap-4 mb-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-              !transferTransactionResult 
-                ? 'bg-turbo-red text-white' 
-                : 'bg-green-500 text-white'
+              !transferTransactionResult
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-success text-white'
             }`}>
               {transferTransactionResult ? '✓' : '1'}
             </div>
             <div>
-              <h4 className="font-medium text-fg-muted">
-                Send {tokenLabels[tokenType]} to Turbo
+              <h4 className="font-heading font-medium text-foreground">
+                Send {tokenLabels[tokenType]} to ar.io
               </h4>
-              <p className="text-sm text-link">
+              <p className="text-sm text-foreground/80">
                 Transfer {Number(cryptoTopupValue).toFixed(6)} {tokenLabels[tokenType]} from your wallet
               </p>
             </div>
@@ -182,22 +182,22 @@ export default function CryptoManualPaymentPanel({
 
           {!transferTransactionResult ? (
             <div className="space-y-4">
-              <div className="bg-canvas rounded-lg p-4 border border-default">
-                <p className="text-sm text-link mb-2">
-                  This step sends {tokenLabels[tokenType]} to Turbo.
-                  You can verify the recipient is Turbo's wallet address{' '}
+              <div className="bg-card rounded-2xl p-4 border border-border/20">
+                <p className="text-sm text-foreground/80 mb-2">
+                  This step sends {tokenLabels[tokenType]} to ar.io.
+                  You can verify the recipient is ar.io's wallet address{' '}
                   <a
                     href={`${config.paymentServiceUrl}/info`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-turbo-red hover:text-turbo-red/80 underline"
+                    className="text-primary hover:text-primary/80 underline"
                   >
                     here
                   </a>
                   .
                 </p>
               </div>
-              
+
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -205,23 +205,23 @@ export default function CryptoManualPaymentPanel({
                     submitNativeTransaction(cryptoTopupValue);
                   }
                 }}
-                className="w-full px-6 py-3 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors"
+                className="w-full px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
               >
                 Send Payment
               </button>
             </div>
           ) : (
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+            <div className="bg-success/10 border border-success/20 rounded-2xl p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium text-green-400 mb-2">Transaction Success</p>
-                  <div className="text-sm text-green-300 space-y-2">
+                  <p className="font-medium text-success mb-2">Transaction Success</p>
+                  <div className="text-sm text-success/80 space-y-2">
                     <div className="flex items-center gap-2">
                       <span>Transaction ID:</span>
                       <a
                         href={transferTransactionResult.explorerURL}
-                        className="text-green-300 underline hover:text-green-200"
+                        className="text-success/80 underline hover:text-success"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -230,11 +230,11 @@ export default function CryptoManualPaymentPanel({
                       <CopyButton textToCopy={transferTransactionResult.txid} />
                     </div>
                     <p className="text-xs">
-                      Please record this transaction ID for your records. If there are any issues, 
+                      Please record this transaction ID for your records. If there are any issues,
                       you can submit it to{' '}
                       <a
                         href="mailto:support@ardrive.io"
-                        className="underline hover:text-green-200"
+                        className="underline hover:text-success"
                       >
                         customer support
                       </a>
@@ -248,16 +248,16 @@ export default function CryptoManualPaymentPanel({
         </div>
       </div>
       <div className="flex w-full">
-        <div className="ml-[.475rem] border-l border-fg-disabled/50"></div>
+        <div className="ml-[.475rem] border-l border-foreground/20"></div>
 
         {transferTransactionResult && (
-          <div className="ml-6 mt-4 rounded bg-surface p-4 text-sm text-fg-disabled">
-            <p className="text-fg-muted">Transaction success.</p>
+          <div className="ml-6 mt-4 rounded bg-card p-4 text-sm text-foreground/60">
+            <p className="text-foreground">Transaction success.</p>
             <div className="mt-4 flex gap-2">
               Transaction ID:{' '}
               <a
                 href={transferTransactionResult.explorerURL}
-                className="text-fg-muted underline"
+                className="text-foreground underline"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="View Payment Transaction"
@@ -283,51 +283,51 @@ export default function CryptoManualPaymentPanel({
         )}
       </div>
 
-      {/* Step 2 - Submit to Turbo */}
+      {/* Step 2 - Submit to ar.io */}
       {transferTransactionResult && (
-        <div className="bg-surface rounded-lg border border-default">
+        <div className="bg-card rounded-2xl border border-border/20">
           <div className="p-6">
             <div className="flex items-center gap-4 mb-4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                !transactionSubmitted 
-                  ? 'bg-turbo-red text-white' 
-                  : 'bg-green-500 text-white'
+                !transactionSubmitted
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-success text-white'
               }`}>
                 {transactionSubmitted ? '✓' : '2'}
               </div>
               <div>
-                <h4 className="font-medium text-fg-muted">Submit Transaction to Turbo</h4>
-                <p className="text-sm text-link">
-                  Confirm your transaction with Turbo's payment service
+                <h4 className="font-heading font-medium text-foreground">Submit Transaction to ar.io</h4>
+                <p className="text-sm text-foreground/80">
+                  Confirm your transaction with ar.io's payment service
                 </p>
               </div>
             </div>
 
             {!transactionSubmitted ? (
               <div className="space-y-4">
-                <div className="bg-canvas rounded-lg p-4 border border-default">
-                  <p className="text-sm text-link">
-                    This step submits your transaction to Turbo for processing. 
+                <div className="bg-card rounded-2xl p-4 border border-border/20">
+                  <p className="text-sm text-foreground/80">
+                    This step submits your transaction to ar.io for processing.
                     Once submitted, your credits will be added to your account.
                   </p>
                 </div>
-                
+
                 <button
                   onClick={(e) => {
                     e.preventDefault();
                     submitTransactionToTurbo();
                   }}
-                  className="w-full px-6 py-3 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                   disabled={!transferTransactionResult}
                 >
-                  Submit to Turbo
+                  Submit to ar.io
                 </button>
               </div>
             ) : (
-              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+              <div className="bg-success/10 border border-success/20 rounded-2xl p-4">
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-green-400 text-sm">
+                  <CheckCircle className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+                  <div className="text-success text-sm">
                     <p className="font-medium mb-1">Payment Complete!</p>
                     <p>Your account will be credited shortly.</p>
                   </div>
@@ -340,16 +340,16 @@ export default function CryptoManualPaymentPanel({
 
       {/* Error Display */}
       {paymentError && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+        <div className="bg-error/10 border border-error/20 rounded-2xl p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="text-red-400 text-sm">{paymentError}</div>
+              <div className="text-error text-sm">{paymentError}</div>
               {failedTxId && (
                 <button
                   onClick={retryTransaction}
                   disabled={isRetrying}
-                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
                   {isRetrying ? 'Retrying...' : 'Retry Transaction'}
@@ -361,19 +361,19 @@ export default function CryptoManualPaymentPanel({
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center pt-6 border-t border-default">
+      <div className="flex justify-between items-center pt-6 border-t border-border/20">
         <button
           onClick={onBack}
           disabled={transactionSubmitted}
-          className="text-sm text-link hover:text-fg-muted disabled:opacity-50"
+          className="text-sm text-foreground/80 hover:text-foreground disabled:opacity-50"
         >
           Back
         </button>
-        
+
         {transactionSubmitted && (
           <button
             onClick={onComplete}
-            className="px-6 py-3 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90"
+            className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90"
           >
             Complete
           </button>
@@ -381,10 +381,10 @@ export default function CryptoManualPaymentPanel({
       </div>
       {signingMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg bg-surface p-6 shadow-xl">
+          <div className="rounded-2xl bg-card p-6 shadow-xl">
             <div className="flex items-center gap-3">
-              <RefreshCw className="h-5 w-5 animate-spin text-turbo-red" />
-              <span className="text-fg-muted">{signingMessage}</span>
+              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-foreground">{signingMessage}</span>
             </div>
           </div>
         </div>
