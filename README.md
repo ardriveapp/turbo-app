@@ -1,6 +1,6 @@
 # Moved to https://github.com/ar-io/ar-io-console
 
-# Turbo App
+# ar.io App (previously Turbo App)
 
 A unified web application for uploading and accessing permanent data through the ar.io Network. Built with React 18, TypeScript, Vite, and multi-chain wallet support.
 
