@@ -1,6 +1,6 @@
-# Turbo Gateway Style Guide
+# ar.io App Style Guide
 
-A comprehensive design system guide for maintaining visual consistency across the Turbo Gateway application.
+A comprehensive design system guide for maintaining visual consistency across the ar.io application, aligned with the ar.io Network brand identity.
 
 ---
 
@@ -22,221 +22,210 @@ A comprehensive design system guide for maintaining visual consistency across th
 
 ## Color System
 
-### Theme Support
-The application supports **dark and light themes**. Theme preference is stored in localStorage and respects system preference by default. All colors are defined via CSS custom properties in `globals.css` and referenced in `tailwind.config.js`.
+### Brand Colors
+
+The ar.io brand uses a refined, minimal color palette:
+
+| Color | Hex | CSS Variable | Usage |
+|-------|-----|--------------|-------|
+| **Primary** | `#5427C8` | `--color-primary` | CTAs, links, accents, interactive elements |
+| **Lavender** | `#DFD6F7` | `--color-lavender` | Gradients, backgrounds, footer, decorative |
+| **Black** | `#23232D` | `--color-foreground` | Primary text, dark UI elements |
+| **White** | `#FFFFFF` | `--color-background` | Page background, light text on dark |
+| **Card Surface** | `#F0F0F0` | `--color-card` | Card backgrounds, elevated surfaces |
 
 ### Semantic Color Tokens
-Colors are defined as semantic tokens that automatically adapt to the current theme:
 
-| Token | Dark Mode | Light Mode | Usage |
-|-------|-----------|------------|-------|
-| `page` | #000000 | #F0F0F0 | Page background |
-| `canvas` | #171717 | #E8E8E8 | Dropdowns, hover states, nested content |
-| `surface` | #1F1F1F | #FFFFFF | Cards, panels, inputs |
-| `surface-elevated` | #2A2A2A | #F5F5F5 | Nested cards, code blocks |
-| `header-bg` | #090909 | #FFFFFF | Sticky header, footer |
-| `fg-muted` | #ededed | #23232D | Primary text |
-| `link` | #A3A3AD | #6C6C87 | Secondary text, labels |
-| `fg-disabled` | #6C6C87 | #9494A5 | Disabled state text |
-| `high` | #CACAD6 | #39394A | Highlighted text |
-| `default` | #333 | #C8C8CE | Standard borders |
-| `card-tint` | #FFFFFF | #FFFFFF | Card overlay gradient (stays white in both themes) |
+Define these in `globals.css` and reference in `tailwind.config.js`:
 
-### Light Mode Considerations
-The app supports both dark and light themes. When implementing components:
-
-**Key Differences:**
-
-| Element | Dark Mode | Light Mode |
-|---------|-----------|------------|
-| `bg-surface` | Dark gray (#1F1F1F) | White (#FFFFFF) |
-| `bg-canvas` | Charcoal (#171717) | Light gray (#E8E8E8) |
-| Gradient opacity | Subtle is fine | Needs `/10` to `/5` for visibility |
-| Border opacity | `/20` works | Use `/30` for better contrast |
-
-**Light Mode Best Practices:**
-1. **Use stronger gradients** - `/10` to `/5` instead of `/5` to `/3`
-2. **Use stronger borders** - `/30` instead of `/20` on colored containers
-3. **Create visual depth** - Alternate `bg-surface` and `bg-canvas` for nested elements
-4. **Test both themes** - Always verify components in Developer Resources → Theme toggle
-
-#### Background Colors
 ```css
-/* Use semantic tokens (theme-aware) */
-bg-page             /* Page background */
-bg-canvas           /* Dropdowns, hover states, nested content for depth */
-bg-surface          /* Elevated surfaces, cards, inputs (white in light mode) */
-bg-surface-elevated /* Nested cards, code blocks */
-bg-header-bg        /* Sticky header, footer */
+:root {
+  /* Core brand colors */
+  --color-primary: 84 39 200;        /* #5427C8 */
+  --color-lavender: 223 214 247;     /* #DFD6F7 */
+  --color-foreground: 35 35 45;      /* #23232D */
+  --color-background: 255 255 255;   /* #FFFFFF */
+  --color-card: 240 240 240;         /* #F0F0F0 */
+
+  /* Derived tokens */
+  --color-border: 35 35 45;          /* Same as foreground, used with opacity */
+  --color-muted-foreground: 35 35 45; /* Text at reduced opacity */
+  --color-accent: 84 39 200;         /* Same as primary, used with opacity for hover states */
+}
 ```
 
-#### Text Colors
+### Tailwind Color Classes
+
 ```css
-/* Text hierarchy (theme-aware) */
-text-fg-muted        /* Primary text - high contrast */
-text-link            /* Secondary text, labels, less important info */
-text-fg-disabled     /* Disabled state text */
-text-high            /* Highlighted text */
+/* Backgrounds */
+bg-background          /* #FFFFFF - page background */
+bg-card                /* #F0F0F0 - card surfaces, elevated elements */
+bg-lavender            /* #DFD6F7 - decorative backgrounds, footer */
+bg-primary             /* #5427C8 - accent backgrounds (use sparingly) */
+bg-foreground          /* #23232D - dark backgrounds, inverted sections */
+
+/* Text */
+text-foreground        /* #23232D - primary text */
+text-foreground/80     /* Primary text at 80% - secondary text */
+text-foreground/60     /* Primary text at 60% - muted/helper text */
+text-primary           /* #5427C8 - links, accents */
+text-white             /* #FFFFFF - text on dark backgrounds */
+
+/* Borders */
+border-border          /* #23232D at 12% opacity - standard borders */
+border-primary/30      /* Purple border for emphasis */
+border-primary/50      /* Purple border on hover */
 ```
 
-#### Border & Divider Colors
+### Opacity Usage Guidelines
+
+Use opacity modifiers to create visual hierarchy without introducing new colors:
+
+| Opacity | Usage |
+|---------|-------|
+| `/10` | Very subtle backgrounds, hover states |
+| `/15` | Pill backgrounds, light accents |
+| `/25` | Hover state backgrounds |
+| `/30` | Subtle borders, card overlays |
+| `/50` | Medium emphasis borders |
+| `/60` | Muted text |
+| `/70` | Backdrop overlays |
+| `/80` | Secondary text |
+
+### Status Colors
+
+For success, error, warning, and info states, use standard semantic colors:
+
 ```css
-border-default       /* Standard borders (theme-aware) */
-border-default/20    /* Subtle borders (with opacity) */
-border-default/50    /* Medium emphasis borders */
-```
+/* Success */
+text-green-600, bg-green-500/10, border-green-500/20
 
-#### Brand Colors
-```css
-/* Primary brand color - use for accents, active states */
-turbo-red: #FE0230
+/* Error */
+text-red-600, bg-red-500/10, border-red-500/20
 
-/* Supporting brand colors - use sparingly for specific contexts */
-turbo-green: #18A957        /* Success states only */
-turbo-blue: #3142C4         /* Informational elements (limited use) */
-turbo-yellow: #FFBB38       /* ArNS/domain-related features */
-turbo-purple: #8B5CF6       /* Developer/technical features */
-```
+/* Warning */
+text-amber-600, bg-amber-500/10, border-amber-500/20
 
-#### Service-Specific Color Mapping
-```typescript
-// Credit/Payment Services → Gray/White theme
-'topup', 'share', 'gift', 'balances', 'redeem', 'calculator'
-  → Use: text-fg-muted, bg-fg-muted/20
-
-// Upload/Deployment Services → Red theme
-'upload', 'deploy', 'capture'
-  → Use: text-turbo-red, bg-turbo-red/20
-
-// ArNS/Domain Services → Yellow theme
-'domains'
-  → Use: text-turbo-yellow, bg-turbo-yellow/20
-
-// Developer/Technical Services → Purple theme
-'developer', 'gateway-info'
-  → Use: text-turbo-purple, bg-turbo-purple/20
-```
-
-#### Alert Colors (Theme-Aware)
-For alert/notification text that appears on colored backgrounds, use theme-aware alert colors:
-
-| Token | Dark Mode | Light Mode | Usage |
-|-------|-----------|------------|-------|
-| `alert-danger` | #f87171 (red-400) | #991b1b (red-800) | Error messages on red backgrounds |
-| `alert-warning` | #fbbf24 (yellow-400) | #92400e (yellow-800) | Warning messages on yellow backgrounds |
-| `alert-success` | #4ade80 (green-400) | #166534 (green-800) | Success messages on green backgrounds |
-| `alert-info` | #60a5fa (blue-400) | #1e40af (blue-800) | Info messages on blue backgrounds |
-
-```jsx
-/* Alert card example with theme-aware text */
-<div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-  <AlertTriangle className="w-5 h-5 text-alert-danger" />
-  <p className="text-sm text-alert-danger">Error message here</p>
-</div>
-
-<div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-  <AlertTriangle className="w-5 h-5 text-alert-warning" />
-  <p className="text-sm text-alert-warning">Warning message here</p>
-</div>
-```
-
-#### Legacy Status Indicators (Non-Alert)
-For icons and non-text status indicators, standard Tailwind colors are acceptable:
-```css
-/* Status indicators (icons, badges without text) */
-success: text-turbo-green, bg-green-500/10, border-green-500/20
-error: text-red-400, bg-red-500/10, border-red-500/20
-warning: text-yellow-400, bg-yellow-500/10, border-yellow-500/20
-info: text-blue-400, bg-blue-500/10, border-blue-500/20
+/* Info */
+text-blue-600, bg-blue-500/10, border-blue-500/20
 ```
 
 ### Color Usage Guidelines
 
 **DO:**
-- Use semantic color tokens (`bg-canvas`, `bg-surface`, `text-fg-muted`) that adapt to theme
-- Use `turbo-red` for primary CTAs and important accents
-- Use `text-fg-muted` for all primary readable text
-- Use `text-link` for secondary text, labels, and metadata
-- Apply transparency (`/10`, `/20`) for subtle backgrounds
-- Use service-specific colors consistently within their context
-- Test components in both light and dark themes
+- Use `bg-background` for page backgrounds
+- Use `bg-card` for cards and elevated surfaces
+- Use `bg-lavender` sparingly for decorative sections (footer, hero accents)
+- Use `text-foreground` for all primary readable text
+- Use `text-foreground/80` for secondary text
+- Use `bg-primary/15` for subtle accent backgrounds (pills, badges)
+- Apply opacity modifiers for visual depth
 
 **DON'T:**
-- Hardcode hex colors (use semantic tokens instead)
-- Mix brand colors indiscriminately
-- Rely on color alone for critical information (ensure accessibility)
-- Use `bg-black` except for modal backdrops or intentional effects
+- Overuse the primary purple - reserve for CTAs and key interactive elements
+- Use hardcoded hex values - always use semantic tokens
+- Create new accent colors - the palette is intentionally minimal
+- Use `bg-primary` for large areas - it should accent, not dominate
 
 ---
 
 ## Typography
 
-### Font Family
+### Font Families
+
+The ar.io brand uses two typefaces:
+
 ```css
-/* Primary and only font */
-font-family: 'Rubik', sans-serif;
+/* Heading font - Besley */
+font-family: 'Besley', serif;
+--font-heading: 'Besley', serif;
+
+/* Body font - Plus Jakarta Sans */
+font-family: 'Plus Jakarta Sans', sans-serif;
+--font-body: 'Plus Jakarta Sans', sans-serif;
 ```
 
-Import weights in `globals.css`:
+### Font Installation
+
+Add to your project via `@fontsource` or Google Fonts:
+
 ```css
-@import '@fontsource/rubik/400.css';  /* Regular */
-@import '@fontsource/rubik/500.css';  /* Medium */
-@import '@fontsource/rubik/600.css';  /* Semibold */
-@import '@fontsource/rubik/700.css';  /* Bold */
+/* In globals.css */
+@import '@fontsource-variable/besley';
+@import '@fontsource-variable/plus-jakarta-sans';
 ```
+
+Or download the variable font files:
+- `Besley-VariableFont_wght.ttf`
+- `PlusJakartaSans-VariableFont_wght.ttf`
 
 ### Type Scale & Hierarchy
 
-#### Headings
+#### Headings (Besley, Extra Bold)
 ```jsx
-{/* Page Title - Large emphasis */}
-<h1 className="text-4xl font-bold text-fg-muted">Page Title</h1>
+{/* Page Title - Hero/Landing */}
+<h1 className="font-heading text-4xl sm:text-5xl font-extrabold text-foreground">
+  Page Title
+</h1>
 
-{/* Section Title - Panel headers */}
-<h2 className="text-2xl font-bold text-fg-muted">Section Title</h2>
+{/* Section Title */}
+<h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-foreground">
+  Section Title
+</h2>
 
 {/* Subsection */}
-<h3 className="text-xl font-semibold text-fg-muted">Subsection</h3>
+<h3 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
+  Subsection
+</h3>
 
 {/* Small Header */}
-<h4 className="text-lg font-medium text-fg-muted">Small Header</h4>
+<h4 className="font-heading text-lg font-bold text-foreground">
+  Small Header
+</h4>
 ```
 
-#### Body Text
+#### Body Text (Plus Jakarta Sans)
 ```jsx
 {/* Primary body text */}
-<p className="text-base text-fg-muted">Regular content text</p>
+<p className="font-body text-base text-foreground">
+  Regular content text
+</p>
 
 {/* Secondary/descriptive text */}
-<p className="text-sm text-link">Descriptive or helper text</p>
+<p className="font-body text-sm text-foreground/80">
+  Descriptive or helper text
+</p>
 
 {/* Small metadata/captions */}
-<p className="text-xs text-link">Metadata, timestamps, captions</p>
+<p className="font-body text-xs text-foreground/60">
+  Metadata, timestamps, captions
+</p>
 ```
 
 #### Specialized Text
 ```jsx
-{/* Labels - always uppercase with tracking */}
-<label className="text-xs font-medium text-link uppercase tracking-wider">
+{/* Labels */}
+<label className="font-body text-xs font-semibold text-foreground/80 uppercase tracking-wider">
   Field Label
 </label>
 
 {/* Monospace for addresses/IDs */}
-<span className="font-mono text-sm text-fg-muted">
+<span className="font-mono text-sm text-foreground">
   {walletAddress}
 </span>
 
 {/* Numbers - tabular nums for alignment */}
-<span className="font-medium text-fg-muted tabular-nums">
+<span className="font-body font-semibold text-foreground tabular-nums">
   1,234.56
 </span>
 ```
 
 ### Font Weight Usage
 - **400 (Regular)**: Standard body text
-- **500 (Medium)**: Emphasized body text, button text
-- **600 (Semibold)**: Section headers, important labels
-- **700 (Bold)**: Page titles, primary headings, emphasized numbers
+- **500 (Medium)**: Emphasized body text, UI labels
+- **600 (Semibold)**: Button text, important labels
+- **700 (Bold)**: Subheadings
+- **800 (Extra Bold)**: Headings (Besley only)
 
 ---
 
@@ -244,15 +233,15 @@ Import weights in `globals.css`:
 
 ### Container System
 ```jsx
-{/* Page-level max-width container - ALWAYS use this */}
-<div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 w-full">
+{/* Page-level max-width container */}
+<div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8">
   {/* Content */}
 </div>
 
-{/* Responsive padding values */}
-px-1     /* Mobile: minimal padding */
-sm:px-6  /* Tablet: medium padding */
-lg:px-8  /* Desktop: generous padding */
+{/* Narrower content container */}
+<div className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+  {/* Content */}
+</div>
 ```
 
 ### Standard Spacing Scale
@@ -260,7 +249,7 @@ lg:px-8  /* Desktop: generous padding */
 /* Use Tailwind's spacing scale consistently */
 gap-1 (4px)    /* Tight spacing, icon + text */
 gap-2 (8px)    /* Close related elements */
-gap-3 (12px)   /* Default spacing */
+gap-3 (12px)   /* Default inline spacing */
 gap-4 (16px)   /* Comfortable spacing */
 gap-6 (24px)   /* Section spacing */
 gap-8 (32px)   /* Large section spacing */
@@ -270,12 +259,12 @@ gap-12 (48px)  /* Page section dividers */
 ### Margin & Padding Patterns
 ```jsx
 {/* Card/Panel internal padding */}
-<div className="p-4 sm:p-6">
-  {/* Responsive: 16px mobile, 24px desktop */}
+<div className="p-6 sm:p-8">
+  {/* Responsive: 24px mobile, 32px desktop */}
 </div>
 
 {/* Stack spacing (vertical) */}
-<div className="space-y-4">  {/* 16px between children */}
+<div className="space-y-4">
   <div>Item 1</div>
   <div>Item 2</div>
 </div>
@@ -288,198 +277,134 @@ gap-12 (48px)  /* Page section dividers */
 ```
 
 ### Border Radius Standards
+
+ar.io uses generous, rounded corners:
+
 ```css
-/* Use consistent border radius hierarchy */
-rounded-xl     /* Main panel containers, modals */
-rounded-lg     /* Cards, inputs, buttons, nested containers */
-rounded-md     /* Small buttons, tags */
-rounded        /* Tiny elements, badges */
-rounded-full   /* Avatars, circular indicators, status dots */
+rounded-full   /* Pills, buttons, badges, avatars */
+rounded-3xl    /* Large hero sections (1.5rem) */
+rounded-2xl    /* Cards, modals, dropdowns (1rem) */
+rounded-xl     /* Smaller cards, inputs (0.75rem) */
+rounded-lg     /* Buttons, small elements (0.5rem) */
 ```
 
 **Border Radius Guidelines:**
-- `rounded-xl` - Main gradient containers, modal dialogs
-- `rounded-lg` - Cards inside containers, form inputs, standard buttons
-- `rounded-md` - Tab buttons, small action buttons
-- `rounded-full` - Avatar images, status indicators, pills
-
-### Layout Components
-
-#### Sticky Header Pattern
-```jsx
-<div className="sticky top-0 z-50 bg-header-bg border-b border-default/20">
-  <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 w-full">
-    <Header />
-  </div>
-</div>
-```
-
-#### Full Page Layout
-```jsx
-<div className="min-h-screen bg-canvas text-fg-muted flex flex-col">
-  {/* Header */}
-  <div className="sticky top-0 z-50 bg-header-bg">{/* ... */}</div>
-
-  {/* Main Content */}
-  <div className="flex-1">
-    <div className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 w-full">
-      <div className="pt-6 sm:pt-8 pb-3 sm:pb-4 mb-6 sm:mb-8">
-        {/* Page content */}
-      </div>
-    </div>
-  </div>
-
-  {/* Footer */}
-  <Footer />
-</div>
-```
+- `rounded-full` - Primary CTAs, pills, badges, profile avatars
+- `rounded-2xl` - Cards, modal dialogs, dropdown menus
+- `rounded-xl` - Input fields, secondary buttons, nested cards
+- `rounded-lg` - Small interactive elements
 
 ---
 
 ## Component Patterns
 
-### Service Panel Pattern (Universal Template)
-**Every service panel MUST follow this exact structure:**
+### Service Panel Pattern
+
+All service panels follow a consistent structure:
 
 ```jsx
 <div className="px-4 sm:px-6">
-  {/* 1. Inline Header with Icon */}
+  {/* 1. Panel Header */}
   <div className="flex items-start gap-3 mb-6">
-    <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-      <IconComponent className="w-5 h-5 text-turbo-red" />
+    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card">
+      <IconComponent className="h-5 w-5 text-foreground" />
     </div>
     <div>
-      <h3 className="text-2xl font-bold text-fg-muted mb-1">Service Name</h3>
-      <p className="text-sm text-link">Brief service description</p>
+      <h3 className="font-heading text-2xl font-extrabold text-foreground mb-1">
+        Service Name
+      </h3>
+      <p className="font-body text-sm text-foreground/80">
+        Brief service description
+      </p>
     </div>
   </div>
 
-  {/* 2. Main Content Container with Gradient */}
-  <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-turbo-red/30 p-4 sm:p-6 mb-4 sm:mb-6">
-    {/* Panel content goes here */}
+  {/* 2. Main Content Card */}
+  <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    {/* Panel content */}
   </div>
 </div>
-```
-
-**Icon Background & Border Colors by Service:**
-```jsx
-// Credit services (topup, share, gift, balances, redeem, calculator)
-Icon: bg-fg-muted/20, text-fg-muted
-Border: border-default
-Background: bg-surface  // White in light mode, dark gray in dark mode
-
-// Upload/Deploy/Capture services (upload, deploy, capture)
-Icon: bg-turbo-red/20, text-turbo-red
-Border: border-turbo-red/30
-Gradient: from-turbo-red/10 to-turbo-red/5
-Inner cards: bg-surface (white in light mode)
-Nested content: bg-canvas (gray in light mode for depth)
-
-// ArNS/Domain services (domains)
-Icon: bg-turbo-yellow/20, text-turbo-yellow
-Border: border-turbo-yellow/30
-Gradient: from-turbo-yellow/10 to-turbo-yellow/5
-Inner cards: bg-surface
-
-// Developer services (developer, gateway-info)
-Icon: bg-turbo-purple/20, text-turbo-purple
-Border: border-turbo-purple/30
-Gradient: from-turbo-purple/10 to-turbo-purple/5
-```
-
-**Gradient Opacity Guidelines (Light Mode Optimized):**
-- Use `/10` to `/5` for gradient backgrounds (visible in light mode)
-- Use `/30` for gradient container borders (good contrast)
-- Use `/20` for inner card borders within gradient containers
-- Always use solid `bg-surface` for cards inside gradient containers
-
-**Visual Hierarchy Pattern:**
-```text
-Page (bg-page)
-  └─ Gradient container (from-{color}/10 to-{color}/5, border-{color}/30)
-       └─ Surface card (bg-surface, border-{color}/20) - white in light mode
-            └─ Nested content (bg-canvas) - gray in light mode for depth
 ```
 
 ### Card Components
 
 #### Standard Card
 ```jsx
-<div className="bg-surface rounded-lg border border-default p-4">
-  <h3 className="text-lg font-semibold text-fg-muted mb-2">Card Title</h3>
-  <p className="text-sm text-link">Card content</p>
+<div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+  <h3 className="font-heading text-lg font-bold text-foreground mb-2">
+    Card Title
+  </h3>
+  <p className="font-body text-sm text-foreground/80">
+    Card content
+  </p>
+</div>
+```
+
+#### Interactive Card (with hover)
+```jsx
+<div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
+  {/* Card content */}
+</div>
+```
+
+#### Card with Gradient Overlay
+```jsx
+<div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm">
+  {/* Subtle gradient overlay */}
+  <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-primary/10" />
+  <div className="relative">
+    {/* Card content */}
+  </div>
 </div>
 ```
 
 #### Highlighted Card (for important info)
 ```jsx
-<div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
-  <div className="text-sm text-link mb-1">Label</div>
-  <div className="text-4xl font-bold text-fg-muted mb-1">Main Value</div>
-  <div className="text-sm text-link">Supporting info</div>
+<div className="rounded-2xl border-2 border-primary/30 bg-card p-6">
+  <div className="text-sm text-foreground/80 mb-1">Label</div>
+  <div className="font-heading text-4xl font-extrabold text-foreground mb-1">
+    Main Value
+  </div>
+  <div className="text-sm text-foreground/60">Supporting info</div>
 </div>
 ```
 
 #### Alert/Message Cards
 ```jsx
 {/* Success */}
-<div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-  <div className="flex items-start gap-3">
-    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-    <div>
-      <p className="font-medium text-green-400 mb-1">Success Title</p>
-      <p className="text-green-300 text-sm">Success message</p>
-    </div>
+<div className="flex items-start gap-3 rounded-xl border border-green-500/20 bg-green-500/10 p-4">
+  <CheckCircle className="h-5 w-5 flex-shrink-0 text-green-600 mt-0.5" />
+  <div>
+    <p className="font-semibold text-green-600 mb-1">Success Title</p>
+    <p className="text-sm text-green-600/80">Success message</p>
   </div>
 </div>
 
 {/* Error */}
-<div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-  <div className="flex items-start gap-3">
-    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-    <div>
-      <p className="font-medium text-red-400 mb-1">Error Title</p>
-      <p className="text-red-300 text-sm">Error message</p>
-    </div>
+<div className="flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+  <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
+  <div>
+    <p className="font-semibold text-red-600 mb-1">Error Title</p>
+    <p className="text-sm text-red-600/80">Error message</p>
   </div>
 </div>
 
 {/* Warning */}
-<div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-  <div className="flex items-start gap-3">
-    <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-    <div>
-      <p className="font-medium text-yellow-400 mb-1">Warning Title</p>
-      <p className="text-yellow-300 text-sm">Warning message</p>
-    </div>
+<div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+  <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600 mt-0.5" />
+  <div>
+    <p className="font-semibold text-amber-600 mb-1">Warning Title</p>
+    <p className="text-sm text-amber-600/80">Warning message</p>
   </div>
 </div>
 
 {/* Info */}
-<div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-  <div className="flex items-start gap-3">
-    <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-    <div>
-      <p className="font-medium text-blue-400 mb-1">Info Title</p>
-      <p className="text-blue-300 text-sm">Info message</p>
-    </div>
+<div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
+  <Info className="h-5 w-5 flex-shrink-0 text-blue-600 mt-0.5" />
+  <div>
+    <p className="font-semibold text-blue-600 mb-1">Info Title</p>
+    <p className="text-sm text-blue-600/80">Info message</p>
   </div>
-</div>
-```
-
-### Wallet Indicators
-```jsx
-{/* Wallet type indicator dot */}
-<div className={`w-2 h-2 rounded-full ${
-  walletType === 'arweave' ? 'bg-white' :
-  walletType === 'ethereum' ? 'bg-blue-400' :
-  walletType === 'solana' ? 'bg-purple-400' :
-  'bg-green-500'
-}`} />
-
-{/* Profile avatar with fallback */}
-<div className="size-8 rounded-full overflow-hidden bg-canvas border border-default/50 flex items-center justify-center">
-  {/* Image or fallback indicator */}
 </div>
 ```
 
@@ -487,47 +412,65 @@ Page (bg-page)
 
 ## Button Styles
 
-### Primary CTA Button
+### Primary CTA Button (Dark)
+The main call-to-action uses a pill shape with dark background:
+
 ```jsx
-<button className="w-full py-4 px-6 rounded-lg bg-fg-muted text-canvas font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-  <Icon className="w-5 h-5" />
+<button className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-2.5 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+  <Icon className="h-4 w-4" />
   Button Text
 </button>
 ```
 
-### Secondary Button
+### Primary CTA Button (Large)
+For hero sections and prominent actions:
+
 ```jsx
-<button className="py-3 px-4 rounded-lg border border-default text-link hover:bg-surface hover:text-fg-muted transition-colors font-medium">
+<button className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 font-body text-base font-semibold text-white transition-opacity hover:opacity-90">
+  <Icon className="h-5 w-5" />
+  Get Started
+</button>
+```
+
+### Secondary Button (Outlined)
+```jsx
+<button className="inline-flex items-center justify-center gap-2 rounded-full border border-foreground bg-transparent px-5 py-2.5 font-body text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5">
   Secondary Action
 </button>
 ```
 
-### Preset Amount Buttons (Payment/Selection)
+### Tertiary Button (Ghost)
 ```jsx
-{/* Standard preset */}
-<button className={`py-3 px-3 rounded-lg border transition-all font-medium ${
-  isSelected
-    ? 'border-fg-muted bg-fg-muted/10 text-fg-muted'
-    : 'border-default text-link hover:bg-surface hover:text-fg-muted'
+<button className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-body text-sm font-medium text-foreground/80 transition-colors hover:bg-card hover:text-foreground">
+  Tertiary Action
+</button>
+```
+
+### Pill Button (Navigation/Filter)
+```jsx
+<button className={`rounded-full px-4 py-2 font-body text-sm transition-colors ${
+  isActive
+    ? 'bg-primary/15 text-foreground font-medium'
+    : 'text-foreground/80 hover:bg-primary/10'
 }`}>
-  $10
+  Filter Option
 </button>
 ```
 
 ### Toggle Button Group
 ```jsx
-<div className="inline-flex bg-surface rounded-lg p-1 border border-default">
-  <button className={`px-4 py-3 rounded-md text-sm font-medium transition-all ${
+<div className="inline-flex rounded-full bg-card p-1 border border-border">
+  <button className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
     isActive
-      ? 'bg-fg-muted text-canvas'
-      : 'text-link hover:text-fg-muted'
+      ? 'bg-foreground text-white'
+      : 'text-foreground/80 hover:text-foreground'
   }`}>
     Option 1
   </button>
-  <button className={`px-4 py-3 rounded-md text-sm font-medium transition-all ${
+  <button className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
     isActive
-      ? 'bg-fg-muted text-canvas'
-      : 'text-link hover:text-fg-muted'
+      ? 'bg-foreground text-white'
+      : 'text-foreground/80 hover:text-foreground'
   }`}>
     Option 2
   </button>
@@ -536,22 +479,22 @@ Page (bg-page)
 
 ### Icon Button
 ```jsx
-<button className="p-1.5 text-link hover:text-fg-muted transition-colors" title="Action">
-  <Icon className="w-4 h-4" />
+<button className="p-2 text-foreground/60 transition-colors hover:text-foreground" title="Action">
+  <Icon className="h-5 w-5" />
 </button>
 ```
 
-### Destructive Button (Disconnect/Logout)
+### Destructive Button
 ```jsx
-<button className="px-6 py-3 font-semibold text-red-400 hover:bg-canvas hover:text-red-300 border-t border-default transition-colors">
+<button className="inline-flex items-center justify-center gap-2 rounded-full border border-red-500/30 bg-transparent px-5 py-2.5 font-body text-sm font-semibold text-red-600 transition-colors hover:bg-red-500/10">
   Disconnect
 </button>
 ```
 
 ### Loading State
 ```jsx
-<button disabled className="flex items-center gap-2">
-  <Loader2 className="w-5 h-5 animate-spin" />
+<button disabled className="inline-flex items-center gap-2 opacity-50">
+  <Loader2 className="h-4 w-4 animate-spin" />
   Processing...
 </button>
 ```
@@ -562,74 +505,71 @@ Page (bg-page)
 
 ### Standard Input Field
 ```jsx
-{/* Use bg-surface for better light mode visibility (white background) */}
 <input
   type="text"
-  className="w-full p-3 rounded-lg border border-default bg-surface text-fg-muted focus:outline-none focus:border-fg-muted transition-colors"
-  placeholder="Enter value"
-/>
-
-{/* Use bg-canvas for inputs inside white surface cards (creates depth) */}
-<input
-  type="text"
-  className="w-full p-3 rounded-lg border border-default bg-canvas text-fg-muted focus:outline-none focus:border-fg-muted transition-colors"
+  className="w-full rounded-xl border border-border bg-background px-4 py-3 font-body text-foreground placeholder:text-foreground/40 focus:border-primary focus:outline-none transition-colors"
   placeholder="Enter value"
 />
 ```
 
-**When to use which background:**
-- `bg-surface` - Default for most inputs (white in light mode)
-- `bg-canvas` - Use inside white cards to create visual depth (gray in light mode)
+### Input with Label
+```jsx
+<div className="space-y-2">
+  <label className="block text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+    Field Label
+  </label>
+  <input
+    type="text"
+    className="w-full rounded-xl border border-border bg-background px-4 py-3 font-body text-foreground placeholder:text-foreground/40 focus:border-primary focus:outline-none transition-colors"
+    placeholder="Enter value"
+  />
+</div>
+```
 
 ### Input with Error State
 ```jsx
-<input
-  className={`w-full p-3 rounded-lg border bg-canvas text-fg-muted focus:outline-none transition-colors ${
-    hasError
-      ? 'border-red-500 focus:border-red-500'
-      : 'border-default focus:border-fg-muted'
-  }`}
-/>
-{hasError && (
-  <div className="mt-2 text-xs text-red-400">Error message</div>
-)}
+<div className="space-y-2">
+  <input
+    className={`w-full rounded-xl border bg-background px-4 py-3 font-body text-foreground focus:outline-none transition-colors ${
+      hasError
+        ? 'border-red-500 focus:border-red-500'
+        : 'border-border focus:border-primary'
+    }`}
+  />
+  {hasError && (
+    <p className="text-xs text-red-600">Error message</p>
+  )}
+</div>
 ```
 
-### FormEntry Component (Reusable)
-```jsx
-import FormEntry from './FormEntry';
+### Input on Card Surface
+When placing inputs on `bg-card` surfaces, use `bg-background` for contrast:
 
-<FormEntry
-  name="fieldName"
-  label="Field Label"
-  errorText={error}
->
+```jsx
+<div className="rounded-2xl bg-card p-6">
   <input
     type="text"
-    id="fieldName"
-    className="w-full p-3 bg-canvas text-fg-muted focus:outline-none"
+    className="w-full rounded-xl border border-border bg-background px-4 py-3 ..."
   />
-</FormEntry>
+</div>
 ```
 
-### Number Input with Custom Styling
+### Number Input with Icon
 ```jsx
-<div className="bg-surface rounded-lg p-4">
-  <label className="block text-xs font-medium text-link mb-2 uppercase tracking-wider">
-    Custom Amount (USD)
+<div className="space-y-2">
+  <label className="block text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+    Amount (USD)
   </label>
-  <div className="flex items-center gap-3">
-    <DollarSign className="w-5 h-5 text-fg-muted" />
+  <div className="relative">
+    <DollarSign className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground/40" />
     <input
       type="text"
-      className="flex-1 p-3 rounded-lg border border-default bg-canvas text-fg-muted font-medium text-lg focus:outline-none focus:border-fg-muted transition-colors"
-      placeholder="Enter amount"
       inputMode="decimal"
+      className="w-full rounded-xl border border-border bg-background pl-12 pr-4 py-3 font-body text-lg font-semibold text-foreground placeholder:text-foreground/40 focus:border-primary focus:outline-none transition-colors"
+      placeholder="0.00"
     />
   </div>
-  <div className="mt-2 text-xs text-link">
-    Min: $5 • Max: $10,000
-  </div>
+  <p className="text-xs text-foreground/60">Min: $5 | Max: $10,000</p>
 </div>
 ```
 
@@ -637,10 +577,10 @@ import FormEntry from './FormEntry';
 ```jsx
 <Listbox value={selected} onChange={setSelected}>
   <div className="relative">
-    <Listbox.Button className="relative w-full rounded-lg border border-default bg-canvas pl-4 pr-12 py-3 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+    <Listbox.Button className="relative w-full rounded-xl border border-border bg-background py-3 pl-4 pr-12 text-left font-body text-foreground focus:border-primary focus:outline-none cursor-pointer transition-colors">
       <span className="block truncate">{selected.label}</span>
       <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-        <ChevronDown className="h-5 w-5 text-link" />
+        <ChevronDown className="h-5 w-5 text-foreground/40" />
       </span>
     </Listbox.Button>
 
@@ -650,24 +590,24 @@ import FormEntry from './FormEntry';
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
     >
-      <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+      <Listbox.Options className="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-border bg-background shadow-lg focus:outline-none">
         {options.map((option) => (
           <Listbox.Option
             key={option.value}
             className={({ active }) =>
-              `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
-                active ? 'bg-canvas text-fg-muted' : 'text-link'
+              `relative cursor-pointer select-none px-4 py-3 transition-colors ${
+                active ? 'bg-primary/10' : ''
               }`
             }
             value={option}
           >
             {({ selected }) => (
               <>
-                <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : ''}`}>
+                <span className={`block truncate ${selected ? 'font-semibold text-foreground' : 'text-foreground/80'}`}>
                   {option.label}
                 </span>
                 {selected && (
-                  <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                  <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary">
                     <Check className="h-5 w-5" />
                   </span>
                 )}
@@ -686,72 +626,83 @@ import FormEntry from './FormEntry';
 ## Icons & Visual Elements
 
 ### Icon Library
-**Always use Lucide React** icons:
+**Use Lucide React** for all icons:
 ```jsx
 import { Icon } from 'lucide-react';
 ```
 
 ### Icon Sizing Standards
 ```jsx
-{/* Extra Small - 14px */}
-<Icon className="w-3.5 h-3.5" />
-
 {/* Small - 16px */}
-<Icon className="w-4 h-4" />
+<Icon className="h-4 w-4" />
 
 {/* Medium - 20px (most common) */}
-<Icon className="w-5 h-5" />
+<Icon className="h-5 w-5" />
 
 {/* Large - 24px */}
-<Icon className="w-6 h-6" />
+<Icon className="h-6 w-6" />
 
 {/* Extra Large - 32px */}
-<Icon className="w-8 h-8" />
+<Icon className="h-8 w-8" />
 ```
 
 ### Icon Color Patterns
 ```jsx
 {/* Default state */}
-<Icon className="text-link" />
+<Icon className="text-foreground/60" />
 
 {/* Hover state */}
-<Icon className="text-link hover:text-fg-muted" />
+<Icon className="text-foreground/60 hover:text-foreground transition-colors" />
 
 {/* Active/Selected state */}
-<Icon className="text-fg-muted" />
+<Icon className="text-foreground" />
 
-{/* Brand accent */}
-<Icon className="text-turbo-red" />
+{/* Primary accent */}
+<Icon className="text-primary" />
 
 {/* Status icons */}
-<Check className="text-turbo-green" />
-<AlertCircle className="text-yellow-400" />
-<XCircle className="text-red-400" />
-<Info className="text-blue-400" />
+<Check className="text-green-600" />
+<AlertCircle className="text-amber-600" />
+<XCircle className="text-red-600" />
+<Info className="text-blue-600" />
 ```
 
 ### Copy Button Component
 ```jsx
 import CopyButton from './CopyButton';
 
-{/* Always use this for copyable content */}
 <div className="flex items-center gap-2">
-  <span className="font-mono text-sm text-fg-muted">{address}</span>
+  <span className="font-mono text-sm text-foreground">{address}</span>
   <CopyButton textToCopy={address} />
 </div>
 ```
 
 ### Loading Spinner
 ```jsx
-<Loader2 className="w-5 h-5 animate-spin text-turbo-red" />
+<Loader2 className="h-5 w-5 animate-spin text-primary" />
 ```
 
 ### Icon with Text Pattern
 ```jsx
 <div className="flex items-center gap-2">
-  <Icon className="w-4 h-4 text-link" />
-  <span className="text-sm text-link">Label text</span>
+  <Icon className="h-4 w-4 text-foreground/60" />
+  <span className="text-sm text-foreground/80">Label text</span>
 </div>
+```
+
+### ar.io Logo Usage
+
+Use the appropriate logo variant based on background:
+
+```jsx
+{/* On light backgrounds */}
+<img src="/brand/ario-full-black.svg" alt="ar.io" className="h-8" />
+
+{/* On dark backgrounds */}
+<img src="/brand/ario-full-white.svg" alt="ar.io" className="h-8" />
+
+{/* Icon only */}
+<img src="/brand/ario-black.svg" alt="ar.io" className="h-6 w-6" />
 ```
 
 ---
@@ -762,40 +713,49 @@ import CopyButton from './CopyButton';
 ```jsx
 import BaseModal from './modals/BaseModal';
 
-<BaseModal onClose={handleClose} showCloseButton={false}>
-  <div className="w-[500px] max-h-[80vh] overflow-auto p-6">
+<BaseModal onClose={handleClose}>
+  <div className="w-full max-w-lg overflow-auto rounded-2xl border border-border bg-background p-6 shadow-2xl">
     {/* Modal content */}
   </div>
 </BaseModal>
 ```
 
-### Modal Z-Index Layers
-```css
-backdrop: z-[9998]
-modal content: z-[9999]
+### Modal Overlay
+```jsx
+{/* Backdrop */}
+<div className="fixed inset-0 z-[9998] bg-black/70 transition-opacity duration-200" />
+
+{/* Content container */}
+<div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+  {/* Modal */}
+</div>
 ```
 
 ### Modal Content Structure
 ```jsx
 <BaseModal onClose={onClose}>
-  <div className="w-[500px] p-6">
+  <div className="w-full max-w-lg rounded-2xl border border-border bg-background shadow-2xl">
     {/* Header */}
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-fg-muted mb-2">Modal Title</h2>
-      <p className="text-sm text-link">Modal description</p>
+    <div className="border-b border-border p-6">
+      <h2 className="font-heading text-xl font-bold text-foreground">
+        Modal Title
+      </h2>
+      <p className="mt-1 text-sm text-foreground/80">
+        Modal description
+      </p>
     </div>
 
     {/* Content */}
-    <div className="space-y-4">
+    <div className="max-h-[60vh] overflow-auto p-6">
       {/* Modal body */}
     </div>
 
     {/* Actions */}
-    <div className="flex gap-3 mt-6">
-      <button className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:bg-surface hover:text-fg-muted transition-colors">
+    <div className="flex gap-3 border-t border-border p-6">
+      <button className="flex-1 rounded-full border border-foreground bg-transparent px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5">
         Cancel
       </button>
-      <button className="flex-1 py-3 px-4 rounded-lg bg-fg-muted text-canvas font-semibold hover:bg-fg-muted/90 transition-colors">
+      <button className="flex-1 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90">
         Confirm
       </button>
     </div>
@@ -803,86 +763,102 @@ modal content: z-[9999]
 </BaseModal>
 ```
 
-### Modal Best Practices
-- Always use `createPortal` to render to `document.body`
-- Include backdrop with `onClick={onClose}` for dismissal
-- Use fixed positioning with transform centering
-- Limit content width: `w-[400px]`, `w-[500px]`, or `w-[600px]`
-- Make modals scrollable for long content: `max-h-[80vh] overflow-auto`
-
 ---
 
 ## Navigation Patterns
 
-### Waffle Menu (Headless UI Popover)
+### Header
+```jsx
+<header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur">
+  <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
+    {/* Logo */}
+    <img src="/brand/ario-full-black.svg" alt="ar.io" className="h-8" />
+
+    {/* Navigation */}
+    <nav className="flex items-center gap-2">
+      {/* Nav items */}
+    </nav>
+  </div>
+</header>
+```
+
+### Navigation Pills
+```jsx
+<nav className="flex items-center gap-1">
+  <Link
+    to="/path"
+    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+      isActive
+        ? 'bg-primary/15 text-foreground'
+        : 'text-foreground/80 hover:bg-primary/10 hover:text-foreground'
+    }`}
+  >
+    Nav Item
+  </Link>
+</nav>
+```
+
+### Dropdown Menu (Popover)
 ```jsx
 <Popover className="relative">
-  <PopoverButton className="flex items-center p-3 text-link hover:text-fg-muted transition-colors focus:outline-none">
-    <Grid3x3 className="w-6 h-6" />
+  <PopoverButton className="flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-primary/25">
+    Menu
+    <ChevronDown className="h-4 w-4" />
   </PopoverButton>
 
-  <PopoverPanel className="absolute right-0 mt-2 w-64 overflow-auto rounded-lg bg-canvas border border-default shadow-lg z-50 py-1">
+  <PopoverPanel className="absolute right-0 mt-2 w-64 rounded-2xl border border-border bg-background shadow-lg">
     {({ close }) => (
-      <>
-        {/* Section Header */}
-        <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">
-          Section Name
-        </div>
-
-        {/* Menu Items */}
+      <div className="p-2">
         <Link
           to="/path"
           onClick={() => close()}
-          className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
-            isActive
-              ? 'bg-canvas text-fg-muted font-medium'
-              : 'text-link hover:bg-canvas hover:text-fg-muted'
-          }`}
+          className="flex items-center gap-3 rounded-xl px-3 py-3 text-foreground transition-colors hover:bg-primary/10"
         >
-          <Icon className="w-4 h-4" />
+          <Icon className="h-5 w-5 text-foreground/60" />
           Menu Item
         </Link>
-
-        {/* Divider */}
-        <div className="border-t border-default my-1" />
-      </>
+      </div>
     )}
   </PopoverPanel>
 </Popover>
 ```
 
-### Profile Dropdown Pattern
+### Profile Dropdown
 ```jsx
 <Popover className="relative">
-  <PopoverButton className="flex items-center gap-2 rounded border border-default px-2 py-1.5 font-semibold hover:bg-canvas hover:border-fg-muted/50 transition-colors">
-    {/* Avatar/indicator */}
-    <div className="w-2 h-2 rounded-full bg-white" />
-    <span className="text-fg-muted">{displayName}</span>
+  <PopoverButton className="flex items-center gap-2 rounded-full border border-border px-3 py-2 transition-colors hover:border-foreground/30 hover:bg-card">
+    <div className="h-6 w-6 rounded-full bg-primary/20" />
+    <span className="text-sm font-medium text-foreground">{displayName}</span>
+    <ChevronDown className="h-4 w-4 text-foreground/60" />
   </PopoverButton>
 
-  <PopoverPanel className="absolute right-0 mt-4 flex flex-col rounded-lg bg-canvas text-sm shadow-lg border border-default min-w-[280px] z-50">
-    {/* Sections with borders */}
-    <div className="px-6 py-4 border-b border-default">
-      {/* Section content */}
-    </div>
+  <PopoverPanel className="absolute right-0 mt-2 w-72 rounded-2xl border border-border bg-background shadow-lg">
+    {/* Profile sections */}
   </PopoverPanel>
 </Popover>
 ```
 
-### React Router Navigation
+### Footer
 ```jsx
-// Page navigation
-import { Link } from 'react-router-dom';
-
-<Link to="/path" className="text-link hover:text-fg-muted transition-colors">
-  Link Text
-</Link>
-
-// Programmatic navigation
-import { useNavigate } from 'react-router-dom';
-
-const navigate = useNavigate();
-navigate('/path');
+<footer className="bg-lavender">
+  <div className="mx-auto w-full max-w-[1400px] px-4 py-12 sm:px-6 lg:px-8">
+    <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Footer columns */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-4">
+          Section Title
+        </h3>
+        <ul className="space-y-2">
+          <li>
+            <Link className="text-sm text-foreground/80 transition-colors hover:text-foreground">
+              Link
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
 ```
 
 ---
@@ -891,27 +867,26 @@ navigate('/path');
 
 ### Breakpoint System (Tailwind)
 ```css
-/* Mobile first approach */
-default    /* < 640px */
-sm:       /* ≥ 640px (tablet) */
-md:       /* ≥ 768px */
-lg:       /* ≥ 1024px (desktop) */
-xl:       /* ≥ 1280px */
-2xl:      /* ≥ 1536px */
+default    /* < 640px - Mobile */
+sm:        /* >= 640px - Large mobile/small tablet */
+md:        /* >= 768px - Tablet */
+lg:        /* >= 1024px - Desktop */
+xl:        /* >= 1280px - Large desktop */
+2xl:       /* >= 1536px - Extra large */
 ```
 
 ### Common Responsive Patterns
 
-#### Responsive Padding
+#### Responsive Container
 ```jsx
-<div className="px-1 sm:px-6 lg:px-8">
-  {/* 4px mobile, 24px tablet, 32px desktop */}
+<div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8">
+  {/* Content */}
 </div>
 ```
 
 #### Responsive Typography
 ```jsx
-<h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+<h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-extrabold">
   {/* Scales with viewport */}
 </h1>
 ```
@@ -919,14 +894,14 @@ xl:       /* ≥ 1280px */
 #### Responsive Grid
 ```jsx
 {/* 1 column mobile, 2 tablet, 3 desktop */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-  {items.map(item => <div key={item.id}>{item.content}</div>)}
+<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {items.map(item => <Card key={item.id} />)}
 </div>
 ```
 
 #### Responsive Flex Direction
 ```jsx
-<div className="flex flex-col sm:flex-row gap-4">
+<div className="flex flex-col gap-4 sm:flex-row">
   {/* Stack on mobile, row on tablet+ */}
 </div>
 ```
@@ -941,11 +916,11 @@ xl:       /* ≥ 1280px */
 ```
 
 ### Mobile-First Guidelines
-1. Design for mobile (320px) first
+1. Design for mobile (375px) first
 2. Add complexity at larger breakpoints
-3. Test at key sizes: 375px (mobile), 768px (tablet), 1440px (desktop)
-4. Use touch-friendly tap targets (min 44x44px)
-5. Ensure readable text without zooming (min 16px font)
+3. Test at: 375px, 768px, 1024px, 1440px
+4. Touch-friendly tap targets (min 44x44px)
+5. Readable text without zooming (min 16px body)
 
 ---
 
@@ -953,28 +928,38 @@ xl:       /* ≥ 1280px */
 
 ### Standard Transitions
 ```jsx
-{/* Default transition for interactive elements */}
+{/* Color transitions (most common) */}
 className="transition-colors duration-200"
 
-{/* Hover states */}
-className="hover:bg-surface hover:text-fg-muted transition-colors"
+{/* Opacity transitions */}
+className="transition-opacity duration-200"
+
+{/* All properties (use sparingly) */}
+className="transition-all duration-200"
+```
+
+### Hover States
+```jsx
+{/* Opacity change */}
+className="hover:opacity-90"
+
+{/* Background change */}
+className="hover:bg-primary/10"
+
+{/* Lift effect */}
+className="hover:-translate-y-0.5 hover:shadow-md"
+
+{/* Border emphasis */}
+className="hover:border-primary/30"
 ```
 
 ### Loading States
 ```jsx
 {/* Spinner */}
-<Loader2 className="w-5 h-5 animate-spin" />
+<Loader2 className="h-5 w-5 animate-spin" />
 
 {/* Pulsing indicator */}
-<div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-```
-
-### Custom Animations (in globals.css)
-```css
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
+<div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
 ```
 
 ### Headless UI Transitions
@@ -982,22 +967,21 @@ className="hover:bg-surface hover:text-fg-muted transition-colors"
 <Transition
   as={Fragment}
   enter="transition ease-out duration-200"
-  enterFrom="opacity-0"
-  enterTo="opacity-100"
+  enterFrom="opacity-0 translate-y-1"
+  enterTo="opacity-100 translate-y-0"
   leave="transition ease-in duration-150"
-  leaveFrom="opacity-100"
-  leaveTo="opacity-0"
+  leaveFrom="opacity-100 translate-y-0"
+  leaveTo="opacity-0 translate-y-1"
 >
   {/* Animated content */}
 </Transition>
 ```
 
 ### Animation Best Practices
-- Keep animations subtle and fast (150-300ms)
-- Use `transition-colors` for color changes
-- Use `transition-all` only when necessary
-- Always provide `prefers-reduced-motion` fallbacks
-- Avoid layout shift during animations
+- Keep animations subtle and fast (150-200ms)
+- Use `ease-out` for enters, `ease-in` for exits
+- Prefer `transition-colors` or `transition-opacity` over `transition-all`
+- Respect `prefers-reduced-motion`
 
 ---
 
@@ -1005,8 +989,8 @@ className="hover:bg-surface hover:text-fg-muted transition-colors"
 
 ### Component Creation Checklist
 - [ ] Follow service panel pattern for consistency
-- [ ] Use correct service color (red/yellow/purple/gray)
-- [ ] Include proper responsive padding (`px-4 sm:px-6`)
+- [ ] Use semantic color tokens (not hardcoded hex)
+- [ ] Include proper responsive padding
 - [ ] Implement loading states for async operations
 - [ ] Add error states with user-friendly messages
 - [ ] Include copy buttons for addresses/IDs
@@ -1017,52 +1001,35 @@ className="hover:bg-surface hover:text-fg-muted transition-colors"
 
 ### Accessibility Guidelines
 1. **Semantic HTML**: Use proper heading hierarchy
-2. **Focus States**: Always visible with `focus:outline-none focus:ring-2`
+2. **Focus States**: Visible focus with `focus:outline-none focus:ring-2 focus:ring-primary`
 3. **ARIA Labels**: Add for icon-only buttons
 4. **Keyboard Navigation**: Support Tab, Enter, Escape
-5. **Color Contrast**: Minimum 4.5:1 for text
+5. **Color Contrast**: Minimum 4.5:1 for text (WCAG AA)
 6. **Alt Text**: Descriptive for all images
-7. **Screen Readers**: Test with VoiceOver/NVDA
 
 ### Code Style Conventions
 ```jsx
-// ✅ DO: Use consistent className ordering
-<div className="flex items-center gap-2 p-4 bg-surface text-fg-muted rounded-lg border border-default hover:bg-canvas transition-colors">
+// Recommended className order:
+// 1. Layout (flex, grid, block)
+// 2. Positioning (relative, absolute)
+// 3. Sizing (w-, h-, min-, max-)
+// 4. Spacing (p-, m-, gap-)
+// 5. Typography (font-, text-)
+// 6. Colors (bg-, text-, border-)
+// 7. Effects (rounded-, shadow-)
+// 8. Transitions (transition-, hover:)
+// 9. State (disabled:, focus:)
 
-// ❌ DON'T: Random className order
-<div className="bg-surface gap-2 border-default flex rounded-lg p-4 items-center text-fg-muted">
+<div className="flex items-center gap-2 p-4 font-body text-foreground bg-card rounded-xl border border-border transition-colors hover:border-primary/30">
 ```
 
-**Recommended className order:**
-1. Layout (flex, grid, block)
-2. Positioning (relative, absolute)
-3. Sizing (w-, h-, min-, max-)
-4. Spacing (p-, m-, gap-)
-5. Typography (text-, font-)
-6. Colors (bg-, text-, border-)
-7. Effects (rounded-, shadow-)
-8. Transitions (transition-, hover:)
-9. State (disabled:, focus:)
-
 ### Common Pitfalls to Avoid
-- ❌ Don't hardcode hex colors (use semantic tokens like `bg-canvas`, `text-fg-muted`)
-- ❌ Don't mix different icon libraries
-- ❌ Don't use inline styles except for dynamic values
-- ❌ Don't skip responsive breakpoints
-- ❌ Don't use `any` type in TypeScript
-- ❌ Don't forget loading/error states
-- ❌ Don't skip the service panel pattern
-- ❌ Don't forget to test both light and dark themes
-
-### Testing Checklist
-- [ ] Test on Chrome, Firefox, Safari, Edge
-- [ ] Test at 375px, 768px, 1440px, 1920px
-- [ ] Test with keyboard navigation only
-- [ ] Test with screen reader
-- [ ] Test all interactive states (hover, focus, active, disabled)
-- [ ] Test error handling paths
-- [ ] Test with slow network (loading states)
-- [ ] Test with all three wallet types
+- Don't hardcode hex colors - use semantic tokens
+- Don't overuse the primary purple - reserve for CTAs
+- Don't mix icon libraries - use Lucide React only
+- Don't skip responsive breakpoints
+- Don't forget loading/error states
+- Don't use inline styles except for dynamic values
 
 ---
 
@@ -1071,23 +1038,24 @@ className="hover:bg-surface hover:text-fg-muted transition-colors"
 ### Essential Classes
 ```css
 /* Containers */
-.max-w-7xl.mx-auto.px-1.sm:px-6.lg:px-8.w-full
+.mx-auto.w-full.max-w-[1400px].px-4.sm:px-6.lg:px-8
 
 /* Text */
-.text-fg-muted (primary)
-.text-link (secondary)
-.text-xs.font-medium.text-link.uppercase.tracking-wider (labels)
+.text-foreground (primary)
+.text-foreground/80 (secondary)
+.text-foreground/60 (muted)
+.font-heading.font-extrabold (headings)
+.font-body (body text)
 
 /* Buttons */
-.py-4.px-6.rounded-lg.bg-fg-muted.text-black.font-bold (primary CTA)
-.border.border-default.text-link.hover:bg-surface (secondary)
+.rounded-full.bg-foreground.text-white.px-5.py-2.5.font-semibold (primary CTA)
+.rounded-full.border.border-foreground.text-foreground (secondary)
 
 /* Cards */
-.bg-surface.rounded-lg.border.border-default.p-4
-.bg-gradient-to-br.from-turbo-red/5.to-turbo-red/3 (panel gradient)
+.rounded-2xl.border.border-border.bg-card.p-6.shadow-sm
 
 /* Inputs */
-.w-full.p-3.rounded-lg.border.border-default.bg-canvas.text-fg-muted
+.w-full.rounded-xl.border.border-border.bg-background.px-4.py-3
 
 /* Spacing */
 .space-y-4 (vertical stack)
@@ -1101,11 +1069,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Popover, PopoverButton, PopoverPanel, Listbox, Transition } from '@headlessui/react';
 import CopyButton from './CopyButton';
 import BaseModal from './modals/BaseModal';
-import FormEntry from './FormEntry';
 ```
 
 ---
 
-**Last Updated**: Based on v0.10.0 codebase analysis (with light mode support)
+**Last Updated**: ar.io rebrand (light mode focus)
 
-For questions or clarifications, refer to existing components in `src/components/panels/` for working examples.
+For questions or working examples, refer to the [ar.io public site](https://ar.io) and components in `src/components/`.

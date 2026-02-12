@@ -29,7 +29,7 @@ const getFileIcon = (contentType?: string, fileName?: string, size: 'sm' | 'lg' 
   const type = contentType?.toLowerCase() || '';
   const ext = fileName?.split('.').pop()?.toLowerCase() || '';
   const sizeClass = size === 'lg' ? 'w-6 h-6' : 'w-4 h-4';
-  const baseClass = `${sizeClass} text-link`;
+  const baseClass = `${sizeClass} text-foreground/80`;
   const inlineClass = size === 'sm' ? `${baseClass} inline mr-1` : baseClass;
 
   // Images
@@ -213,20 +213,20 @@ function CryptoPaymentDetails({
 
   return (
     <div className="mb-4">
-      <div className="bg-surface rounded-lg border border-default p-4">
+      <div className="bg-card rounded-lg border border-border/20 p-4">
         <div className="space-y-2.5">
           {/* Cost */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Cost:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Cost:</span>
+            <span className="text-sm text-foreground font-medium">
               {estimatedCost ? (
                 estimatedCost.tokenAmountReadable === 0 ? (
-                  <span className="text-turbo-green font-medium">FREE</span>
+                  <span className="text-success font-medium">FREE</span>
                 ) : (
                   <>
                     ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
                     {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
-                      <span className="text-xs text-link ml-2">
+                      <span className="text-xs text-foreground/80 ml-2">
                         (≈ ${estimatedCost.estimatedUSD < 0.01
                           ? estimatedCost.estimatedUSD.toFixed(4)
                           : estimatedCost.estimatedUSD.toFixed(2)})
@@ -242,15 +242,15 @@ function CryptoPaymentDetails({
 
           {/* Current Balance */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Current Balance:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Current Balance:</span>
+            <span className="text-sm text-foreground font-medium">
               {balanceLoading ? (
                 <span className="flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Checking...
                 </span>
               ) : balanceError ? (
-                <span className="text-amber-400">Unable to fetch</span>
+                <span className="text-warning">Unable to fetch</span>
               ) : (
                 `${formatTokenAmount(tokenBalance, tokenType)} ${tokenLabel}`
               )}
@@ -259,9 +259,9 @@ function CryptoPaymentDetails({
 
           {/* After Upload */}
           {estimatedCost && !balanceLoading && !balanceError && (
-            <div className="flex justify-between items-center pt-2 border-t border-default/30">
-              <span className="text-xs text-link">After Upload:</span>
-              <span className="text-sm text-fg-muted font-medium">
+            <div className="flex justify-between items-center pt-2 border-t border-border/30">
+              <span className="text-xs text-foreground/80">After Upload:</span>
+              <span className="text-sm text-foreground font-medium">
                 {formatTokenAmount(afterUpload, tokenType)} {tokenLabel}
               </span>
             </div>
@@ -269,11 +269,11 @@ function CryptoPaymentDetails({
 
           {/* Network Error Warning */}
           {isNetworkError && (
-            <div className="pt-3 mt-3 border-t border-default/30">
-              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="pt-3 mt-3 border-t border-border/30">
+              <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-lg border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-amber-400 font-medium mb-1">
+                  <div className="text-xs text-warning font-medium mb-1">
                     {balanceError}
                   </div>
                 </div>
@@ -284,10 +284,10 @@ function CryptoPaymentDetails({
 
         {/* Advanced Settings - hidden for base-usdc since x402 pricing is authoritative */}
         {estimatedCost && tokenType !== 'base-usdc' && (
-          <div className="mt-4 pt-4 border-t border-default/30">
+          <div className="mt-4 pt-4 border-t border-border/30">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+              className="text-xs text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1"
             >
               {showAdvanced ? (
                 <ChevronUp className="w-3 h-3" />
@@ -299,7 +299,7 @@ function CryptoPaymentDetails({
 
             {showAdvanced && (
               <div className="mt-3">
-                <label className="text-xs text-link block mb-2">
+                <label className="text-xs text-foreground/80 block mb-2">
                   Safety Buffer (0-20%):
                 </label>
                 <div className="flex items-center gap-2">
@@ -315,9 +315,9 @@ function CryptoPaymentDetails({
                         setBufferPercentage(value);
                       }
                     }}
-                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-surface text-fg-muted focus:outline-none focus:border-fg-muted"
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-border/20 bg-card text-foreground focus:outline-none focus:border-foreground"
                   />
-                  <span className="text-xs text-link">%</span>
+                  <span className="text-xs text-foreground/80">%</span>
                 </div>
               </div>
             )}
@@ -384,8 +384,6 @@ export default function UploadPanel() {
     initialJitEnabled: jitPaymentEnabled,
   });
 
-  // Fixed 10% buffer for SDK (not exposed to user)
-  const FIXED_BUFFER_MULTIPLIER = 1.1;
   const wincForOneGiB = useWincForOneGiB();
 
   // Calculate total file size and billable size (excluding free files)
@@ -534,7 +532,7 @@ export default function UploadPanel() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `turbo-uploads-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `ario-uploads-${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -602,7 +600,7 @@ export default function UploadPanel() {
     if (x402OnlyMode && creditsNeeded > 0 && walletType !== 'ethereum') {
       setUploadMessage({
         type: 'error',
-        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.'
+        text: 'X402 payments require an Ethereum wallet. Please connect an Ethereum wallet or disable x402-only mode in your console settings.'
       });
       return;
     }
@@ -674,21 +672,21 @@ export default function UploadPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-4 sm:mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Upload className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Upload className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Upload Files</h3>
-          <p className="text-sm text-link">Store your files permanently on the Arweave network</p>
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Upload Files</h3>
+          <p className="text-sm text-foreground/80">Store your files permanently on the Arweave network</p>
         </div>
       </div>
 
       {/* Connection Warning */}
       {!address && (
-        <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+        <div className="mb-4 sm:mb-6 p-4 rounded-lg bg-warning/10 border border-warning/20">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-yellow-500" />
-            <span className="text-sm text-yellow-500">Connect your wallet to upload files</span>
+            <Shield className="w-5 h-5 text-warning" />
+            <span className="text-sm text-warning">Connect your wallet to upload files</span>
           </div>
         </div>
       )}
@@ -697,10 +695,10 @@ export default function UploadPanel() {
       {uploadMessage && (
         <div className={`mb-4 sm:mb-6 p-4 rounded-lg border ${
           uploadMessage.type === 'error'
-            ? 'bg-red-500/10 border-red-500/20 text-alert-danger'
+            ? 'bg-error/10 border-error/20 text-error'
             : uploadMessage.type === 'success'
-            ? 'bg-turbo-green/10 border-turbo-green/20 text-turbo-green'
-            : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+            ? 'bg-success/10 border-success/20 text-success'
+            : 'bg-info/10 border-info/20 text-info'
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -720,27 +718,27 @@ export default function UploadPanel() {
 
       {/* Main Content Container with Gradient - Hide during upload */}
       {!uploading && (
-        <div className="bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-turbo-red/30 p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
           {/* Upload Area - Show when no files selected */}
           {files.length === 0 && (
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
                 isDragging
-                  ? 'border-turbo-red bg-turbo-red/10'
-                  : 'border-turbo-red/30 hover:border-turbo-red/50'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-primary/30 hover:border-primary/50'
               }`}
             >
               <div className="mb-4">
-                <Upload className="w-12 h-12 text-turbo-red mx-auto mb-2" />
+                <Upload className="w-12 h-12 text-primary mx-auto mb-2" />
                 <p className="text-lg font-medium mb-2">
                   Drop files here or click to browse
                 </p>
-                <p className="text-sm text-link">
+                <p className="text-sm text-foreground/80">
                   {freeUploadLimitBytes > 0 ? (
-                    <>Files under {formatFreeLimit(freeUploadLimitBytes)} are <span className="text-turbo-green font-semibold">FREE</span> • </>
+                    <>Files under {formatFreeLimit(freeUploadLimitBytes)} are <span className="text-success font-semibold">FREE</span> • </>
                   ) : null}
                   Max 10GiB per file
                 </p>
@@ -754,7 +752,7 @@ export default function UploadPanel() {
               />
               <label
                 htmlFor="file-upload"
-                className="inline-block px-4 py-2 rounded bg-fg-muted text-canvas font-medium cursor-pointer hover:bg-fg-muted/90 transition-colors"
+                className="inline-block px-4 py-2 rounded-full bg-foreground text-card font-medium cursor-pointer hover:bg-foreground/90 transition-colors"
               >
                 Select Files
               </label>
@@ -769,7 +767,7 @@ export default function UploadPanel() {
                 <div className="flex items-center gap-2">
                   <label
                     htmlFor="file-upload-add"
-                    className="text-link hover:text-fg-muted text-sm flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-foreground/80 hover:text-foreground text-sm flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     <Upload className="w-4 h-4" />
                     Add More
@@ -788,7 +786,7 @@ export default function UploadPanel() {
                         addInput.value = '';
                       }
                     }}
-                    className="text-link hover:text-red-400 text-sm flex items-center gap-1 transition-colors"
+                    className="text-foreground/80 hover:text-error text-sm flex items-center gap-1 transition-colors"
                   >
                     <XCircle className="w-4 h-4" />
                     Clear all
@@ -813,11 +811,11 @@ export default function UploadPanel() {
                   const isImage = isPreviewableImage(file);
 
                   return (
-                    <div key={index} className="bg-surface/50 rounded p-3">
+                    <div key={index} className="bg-card/50 rounded-2xl p-3">
                       <div className="flex items-center gap-3">
                         {/* Thumbnail or Icon */}
                         {isImage && previewUrl ? (
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface border border-default flex-shrink-0">
+                          <div className="w-12 h-12 rounded-2xl overflow-hidden bg-card border border-border/20 flex-shrink-0">
                             <img
                               src={previewUrl}
                               alt={file.name}
@@ -825,17 +823,17 @@ export default function UploadPanel() {
                             />
                           </div>
                         ) : (
-                          <div className="w-12 h-12 rounded-lg bg-surface border border-default flex items-center justify-center flex-shrink-0">
+                          <div className="w-12 h-12 rounded-2xl bg-card border border-border/20 flex items-center justify-center flex-shrink-0">
                             {getFileIcon(file.type, file.name, 'lg')}
                           </div>
                         )}
 
                         {/* File Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-fg-muted truncate">{file.name}</div>
-                          <div className="text-xs text-link">
+                          <div className="text-sm text-foreground truncate">{file.name}</div>
+                          <div className="text-xs text-foreground/80">
                             {formatFileSize(file.size)}
-                            {isFree && <span className="ml-2 text-turbo-green font-medium">• FREE</span>}
+                            {isFree && <span className="ml-2 text-success font-medium">• FREE</span>}
                             {cost !== null && cost > 0 && (
                               <span className="ml-2">
                                 • {cost.toFixed(6)} Credits
@@ -847,7 +845,7 @@ export default function UploadPanel() {
                         {/* Remove Button */}
                         <button
                           onClick={() => removeFile(index)}
-                          className="text-link hover:text-red-400 transition-colors flex-shrink-0"
+                          className="text-foreground/80 hover:text-error transition-colors flex-shrink-0"
                         >
                           <XCircle className="w-5 h-5" />
                         </button>
@@ -858,14 +856,14 @@ export default function UploadPanel() {
               </div>
 
               {/* Summary */}
-              <div className="mt-4 p-4 bg-surface/50 rounded-lg">
+              <div className="mt-4 p-4 bg-card/50 rounded-2xl">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-link">Total Size:</span>
-                  <span className="text-xs text-fg-muted">{formatFileSize(totalFileSize)}</span>
+                  <span className="text-xs text-foreground/80">Total Size:</span>
+                  <span className="text-xs text-foreground">{formatFileSize(totalFileSize)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-link">Files:</span>
-                  <span className="text-xs text-fg-muted">{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                  <span className="text-xs text-foreground/80">Files:</span>
+                  <span className="text-xs text-foreground">{files.length} file{files.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
 
@@ -873,7 +871,7 @@ export default function UploadPanel() {
               <button
                 onClick={handleUpload}
                 disabled={files.length === 0}
-                className="w-full mt-4 py-4 px-6 rounded-lg bg-turbo-red text-white font-bold text-lg hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-4 py-4 px-6 rounded-full bg-primary text-white font-bold text-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Upload className="w-5 h-5" />
                 Upload {files.length} File{files.length !== 1 ? 's' : ''}
@@ -903,21 +901,21 @@ export default function UploadPanel() {
 
       {/* Upload Results - Activity theme */}
       {uploadHistory.length > 0 && (
-        <div className="mt-4 sm:mt-6 bg-gradient-to-br from-turbo-red/10 to-turbo-red/5 rounded-xl border border-turbo-red/30">
+        <div className="mt-4 sm:mt-6 bg-card rounded-2xl border border-border/20">
           {/* Collapsible Header with Actions */}
           <div className={`flex items-center justify-between p-4 ${showUploadResults ? 'pb-0 mb-4' : 'pb-4'}`}>
             <button
               onClick={() => setShowUploadResults(!showUploadResults)}
-              className="flex items-center gap-2 hover:text-turbo-green transition-colors text-left"
+              className="flex items-center gap-2 hover:text-success transition-colors text-left"
               type="button"
             >
-              <Upload className="w-5 h-5 text-turbo-red" />
-              <span className="font-bold text-fg-muted">Recent</span>
-              <span className="text-xs text-link">({uploadHistory.length})</span>
+              <Upload className="w-5 h-5 text-primary" />
+              <span className="font-bold text-foreground">Recent</span>
+              <span className="text-xs text-foreground/80">({uploadHistory.length})</span>
               {showUploadResults ? (
-                <ChevronUp className="w-4 h-4 text-link" />
+                <ChevronUp className="w-4 h-4 text-foreground/80" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-link" />
+                <ChevronDown className="w-4 h-4 text-foreground/80" />
               )}
             </button>
             
@@ -926,7 +924,7 @@ export default function UploadPanel() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={exportToCSV}
-                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-card border border-border/20 rounded-full text-foreground hover:bg-card/80 hover:text-foreground transition-colors"
                   title="Export upload history to CSV"
                 >
                   <Archive className="w-3 h-3" />
@@ -935,7 +933,7 @@ export default function UploadPanel() {
                 <button
                   onClick={() => checkMultipleStatuses(uploadHistory.map(r => r.id), true)}
                   disabled={Object.values(statusChecking).some(checking => checking)}
-                  className="flex items-center gap-1 px-3 py-2 text-xs bg-surface border border-default rounded text-fg-muted hover:bg-canvas hover:text-fg-muted transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-2 text-xs bg-card border border-border/20 rounded-full text-foreground hover:bg-card/80 hover:text-foreground transition-colors disabled:opacity-50"
                   title="Check status for all uploaded files"
                 >
                   <RefreshCw className={`w-3 h-3 ${Object.values(statusChecking).some(checking => checking) ? 'animate-spin' : ''}`} />
@@ -946,7 +944,7 @@ export default function UploadPanel() {
                     clearUploadHistory();
                     resetFileUpload();
                   }}
-                  className="flex items-center gap-1 px-3 py-2 text-xs text-link hover:text-red-400 border border-default/30 rounded hover:border-red-400/50 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-foreground/80 hover:text-error border border-border/20 rounded-full hover:border-error/50 transition-colors"
                   title="Clear all upload history"
                 >
                   <XCircle className="w-3 h-3" />
@@ -967,22 +965,22 @@ export default function UploadPanel() {
                   const renderStatusIcon = (iconName: string) => {
                     switch (iconName) {
                       case 'check-circle':
-                        return <CheckCircle className="w-4 h-4 text-turbo-green" />;
+                        return <CheckCircle className="w-4 h-4 text-success" />;
                       case 'clock':
-                        return <Clock className="w-4 h-4 text-yellow-500" />;
+                        return <Clock className="w-4 h-4 text-warning" />;
                       case 'archive':
-                        return <Archive className="w-4 h-4 text-turbo-blue" />;
+                        return <Archive className="w-4 h-4 text-info" />;
                       case 'x-circle':
-                        return <XCircle className="w-4 h-4 text-red-400" />;
+                        return <XCircle className="w-4 h-4 text-error" />;
                       case 'help-circle':
-                        return <HelpCircle className="w-4 h-4 text-link" />;
+                        return <HelpCircle className="w-4 h-4 text-foreground/80" />;
                       default:
-                        return <Clock className="w-4 h-4 text-yellow-500" />;
+                        return <Clock className="w-4 h-4 text-warning" />;
                     }
                   };
                   
                   return (
-                    <div key={index} className="bg-surface border border-default rounded-lg p-4">
+                    <div key={index} className="bg-card border border-border/20 rounded-2xl p-4">
                       <div className="space-y-2">
                         {/* Row 1: ArNS Name/Transaction ID + Actions */}
                         <div className="flex items-center justify-between gap-2">
@@ -990,18 +988,18 @@ export default function UploadPanel() {
                             {/* ArNS Name or Shortened Transaction ID */}
                             {result.arnsName ? (
                               <div className="flex items-center gap-2 min-w-0">
-                                <Globe className="w-4 h-4 text-fg-muted flex-shrink-0" />
-                                <a 
+                                <Globe className="w-4 h-4 text-foreground flex-shrink-0" />
+                                <a
                                   href={`https://${result.undername ? result.undername + '_' : ''}${result.arnsName}.ar.io`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-sm font-medium text-fg-muted hover:text-fg-muted/80 hover:underline transition-colors truncate"
+                                  className="text-sm font-medium text-foreground hover:text-foreground/80 hover:underline transition-colors truncate"
                                 >
                                   {result.undername ? result.undername + '_' : ''}{result.arnsName}
                                 </a>
                               </div>
                             ) : (
-                              <div className="font-mono text-sm text-fg-muted">
+                              <div className="font-mono text-sm text-foreground">
                                 {result.id.substring(0, 6)}...
                               </div>
                             )}
@@ -1021,7 +1019,7 @@ export default function UploadPanel() {
                             <CopyButton textToCopy={result.id} />
                         <button
                           onClick={() => setShowReceiptModal(result.id)}
-                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                           title="View Receipt"
                         >
                           <Receipt className="w-4 h-4" />
@@ -1029,7 +1027,7 @@ export default function UploadPanel() {
                         <button
                           onClick={() => checkUploadStatus(result.id)}
                           disabled={isChecking}
-                          className="p-1.5 text-link hover:text-fg-muted transition-colors disabled:opacity-50"
+                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors disabled:opacity-50"
                           title="Check Status"
                         >
                           <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
@@ -1038,7 +1036,7 @@ export default function UploadPanel() {
                         {(walletType === 'arweave' || walletType === 'ethereum') && (
                           <button
                             onClick={() => setShowAssignDomainModal(result.id)}
-                            className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                            className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                             title="Assign Domain"
                           >
                             <Globe className="w-4 h-4" />
@@ -1048,7 +1046,7 @@ export default function UploadPanel() {
                           href={getArweaveUrl(result.id, result.dataCaches)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 text-link hover:text-fg-muted transition-colors"
+                          className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
                           title="View File"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -1067,12 +1065,12 @@ export default function UploadPanel() {
                               </div>
                             )}
                             <Popover className="relative">
-                              <PopoverButton className="p-1.5 text-link hover:text-fg-muted transition-colors">
+                              <PopoverButton className="p-1.5 text-foreground/80 hover:text-foreground transition-colors">
                                 <MoreVertical className="w-4 h-4" />
                               </PopoverButton>
-                              <PopoverPanel 
+                              <PopoverPanel
                                 anchor="bottom end"
-                                className="w-40 bg-surface border border-default rounded-lg shadow-lg z-[200] py-1 mt-1"
+                                className="w-40 bg-card border border-border/20 rounded-2xl shadow-lg z-[200] py-1 mt-1"
                               >
                                 {({ close }) => (
                               <>
@@ -1093,11 +1091,11 @@ export default function UploadPanel() {
                                       }, 500);
                                     }, 1000);
                                   }}
-                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                 >
                                   {copiedItems.has(result.id) ? (
                                     <>
-                                      <CheckCircle className="w-4 h-4 text-green-500" />
+                                      <CheckCircle className="w-4 h-4 text-success" />
                                       Copied!
                                     </>
                                   ) : (
@@ -1112,7 +1110,7 @@ export default function UploadPanel() {
                                     setShowReceiptModal(result.id);
                                     close();
                                   }}
-                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                 >
                                   <Receipt className="w-4 h-4" />
                                   View Receipt
@@ -1123,7 +1121,7 @@ export default function UploadPanel() {
                                     close();
                                   }}
                                   disabled={isChecking}
-                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2 disabled:opacity-50"
+                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2 disabled:opacity-50"
                                 >
                                   <RefreshCw className={`w-4 h-4 ${isChecking ? 'animate-spin' : ''}`} />
                                   Check Status
@@ -1135,7 +1133,7 @@ export default function UploadPanel() {
                                       setShowAssignDomainModal(result.id);
                                       close();
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                    className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                   >
                                     <Globe className="w-4 h-4" />
                                     Assign Domain
@@ -1146,7 +1144,7 @@ export default function UploadPanel() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => close()}
-                                  className="w-full px-4 py-2 text-left text-sm text-link hover:bg-canvas transition-colors flex items-center gap-2"
+                                  className="w-full px-4 py-2 text-left text-sm text-foreground/80 hover:bg-card transition-colors flex items-center gap-2"
                                 >
                                   <ExternalLink className="w-4 h-4" />
                                   View File
@@ -1160,7 +1158,7 @@ export default function UploadPanel() {
 
                     {/* Row 2: File Name (if available) */}
                     {(result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value) && (
-                      <div className="text-sm text-fg-muted truncate flex items-center" title={result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}>
+                      <div className="text-sm text-foreground truncate flex items-center" title={result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value}>
                         {getFileIcon(
                           result.contentType || result.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value,
                           result.fileName || result.receipt?.tags?.find((tag: any) => tag.name === 'File-Name')?.value
@@ -1170,10 +1168,10 @@ export default function UploadPanel() {
                     )}
 
                     {/* Row 3: Content Type + File Size */}
-                    <div className="flex items-center gap-2 text-sm text-link">
+                    <div className="flex items-center gap-2 text-sm text-foreground/80">
                       <span>
-                        {result.contentType || 
-                         result.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value || 
+                        {result.contentType ||
+                         result.receipt?.tags?.find((tag: any) => tag.name === 'Content-Type')?.value ||
                          'Unknown Type'}
                       </span>
                       <span>•</span>
@@ -1183,11 +1181,11 @@ export default function UploadPanel() {
                     </div>
 
                     {/* Row 3: Cost + Upload Timestamp */}
-                    <div className="flex items-center gap-2 text-sm text-link">
+                    <div className="flex items-center gap-2 text-sm text-foreground/80">
                       <span>
                         {(() => {
                           if (result.fileSize && isFileFree(result.fileSize, freeUploadLimitBytes)) {
-                            return <span className="text-turbo-green">FREE</span>;
+                            return <span className="text-success">FREE</span>;
                           } else if (wincForOneGiB && result.winc) {
                             const credits = Number(result.winc) / wincPerCredit;
                             return `${credits.toFixed(6)} Credits`;
@@ -1198,7 +1196,7 @@ export default function UploadPanel() {
                       </span>
                       <span>•</span>
                       <span>
-                        {result.timestamp 
+                        {result.timestamp
                           ? new Date(result.timestamp).toLocaleString()
                           : 'Unknown Time'
                         }
@@ -1214,11 +1212,11 @@ export default function UploadPanel() {
           
           {/* View More Button - only show when there are more uploads to load */}
           {showUploadResults && uploadHistory.length > uploadsToShow && (
-            <div className="border-t border-default mt-4">
+            <div className="border-t border-border/20 mt-4">
               <div className="p-4">
                 <button
                   onClick={() => setUploadsToShow(prev => prev + 20)}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-fg-muted hover:text-fg-muted/80 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-foreground hover:text-foreground/80 transition-colors font-medium"
                 >
                   View More Uploads <ArrowRight className="w-4 h-4" />
                 </button>
@@ -1267,12 +1265,12 @@ export default function UploadPanel() {
         }}>
           <div className="p-4 sm:p-5 w-full max-w-2xl mx-auto min-w-[90vw] sm:min-w-[500px]">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Upload className="w-5 h-5 text-turbo-red" />
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-primary" />
               </div>
               <div className="text-left">
-                <h3 className="text-lg font-bold text-fg-muted">Ready to Upload</h3>
-                <p className="text-xs text-link">Confirm your upload details</p>
+                <h3 className="text-lg font-bold text-foreground">Ready to Upload</h3>
+                <p className="text-xs text-foreground/80">Confirm your upload details</p>
               </div>
             </div>
 
@@ -1281,23 +1279,23 @@ export default function UploadPanel() {
 
             {/* Upload Summary - Files and Size only */}
             <div className="mb-4">
-              <div className="bg-surface rounded-lg p-3">
+              <div className="bg-card rounded-lg p-3">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-link">Files:</span>
-                    <span className="text-xs text-fg-muted">
+                    <span className="text-xs text-foreground/80">Files:</span>
+                    <span className="text-xs text-foreground">
                       {files.length} file{files.length !== 1 ? 's' : ''}
                       {(() => {
                         const freeFilesCount = files.filter(file => isFileFree(file.size, freeUploadLimitBytes)).length;
                         return freeFilesCount > 0 ? (
-                          <span className="text-turbo-green"> ({freeFilesCount} free)</span>
+                          <span className="text-success"> ({freeFilesCount} free)</span>
                         ) : null;
                       })()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-link">Total Size:</span>
-                    <span className="text-xs text-fg-muted">
+                    <span className="text-xs text-foreground/80">Total Size:</span>
+                    <span className="text-xs text-foreground">
                       {formatFileSize(totalFileSize)}
                     </span>
                   </div>
@@ -1335,14 +1333,14 @@ export default function UploadPanel() {
                   {/* Payment Method Tabs - Only show for wallets that support JIT, non-free uploads, payment service available, and not x402-only mode */}
                   {canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
-                      <div className="inline-flex bg-surface rounded-lg p-1 border border-default w-full">
+                      <div className="inline-flex bg-card rounded-lg p-1 border border-border/20 w-full">
                         <button
                           type="button"
                           onClick={handleCreditsTabClick}
                           className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                             paymentTab === 'credits'
-                              ? 'bg-fg-muted text-canvas'
-                              : 'text-link hover:text-fg-muted'
+                              ? 'bg-foreground text-card'
+                              : 'text-foreground/80 hover:text-foreground'
                           }`}
                         >
                           <CreditCard className="w-4 h-4" />
@@ -1353,8 +1351,8 @@ export default function UploadPanel() {
                           onClick={handleCryptoTabClick}
                           className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                             paymentTab === 'crypto'
-                              ? 'bg-fg-muted text-canvas'
-                              : 'text-link hover:text-fg-muted'
+                              ? 'bg-foreground text-card'
+                              : 'text-foreground/80 hover:text-foreground'
                           }`}
                         >
                           <Wallet className="w-4 h-4" />
@@ -1367,13 +1365,13 @@ export default function UploadPanel() {
                   {/* Payment Details Section - Credits Tab (hide in x402-only mode) */}
                   {paymentTab === 'credits' && canUseJit && !isFreeUpload && isPaymentServiceAvailable() && !x402OnlyMode && (
                     <div className="mb-4">
-                      <div className="bg-surface rounded-lg border border-default p-4">
+                      <div className="bg-card rounded-lg border border-border/20 p-4">
                         <div className="space-y-2.5">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-link">Cost:</span>
-                            <span className="text-sm text-fg-muted font-medium">
+                            <span className="text-xs text-foreground/80">Cost:</span>
+                            <span className="text-sm text-foreground font-medium">
                               {totalCost === 0 ? (
-                                <span className="text-turbo-green font-medium">FREE</span>
+                                <span className="text-success font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
                                 <>{totalCost.toFixed(6)} Credits</>
                               ) : (
@@ -1386,15 +1384,15 @@ export default function UploadPanel() {
                           {!isFreeUpload && (
                             <>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-link">Current Balance:</span>
-                                <span className="text-sm text-fg-muted font-medium">
+                                <span className="text-xs text-foreground/80">Current Balance:</span>
+                                <span className="text-sm text-foreground font-medium">
                                   {creditBalance.toFixed(6)} Credits
                                 </span>
                               </div>
                               {typeof totalCost === 'number' && (
-                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                                  <span className="text-xs text-link">After Upload:</span>
-                                  <span className="text-sm text-fg-muted font-medium">
+                                <div className="flex justify-between items-center pt-2 border-t border-border/30">
+                                  <span className="text-xs text-foreground/80">After Upload:</span>
+                                  <span className="text-sm text-foreground font-medium">
                                     {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
                                   </span>
                                 </div>
@@ -1404,21 +1402,21 @@ export default function UploadPanel() {
 
                           {/* Insufficient Credits Warning */}
                           {!isFreeUpload && !hasSufficientCredits && (
-                            <div className="pt-3 mt-3 border-t border-default/30">
-                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="pt-3 mt-3 border-t border-border/30">
+                              <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                                <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                  <div className="text-xs text-error font-medium mb-1">
                                     Need {creditsNeeded.toFixed(6)} more credits
                                   </div>
-                                  <div className="text-xs text-red-400/80">
+                                  <div className="text-xs text-error/80">
                                     {canUseJit && (
                                       <>
-                                        • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-red-300">Crypto tab</button> to pay directly
+                                        • Switch to <button onClick={handleCryptoTabClick} className="underline hover:text-error">Crypto tab</button> to pay directly
                                         <br />
                                       </>
                                     )}
-                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a>
+                                    • <a href="/topup" className="underline hover:text-error">Top up credits</a>
                                   </div>
                                 </div>
                               </div>
@@ -1434,13 +1432,13 @@ export default function UploadPanel() {
                     <>
                       {/* X402-only mode: Non-Ethereum wallet warning */}
                       {x402OnlyMode && walletType !== 'ethereum' && (
-                        <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <div className="mb-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
                           <div className="flex items-start gap-2">
-                            <AlertTriangle className="w-5 h-5 text-alert-warning flex-shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                             <div>
-                              <div className="font-medium text-alert-warning text-sm mb-1">Ethereum Wallet Required</div>
-                              <div className="text-xs text-alert-warning/80">
-                                X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in Developer Resources.
+                              <div className="font-medium text-warning text-sm mb-1">Ethereum Wallet Required</div>
+                              <div className="text-xs text-warning/80">
+                                X402 payments only support Ethereum wallets with BASE-USDC. Please connect an Ethereum wallet or disable x402-only mode in your settings.
                               </div>
                             </div>
                           </div>
@@ -1480,13 +1478,13 @@ export default function UploadPanel() {
                   {/* Credits-Only Payment (for wallets without JIT support or free uploads) */}
                   {(!canUseJit || isFreeUpload) && (
                     <div className="mb-4">
-                      <div className="bg-surface rounded-lg border border-default p-4">
+                      <div className="bg-card rounded-lg border border-border/20 p-4">
                         <div className="space-y-2.5">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-link">Cost:</span>
-                            <span className="text-sm text-fg-muted font-medium">
+                            <span className="text-xs text-foreground/80">Cost:</span>
+                            <span className="text-sm text-foreground font-medium">
                               {totalCost === 0 ? (
-                                <span className="text-turbo-green font-medium">FREE</span>
+                                <span className="text-success font-medium">FREE</span>
                               ) : typeof totalCost === 'number' ? (
                                 <>{totalCost.toFixed(6)} Credits</>
                               ) : (
@@ -1499,15 +1497,15 @@ export default function UploadPanel() {
                           {!isFreeUpload && (
                             <>
                               <div className="flex justify-between items-center">
-                                <span className="text-xs text-link">Current Balance:</span>
-                                <span className="text-sm text-fg-muted font-medium">
+                                <span className="text-xs text-foreground/80">Current Balance:</span>
+                                <span className="text-sm text-foreground font-medium">
                                   {creditBalance.toFixed(6)} Credits
                                 </span>
                               </div>
                               {typeof totalCost === 'number' && (
-                                <div className="flex justify-between items-center pt-2 border-t border-default/30">
-                                  <span className="text-xs text-link">After Upload:</span>
-                                  <span className="text-sm text-fg-muted font-medium">
+                                <div className="flex justify-between items-center pt-2 border-t border-border/30">
+                                  <span className="text-xs text-foreground/80">After Upload:</span>
+                                  <span className="text-sm text-foreground font-medium">
                                     {Math.max(0, creditBalance - totalCost).toFixed(6)} Credits
                                   </span>
                                 </div>
@@ -1517,15 +1515,15 @@ export default function UploadPanel() {
 
                           {/* Insufficient Credits Warning */}
                           {!isFreeUpload && !hasSufficientCredits && (
-                            <div className="pt-3 mt-3 border-t border-default/30">
-                              <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="pt-3 mt-3 border-t border-border/30">
+                              <div className="flex items-start gap-2 p-3 bg-error/10 rounded-lg border border-error/20">
+                                <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-xs text-red-400 font-medium mb-1">
+                                  <div className="text-xs text-error font-medium mb-1">
                                     Need {creditsNeeded.toFixed(6)} more credits
                                   </div>
-                                  <div className="text-xs text-red-400/80">
-                                    • <a href="/topup" className="underline hover:text-red-300">Top up credits</a> to continue
+                                  <div className="text-xs text-error/80">
+                                    • <a href="/topup" className="underline hover:text-error">Top up credits</a> to continue
                                   </div>
                                 </div>
                               </div>
@@ -1538,16 +1536,16 @@ export default function UploadPanel() {
 
                   {/* Insufficient crypto balance warning - when using JIT */}
                   {localJitEnabled && creditsNeeded > 0 && !jitBalanceSufficient && cryptoShortage && (
-                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+                    <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded">
                       <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs text-red-400 font-medium mb-1">
+                          <div className="text-xs text-error font-medium mb-1">
                             Need {formatTokenAmount(cryptoShortage.amount, cryptoShortage.tokenType)} {tokenLabels[cryptoShortage.tokenType]} more
                           </div>
-                          <div className="text-xs text-red-400/80">
+                          <div className="text-xs text-error/80">
                             Add funds to your wallet or{' '}
-                            <a href="/topup" className="underline hover:text-red-300 transition-colors">
+                            <a href="/topup" className="underline hover:text-error transition-colors">
                               buy credits
                             </a>{' '}
                             instead.
@@ -1558,14 +1556,14 @@ export default function UploadPanel() {
                   )}
 
                   {/* Terms */}
-                  <div className="bg-surface/30 rounded-lg px-3 py-2 mb-4">
-                    <p className="text-xs text-link text-center">
+                  <div className="bg-card/30 rounded-lg px-3 py-2 mb-4">
+                    <p className="text-xs text-foreground/80 text-center">
                       By uploading, you agree to our{' '}
                       <a
                         href="https://ardrive.io/tos-and-privacy/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-turbo-red hover:text-turbo-red/80 transition-colors underline"
+                        className="text-primary hover:text-primary/80 transition-colors underline"
                       >
                         Terms of Service
                       </a>
@@ -1575,7 +1573,7 @@ export default function UploadPanel() {
                   <div className="flex flex-col-reverse sm:flex-row gap-3">
                     <button
                       onClick={() => setShowConfirmModal(false)}
-                      className="flex-1 py-3 px-4 rounded-lg border border-default text-link hover:text-fg-muted hover:border-default/50 transition-colors"
+                      className="flex-1 py-3 px-4 rounded-lg border border-border/20 text-foreground/80 hover:text-foreground hover:border-border/20/50 transition-colors"
                     >
                       Cancel
                     </button>
@@ -1597,7 +1595,7 @@ export default function UploadPanel() {
                           (shouldEnableJit && creditsNeeded > 0 && selectedJitToken === 'base-usdc' && x402Pricing?.loading)
                         );
                       })()}
-                      className="flex-1 py-3 px-4 rounded-lg bg-turbo-red text-white font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-link"
+                      className="flex-1 py-3 px-4 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-foreground/80"
                     >
                       {localJitEnabled && paymentTab === 'crypto' && creditsNeeded > 0 ? 'Pay & Upload' : 'Upload'}
                     </button>

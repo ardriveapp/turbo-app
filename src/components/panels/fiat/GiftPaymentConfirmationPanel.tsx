@@ -62,50 +62,50 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
     <div>
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Gift className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Gift className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Confirm Gift Payment</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Confirm Gift Payment</h3>
+          <p className="text-sm text-foreground/80">
             Review your gift details and complete the payment
           </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-        
+      <div className="bg-gradient-to-br from-primary/5 to-primary/3 rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
+
         {/* Gift Details */}
-        <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <h4 className="font-bold text-fg-muted mb-4 flex items-center gap-2">
-            <Gift className="w-5 h-5 text-turbo-red" />
+        <div className="bg-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+          <h4 className="font-heading font-bold text-foreground mb-4 flex items-center gap-2">
+            <Gift className="w-5 h-5 text-primary" />
             Gift Details
           </h4>
-          
+
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-lg">
-              <Mail className="w-5 h-5 text-turbo-red" />
+            <div className="flex items-center gap-3 p-3 bg-card rounded-2xl">
+              <Mail className="w-5 h-5 text-primary" />
               <div>
-                <div className="text-xs text-link">Recipient</div>
-                <div className="font-medium text-fg-muted">{recipientEmail}</div>
+                <div className="text-xs text-foreground/80">Recipient</div>
+                <div className="font-medium text-foreground">{recipientEmail}</div>
               </div>
             </div>
-            
-            <div className="flex items-center gap-3 p-3 bg-canvas rounded-lg">
-              <Gift className="w-5 h-5 text-turbo-red" />
+
+            <div className="flex items-center gap-3 p-3 bg-card rounded-2xl">
+              <Gift className="w-5 h-5 text-primary" />
               <div>
-                <div className="text-xs text-link">Amount</div>
-                <div className="font-bold text-fg-muted text-lg">${usdAmount.toFixed(2)} USD</div>
+                <div className="text-xs text-foreground/80">Amount</div>
+                <div className="font-bold text-foreground text-lg">${usdAmount.toFixed(2)} USD</div>
               </div>
             </div>
-            
+
             {giftMessage && (
-              <div className="flex items-start gap-3 p-3 bg-canvas rounded-lg">
-                <MessageSquare className="w-5 h-5 text-turbo-red mt-0.5" />
+              <div className="flex items-start gap-3 p-3 bg-card rounded-2xl">
+                <MessageSquare className="w-5 h-5 text-primary mt-0.5" />
                 <div>
-                  <div className="text-xs text-link">Your Message</div>
-                  <div className="font-medium text-fg-muted italic">"{giftMessage}"</div>
+                  <div className="text-xs text-foreground/80">Your Message</div>
+                  <div className="font-medium text-foreground italic">"{giftMessage}"</div>
                 </div>
               </div>
             )}
@@ -113,18 +113,18 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
         </div>
 
         {/* Payment Summary */}
-        <div className="bg-surface rounded-lg p-4 mb-6">
-          <h4 className="font-bold text-fg-muted mb-3">Payment Summary</h4>
+        <div className="bg-card rounded-2xl p-4 mb-6">
+          <h4 className="font-heading font-bold text-foreground mb-3">Payment Summary</h4>
           <div className="flex justify-between items-center">
-            <span className="text-link">Total Amount:</span>
-            <span className="font-bold text-fg-muted text-xl">${usdAmount.toFixed(2)} USD</span>
+            <span className="text-foreground/80">Total Amount:</span>
+            <span className="font-bold text-foreground text-xl">${usdAmount.toFixed(2)} USD</span>
           </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2 text-red-400">
+          <div className="bg-error/10 border border-error/20 rounded-2xl p-4 mb-6">
+            <div className="flex items-center gap-2 text-error">
               <XCircle className="w-5 h-5" />
               <span className="text-sm">{error}</span>
             </div>
@@ -132,14 +132,14 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
         )}
 
         {/* Terms */}
-        <div className="text-center bg-surface/30 rounded-lg p-4 mt-4 mb-6">
-          <p className="text-xs text-link">
+        <div className="text-center bg-card/30 rounded-2xl p-4 mt-4 mb-6">
+          <p className="text-xs text-foreground/80">
             By continuing, you agree to our{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-turbo-red hover:text-turbo-red/80 transition-colors"
+            <a
+              href="https://ardrive.io/tos-and-privacy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 transition-colors"
             >
               Terms of Service
             </a>
@@ -151,7 +151,7 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
           <button
             onClick={onBack}
             disabled={isProcessing}
-            className="flex-1 py-3 px-6 rounded-lg border border-default text-link hover:text-fg-muted hover:border-turbo-red/50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-3 px-6 rounded-full border border-border/20 text-foreground/80 hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -159,7 +159,7 @@ const GiftPaymentConfirmationPanel: FC<GiftPaymentConfirmationPanelProps> = ({
           <button
             onClick={handleConfirmPayment}
             disabled={isProcessing}
-            className="flex-1 py-3 px-6 rounded-lg bg-turbo-red text-white font-bold hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-3 px-6 rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isProcessing ? (
               <>

@@ -114,44 +114,44 @@ export default function RedeemPanel() {
       <div>
         {/* Header */}
         <div className="flex items-start gap-3 mb-4 sm:mb-6">
-          <div className="w-10 h-10 bg-turbo-green/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-            <CheckCircle className="w-5 h-5 text-turbo-green" />
+          <div className="w-10 h-10 bg-success/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+            <CheckCircle className="w-5 h-5 text-success" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-fg-muted mb-1">Gift Redeemed Successfully!</h3>
-            <p className="text-sm text-link">
+            <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Gift Redeemed Successfully!</h3>
+            <p className="text-sm text-foreground/80">
               Credits have been added to your wallet and are ready to use
             </p>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-gradient-to-br from-turbo-green/5 to-turbo-green/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-          
+        <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
+
           {/* Success Message */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-turbo-green/20 rounded-xl mb-4">
-              <Gift className="w-8 h-8 text-turbo-green" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-success/20 rounded-2xl mb-4">
+              <Gift className="w-8 h-8 text-success" />
             </div>
-            <h4 className="text-xl font-bold text-fg-muted mb-2">
+            <h4 className="text-xl font-heading font-bold text-foreground mb-2">
               Gift Successfully Redeemed!
             </h4>
           </div>
 
           {/* Balance Information */}
           {redemptionDetails && (
-            <div className="bg-surface rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-              <h5 className="font-bold text-fg-muted mb-4">Updated Wallet Balance</h5>
-              
+            <div className="bg-card rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <h5 className="font-bold text-foreground mb-4">Updated Wallet Balance</h5>
+
               <div className="space-y-4">
                 {/* Credits Received */}
-                <div className="bg-canvas border-2 border-turbo-green rounded-lg p-4">
-                  <div className="text-sm text-link mb-1">Credits Received</div>
-                  <div className="text-3xl font-bold text-turbo-green">
+                <div className="bg-card border-2 border-success rounded-2xl p-4">
+                  <div className="text-sm text-foreground/80 mb-1">Credits Received</div>
+                  <div className="text-3xl font-bold text-success">
                     {redemptionDetails.creditsReceived.toLocaleString()} Credits
                   </div>
                   {wincForOneGiB && redemptionDetails.creditsReceived > 0 && (
-                    <div className="text-sm text-link mt-1">
+                    <div className="text-sm text-foreground/80 mt-1">
                       = ~{((redemptionDetails.creditsReceived * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB storage capacity
                     </div>
                   )}
@@ -159,21 +159,21 @@ export default function RedeemPanel() {
 
                 {/* Current Balance */}
                 {redemptionDetails.newBalance > 0 && (
-                  <div className="bg-canvas rounded-lg p-4 border border-default">
+                  <div className="bg-card rounded-2xl p-4 border border-border/20">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-link">Wallet Balance</span>
+                      <span className="text-foreground/80">Wallet Balance</span>
                       <div className="text-right">
-                        <div className="font-bold text-fg-muted text-lg">
+                        <div className="font-bold text-foreground text-lg">
                           {redemptionDetails.newBalance.toLocaleString()} Credits
                         </div>
                         {wincForOneGiB && (
-                          <div className="text-xs text-link">
+                          <div className="text-xs text-foreground/80">
                             ~{((redemptionDetails.newBalance * wincPerCredit) / Number(wincForOneGiB)).toFixed(2)} GiB capacity
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-link">
+                    <div className="text-xs text-foreground/80">
                       Address: {redemptionDetails.targetAddress.slice(0, 8)}...{redemptionDetails.targetAddress.slice(-6)}
                     </div>
                   </div>
@@ -184,25 +184,25 @@ export default function RedeemPanel() {
 
           {/* Next Steps */}
           <div className="text-center">
-            <h5 className="font-bold text-fg-muted mb-3">What would you like to do next?</h5>
+            <h5 className="font-bold text-foreground mb-3">What would you like to do next?</h5>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href="/upload"
-                className="inline-flex items-center justify-center gap-2 bg-fg-muted text-canvas px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
+                className="inline-flex items-center justify-center gap-2 bg-foreground text-card px-6 py-3 rounded-full font-bold hover:bg-foreground/90 transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 Upload Files
               </a>
               <a
                 href="/domains"
-                className="inline-flex items-center justify-center gap-2 bg-fg-muted text-canvas px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
+                className="inline-flex items-center justify-center gap-2 bg-foreground text-card px-6 py-3 rounded-full font-bold hover:bg-foreground/90 transition-colors"
               >
                 <Globe className="w-4 h-4" />
                 Search Domains
               </a>
               <a
                 href="/topup"
-                className="inline-flex items-center justify-center gap-2 border border-default text-link hover:text-fg-muted hover:border-fg-muted/50 px-6 py-3 rounded-lg font-medium transition-colors"
+                className="inline-flex items-center justify-center gap-2 border border-border/20 text-foreground/80 hover:text-foreground hover:border-foreground/50 px-6 py-3 rounded-full font-medium transition-colors"
               >
                 <ArrowRight className="w-4 h-4" />
                 Add More Credits
@@ -218,39 +218,39 @@ export default function RedeemPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <Ticket className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Ticket className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Redeem Gift Code</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Redeem Gift Code</h3>
+          <p className="text-sm text-foreground/80">
             Enter your gift code details to add credits to your wallet
           </p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-surface rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Wallet Address */}
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Wallet Address</label>
         <div className="relative">
-          <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fg-disabled" />
+          <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/50" />
           <input
             type="text"
             value={destinationAddress}
             onChange={(e) => setDestinationAddress(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-surface text-fg-muted font-mono text-sm focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-2xl border border-border/20 bg-card text-foreground font-mono text-sm focus:border-foreground focus:outline-none transition-colors"
             placeholder="Your wallet address"
           />
         </div>
         {!address && (
-          <p className="text-xs text-link mt-2">
+          <p className="text-xs text-foreground/80 mt-2">
             Connect your wallet to auto-fill this field
           </p>
         )}
-        <p className="text-xs text-link/70 mt-1">
+        <p className="text-xs text-foreground/50 mt-1">
           Example: vLRHFqCw1uHu75xqB4fCDW-QxpkpJxBtFD9g4QYUbfw
         </p>
       </div>
@@ -259,12 +259,12 @@ export default function RedeemPanel() {
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Gift Code</label>
         <div className="relative">
-          <Ticket className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fg-disabled" />
+          <Ticket className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/50" />
           <input
             type="text"
             value={redemptionCode}
             onChange={(e) => setRedemptionCode(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-surface text-fg-muted font-mono focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-2xl border border-border/20 bg-card text-foreground font-mono focus:border-foreground focus:outline-none transition-colors"
             placeholder="XXXX-XXXX-XXXX"
           />
         </div>
@@ -274,23 +274,23 @@ export default function RedeemPanel() {
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Email Address</label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fg-disabled" />
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/50" />
           <input
             type="email"
             value={recipientEmail}
             onChange={(e) => setRecipientEmail(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-surface text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-2xl border border-border/20 bg-card text-foreground focus:border-foreground focus:outline-none transition-colors"
             placeholder="Confirm your email address"
           />
         </div>
-        <p className="text-xs text-link mt-2">
+        <p className="text-xs text-foreground/80 mt-2">
           Must match the email the gift was sent to
         </p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="text-error text-sm mb-4 p-3 bg-error/10 rounded">
+        <div className="text-error text-sm mb-4 p-3 bg-error/10 rounded-2xl">
           {error}
         </div>
       )}
@@ -298,7 +298,7 @@ export default function RedeemPanel() {
       {/* Redeem Button */}
       <button
         onClick={handleRedeem}
-        className="w-full py-4 px-6 rounded-lg bg-fg-muted text-canvas font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 rounded-full bg-foreground text-card font-bold text-lg hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         disabled={!canSubmit}
       >
         {loading ? (
@@ -317,42 +317,42 @@ export default function RedeemPanel() {
 
       {/* Redemption Process */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-default">
-              <Ticket className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <Ticket className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Gift Code Required</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Gift Code Required</h4>
+              <p className="text-xs text-foreground/80">
                 Enter the unique code from your gift notification email.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <Shield className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Secure Verification</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Secure Verification</h4>
+              <p className="text-xs text-foreground/80">
                 Email verification ensures only the intended recipient can redeem.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <CheckCircle className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Instant Credit</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Instant Credit</h4>
+              <p className="text-xs text-foreground/80">
                 Credits are immediately available in your account after redemption.
               </p>
             </div>

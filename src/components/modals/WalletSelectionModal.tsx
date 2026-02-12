@@ -4,6 +4,7 @@ import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { usePrivy, useLogin, useWallets, useCreateWallet } from '@privy-io/react-auth';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BaseModal from './BaseModal';
 import BlockingMessageModal from './BlockingMessageModal';
 import { useStore } from '../../store/useStore';
@@ -20,6 +21,18 @@ const WalletSelectionModal = ({
   const [connectingWallet, setConnectingWallet] = useState<string>();
   const [intentionalSolanaConnect, setIntentionalSolanaConnect] = useState(false);
   const [waitingForPrivyWallet, setWaitingForPrivyWallet] = useState(false);
+
+  // Navigation hooks for post-connection redirect
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle post-connection: if on homepage, redirect to account page
+  const handleConnectionSuccess = () => {
+    if (location.pathname === '/') {
+      navigate('/account');
+    }
+    onClose();
+  };
 
   // Privy hooks for email login
   const { authenticated } = usePrivy();
@@ -49,7 +62,7 @@ const WalletSelectionModal = ({
       if (existingWallet) {
         await setEthereumAddress(existingWallet.address);
         setConnectingWallet(undefined);
-        onClose();
+        handleConnectionSuccess();
       } else {
         // No wallet exists, need to create one
         setConnectingWallet('Creating your wallet...');
@@ -61,7 +74,7 @@ const WalletSelectionModal = ({
           if (newWallet) {
             await setEthereumAddress(newWallet.address);
             setConnectingWallet(undefined);
-            onClose();
+            handleConnectionSuccess();
           } else {
             // If wallet creation didn't return immediately, wait for it
             setWaitingForPrivyWallet(true);
@@ -93,7 +106,7 @@ const WalletSelectionModal = ({
         setEthereumAddress(privyWallet.address).then(() => {
           setConnectingWallet(undefined);
           setWaitingForPrivyWallet(false);
-          onClose();
+          handleConnectionSuccess();
         });
       } else {
         // If we have wallets but none match our criteria, use the first one
@@ -102,7 +115,7 @@ const WalletSelectionModal = ({
           setEthereumAddress(firstWallet.address).then(() => {
             setConnectingWallet(undefined);
             setWaitingForPrivyWallet(false);
-            onClose();
+            handleConnectionSuccess();
           });
         }
       }
@@ -120,7 +133,7 @@ const WalletSelectionModal = ({
 
       if (privyWallet && privyWallet.address !== currentAddress) {
         setEthereumAddress(privyWallet.address).then(() => {
-          onClose();
+          handleConnectionSuccess();
         });
       }
     }
@@ -157,12 +170,12 @@ const WalletSelectionModal = ({
       // Resolve and set Ethereum address (handles checksummed vs lowercase)
       setEthereumAddress(ethAccount.address).then(() => {
         setIntentionalEthConnect(false);
-        onClose();
+        handleConnectionSuccess();
       }).catch((error) => {
         console.error('[Wallet Connection] Failed to set Ethereum address:', error);
         // Still close modal on error - address was set via fallback in setEthereumAddress
         setIntentionalEthConnect(false);
-        onClose();
+        handleConnectionSuccess();
       });
     }
   }, [ethAccount.isConnected, ethAccount.address, intentionalEthConnect, onClose]);
@@ -183,7 +196,7 @@ const WalletSelectionModal = ({
       const rawAddress = publicKey.toString();
       // For now, use raw address - will be converted by Turbo SDK internally
       setAddress(rawAddress, 'solana');
-      onClose();
+      handleConnectionSuccess();
       setIntentionalSolanaConnect(false); // Reset flag
     }
     // Remove setAddress and onClose from dependencies to prevent infinite loop
@@ -203,7 +216,7 @@ const WalletSelectionModal = ({
         // Already connected to Solana wallet
         const rawAddress = publicKey.toString();
         setAddress(rawAddress, 'solana');
-        onClose();
+        handleConnectionSuccess();
         setIntentionalSolanaConnect(false);
         return;
       }
@@ -269,8 +282,8 @@ const WalletSelectionModal = ({
 
       if (privyWallet) {
         await setEthereumAddress(privyWallet.address);
-        // Close the modal immediately without waiting
-        setTimeout(() => onClose(), 0);
+        // Handle connection and navigate if needed
+        setTimeout(() => handleConnectionSuccess(), 0);
         return;
       }
     }
@@ -313,7 +326,7 @@ const WalletSelectionModal = ({
       console.log('[WalletSelectionModal] Got address:', addr);
       // For Arweave, raw address = native address
       setAddress(addr, 'arweave');
-      onClose();
+      handleConnectionSuccess();
     } catch (error) {
       // Failed to connect Wander wallet
       console.error('[WalletSelectionModal] Wander connect error:', error);
@@ -348,44 +361,54 @@ const WalletSelectionModal = ({
 
   return (
     <BaseModal onClose={onClose} showCloseButton={true}>
-      <div className="flex flex-col items-center justify-center text-fg-muted p-6 sm:p-8" style={{ minWidth: 'min(85vw, 480px)', maxWidth: '95vw' }}>
-        <div className="mb-8 sm:mb-10 text-xl sm:text-2xl font-bold">Connect a Wallet</div>
+      <div className="flex flex-col items-center justify-center text-foreground p-6 sm:p-8" style={{ minWidth: 'min(85vw, 480px)', maxWidth: '95vw' }}>
+        {/* Header with logo and title */}
+        <div className="mb-6 sm:mb-8 text-center">
+          <img
+            src="/brand/ario-full-black.svg"
+            alt="ar.io"
+            className="h-8 sm:h-10 mx-auto mb-4"
+          />
+          <h2 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+            Sign in to your account
+          </h2>
+        </div>
 
         <div className="flex w-full flex-col gap-3 sm:gap-4">
           {/* Email login option - prominently at the top */}
           <button
-            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-card border border-border/20 p-3 sm:p-4 rounded-2xl hover:border-primary/50 hover:bg-card/80 transition-all text-left flex items-center gap-3 group"
             onClick={connectWithEmail}
           >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-surface rounded-lg flex items-center justify-center flex-shrink-0 border border-default/30">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-link" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold mb-1 text-base">Email Sign-in</div>
-              <div className="text-xs sm:text-sm text-link">No wallet needed • Instant access</div>
+              <div className="text-xs sm:text-sm text-foreground/70">No wallet needed</div>
             </div>
           </button>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-2">
-            <div className="flex-1 h-px bg-surface"></div>
-            <div className="text-xs text-link">or use a wallet</div>
-            <div className="flex-1 h-px bg-surface"></div>
+            <div className="flex-1 h-px bg-border/20"></div>
+            <div className="text-xs text-foreground/60">or connect a wallet</div>
+            <div className="flex-1 h-px bg-border/20"></div>
           </div>
 
           <button
-            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-card border border-border/20 p-3 sm:p-4 rounded-2xl hover:border-primary/50 hover:bg-card/80 transition-all text-left flex items-center gap-3 group"
             onClick={connectWander}
           >
             <img src="/wander-logo.png" alt="Wander" className="w-7 h-7 sm:w-8 sm:h-8 object-contain flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="font-semibold mb-1 text-base">Wander</div>
-              <div className="text-xs sm:text-sm text-link">Arweave native wallet</div>
+              <div className="text-xs sm:text-sm text-foreground/70">Arweave wallet</div>
             </div>
           </button>
 
           <button
-            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-card border border-border/20 p-3 sm:p-4 rounded-2xl hover:border-primary/50 hover:bg-card/80 transition-all text-left flex items-center gap-3 group"
             onClick={connectEthereumWallet}
           >
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#627EEA] rounded-lg flex items-center justify-center flex-shrink-0">
@@ -395,30 +418,30 @@ const WalletSelectionModal = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold mb-1 text-base">Ethereum Wallets</div>
-              <div className="text-xs sm:text-sm text-link">MetaMask, WalletConnect, Coinbase & more</div>
+              <div className="text-xs sm:text-sm text-foreground/70">MetaMask, WalletConnect, Coinbase</div>
             </div>
           </button>
 
           <button
-            className="w-full bg-surface p-3 sm:p-4 rounded hover:bg-surface/80 transition-colors text-left flex items-center gap-3"
+            className="w-full bg-card border border-border/20 p-3 sm:p-4 rounded-2xl hover:border-primary/50 hover:bg-card/80 transition-all text-left flex items-center gap-3 group"
             onClick={connectPhantom}
           >
             <img src="/phantom-logo.svg" alt="Phantom" className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="font-semibold mb-1 text-base">Phantom / Solflare</div>
-              <div className="text-xs sm:text-sm text-link">Solana wallets</div>
+              <div className="text-xs sm:text-sm text-foreground/70">Solana wallets</div>
             </div>
           </button>
         </div>
 
         <div className="mt-6 sm:mt-8 text-center">
-          <div className="text-xs text-link px-2">
-            By connecting, you agree to our{' '}
+          <div className="text-xs text-foreground/80 px-2">
+            By signing in, you agree to our{' '}
             <a
               href="https://ardrive.io/tos-and-privacy/"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-fg-muted transition-colors"
+              className="underline hover:text-foreground transition-colors"
             >
               Terms and Conditions
             </a>

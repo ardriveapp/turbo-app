@@ -8,7 +8,7 @@ import { getConnectorClient, switchChain } from 'wagmi/actions';
 import { useStore } from '../store/useStore';
 
 // Custom connect message for Ethereum wallet uploads (instead of SDK's generic message)
-const ETHEREUM_CONNECT_MESSAGE = 'Sign this message to connect to Turbo Gateway';
+const ETHEREUM_CONNECT_MESSAGE = 'Sign this message to connect to ar.io';
 
 // Cache structure for the Ethereum signer (shared across all token types)
 // The signer is independent of token type - only address and config matter

@@ -1,11 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  Home, 
-  CreditCard, 
-  Gift, 
-  Upload, 
-  Globe, 
-  Code2,
+import {
+  Home,
+  CreditCard,
+  Gift,
+  Upload,
+  Globe,
   Share2,
   Ticket
 } from 'lucide-react';
@@ -18,7 +17,6 @@ const navItems = [
   { path: '/share', label: 'Share', icon: Share2 },
   { path: '/upload', label: 'Upload', icon: Upload },
   { path: '/arns', label: 'ArNS', icon: Globe },
-  { path: '/developer', label: 'Developer', icon: Code2 },
 ];
 
 export function Navigation() {

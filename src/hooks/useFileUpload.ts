@@ -420,7 +420,7 @@ export function useFileUpload() {
 
         // Read file as ArrayBuffer, then create a Blob with proper content type
         const arrayBuffer = await file.arrayBuffer();
-        const blob = new Blob([arrayBuffer], { type: getContentType(file) });
+        new Blob([arrayBuffer], { type: getContentType(file) }); // Create blob for content type validation
         setUploadProgress(prev => ({ ...prev, [fileName]: 20 }));
 
         // Try using uploadFile with explicit stream factories that return the blob/buffer directly

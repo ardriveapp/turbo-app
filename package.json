@@ -1,8 +1,8 @@
 {
-  "name": "turbo-gateway-app",
-  "version": "0.10.0",
+  "name": "ario-app",
+  "version": "1.0.0",
   "type": "module",
-  "description": "Unified Turbo Gateway Application",
+  "description": "ar.io App - Upload and access permanent data through the ar.io Network",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite",
     "prebuild": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc -b",
@@ -18,7 +18,8 @@
   "dependencies": {
     "@ar.io/sdk": "^3.19.0-alpha.10",
     "@ardrive/turbo-sdk": "^1.39.2",
-    "@fontsource/rubik": "^5.0.21",
+    "@fontsource-variable/besley": "^5.2.8",
+    "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@headlessui/react": "^2.1.2",
     "@permaweb/aoconnect": "^0.0.69",
     "@privy-io/react-auth": "^3.0.1",

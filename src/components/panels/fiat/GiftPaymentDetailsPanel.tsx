@@ -128,10 +128,10 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
     style: {
       base: {
         fontSize: '16px',
-        color: isLight ? '#23232D' : '#ededed', // text-fg-muted (theme-aware)
-        backgroundColor: isLight ? '#FFFFFF' : '#171717', // bg-surface (theme-aware)
+        color: isLight ? '#23232D' : '#ededed', // text-foreground (theme-aware)
+        backgroundColor: isLight ? '#FFFFFF' : '#171717', // bg-card (theme-aware)
         '::placeholder': {
-          color: isLight ? '#6C6C87' : '#A3A3AD', // text-link (theme-aware)
+          color: isLight ? '#6C6C87' : '#A3A3AD', // text-foreground/80 (theme-aware)
         },
       },
       invalid: {
@@ -144,35 +144,35 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
     <div>
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-          <Gift className="w-5 h-5 text-turbo-red" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <Gift className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Payment Details</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Payment Details</h3>
+          <p className="text-sm text-foreground/80">
             Enter your payment information to send the gift
           </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="bg-gradient-to-br from-turbo-red/5 to-turbo-red/3 rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-        
+      <div className="bg-gradient-to-br from-primary/5 to-primary/3 rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
+
         {/* Gift Summary */}
-        <div className="bg-surface rounded-lg p-4 mb-6">
-          <h4 className="font-bold text-fg-muted mb-3">Gift Summary</h4>
+        <div className="bg-card rounded-2xl p-4 mb-6">
+          <h4 className="font-heading font-bold text-foreground mb-3">Gift Summary</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-link">Amount:</span>
+              <span className="text-foreground/80">Amount:</span>
               <span className="font-medium">${usdAmount.toFixed(2)} USD</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-link">Recipient:</span>
+              <span className="text-foreground/80">Recipient:</span>
               <span className="font-medium">{recipientEmail}</span>
             </div>
             {giftMessage && (
               <div className="flex justify-between">
-                <span className="text-link">Message:</span>
+                <span className="text-foreground/80">Message:</span>
                 <span className="font-medium italic">"{giftMessage}"</span>
               </div>
             )}
@@ -183,18 +183,18 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
         <div className="space-y-6">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-link mb-2">
-              Cardholder Name <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              Cardholder Name <span className="text-error">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 rounded-lg border border-default bg-surface text-fg-muted focus:border-turbo-red focus:outline-none"
+              className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground focus:border-primary focus:outline-none"
               placeholder="Enter your full name"
             />
             {nameError && (
-              <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
+              <div className="flex items-center gap-2 mt-2 text-error text-sm">
                 <CircleX className="w-4 h-4" />
                 {nameError}
               </div>
@@ -203,13 +203,13 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
 
           {/* Country */}
           <div>
-            <label className="block text-sm font-medium text-link mb-2">
-              Country <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              Country <span className="text-error">*</span>
             </label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="w-full p-3 rounded-lg border border-default bg-surface text-fg-muted focus:border-turbo-red focus:outline-none"
+              className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Select your country</option>
               {countries?.data?.map((country) => (
@@ -219,7 +219,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
               ))}
             </select>
             {countryError && (
-              <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
+              <div className="flex items-center gap-2 mt-2 text-error text-sm">
                 <CircleX className="w-4 h-4" />
                 {countryError}
               </div>
@@ -228,10 +228,10 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
 
           {/* Card */}
           <div>
-            <label className="block text-sm font-medium text-link mb-2">
-              Card Information <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              Card Information <span className="text-error">*</span>
             </label>
-            <div className="p-3 rounded-lg border border-default bg-surface">
+            <div className="p-3 rounded-2xl border border-border/20 bg-card">
               <CardElement options={cardElementOptions} onChange={(e) => {
                 if (e.error) {
                   setCardError(e.error.message);
@@ -241,7 +241,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
               }} />
             </div>
             {cardError && (
-              <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
+              <div className="flex items-center gap-2 mt-2 text-error text-sm">
                 <CircleX className="w-4 h-4" />
                 {cardError}
               </div>
@@ -250,18 +250,18 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-link mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Email Address (optional - for receipt)
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 rounded-lg border border-default bg-surface text-fg-muted focus:border-turbo-red focus:outline-none"
+              className="w-full p-3 rounded-2xl border border-border/20 bg-card text-foreground focus:border-primary focus:outline-none"
               placeholder="your.email@example.com"
             />
             {emailError && (
-              <div className="flex items-center gap-2 mt-2 text-red-400 text-sm">
+              <div className="flex items-center gap-2 mt-2 text-error text-sm">
                 <CircleX className="w-4 h-4" />
                 {emailError}
               </div>
@@ -275,18 +275,18 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
               id="newsletter"
               checked={keepMeUpdated}
               onChange={(e) => setKeepMeUpdated(e.target.checked)}
-              className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors mt-1"
+              className="w-4 h-4 bg-card border-2 border-border/20 rounded focus:ring-0 checked:bg-card checked:border-border/20 accent-white transition-colors mt-1"
             />
-            <label htmlFor="newsletter" className="text-sm text-link">
-              Keep me updated on Turbo features and improvements
+            <label htmlFor="newsletter" className="text-sm text-foreground/80">
+              Keep me updated on ar.io features and improvements
             </label>
           </div>
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-default">
+        <div className="flex justify-between mt-8 pt-6 border-t border-border/20">
           <button
-            className="text-sm text-link hover:text-fg-muted transition-colors"
+            className="text-sm text-foreground/80 hover:text-foreground transition-colors"
             onClick={onBack}
           >
             Back
@@ -294,7 +294,7 @@ const GiftPaymentDetailsPanel: FC<GiftPaymentDetailsPanelProps> = ({
           <button
             onClick={validateAndProceed}
             disabled={isProcessing}
-            className="py-3 px-6 rounded-lg bg-turbo-red text-white font-bold hover:bg-turbo-red/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="py-3 px-6 rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isProcessing ? (
               <>

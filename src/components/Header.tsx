@@ -1,12 +1,12 @@
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
-import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Camera, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Info, Zap, User, Lock, Key } from 'lucide-react';
+import { ExternalLink, Coins, Calculator, RefreshCw, Wallet, CreditCard, Upload, Camera, Share2, Gift, Globe, Code, Search, Ticket, Grid3x3, Zap, User, Lock, Key, Settings, Server, ScanSearch } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDisconnect } from 'wagmi';
 import CopyButton from './CopyButton';
 import { useStore } from '../store/useStore';
 import { formatWalletAddress, getTurboBalance } from '../utils';
-import TurboLogo from './TurboLogo';
+import ArioLogo from './ArioLogo';
 import WalletSelectionModal from './modals/WalletSelectionModal';
 import { usePrimaryArNSName } from '../hooks/usePrimaryArNSName';
 import { useNavigate } from 'react-router-dom';
@@ -22,51 +22,19 @@ const accountServices = [
   { name: 'Capture Page', page: 'capture' as const, icon: Camera },
   { name: 'Deploy Site', page: 'deploy' as const, icon: Zap },
   { name: 'Share Credits', page: 'share' as const, icon: Share2 },
+  { name: 'Redeem Gift', page: 'redeem' as const, icon: Ticket },
   { name: 'Send Gift', page: 'gift' as const, icon: Gift },
 ];
 
 // Public utility services
 const utilityServices = [
   { name: 'Search Domains', page: 'domains' as const, icon: Globe },
-  { name: 'Developer Resources', page: 'developer' as const, icon: Code },
   { name: 'Pricing Calculator', page: 'calculator' as const, icon: Calculator },
   { name: 'Check Balance', page: 'balances' as const, icon: Search },
-  { name: 'Redeem Gift', page: 'redeem' as const, icon: Ticket },
-  { name: 'Service Info', page: 'gateway-info' as const, icon: Info },
+  { name: 'Network Explorer', href: 'https://scan.ar.io', icon: ScanSearch, external: true },
+  { name: 'Gateway Dashboard', href: 'https://gateways.ar.io', icon: Server, external: true },
+  { name: 'Developer Docs', href: 'https://docs.ar.io', icon: Code, external: true },
 ];
-
-// Service theme color mapping
-const getServiceActiveColor = (page: string): string => {
-  switch (page) {
-    // Credit services -> Black/White theme
-    case 'topup':
-    case 'share':
-    case 'gift':
-    case 'balances':
-    case 'redeem':
-    case 'calculator':
-      return 'text-fg-muted';
-    
-    // Upload/Deployment services -> Red theme
-    case 'upload':
-    case 'capture':
-    case 'deploy':
-      return 'text-turbo-red';
-    
-    // ArNS services -> Yellow theme
-    case 'domains':
-      return 'text-turbo-yellow-text';
-    
-    // Developer/Info services -> Purple theme
-    case 'developer':
-    case 'gateway-info':
-      return 'text-turbo-purple';
-    
-    // Default fallback
-    default:
-      return 'text-turbo-red';
-  }
-};
 
 const Header = () => {
   const location = useLocation();
@@ -84,7 +52,7 @@ const Header = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const wincForOneGiB = useWincForOneGiB();
-  
+
   // Fetch actual credit balance from Turbo API
   const fetchBalance = useCallback(async () => {
     // Don't fetch balance if payment service is unavailable (x402-only mode)
@@ -171,7 +139,7 @@ const Header = () => {
     window.addEventListener('refresh-balance', handleRefreshBalance);
     return () => window.removeEventListener('refresh-balance', handleRefreshBalance);
   }, [fetchBalance]);
-  
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchBalance();
@@ -205,43 +173,49 @@ const Header = () => {
   const filteredAccountServices = accountServices.filter(service =>
     isPaymentServiceAvailable() || !paymentServiceRoutes.includes(service.page)
   );
-  const filteredUtilityServices = utilityServices.filter(service =>
-    isPaymentServiceAvailable() || !paymentServiceRoutes.includes(service.page)
-  );
+  const filteredUtilityServices = utilityServices.filter(service => {
+    // External links are always shown
+    if ('external' in service && service.external) return true;
+    // Internal links: check if payment service is available or not a payment route
+    if ('page' in service && service.page) {
+      return isPaymentServiceAvailable() || !paymentServiceRoutes.includes(service.page);
+    }
+    return true;
+  });
 
   return (
     <div className="flex items-center py-2 sm:py-3">
       <Link to="/" className="cursor-pointer ml-2 sm:ml-0">
-        <TurboLogo />
+        <ArioLogo />
       </Link>
-      
+
       {/* Dev Mode Indicator */}
       {configMode !== 'production' && (
-        <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-turbo-purple/10 rounded-full border border-turbo-purple/20">
-          <div className="w-2 h-2 bg-turbo-purple rounded-full animate-pulse" />
-          <span className="text-xs text-turbo-purple font-medium uppercase">
+        <div className="ml-4 flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          <span className="text-xs text-primary font-medium uppercase">
             {configMode} MODE
           </span>
         </div>
       )}
-      
+
       <div className="grow" />
-      
+
       {/* Clean Services Waffle Popover */}
       <div className="mr-3">
         <Popover className="relative">
-          <PopoverButton className="flex items-center p-3 text-link hover:text-fg-muted transition-colors focus:outline-none" title="All Services">
+          <PopoverButton className="flex items-center p-3 text-foreground/60 hover:text-foreground transition-colors focus:outline-none" title="All Services">
             <Grid3x3 className="w-6 h-6" />
           </PopoverButton>
-          
-          <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-lg bg-canvas border border-default shadow-lg z-50 py-1">
+
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-2 w-56 sm:w-64 overflow-auto rounded-2xl bg-background border border-border/20 shadow-lg z-50 py-1">
             {({ close }) => (
               <>
                 {/* Services - Always show, but require login */}
                 <div className="px-4 py-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-link uppercase tracking-wider">Services</span>
+                  <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">Services</span>
                   {!address && (
-                    <span className="text-xs text-link/60 flex items-center gap-1">
+                    <span className="text-xs text-foreground/40 flex items-center gap-1">
                       <Lock className="w-3 h-3" />
                       Login Required
                     </span>
@@ -262,11 +236,11 @@ const Header = () => {
                           close();
                           setShowWalletModal(true);
                         }}
-                        className="w-full flex items-center gap-3 py-2 px-4 text-sm text-link/60 hover:bg-canvas hover:text-fg-muted transition-colors group"
+                        className="w-full flex items-center gap-3 py-2 px-4 text-sm text-foreground/40 hover:bg-primary/10 hover:text-foreground transition-colors group"
                       >
-                        <service.icon className="w-4 h-4 text-link/60 group-hover:text-link" />
+                        <service.icon className="w-4 h-4 text-foreground/40 group-hover:text-foreground/60" />
                         <span className="flex-1 text-left">{service.name}</span>
-                        <Lock className="w-3 h-3 text-link/40" />
+                        <Lock className="w-3 h-3 text-foreground/30" />
                       </button>
                     );
                   }
@@ -279,36 +253,55 @@ const Header = () => {
                       onClick={() => close()}
                       className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
                         isActive
-                          ? 'bg-canvas text-fg-muted font-medium'
-                          : 'text-link hover:bg-canvas hover:text-fg-muted'
+                          ? 'bg-primary/15 text-foreground font-medium'
+                          : 'text-foreground/80 hover:bg-primary/10 hover:text-foreground'
                       }`}
                     >
                       <service.icon className={`w-4 h-4 ${
-                        isActive ? getServiceActiveColor(service.page) : 'text-link'
+                        isActive ? 'text-primary' : 'text-foreground/60'
                       }`} />
                       {service.name}
                     </Link>
                   );
                 })}
-                <div className="border-t border-default my-1" />
-                
+                <div className="border-t border-border/20 my-1" />
+
                 {/* Public Tools */}
-                <div className="px-4 py-2 text-xs font-medium text-link uppercase tracking-wider">Tools</div>
+                <div className="px-4 py-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">Tools</div>
                 {filteredUtilityServices.map((service) => {
-                  const isActive = location.pathname === `/${service.page}`;
+                  // Handle external links
+                  if ('external' in service && service.external && 'href' in service) {
+                    return (
+                      <a
+                        key={service.href}
+                        href={service.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => close()}
+                        className="flex items-center gap-3 py-2 px-4 text-sm transition-colors text-foreground/80 hover:bg-primary/10 hover:text-foreground"
+                      >
+                        <service.icon className="w-4 h-4 text-foreground/60" />
+                        <span className="flex-1">{service.name}</span>
+                        <ExternalLink className="w-3 h-3 text-foreground/40" />
+                      </a>
+                    );
+                  }
+
+                  // Handle internal links
+                  const isActive = 'page' in service && location.pathname === `/${service.page}`;
                   return (
                     <Link
-                      key={service.page}
-                      to={`/${service.page}`}
+                      key={'page' in service ? service.page : service.name}
+                      to={`/${'page' in service ? service.page : ''}`}
                       onClick={() => close()}
                       className={`flex items-center gap-3 py-2 px-4 text-sm transition-colors ${
-                        isActive 
-                          ? 'bg-canvas text-fg-muted font-medium' 
-                          : 'text-link hover:bg-canvas hover:text-fg-muted'
+                        isActive
+                          ? 'bg-primary/15 text-foreground font-medium'
+                          : 'text-foreground/80 hover:bg-primary/10 hover:text-foreground'
                       }`}
                     >
                       <service.icon className={`w-4 h-4 ${
-                        isActive ? getServiceActiveColor(service.page) : 'text-link'
+                        isActive ? 'text-primary' : 'text-foreground/60'
                       }`} />
                       {service.name}
                     </Link>
@@ -323,12 +316,12 @@ const Header = () => {
       {/* Profile Dropdown - only for logged in users */}
       {address && (
         <Popover className="relative">
-          <PopoverButton className="flex items-center gap-2 rounded border border-default px-2 py-1.5 font-semibold hover:bg-canvas hover:border-fg-muted/50 transition-colors">
+          <PopoverButton className="flex items-center gap-2 rounded-full border border-border/20 px-3 py-2 font-semibold hover:bg-card hover:border-foreground/30 transition-colors">
             {/* Profile Image or Wallet Type Indicator */}
             {profile.logo ? (
-              <div className="size-8 rounded-full overflow-hidden bg-canvas border border-default/50 flex items-center justify-center">
-                <img 
-                  src={profile.logo} 
+              <div className="size-8 rounded-full overflow-hidden bg-card border border-border/20 flex items-center justify-center">
+                <img
+                  src={profile.logo}
                   alt={`${profile.name} logo`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -345,23 +338,23 @@ const Header = () => {
                   }}
                 />
                 <div className={`fallback-indicator hidden size-2 rounded-full ${
-                  walletType === 'arweave' ? 'bg-turbo-red' :
-                  walletType === 'ethereum' ? 'bg-blue-400' :
-                  walletType === 'solana' ? 'bg-purple-400' :
+                  walletType === 'arweave' ? 'bg-primary' :
+                  walletType === 'ethereum' ? 'bg-blue-500' :
+                  walletType === 'solana' ? 'bg-purple-500' :
                   'bg-green-500'
                 }`} />
               </div>
             ) : (
               <div className={`size-2 rounded-full ${
-                walletType === 'arweave' ? 'bg-turbo-red' :
-                walletType === 'ethereum' ? 'bg-blue-400' :
-                walletType === 'solana' ? 'bg-purple-400' :
+                walletType === 'arweave' ? 'bg-primary' :
+                walletType === 'ethereum' ? 'bg-blue-500' :
+                walletType === 'solana' ? 'bg-purple-500' :
                 'bg-green-500'
               }`} />
             )}
-            <div className="text-fg-muted">
+            <div className="text-foreground">
               {loadingArNS ? (
-                <span className="text-link">Loading...</span>
+                <span className="text-foreground/60">Loading...</span>
               ) : arnsName ? (
                 <span className="font-medium">{arnsName}</span>
               ) : (
@@ -370,12 +363,12 @@ const Header = () => {
             </div>
           </PopoverButton>
 
-          <PopoverPanel className="absolute right-1 sm:right-0 mt-4 flex flex-col rounded-lg bg-canvas text-left text-sm text-fg-muted shadow-lg border border-default min-w-[280px] z-50">
+          <PopoverPanel className="absolute right-1 sm:right-0 mt-4 flex flex-col rounded-2xl bg-background text-left text-sm text-foreground shadow-lg border border-border/20 min-w-[280px] z-50">
             {({ close }) => (
               <>
             {/* Account Info Section */}
-            <div className="px-6 py-4 border-b border-default">
-              <div className="text-xs text-link mb-2">
+            <div className="px-6 py-4 border-b border-border/20">
+              <div className="text-xs text-foreground/60 mb-2">
                 {walletType === 'arweave' && 'Arweave Account'}
                 {walletType === 'ethereum' && `Ethereum Account${isPrivyUser ? ' (Privy.io)' : ''}`}
                 {walletType === 'solana' && 'Solana Account'}
@@ -387,22 +380,22 @@ const Header = () => {
                 <CopyButton textToCopy={address} />
               </div>
             </div>
-            
+
             {/* Credit Balance Section - Display Only (hide in x402-only mode) */}
             {isPaymentServiceAvailable() && (
-              <div className="px-6 py-4 border-b border-default">
+              <div className="px-6 py-4 border-b border-border/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-fg-muted" />
-                    <span className="text-xs text-link">Credits</span>
+                    <Coins className="w-4 h-4 text-foreground" />
+                    <span className="text-xs text-foreground/60">Credits</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex flex-col items-end">
-                      <div className="font-bold text-lg text-fg-muted">
+                      <div className="font-bold text-lg text-foreground">
                         {loadingBalance || isRefreshing ? '...' : credits}
                       </div>
                       {!loadingBalance && !isRefreshing && creditsNumeric > 0 && (
-                        <div className="text-xs text-link/60 mt-0.5">
+                        <div className="text-xs text-foreground/40 mt-0.5">
                           {formatStorageCapacity(creditsNumeric)}
                         </div>
                       )}
@@ -413,32 +406,62 @@ const Header = () => {
                         handleRefresh();
                       }}
                       disabled={isRefreshing || loadingBalance}
-                      className="p-1 rounded hover:bg-canvas transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1 rounded hover:bg-card transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title={isRefreshing ? 'Refreshing...' : 'Refresh balance'}
                     >
-                      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-turbo-red animate-spin' : 'text-link hover:text-fg-muted'}`} />
+                      <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'text-primary animate-spin' : 'text-foreground/60 hover:text-foreground'}`} />
                     </button>
                   </div>
                 </div>
               </div>
             )}
-            
+
             {/* Actions */}
+            <div className="flex items-center">
+              <button
+                className="flex-1 flex items-center gap-2 pl-6 pr-2 py-3 text-foreground/80 hover:text-foreground hover:bg-card transition-colors"
+                onClick={() => {
+                  navigate('/account');
+                  close();
+                }}
+              >
+                <User className="w-4 h-4" />
+                My Account
+              </button>
+              <button
+                className="pr-6 pl-2 py-3 text-foreground/40 hover:text-foreground transition-colors"
+                onClick={() => {
+                  let explorerUrl = '';
+                  if (walletType === 'ethereum') {
+                    explorerUrl = `https://etherscan.io/address/${address}`;
+                  } else if (walletType === 'solana') {
+                    explorerUrl = `https://explorer.solana.com/address/${address}`;
+                  } else {
+                    explorerUrl = `https://viewblock.io/arweave/address/${address}`;
+                  }
+                  window.open(explorerUrl, '_blank');
+                }}
+                title="View on Explorer"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </div>
+
             <button
-              className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
+              className="flex items-center gap-2 px-6 py-3 text-foreground/80 hover:text-foreground hover:bg-card transition-colors"
               onClick={() => {
-                navigate('/account');
-                close(); // Close the popover when navigating
+                navigate('/settings');
+                close();
               }}
             >
-              <User className="w-4 h-4" />
-              My Account
+              <Settings className="w-4 h-4" />
+              Settings
             </button>
 
             {/* Export Wallet - Show for Privy users */}
             {isPrivyUser && (
               <button
-                className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
+                className="flex items-center gap-2 px-6 py-3 text-foreground/80 hover:text-foreground hover:bg-card transition-colors"
                 onClick={async () => {
                   try {
                     // Export the Privy wallet - this opens Privy's secure modal
@@ -455,28 +478,7 @@ const Header = () => {
             )}
 
             <button
-              className="flex items-center gap-2 px-6 py-3 text-link hover:text-fg-muted hover:bg-canvas transition-colors"
-              onClick={() => {
-                let explorerUrl = '';
-
-                if (walletType === 'ethereum') {
-                  explorerUrl = `https://etherscan.io/address/${address}`;
-                } else if (walletType === 'solana') {
-                  explorerUrl = `https://explorer.solana.com/address/${address}`;
-                } else {
-                  // Default to Arweave
-                  explorerUrl = `https://viewblock.io/arweave/address/${address}`;
-                }
-
-                window.open(explorerUrl, '_blank');
-              }}
-            >
-              <ExternalLink className="w-4 h-4" />
-              View on Explorer
-            </button>
-            
-            <button
-              className="px-6 py-3 font-semibold text-red-400 hover:bg-canvas hover:text-red-300 border-t border-default transition-colors"
+              className="px-6 py-3 font-semibold text-error hover:bg-error/10 border-t border-border/20 transition-colors"
               onClick={async () => {
                 try {
                   // Check if this is a Privy user and handle logout differently
@@ -524,20 +526,20 @@ const Header = () => {
           </PopoverPanel>
         </Popover>
       )}
-      
-      {/* Connect Wallet Button for non-logged-in users */}
+
+      {/* Sign In Button for non-logged-in users */}
       {!address && (
         <button
           onClick={() => {
             setShowWalletModal(true);
           }}
-          className="flex items-center gap-2 bg-fg-muted text-canvas px-3 sm:px-4 py-2 rounded-lg font-semibold hover:bg-fg-muted/90 transition-colors mr-2 sm:mr-0"
+          className="flex items-center gap-2 bg-foreground text-card px-4 py-2.5 rounded-full font-semibold hover:bg-foreground/90 transition-colors mr-2 sm:mr-0"
         >
           <Wallet className="w-4 h-4" />
-          Connect
+          Sign in
         </button>
       )}
-      
+
       {/* Wallet Selection Modal */}
       {showWalletModal && (
         <WalletSelectionModal

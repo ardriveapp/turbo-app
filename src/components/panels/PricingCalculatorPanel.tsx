@@ -61,7 +61,7 @@ export default function PricingCalculatorPanel() {
       setInputType('storage');
     }
   }, [selectedCurrency, inputType]);
-  
+
   // Helper to convert crypto display amount to smallest unit (bigint)
   const getTokenSmallestUnit = (tokenType: SupportedTokenType, amount: number): bigint => {
     let decimals: number;
@@ -184,7 +184,7 @@ export default function PricingCalculatorPanel() {
     const dollarsNeeded = creditsNeeded / creditsForOneUSD;
     return dollarsNeeded;
   };
-  
+
   // Calculate storage for budget amount (works for USD and crypto)
   const calculateStorageForBudget = () => {
     if (!wincForOneGiB) return 0;
@@ -215,7 +215,7 @@ export default function PricingCalculatorPanel() {
     const usd = credits / creditsForOneUSD;
     return usd;
   };
-  
+
   // Format number with commas
   const formatNumber = (num: number, decimals = 2) => {
     return new Intl.NumberFormat('en-US', {
@@ -223,7 +223,7 @@ export default function PricingCalculatorPanel() {
       maximumFractionDigits: decimals,
     }).format(num);
   };
-  
+
   // Format bytes to human readable using binary units
   const formatBytes = (bytes: number) => {
     if (bytes < 1024) return `${formatNumber(bytes, 0)} B`;
@@ -246,23 +246,23 @@ export default function PricingCalculatorPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <Calculator className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Calculator className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Storage Pricing Calculator</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-bold font-heading text-foreground mb-1">Storage Pricing Calculator</h3>
+          <p className="text-sm text-foreground/80">
             Calculate exactly how much permanent storage you get for your budget
           </p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-surface rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
-        
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
+
         {/* Free Tier Notice */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-fg-muted/10 text-fg-muted px-4 py-2 rounded-lg text-sm font-medium">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
             <Zap className="w-4 h-4" />
             Files under 100 KiB are FREE!
           </div>
@@ -270,12 +270,12 @@ export default function PricingCalculatorPanel() {
 
         {/* Calculator Mode Toggle */}
         <div className="flex justify-center mb-6">
-          <div className="inline-flex w-full max-w-sm sm:w-auto bg-surface rounded-lg p-1 border border-default">
+          <div className="inline-flex w-full max-w-sm sm:w-auto bg-card rounded-2xl p-1 border border-border/20">
             <button
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-full text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 inputType === 'storage'
-                  ? 'bg-fg-muted text-canvas'
-                  : 'text-link hover:text-fg-muted'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground/80 hover:text-foreground'
               }`}
               onClick={() => setInputType('storage')}
             >
@@ -284,10 +284,10 @@ export default function PricingCalculatorPanel() {
               <span className="sm:hidden">Storage</span>
             </button>
             <button
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 rounded-full text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                 inputType === 'dollars'
-                  ? 'bg-fg-muted text-canvas'
-                  : 'text-link hover:text-fg-muted'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground/80 hover:text-foreground'
               }`}
               onClick={() => setInputType('dollars')}
             >
@@ -300,7 +300,7 @@ export default function PricingCalculatorPanel() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="text-link text-lg">Loading current network prices...</div>
+            <div className="text-foreground/80 text-lg">Loading current network prices...</div>
           </div>
         ) : (
           <div className="space-y-6 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0">
@@ -308,9 +308,9 @@ export default function PricingCalculatorPanel() {
             <div>
               {inputType === 'storage' ? (
                 <div className="flex flex-col h-full">
-                  <h4 className="text-lg font-bold text-fg-muted mb-4">Enter Storage Amount</h4>
-                  <div className="bg-surface rounded-lg p-6 flex-1 flex flex-col">
-                    <label className="block text-sm font-medium text-link mb-3">
+                  <h4 className="text-lg font-bold font-heading text-foreground mb-4">Enter Storage Amount</h4>
+                  <div className="bg-card rounded-2xl p-6 flex-1 flex flex-col">
+                    <label className="block text-sm font-medium text-foreground/80 mb-3">
                       How much data do you need to store?
                     </label>
                     <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3 mb-4">
@@ -344,7 +344,7 @@ export default function PricingCalculatorPanel() {
                             setStorageAmount(numValue);
                           }
                         }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-surface px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
+                        className="w-full sm:flex-1 rounded-2xl border border-border/20 bg-card px-4 py-3 sm:py-4 text-lg font-medium text-foreground focus:border-primary focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <Listbox
@@ -352,10 +352,10 @@ export default function PricingCalculatorPanel() {
                         onChange={(unit) => setStorageUnit(unit.value)}
                       >
                         <div className="relative w-full sm:w-auto">
-                          <Listbox.Button className="relative w-full sm:w-auto rounded-lg border border-default bg-surface pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative w-full sm:w-auto rounded-2xl border border-border/20 bg-card pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-foreground focus:border-primary focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{storageUnits.find(unit => unit.value === storageUnit)?.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                              <ChevronDown className="h-5 w-5 text-foreground/80" aria-hidden="true" />
                             </span>
                           </Listbox.Button>
                           <Transition
@@ -364,24 +364,24 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-card border border-border/20 shadow-lg focus:outline-none">
                               {storageUnits.map((unit) => (
                                 <Listbox.Option
                                   key={unit.value}
                                   className={({ active }) =>
                                     `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
-                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                      active ? 'bg-card text-foreground' : 'text-foreground/80'
                                     }`
                                   }
                                   value={unit}
                                 >
                                   {({ selected }) => (
                                     <>
-                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-foreground' : 'font-medium'}`}>
                                         {unit.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-foreground">
                                           <Check className="h-5 w-5" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -397,7 +397,7 @@ export default function PricingCalculatorPanel() {
 
                     {/* Common storage sizes */}
                     <div className="mt-auto">
-                      <div className="text-xs text-link mb-2">Quick select:</div>
+                      <div className="text-xs text-foreground/80 mb-2">Quick select:</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
                           { amount: 100, unit: 'MiB', label: '100 MiB' },
@@ -414,7 +414,7 @@ export default function PricingCalculatorPanel() {
                               setStorageAmountInput(preset.amount.toString());
                               setStorageUnit(preset.unit as 'MiB' | 'GiB' | 'TiB');
                             }}
-                            className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                            className="px-3 py-2 sm:py-3 text-xs rounded-2xl border border-border/20 text-foreground/80 hover:bg-card hover:text-foreground transition-colors min-h-[44px] flex items-center justify-center"
                           >
                             {preset.label}
                           </button>
@@ -425,9 +425,9 @@ export default function PricingCalculatorPanel() {
                 </div>
               ) : (
                 <div className="flex flex-col h-full">
-                  <h4 className="text-lg font-bold text-fg-muted mb-4">Enter Your Budget</h4>
-                  <div className="bg-surface rounded-lg p-6 flex-1 flex flex-col">
-                    <label className="block text-sm font-medium text-link mb-3">
+                  <h4 className="text-lg font-bold font-heading text-foreground mb-4">Enter Your Budget</h4>
+                  <div className="bg-card rounded-2xl p-6 flex-1 flex flex-col">
+                    <label className="block text-sm font-medium text-foreground/80 mb-3">
                       How much do you want to spend?
                     </label>
 
@@ -463,7 +463,7 @@ export default function PricingCalculatorPanel() {
                             setDollarAmount(numValue);
                           }
                         }}
-                        className="w-full sm:flex-1 rounded-lg border border-default bg-surface px-4 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none"
+                        className="w-full sm:flex-1 rounded-2xl border border-border/20 bg-card px-4 py-3 sm:py-4 text-lg font-medium text-foreground focus:border-primary focus:outline-none"
                         placeholder="Enter amount"
                       />
                       <Listbox
@@ -471,10 +471,10 @@ export default function PricingCalculatorPanel() {
                         onChange={(currency) => setSelectedCurrency(currency.value)}
                       >
                         <div className="relative w-full sm:w-48">
-                          <Listbox.Button className="relative w-full rounded-lg border border-default bg-surface pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-fg-muted focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative w-full rounded-2xl border border-border/20 bg-card pl-4 pr-12 py-3 sm:py-4 text-lg font-medium text-foreground focus:border-primary focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{selectedCurrencyInfo.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                              <ChevronDown className="h-5 w-5 text-link" aria-hidden="true" />
+                              <ChevronDown className="h-5 w-5 text-foreground/80" aria-hidden="true" />
                             </span>
                           </Listbox.Button>
                           <Transition
@@ -483,24 +483,24 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-2xl bg-card border border-border/20 shadow-lg focus:outline-none">
                               {currencies.map((currency) => (
                                 <Listbox.Option
                                   key={currency.value}
                                   className={({ active }) =>
                                     `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
-                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                      active ? 'bg-card text-foreground' : 'text-foreground/80'
                                     }`
                                   }
                                   value={currency}
                                 >
                                   {({ selected }) => (
                                     <>
-                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                      <span className={`block truncate text-lg font-medium ${selected ? 'font-bold text-foreground' : 'font-medium'}`}>
                                         {currency.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-foreground">
                                           <Check className="h-5 w-5" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -516,7 +516,7 @@ export default function PricingCalculatorPanel() {
 
                     {/* Quick amounts - show based on currency */}
                     <div className="mt-auto">
-                      <div className="text-xs text-link mb-2">Quick select:</div>
+                      <div className="text-xs text-foreground/80 mb-2">Quick select:</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {selectedCurrency === 'usd' ? (
                           [5, 10, 25, 50, 100, 250].map((amount) => (
@@ -526,7 +526,7 @@ export default function PricingCalculatorPanel() {
                                 setDollarAmount(amount);
                                 setDollarAmountInput(amount.toString());
                               }}
-                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                              className="px-3 py-2 sm:py-3 text-xs rounded-2xl border border-border/20 text-foreground/80 hover:bg-card hover:text-foreground transition-colors min-h-[44px] flex items-center justify-center"
                             >
                               ${amount}
                             </button>
@@ -539,7 +539,7 @@ export default function PricingCalculatorPanel() {
                                 setDollarAmount(amount);
                                 setDollarAmountInput(amount.toString());
                               }}
-                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                              className="px-3 py-2 sm:py-3 text-xs rounded-2xl border border-border/20 text-foreground/80 hover:bg-card hover:text-foreground transition-colors min-h-[44px] flex items-center justify-center"
                             >
                               {amount} {selectedCurrencyInfo.symbol}
                             </button>
@@ -552,7 +552,7 @@ export default function PricingCalculatorPanel() {
                                 setDollarAmount(amount);
                                 setDollarAmountInput(amount.toString());
                               }}
-                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                              className="px-3 py-2 sm:py-3 text-xs rounded-2xl border border-border/20 text-foreground/80 hover:bg-card hover:text-foreground transition-colors min-h-[44px] flex items-center justify-center"
                             >
                               {amount} {selectedCurrencyInfo.symbol}
                             </button>
@@ -565,7 +565,7 @@ export default function PricingCalculatorPanel() {
                                 setDollarAmount(amount);
                                 setDollarAmountInput(amount.toString());
                               }}
-                              className="px-3 py-2 sm:py-3 text-xs rounded border border-default text-link hover:bg-canvas hover:text-fg-muted transition-colors min-h-[44px] flex items-center justify-center"
+                              className="px-3 py-2 sm:py-3 text-xs rounded-2xl border border-border/20 text-foreground/80 hover:bg-card hover:text-foreground transition-colors min-h-[44px] flex items-center justify-center"
                             >
                               {amount} {selectedCurrencyInfo.symbol}
                             </button>
@@ -580,25 +580,25 @@ export default function PricingCalculatorPanel() {
 
             {/* Results Side */}
             <div className="flex flex-col h-full">
-              <h4 className="text-lg font-bold text-fg-muted mb-4">
+              <h4 className="text-lg font-bold font-heading text-foreground mb-4">
                 {inputType === 'storage' ? 'Cost Breakdown' : 'Storage Breakdown'}
               </h4>
 
               {inputType === 'storage' ? (
                 <div className="space-y-4 flex-1 flex flex-col justify-between">
                   {/* Primary Result with Currency Selector */}
-                  <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
+                  <div className="bg-card border-2 border-primary rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-3 min-h-[28px]">
-                      <div className="text-sm text-link">Total Cost</div>
+                      <div className="text-sm text-foreground/80">Total Cost</div>
                       <Listbox
                         value={selectedCurrencyInfo}
                         onChange={(currency) => setSelectedCurrency(currency.value)}
                       >
                         <div className="relative">
-                          <Listbox.Button className="relative rounded-lg border border-default bg-surface pl-3 pr-10 py-1 text-sm font-medium text-fg-muted hover:bg-canvas focus:border-fg-muted focus:outline-none cursor-pointer text-left">
+                          <Listbox.Button className="relative rounded-2xl border border-border/20 bg-card pl-3 pr-10 py-1 text-sm font-medium text-foreground hover:bg-card focus:border-primary focus:outline-none cursor-pointer text-left">
                             <span className="block truncate">{selectedCurrencyInfo.label}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                              <ChevronDown className="h-4 w-4 text-link" aria-hidden="true" />
+                              <ChevronDown className="h-4 w-4 text-foreground/80" aria-hidden="true" />
                             </span>
                           </Listbox.Button>
                           <Transition
@@ -607,24 +607,24 @@ export default function PricingCalculatorPanel() {
                             leaveFrom="opacity-100"
                             leaveTo="opacity-0"
                           >
-                            <Listbox.Options className="absolute right-0 z-10 mt-1 max-h-60 w-48 overflow-auto rounded-lg bg-surface border border-default shadow-lg focus:outline-none">
+                            <Listbox.Options className="absolute right-0 z-10 mt-1 max-h-60 w-48 overflow-auto rounded-2xl bg-card border border-border/20 shadow-lg focus:outline-none">
                               {currencies.map((currency) => (
                                 <Listbox.Option
                                   key={currency.value}
                                   className={({ active }) =>
                                     `relative cursor-pointer select-none py-3 pl-4 pr-10 ${
-                                      active ? 'bg-canvas text-fg-muted' : 'text-link'
+                                      active ? 'bg-card text-foreground' : 'text-foreground/80'
                                     }`
                                   }
                                   value={currency}
                                 >
                                   {({ selected }) => (
                                     <>
-                                      <span className={`block truncate text-sm font-medium ${selected ? 'font-bold text-fg-muted' : 'font-medium'}`}>
+                                      <span className={`block truncate text-sm font-medium ${selected ? 'font-bold text-foreground' : 'font-medium'}`}>
                                         {currency.label}
                                       </span>
                                       {selected ? (
-                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-fg-muted">
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-foreground">
                                           <Check className="h-4 w-4" aria-hidden="true" />
                                         </span>
                                       ) : null}
@@ -638,37 +638,37 @@ export default function PricingCalculatorPanel() {
                       </Listbox>
                     </div>
                     {selectedCurrency === 'usd' ? (
-                      <div className="text-4xl font-bold text-fg-muted">
+                      <div className="text-4xl font-bold text-foreground">
                         ${formatNumber(calculateStorageCost())}
                       </div>
                     ) : cryptoPrice !== undefined ? (
-                      <div className="text-4xl font-bold text-fg-muted">
+                      <div className="text-4xl font-bold text-foreground">
                         {formatNumber(cryptoPrice, 6)} {selectedCurrencyInfo.symbol}
                       </div>
                     ) : (
-                      <div className="text-2xl text-link py-2">Loading price...</div>
+                      <div className="text-2xl text-foreground/80 py-2">Loading price...</div>
                     )}
                   </div>
 
                   {/* Secondary Info */}
-                  <div className="bg-surface rounded-lg p-4 space-y-3">
+                  <div className="bg-card rounded-2xl p-4 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-link">Storage Size</span>
-                      <span className="text-lg font-medium text-fg-muted">
+                      <span className="text-sm text-foreground/80">Storage Size</span>
+                      <span className="text-lg font-medium text-foreground">
                         {formatBytes(getStorageInBytes())}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-link">Credits Needed</span>
-                      <span className="text-lg font-medium text-fg-muted">
+                      <span className="text-sm text-foreground/80">Credits Needed</span>
+                      <span className="text-lg font-medium text-foreground">
                         {formatNumber((getStorageInGiB() * Number(wincForOneGiB)) / 1e12)}
                       </span>
                     </div>
                     {selectedCurrency !== 'usd' && (
-                      <div className="flex justify-between items-center pt-2 border-t border-default">
-                        <span className="text-sm text-link">USD Equivalent</span>
-                        <span className="text-base font-medium text-fg-muted">
-                          ≈ ${formatNumber(calculateStorageCost())}
+                      <div className="flex justify-between items-center pt-2 border-t border-border/20">
+                        <span className="text-sm text-foreground/80">USD Equivalent</span>
+                        <span className="text-base font-medium text-foreground">
+                          ~ ${formatNumber(calculateStorageCost())}
                         </span>
                       </div>
                     )}
@@ -677,26 +677,26 @@ export default function PricingCalculatorPanel() {
               ) : (
                 <div className="space-y-4 flex-1 flex flex-col justify-between">
                   {/* Primary Result */}
-                  <div className="bg-canvas border-2 border-fg-muted rounded-lg p-6">
+                  <div className="bg-card border-2 border-primary rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-3 min-h-[28px]">
-                      <div className="text-sm text-link">Storage You Get</div>
+                      <div className="text-sm text-foreground/80">Storage You Get</div>
                     </div>
-                    <div className="text-4xl font-bold text-fg-muted">
+                    <div className="text-4xl font-bold text-foreground">
                       {formatBytes(calculateStorageForBudget() * 1024 * 1024 * 1024)}
                     </div>
                   </div>
 
                   {/* Secondary Info */}
-                  <div className="bg-surface rounded-lg p-4 space-y-3">
+                  <div className="bg-card rounded-2xl p-4 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-link">Your Budget</span>
-                      <span className="text-lg font-medium text-fg-muted">
+                      <span className="text-sm text-foreground/80">Your Budget</span>
+                      <span className="text-lg font-medium text-foreground">
                         {selectedCurrency === 'usd' ? `$${formatNumber(dollarAmount)}` : `${formatNumber(dollarAmount, 6)} ${selectedCurrencyInfo.symbol}`}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-link">Credits You'll Get</span>
-                      <span className="text-lg font-medium text-fg-muted">
+                      <span className="text-sm text-foreground/80">Credits You'll Get</span>
+                      <span className="text-lg font-medium text-foreground">
                         {selectedCurrency === 'usd'
                           ? formatNumber(dollarAmount * (creditsForOneUSD || 0))
                           : wincFromCrypto
@@ -706,10 +706,10 @@ export default function PricingCalculatorPanel() {
                       </span>
                     </div>
                     {selectedCurrency !== 'usd' && (
-                      <div className="flex justify-between items-center pt-2 border-t border-default">
-                        <span className="text-sm text-link">USD Equivalent</span>
-                        <span className="text-base font-medium text-fg-muted">
-                          ≈ ${formatNumber(calculateBudgetUSDEquivalent())}
+                      <div className="flex justify-between items-center pt-2 border-t border-border/20">
+                        <span className="text-sm text-foreground/80">USD Equivalent</span>
+                        <span className="text-base font-medium text-foreground">
+                          ~ ${formatNumber(calculateBudgetUSDEquivalent())}
                         </span>
                       </div>
                     )}
@@ -719,17 +719,17 @@ export default function PricingCalculatorPanel() {
             </div>
           </div>
         )}
-        
+
         {/* CTA Section */}
-        <div className="mt-8 text-center bg-canvas rounded-lg border border-fg-muted/20 p-6">
+        <div className="mt-8 text-center bg-card rounded-2xl border border-primary/20 p-6">
           {!address ? (
             // Not logged in - show connect wallet CTA
             <>
-              <h4 className="text-lg font-bold text-fg-muted mb-3">Ready to store your data permanently?</h4>
-              <p className="text-link mb-4">Connect your wallet to top up credits and start uploading.</p>
+              <h4 className="text-lg font-bold font-heading text-foreground mb-3">Ready to store your data permanently?</h4>
+              <p className="text-foreground/80 mb-4">Connect your wallet to top up credits and start uploading.</p>
               <button
                 onClick={() => setShowWalletModal(true)}
-                className="inline-flex items-center gap-2 bg-fg-muted text-canvas px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold hover:bg-primary/90 transition-colors"
               >
                 Connect Wallet <ArrowRight className="w-4 h-4" />
               </button>
@@ -737,19 +737,19 @@ export default function PricingCalculatorPanel() {
           ) : creditBalance > 0 ? (
             // Logged in with credits - show upload/ArNS CTAs
             <>
-              <h4 className="text-lg font-bold text-fg-muted mb-3">You have {creditBalance.toFixed(2)} credits ready to use!</h4>
-              <p className="text-link mb-4">Start uploading files or register an ArNS domain name to use your credits.</p>
+              <h4 className="text-lg font-bold font-heading text-foreground mb-3">You have {creditBalance.toFixed(2)} credits ready to use!</h4>
+              <p className="text-foreground/80 mb-4">Start uploading files or register an ArNS domain name to use your credits.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
                   to="/upload"
-                  className="inline-flex items-center justify-center gap-2 bg-turbo-red text-white px-4 py-3 rounded-lg font-bold hover:bg-turbo-red/90 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-full font-bold hover:bg-primary/90 transition-colors"
                 >
                   <Upload className="w-4 h-4" />
                   Upload Files
                 </Link>
                 <Link
                   to="/domains"
-                  className="inline-flex items-center justify-center gap-2 bg-turbo-yellow text-black px-4 py-3 rounded-lg font-bold hover:bg-turbo-yellow/90 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-full font-bold hover:bg-primary/90 transition-colors"
                 >
                   <Globe className="w-4 h-4" />
                   Search for a Domain
@@ -759,11 +759,11 @@ export default function PricingCalculatorPanel() {
           ) : (
             // Logged in but no credits - show top up CTA
             <>
-              <h4 className="text-lg font-bold text-fg-muted mb-3">You need credits to store data permanently</h4>
-              <p className="text-link mb-4">Top up your account with credits to start uploading files or registering ArNS names.</p>
+              <h4 className="text-lg font-bold font-heading text-foreground mb-3">You need credits to store data permanently</h4>
+              <p className="text-foreground/80 mb-4">Top up your account with credits to start uploading files or registering ArNS names.</p>
               <Link
                 to="/topup"
-                className="inline-flex items-center gap-2 bg-fg-muted text-canvas px-6 py-3 rounded-lg font-bold hover:bg-fg-muted/90 transition-colors"
+                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold hover:bg-primary/90 transition-colors"
               >
                 <CreditCard className="w-4 h-4" />
                 Top Up Credits

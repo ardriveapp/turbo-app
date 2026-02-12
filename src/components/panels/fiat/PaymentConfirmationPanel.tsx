@@ -118,7 +118,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
     : 0;
   const originalAmount = usdAmount;
 
-  const credits = estimatedCredits 
+  const credits = estimatedCredits
     ? ((Number(estimatedCredits.winc) || 0) / wincPerCredit)
     : 0;
 
@@ -137,7 +137,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
     }
   };
 
-  const storageAmount = estimatedCredits && wincForOneGiB 
+  const storageAmount = estimatedCredits && wincForOneGiB
     ? (Number(estimatedCredits.winc) / Number(wincForOneGiB))
     : 0;
 
@@ -145,75 +145,75 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <CheckCircle className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <CheckCircle className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Review Payment</h3>
-          <p className="text-sm text-link">Confirm your credit card payment details</p>
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Review Payment</h3>
+          <p className="text-sm text-foreground/80">Confirm your credit card payment details</p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-surface rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Show recipient info if funding another wallet */}
         {targetAddress && targetAddress !== address && (
-          <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-blue-400 mb-2">
+          <div className="mb-6 bg-info/10 border border-info/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-info mb-2">
               <Users className="w-4 h-4" />
               <span className="font-medium text-sm">Credits will be delivered to:</span>
             </div>
             <div className="flex items-center gap-2">
-              <code className="text-sm text-blue-400 font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+              <code className="text-sm text-info font-mono break-all flex-1 p-2 bg-card/50 rounded">
                 {targetAddress}
               </code>
               <CopyButton textToCopy={targetAddress} />
             </div>
-            <div className="text-xs text-blue-300 mt-2">
+            <div className="text-xs text-info/80 mt-2">
               {getWalletTypeLabel(targetWalletType)} wallet
             </div>
           </div>
         )}
 
         {/* Order Summary */}
-        <div className="bg-canvas p-6 rounded-lg mb-6">
+        <div className="bg-card p-6 rounded-2xl mb-6">
           {estimatedCredits ? (
             <>
               <div className="flex flex-col items-center py-4 mb-4">
-                <div className="text-4xl font-bold text-fg-muted mb-1">
+                <div className="text-4xl font-bold text-foreground mb-1">
                   {credits.toFixed(4)}
                 </div>
-                <div className="text-sm text-link">Credits</div>
+                <div className="text-sm text-foreground/80">Credits</div>
                 {storageAmount > 0 && (
-                  <div className="text-xs text-link mt-1">
+                  <div className="text-xs text-foreground/80 mt-1">
                     ≈ {formatStorage(storageAmount)} storage power
                   </div>
                 )}
               </div>
-              
+
               {/* Pricing Breakdown */}
               {actualPaymentAmount !== originalAmount && (
                 <>
-                  <div className="flex justify-between py-2 text-sm text-link border-t border-default">
+                  <div className="flex justify-between py-2 text-sm text-foreground/80 border-t border-border/20">
                     <div>Subtotal:</div>
                     <div>${originalAmount.toFixed(2)}</div>
                   </div>
-                  <div className="flex justify-between py-2 text-sm text-turbo-green border-t border-default">
+                  <div className="flex justify-between py-2 text-sm text-success border-t border-border/20">
                     <div>Discount:</div>
                     <div>-${(originalAmount - actualPaymentAmount).toFixed(2)}</div>
                   </div>
                 </>
               )}
-              
-              <div className="flex justify-between pt-4 text-sm text-fg-muted border-t border-default font-medium">
+
+              <div className="flex justify-between pt-4 text-sm text-foreground border-t border-border/20 font-medium">
                 <div>Total:</div>
                 <div>${actualPaymentAmount.toFixed(2)}</div>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center py-4">
-              <div className="text-xl font-bold text-red-400">
+              <div className="text-xl font-bold text-error">
                 Error calculating final price
               </div>
             </div>
@@ -221,13 +221,13 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
         </div>
 
         {/* Quote Refresh */}
-        <div className="flex justify-between items-center bg-surface px-6 py-3 text-center text-sm text-link rounded-lg mb-6">
+        <div className="flex justify-between items-center bg-card px-6 py-3 text-center text-sm text-foreground/80 rounded-2xl mb-6">
           <div>
             Quote Updates in{' '}
-            <span className="text-fg-muted">{formatCountdown(countdown)}</span>
+            <span className="text-foreground">{formatCountdown(countdown)}</span>
           </div>
           <button
-            className="flex items-center gap-1 text-fg-muted hover:text-fg-muted/80 transition-colors"
+            className="flex items-center gap-1 text-foreground hover:text-foreground/80 transition-colors"
             onClick={() => {
               setCountdown(5 * 60);
               updateEstimatedCredits();
@@ -238,14 +238,14 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
         </div>
 
         {/* Terms of Service Message */}
-        <div className="text-center bg-surface/30 rounded-lg p-4 mb-6">
-          <p className="text-xs text-link">
+        <div className="text-center bg-card/30 rounded-2xl p-4 mb-6">
+          <p className="text-xs text-foreground/80">
             By continuing, you agree to our{' '}
-            <a 
-              href="https://ardrive.io/tos-and-privacy/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-fg-muted hover:text-fg-muted/80 transition-colors"
+            <a
+              href="https://ardrive.io/tos-and-privacy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground hover:text-foreground/80 transition-colors"
             >
               Terms of Service
             </a>
@@ -254,15 +254,15 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
 
         {/* Error Message */}
         {paymentError && (
-          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <div className="text-red-400 text-sm">{paymentError}</div>
+          <div className="mb-4 p-4 bg-error/10 border border-error/20 rounded-2xl">
+            <div className="text-error text-sm">{paymentError}</div>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-between pt-6 border-t border-default">
+        <div className="flex justify-between pt-6 border-t border-border/20">
           <button
-            className="text-sm text-link hover:text-fg-muted transition-colors"
+            className="text-sm text-foreground/80 hover:text-foreground transition-colors"
             onClick={onBack}
             disabled={sendingPayment}
           >
@@ -270,7 +270,7 @@ const PaymentConfirmationPanel: React.FC<PaymentConfirmationPanelProps> = ({
           </button>
           <button
             disabled={sendingPayment || !estimatedCredits}
-            className="px-8 py-3 rounded-lg bg-fg-muted text-canvas font-bold hover:bg-fg-muted/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 disabled:bg-card disabled:text-foreground/80 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             onClick={submitPayment}
           >
             {sendingPayment ? (

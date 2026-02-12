@@ -27,23 +27,23 @@ export function ThemeToggle({ variant = 'segmented', className = '' }: ThemeTogg
     return (
       <button
         onClick={() => handleThemeChange(nextTheme)}
-        className={`p-2 rounded-lg bg-surface border border-default hover:border-turbo-purple/50 transition-colors ${className}`}
+        className={`p-2 rounded-lg bg-card border border-border/20 hover:border-primary/50 transition-colors ${className}`}
         title={`Theme: ${theme} (click to change)`}
         aria-label={`Current theme: ${theme}. Click to switch.`}
       >
-        <Icon className="w-4 h-4 text-link" />
+        <Icon className="w-4 h-4 text-foreground/80" />
       </button>
     );
   }
 
   // Segmented: Three-button group
   return (
-    <div className={`inline-flex bg-surface rounded-lg p-1 border border-default ${className}`}>
+    <div className={`inline-flex bg-card rounded-2xl p-1 border border-border/20 ${className}`}>
       <button
-        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
           theme === 'light'
-            ? 'bg-turbo-purple text-black'
-            : 'text-link hover:text-fg-muted'
+            ? 'bg-primary text-white'
+            : 'text-foreground/80 hover:text-foreground'
         }`}
         onClick={() => handleThemeChange('light')}
         aria-pressed={theme === 'light'}
@@ -53,10 +53,10 @@ export function ThemeToggle({ variant = 'segmented', className = '' }: ThemeTogg
         <span className="hidden sm:inline">Light</span>
       </button>
       <button
-        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
           theme === 'system'
-            ? 'bg-turbo-purple text-black'
-            : 'text-link hover:text-fg-muted'
+            ? 'bg-primary text-white'
+            : 'text-foreground/80 hover:text-foreground'
         }`}
         onClick={() => handleThemeChange('system')}
         aria-pressed={theme === 'system'}
@@ -66,10 +66,10 @@ export function ThemeToggle({ variant = 'segmented', className = '' }: ThemeTogg
         <span className="hidden sm:inline">System</span>
       </button>
       <button
-        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5 ${
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
           theme === 'dark'
-            ? 'bg-turbo-purple text-black'
-            : 'text-link hover:text-fg-muted'
+            ? 'bg-primary text-white'
+            : 'text-foreground/80 hover:text-foreground'
         }`}
         onClick={() => handleThemeChange('dark')}
         aria-pressed={theme === 'dark'}

@@ -24,7 +24,7 @@ export function useUploadStatus() {
   // Initialize local state from cache for a list of transaction IDs
   const initializeFromCache = useCallback((txIds: string[]) => {
     const cachedStatuses: Record<string, UploadStatus> = {};
-    
+
     txIds.forEach(txId => {
       const cached = getUploadStatus(txId);
       if (cached) {
@@ -32,12 +32,12 @@ export function useUploadStatus() {
         cachedStatuses[txId] = cached as UploadStatus;
       }
     });
-    
+
     // Only update if we have cached items to avoid unnecessary re-renders
     if (Object.keys(cachedStatuses).length > 0) {
       setUploadStatuses(prev => ({ ...prev, ...cachedStatuses }));
     }
-    
+
     return cachedStatuses;
   }, [getUploadStatus]);
 
@@ -49,20 +49,20 @@ export function useUploadStatus() {
         // Use the full cached status object
         const status: UploadStatus = cachedStatus as UploadStatus;
         setUploadStatuses(prev => ({ ...prev, [txId]: status }));
-        
+
         // If already finalized, don't check again
         if (status.status === 'FINALIZED') {
           return status;
         }
       }
     }
-    
+
     setStatusChecking(prev => ({ ...prev, [txId]: true }));
-    
+
     try {
       const config = getCurrentConfig();
       const response = await fetch(`${config.uploadServiceUrl}/tx/${txId}/status`);
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           const status: UploadStatus = { status: 'NOT_FOUND' };
@@ -88,7 +88,7 @@ export function useUploadStatus() {
       // Save to both local state and persistent cache (save full status)
       setUploadStatuses(prev => ({ ...prev, [txId]: status }));
       setUploadStatus(txId, status);
-      
+
       return status;
     } catch (error) {
       console.error(`Failed to check status for ${txId}:`, error);
@@ -106,17 +106,17 @@ export function useUploadStatus() {
       const promises = txIds.map(txId => checkUploadStatus(txId, true));
       return Promise.all(promises);
     }
-    
+
     // First, populate local state with any cached statuses
     const cachedStatuses: Record<string, UploadStatus> = {};
     const idsToCheck: string[] = [];
-    
+
     txIds.forEach(txId => {
       const cachedStatus = getUploadStatus(txId);
       if (cachedStatus) {
         // Add to local state immediately - use full cached status
         cachedStatuses[txId] = cachedStatus as UploadStatus;
-        
+
         // Only check API if not finalized
         if (cachedStatus.status !== 'FINALIZED') {
           idsToCheck.push(txId);
@@ -126,21 +126,21 @@ export function useUploadStatus() {
         idsToCheck.push(txId);
       }
     });
-    
+
     // Update local state with all cached items first for immediate UI feedback
     if (Object.keys(cachedStatuses).length > 0) {
       setUploadStatuses(prev => ({ ...prev, ...cachedStatuses }));
     }
-    
+
     // If no items need API checking, return the cached results
     if (idsToCheck.length === 0) {
       return Object.values(cachedStatuses);
     }
-    
+
     // Check the remaining items that need updates
     const promises = idsToCheck.map(txId => checkUploadStatus(txId));
     const apiResults = await Promise.all(promises);
-    
+
     // Return combined results
     return [...Object.values(cachedStatuses), ...apiResults];
   }, [checkUploadStatus, getUploadStatus]);
@@ -154,15 +154,15 @@ export function useUploadStatus() {
 
   const formatWinc = useCallback((winc: string) => {
     const wincNum = parseInt(winc);
-    
+
     // Show FREE for 0 winston (free tier uploads)
     if (wincNum === 0) {
       return 'FREE';
     }
-    
+
     // Convert winston to credits using the constant from constants.ts
     const credits = wincNum / wincPerCredit;
-    
+
     if (credits < 0.000001) {
       return `${wincNum} winston`;
     }
@@ -170,12 +170,12 @@ export function useUploadStatus() {
   }, []);
 
   const getStatusColor = useCallback((status: string, info?: string) => {
-    if (status === 'FINALIZED' || info === 'permanent') return 'text-turbo-green';
-    if (status === 'CONFIRMED' && info === 'pending') return 'text-yellow-500'; // Most common - use yellow
-    if (status === 'CONFIRMED') return 'text-blue-400'; // Other confirmed states - lighter blue for better readability
-    if (status === 'FAILED') return 'text-red-500';
-    if (status === 'NOT_FOUND') return 'text-link';
-    return 'text-yellow-500';
+    if (status === 'FINALIZED' || info === 'permanent') return 'text-success';
+    if (status === 'CONFIRMED' && info === 'pending') return 'text-warning'; // Most common - use warning
+    if (status === 'CONFIRMED') return 'text-info'; // Other confirmed states - info blue for better readability
+    if (status === 'FAILED') return 'text-error';
+    if (status === 'NOT_FOUND') return 'text-foreground/80';
+    return 'text-warning';
   }, []);
 
   const getStatusIcon = useCallback((status: string, info?: string): string => {

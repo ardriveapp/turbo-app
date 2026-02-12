@@ -152,7 +152,7 @@ export const createContractSigner = async (
       (injectedSigner as any).address = address;
 
       // Set up public key (required for Ethereum signers)
-      const message = 'Sign this message to connect to Turbo Gateway';
+      const message = 'Sign this message to connect to ar.io';
       const signature = await ethersSigner.signMessage(message);
       const messageHash = ethers.hashMessage(message);
       const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
@@ -196,7 +196,7 @@ export const WRITE_OPTIONS = {
   tags: [
     {
       name: 'App-Name',
-      value: 'Turbo App',
+      value: 'ar.io App',
     },
     {
       name: 'App-Version',

@@ -40,7 +40,7 @@ export default function CryptoConfirmationPanel({
   const turboCreditDestinationAddress = paymentTargetAddress && paymentTargetAddress !== address
     ? paymentTargetAddress
     : undefined;
-  
+
   // Use comprehensive hook for all token types
   const { wincForToken, error: pricingError, loading: pricingLoading } = useWincForAnyToken(tokenType, cryptoAmount);
   const { data: turboWallets } = useTurboWallets();
@@ -65,7 +65,7 @@ export default function CryptoConfirmationPanel({
   const balanceAfterPurchase = tokenBalance - cryptoAmount;
   // Balance validation: Block on network errors or insufficient balance, allow on other errors
   const hasSufficientBalance = (balanceError && !isNetworkError) ? true : (!isNetworkError && tokenBalance >= cryptoAmount);
-  
+
   // Get the turbo wallet address for manual payments
   const turboWalletAddress = turboWallets?.[tokenType as keyof typeof turboWallets];
 
@@ -176,7 +176,7 @@ export default function CryptoConfirmationPanel({
 
           // Set public key (required for AO data item signing)
           // The user will sign a message to derive their public key
-          const connectMessage = 'Sign this message to connect to Turbo Gateway for ARIO payment';
+          const connectMessage = 'Sign this message to connect to ar.io for ARIO payment';
           const signature = await ethersSigner.signMessage(connectMessage);
           const messageHash = ethers.hashMessage(connectMessage);
           const recoveredKey = ethers.SigningKey.recoverPublicKey(messageHash, signature);
@@ -481,8 +481,8 @@ export default function CryptoConfirmationPanel({
         }
       } else {
         // Manual payment flow - user needs to send crypto manually
-        onPaymentComplete({ 
-          requiresManualPayment: true, 
+        onPaymentComplete({
+          requiresManualPayment: true,
           quote,
           tokenType,
           turboWalletAddress
@@ -490,20 +490,20 @@ export default function CryptoConfirmationPanel({
       }
     } catch (error) {
       console.error('Payment error:', error);
-      
+
       // Handle SDK compatibility issues for Base ETH
       if (error instanceof Error && error.message.includes('EthereumSigner') && tokenType === 'base-eth') {
         console.log('Base ETH direct payment failed, falling back to manual payment');
         // Fall back to manual payment for Base ETH
-        onPaymentComplete({ 
-          requiresManualPayment: true, 
+        onPaymentComplete({
+          requiresManualPayment: true,
           quote,
           tokenType,
           turboWalletAddress
         });
         return;
       }
-      
+
       // Provide specific error messages based on error type
       if (error instanceof Error) {
         if (error.message.includes('insufficient funds') || (error as any).code === 'INSUFFICIENT_FUNDS') {
@@ -537,12 +537,12 @@ export default function CryptoConfirmationPanel({
     if (!failedTxId) return;
 
     setIsRetrying(true);
-    setPaymentError('⏳ Waiting for blockchain confirmation (3 seconds)...');
+    setPaymentError('Waiting for blockchain confirmation (3 seconds)...');
 
     // Wait a bit for the transaction to be confirmed on-chain
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    setPaymentError('🔄 Submitting transaction to Turbo...');
+    setPaymentError('Submitting transaction to ar.io...');
 
     try {
       // Use properly formatted turbo config with correct token type
@@ -570,7 +570,7 @@ export default function CryptoConfirmationPanel({
       const errorMessage = e instanceof Error ? e.message : String(e);
 
       if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-        setPaymentError(`Transaction not found yet. The blockchain transaction (${failedTxId}) needs to be confirmed before Turbo can process it. Please wait 1-2 minutes and try again.`);
+        setPaymentError(`Transaction not found yet. The blockchain transaction (${failedTxId}) needs to be confirmed before ar.io can process it. Please wait 1-2 minutes and try again.`);
       } else {
         setPaymentError(`Retry failed: ${errorMessage}`);
       }
@@ -583,33 +583,33 @@ export default function CryptoConfirmationPanel({
     <div className="px-4 sm:px-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <Wallet className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Wallet className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Review Payment</h3>
-          <p className="text-sm text-link">Confirm your crypto payment details</p>
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Review Payment</h3>
+          <p className="text-sm text-foreground/80">Confirm your crypto payment details</p>
         </div>
       </div>
 
       {/* Single Main Container - All elements inside like Stripe */}
-      <div className="bg-surface rounded-xl border border-default p-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-6">
         {pricingLoading ? (
           <div className="text-center py-8">
-            <div className="w-12 h-12 border-4 border-fg-muted border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-fg-muted mb-2">Getting Live Pricing</p>
-            <p className="text-sm text-link">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-foreground mb-2">Getting Live Pricing</p>
+            <p className="text-sm text-foreground/80">
               Fetching current {tokenLabels[tokenType]} rates...
             </p>
           </div>
         ) : pricingError ? (
           <div className="text-center py-8">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <p className="text-fg-muted mb-2">Quote Generation Unavailable</p>
-            <p className="text-sm text-link mb-4">{pricingError}</p>
+            <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
+            <p className="text-foreground mb-2">Quote Generation Unavailable</p>
+            <p className="text-sm text-foreground/80 mb-4">{pricingError}</p>
             <button
               onClick={onBack}
-              className="text-fg-muted hover:text-fg-muted/80 transition-colors"
+              className="text-foreground hover:text-foreground/80 transition-colors"
             >
               Go Back and Try Different Token
             </button>
@@ -618,39 +618,39 @@ export default function CryptoConfirmationPanel({
           <>
             {/* Show recipient info if funding another wallet */}
             {paymentTargetAddress && paymentTargetAddress !== address && (
-              <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-blue-400 mb-2">
+              <div className="mb-6 bg-info/10 border border-info/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 text-info mb-2">
                   <Users className="w-4 h-4" />
                   <span className="font-medium text-sm">Credits will be delivered to:</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <code className="text-sm text-blue-400 font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+                  <code className="text-sm text-info font-mono break-all flex-1 p-2 bg-card/50 rounded">
                     {paymentTargetAddress}
                   </code>
                   <CopyButton textToCopy={paymentTargetAddress} />
                 </div>
-                <div className="text-xs text-blue-300 mt-2">
+                <div className="text-xs text-info/80 mt-2">
                   {getWalletTypeLabel(paymentTargetType || 'unknown')} wallet
                 </div>
               </div>
             )}
 
             {/* Order Summary */}
-            <div className="bg-canvas p-6 rounded-lg mb-6">
+            <div className="bg-card p-6 rounded-2xl mb-6">
               <div className="flex flex-col items-center py-4 mb-4">
-                <div className="text-4xl font-bold text-fg-muted mb-1">
+                <div className="text-4xl font-bold text-foreground mb-1">
                   {quote.credits.toFixed(4)}
                 </div>
-                <div className="text-sm text-link">Credits</div>
+                <div className="text-sm text-foreground/80">Credits</div>
                 {quote.gigabytes > 0 && (
-                  <div className="text-xs text-link mt-1">
+                  <div className="text-xs text-foreground/80 mt-1">
                     ≈ {formatStorage(quote.gigabytes)} storage power
                   </div>
                 )}
               </div>
 
               {/* Token Amount Breakdown */}
-              <div className="flex justify-between py-2 text-sm text-link border-t border-default">
+              <div className="flex justify-between py-2 text-sm text-foreground/80 border-t border-border/20">
                 <div>Token Amount:</div>
                 <div>{quote.tokenAmount.toFixed(
                   tokenType === 'ethereum' || tokenType === 'base-eth' ? 6
@@ -660,68 +660,68 @@ export default function CryptoConfirmationPanel({
                   : 8
                 )} {tokenLabels[tokenType]}</div>
               </div>
-              <div className="flex justify-between py-2 text-sm text-link">
+              <div className="flex justify-between py-2 text-sm text-foreground/80">
                 <div>Network:</div>
                 <div>{tokenNetworkLabels[tokenType]}</div>
               </div>
             </div>
 
             {/* Wallet Balance Section */}
-            <div className="bg-surface rounded-lg p-4 border border-default mb-6">
-              <h4 className="font-medium text-fg-muted mb-3">Wallet Balance</h4>
+            <div className="bg-card rounded-2xl p-4 border border-border/20 mb-6">
+              <h4 className="font-heading font-medium text-foreground mb-3">Wallet Balance</h4>
 
               {balanceLoading ? (
-                <div className="flex items-center gap-2 p-2 bg-surface/50 rounded border border-default">
-                  <Loader2 className="w-4 h-4 text-link animate-spin" />
-                  <span className="text-xs text-link">Checking wallet balance...</span>
+                <div className="flex items-center gap-2 p-2 bg-card/50 rounded border border-border/20">
+                  <Loader2 className="w-4 h-4 text-foreground/80 animate-spin" />
+                  <span className="text-xs text-foreground/80">Checking wallet balance...</span>
                 </div>
               ) : balanceError ? (
-                <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
-                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <div className="flex items-center gap-2 p-2 bg-warning/10 rounded border border-warning/20">
+                  <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-amber-400 font-medium">Unable to fetch balance</div>
-                    <div className="text-xs text-amber-400/70 mt-0.5">{balanceError}</div>
+                    <div className="text-xs text-warning font-medium">Unable to fetch balance</div>
+                    <div className="text-xs text-warning/70 mt-0.5">{balanceError}</div>
                   </div>
                 </div>
               ) : (
                 <>
                   {/* Current Balance */}
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-link">Current Balance:</span>
-                    <span className="text-sm font-medium text-fg-muted">
+                    <span className="text-sm text-foreground/80">Current Balance:</span>
+                    <span className="text-sm font-medium text-foreground">
                       {formatTokenAmount(tokenBalance, tokenType)} {tokenLabels[tokenType]}
                     </span>
                   </div>
 
                   {/* Payment Amount */}
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-link">Payment Amount:</span>
-                    <span className="text-sm font-medium text-red-400">
+                    <span className="text-sm text-foreground/80">Payment Amount:</span>
+                    <span className="text-sm font-medium text-error">
                       -{formatTokenAmount(cryptoAmount, tokenType)} {tokenLabels[tokenType]}
                     </span>
                   </div>
 
                   {/* After Purchase */}
-                  <div className="flex justify-between items-center py-2 pt-3 border-t border-default/30">
-                    <span className="text-sm font-medium text-fg-muted">After Purchase:</span>
+                  <div className="flex justify-between items-center py-2 pt-3 border-t border-border/20/30">
+                    <span className="text-sm font-medium text-foreground">After Purchase:</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm font-bold ${hasSufficientBalance ? 'text-turbo-green' : 'text-red-400'}`}>
+                      <span className={`text-sm font-bold ${hasSufficientBalance ? 'text-success' : 'text-error'}`}>
                         {formatTokenAmount(Math.max(0, balanceAfterPurchase), tokenType)} {tokenLabels[tokenType]}
                       </span>
                       {hasSufficientBalance ? (
-                        <CheckCircle className="w-4 h-4 text-turbo-green flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                        <XCircle className="w-4 h-4 text-error flex-shrink-0" />
                       )}
                     </div>
                   </div>
 
                   {/* Insufficient balance warning */}
                   {!hasSufficientBalance && (
-                    <div className="mt-3 p-2 bg-red-500/10 rounded border border-red-500/20">
+                    <div className="mt-3 p-2 bg-error/10 rounded border border-error/20">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                        <div className="text-xs text-red-400">
+                        <AlertCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-error">
                           <div className="font-medium">Insufficient {tokenLabels[tokenType]} balance</div>
                           <div className="mt-1">
                             You need {formatTokenAmount(cryptoAmount - tokenBalance, tokenType)} {tokenLabels[tokenType]} more to complete this purchase.
@@ -735,14 +735,14 @@ export default function CryptoConfirmationPanel({
             </div>
 
             {/* Payment Method Info */}
-            <div className="bg-surface rounded-lg p-4 border border-default mb-6">
+            <div className="bg-card rounded-2xl p-4 border border-border/20 mb-6">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-4 h-4 text-blue-400" />
+                <div className="w-8 h-8 bg-info/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-info" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-fg-muted mb-1">Payment Method</h4>
-                  <p className="text-sm text-link">
+                  <h4 className="font-heading font-medium text-foreground mb-1">Payment Method</h4>
+                  <p className="text-sm text-foreground/80">
                     {(() => {
                       // Extract just the token name without network qualifier (e.g., "ARIO" from "ARIO (Base)")
                       const tokenName = tokenLabels[tokenType].split(' (')[0];
@@ -753,20 +753,20 @@ export default function CryptoConfirmationPanel({
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     <Clock className={`w-3 h-3 ${
-                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
-                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
-                      'text-orange-400'
+                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-success' :
+                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-warning' :
+                      'text-warning'
                     }`} />
                     <p className={`text-xs ${
-                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-green-400' :
-                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-yellow-400' :
-                      'text-orange-400'
+                      tokenProcessingTimes[tokenType].speed === 'fast' ? 'text-success' :
+                      tokenProcessingTimes[tokenType].speed === 'medium' ? 'text-warning' :
+                      'text-warning'
                     }`}>
                       Expected processing: {tokenProcessingTimes[tokenType].time}
                     </p>
                   </div>
                   {!canPayDirectly && (
-                    <p className="text-xs text-link mt-1">
+                    <p className="text-xs text-foreground/80 mt-1">
                       You'll be guided through the manual payment process
                     </p>
                   )}
@@ -775,14 +775,14 @@ export default function CryptoConfirmationPanel({
             </div>
 
             {/* Terms */}
-            <div className="text-center bg-surface/30 rounded-lg p-4 mb-6">
-              <p className="text-xs text-link">
+            <div className="text-center bg-card/30 rounded-2xl p-4 mb-6">
+              <p className="text-xs text-foreground/80">
                 By uploading, you agree to our{' '}
                 <a
                   href="https://ardrive.io/tos-and-privacy/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-fg-muted hover:text-fg-muted/80 transition-colors"
+                  className="text-foreground hover:text-foreground/80 transition-colors"
                 >
                   Terms of Service
                 </a>
@@ -791,16 +791,16 @@ export default function CryptoConfirmationPanel({
 
             {/* Error Message */}
             {paymentError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+              <div className="bg-error/10 border border-error/20 rounded-2xl p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-red-400 text-sm break-words">{paymentError}</div>
+                    <div className="text-error text-sm break-words">{paymentError}</div>
                     {failedTxId && (
                       <button
                         onClick={retryTransaction}
                         disabled={isRetrying}
-                        className="mt-3 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-turbo-red text-white rounded-lg font-medium hover:bg-turbo-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-3 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
                         {isRetrying ? 'Retrying...' : 'Retry Transaction'}
@@ -812,18 +812,18 @@ export default function CryptoConfirmationPanel({
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-6 border-t border-default">
+            <div className="flex justify-between items-center pt-6 border-t border-border/20">
               <button
                 onClick={onBack}
-                className="text-sm text-link hover:text-fg-muted"
+                className="text-sm text-foreground/80 hover:text-foreground"
               >
                 Back
               </button>
-              
+
               <button
                 onClick={handlePayment}
                 disabled={!quote || isProcessing || (!hasSufficientBalance && !balanceLoading)}
-                className="px-6 py-3 rounded-lg bg-fg-muted text-canvas font-medium hover:bg-fg-muted/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isProcessing ? (
                   <>
@@ -841,12 +841,12 @@ export default function CryptoConfirmationPanel({
           </>
         ) : (
           <div className="text-center py-8">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <p className="text-fg-muted mb-2">Quote Generation Failed</p>
-            <p className="text-sm text-link mb-4">
+            <AlertCircle className="w-12 h-12 text-warning mx-auto mb-4" />
+            <p className="text-foreground mb-2">Quote Generation Failed</p>
+            <p className="text-sm text-foreground/80 mb-4">
               Unable to generate pricing for {tokenLabels[tokenType]}
             </p>
-            <button onClick={onBack} className="text-fg-muted hover:text-fg-muted/80">
+            <button onClick={onBack} className="text-foreground hover:text-foreground/80">
               Go Back
             </button>
           </div>

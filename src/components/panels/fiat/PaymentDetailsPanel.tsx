@@ -124,11 +124,11 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
   const cardElementOptions: StripeCardElementOptions = {
     style: {
       base: {
-        color: isLight ? '#23232D' : '#ededed', // text-fg-muted (theme-aware)
+        color: isLight ? '#23232D' : '#ededed', // text-foreground (theme-aware)
         fontSize: '16px',
-        fontFamily: 'Rubik, system-ui, sans-serif',
+        fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
         '::placeholder': {
-          color: isLight ? '#6C6C87' : '#A3A3AD', // text-link (theme-aware)
+          color: isLight ? '#6C6C87' : '#A3A3AD', // text-foreground/80 (theme-aware)
         },
       },
     },
@@ -154,7 +154,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
     }
   };
 
-  const storageAmount = estimatedCredits && wincForOneGiB 
+  const storageAmount = estimatedCredits && wincForOneGiB
     ? (Number(estimatedCredits.winc) / Number(wincForOneGiB))
     : 0;
 
@@ -197,32 +197,32 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <CreditCard className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <CreditCard className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Payment Details</h3>
-          <p className="text-sm text-link">We do not save credit card information. See our T&C for more info.</p>
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Payment Details</h3>
+          <p className="text-sm text-foreground/80">We do not save credit card information. See our T&C for more info.</p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-surface rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
         {/* Show recipient info if funding another wallet */}
         {targetAddress && targetAddress !== address && (
-          <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-blue-400 mb-2">
+          <div className="mb-6 bg-info/10 border border-info/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 text-info mb-2">
               <Users className="w-4 h-4" />
               <span className="font-medium text-sm">Credits will be delivered to:</span>
             </div>
             <div className="flex items-center gap-2">
-              <code className="text-sm text-blue-400 font-mono break-all flex-1 p-2 bg-canvas/50 rounded">
+              <code className="text-sm text-info font-mono break-all flex-1 p-2 bg-card/50 rounded">
                 {targetAddress}
               </code>
               <CopyButton textToCopy={targetAddress} />
             </div>
-            <div className="text-xs text-blue-300 mt-2">
+            <div className="text-xs text-info/80 mt-2">
               {getWalletTypeLabel(targetWalletType)} wallet
             </div>
           </div>
@@ -232,35 +232,35 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
         <div className="grid grid-cols-2 mb-8">
           {estimatedCredits ? (
             <div className="flex flex-col">
-              <div className="text-2xl font-bold text-fg-muted">
+              <div className="text-2xl font-bold text-foreground">
                 {((Number(estimatedCredits?.winc ?? 0)) / wincPerCredit).toFixed(4)} Credits
               </div>
-              <div className="text-sm text-link">
+              <div className="text-sm text-foreground/80">
                 ${actualPaymentAmount}{' '}
                 {discountAmount && (
-                  <span className="text-link">{discountAmount}</span>
+                  <span className="text-foreground/80">{discountAmount}</span>
                 )}
               </div>
               {storageAmount > 0 && (
-                <div className="text-xs text-link mt-1">
+                <div className="text-xs text-foreground/80 mt-1">
                   ≈ {formatStorage(storageAmount)} storage power
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-base font-bold text-red-400">
+            <div className="text-base font-bold text-error">
               Error calculating price
             </div>
           )}
-          <div className="flex flex-col items-center bg-surface px-6 py-3 text-center text-sm text-link rounded-lg">
+          <div className="flex flex-col items-center bg-card px-6 py-3 text-center text-sm text-foreground/80 rounded-2xl">
             <div>
               Quote Updates in{' '}
-              <span className="text-fg-muted">
+              <span className="text-foreground">
                 {formatCountdown(countdown)}
               </span>
             </div>
             <button
-              className="flex items-center gap-1 mt-1 text-fg-muted hover:text-fg-muted/80 transition-colors"
+              className="flex items-center gap-1 mt-1 text-foreground hover:text-foreground/80 transition-colors"
               onClick={() => {
                 setCountdown(5 * 60);
                 updateEstimatedCredits();
@@ -275,7 +275,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
         <div className="space-y-6">
           <FormEntry name="name" label="Name on Card *" errorText={nameError}>
             <input
-              className="w-full bg-surface border border-default px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
+              className="w-full bg-card border border-border/20 px-4 py-3 text-foreground rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               type="text"
               name="name"
               value={name}
@@ -293,7 +293,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
           <FormEntry name="card" label="Credit Card *" errorText={cardError}>
             <CardElement
               options={cardElementOptions}
-              className="w-full bg-surface border border-default px-4 py-3 text-fg-muted rounded"
+              className="w-full bg-card border border-border/20 px-4 py-3 text-foreground rounded-2xl"
               onChange={(e) => {
                 setCardError(e.error?.message || '');
               }}
@@ -302,7 +302,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
 
           <FormEntry name="country" label="Country *" errorText={countryError}>
             <select
-              className="w-full bg-surface border border-default px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
+              className="w-full bg-card border border-border/20 px-4 py-3 text-foreground rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               value={country}
               onChange={(e) => {
                 setCountry(e.target.value);
@@ -323,11 +323,11 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
           {/* Promo Code Section */}
           {promoCode ? (
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-link">Promo Code</label>
-              <div className="flex items-center gap-2 text-sm text-turbo-green">
+              <label className="text-sm text-foreground/80">Promo Code</label>
+              <div className="flex items-center gap-2 text-sm text-success">
                 Promo code successfully applied.
                 <button
-                  className="text-fg-muted hover:text-fg-muted/80"
+                  className="text-foreground hover:text-foreground/80"
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -356,14 +356,14 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                 </button>
               </div>
               {promoCodeError && (
-                <div className="text-xs text-red-400">{promoCodeError}</div>
+                <div className="text-xs text-error">{promoCodeError}</div>
               )}
             </div>
           ) : (
             <FormEntry name="promoCode" label="Promo Code" errorText={promoCodeError}>
               <div className="relative">
                 <input
-                  className="peer w-full bg-surface border border-default px-4 py-3 pr-16 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-turbo-red/50"
+                  className="peer w-full bg-card border border-border/20 px-4 py-3 pr-16 text-foreground rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                   type="text"
                   name="promoCode"
                   value={localPromoCode}
@@ -375,7 +375,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
                   }}
                 />
                 <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs text-fg-muted hover:text-fg-muted/80 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs text-foreground hover:text-foreground/80 transition-colors"
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -412,7 +412,7 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
           <FormEntry name="email" label="Email (optional - for receipt)" errorText={emailError}>
             <input
               type="email"
-              className="w-full bg-surface border border-default px-4 py-3 text-fg-muted rounded focus:outline-none focus:ring-2 focus:ring-fg-muted/50"
+              className="w-full bg-card border border-border/20 px-4 py-3 text-foreground rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               name="email"
               value={email}
               onChange={(e) => {
@@ -432,12 +432,12 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
               <input
                 disabled={!email}
                 type="checkbox"
-                className="w-4 h-4 bg-surface border-2 border-default rounded focus:ring-0 checked:bg-canvas checked:border-default accent-white transition-colors mr-2"
+                className="w-4 h-4 bg-card border-2 border-border/20 rounded focus:ring-0 checked:bg-card checked:border-border/20 accent-white transition-colors mr-2"
                 id="keepMeUpdatedCheckbox"
                 checked={keepMeUpdated}
                 onChange={(e) => setKeepMeUpdated(e.target.checked)}
               />
-              <label className="text-sm text-link" htmlFor="keepMeUpdatedCheckbox">
+              <label className="text-sm text-foreground/80" htmlFor="keepMeUpdatedCheckbox">
                 Keep me up to date on news and promotions.
               </label>
             </div>
@@ -446,22 +446,22 @@ const PaymentDetailsPanel: FC<PaymentDetailsPanelProps> = ({ usdAmount, onBack, 
 
         {/* Error Message */}
         {paymentMethodError && (
-          <div className="mt-4 text-sm text-red-400">
+          <div className="mt-4 text-sm text-error">
             {paymentMethodError}
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-default">
+        <div className="flex justify-between mt-8 pt-6 border-t border-border/20">
           <button
-            className="text-sm text-link hover:text-fg-muted transition-colors"
+            className="text-sm text-foreground/80 hover:text-foreground transition-colors"
             onClick={onBack}
           >
             Back
           </button>
           <button
             disabled={!isValid}
-            className="px-6 py-2 rounded bg-fg-muted text-canvas font-medium hover:bg-fg-muted/90 disabled:bg-surface disabled:text-link disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:bg-card disabled:text-foreground/80 disabled:cursor-not-allowed transition-colors"
             onClick={handleSubmit}
           >
             Next

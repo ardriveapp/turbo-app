@@ -144,20 +144,20 @@ export function CryptoPaymentDetails({
 
   return (
     <div className="mb-4">
-      <div className="bg-surface rounded-lg border border-default p-4">
+      <div className="bg-card rounded-2xl border border-border/20 p-4">
         <div className="space-y-2.5">
           {/* Cost */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Cost:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Cost:</span>
+            <span className="text-sm text-foreground font-medium">
               {estimatedCost ? (
                 estimatedCost.tokenAmountReadable === 0 ? (
-                  <span className="text-turbo-green font-medium">FREE</span>
+                  <span className="text-success font-medium">FREE</span>
                 ) : (
                   <>
                     ~{formatTokenAmount(estimatedCost.tokenAmountReadable, tokenType)} {tokenLabel}
                     {estimatedCost.estimatedUSD && estimatedCost.estimatedUSD > 0 && (
-                      <span className="text-xs text-link ml-2">
+                      <span className="text-xs text-foreground/80 ml-2">
                         (≈ ${estimatedCost.estimatedUSD < 0.01
                           ? estimatedCost.estimatedUSD.toFixed(4)
                           : estimatedCost.estimatedUSD.toFixed(2)})
@@ -173,15 +173,15 @@ export function CryptoPaymentDetails({
 
           {/* Current Balance */}
           <div className="flex justify-between items-center">
-            <span className="text-xs text-link">Current Balance:</span>
-            <span className="text-sm text-fg-muted font-medium">
+            <span className="text-xs text-foreground/80">Current Balance:</span>
+            <span className="text-sm text-foreground font-medium">
               {balanceLoading ? (
                 <span className="flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Checking...
                 </span>
               ) : balanceError ? (
-                <span className="text-amber-400">Unable to fetch</span>
+                <span className="text-warning">Unable to fetch</span>
               ) : (
                 `${formatTokenAmount(tokenBalance, tokenType)} ${tokenLabel}`
               )}
@@ -190,9 +190,9 @@ export function CryptoPaymentDetails({
 
           {/* After Upload */}
           {estimatedCost && !balanceLoading && !balanceError && (
-            <div className="flex justify-between items-center pt-2 border-t border-default/30">
-              <span className="text-xs text-link">After Upload:</span>
-              <span className="text-sm text-fg-muted font-medium">
+            <div className="flex justify-between items-center pt-2 border-t border-border/20">
+              <span className="text-xs text-foreground/80">After Upload:</span>
+              <span className="text-sm text-foreground font-medium">
                 {formatTokenAmount(afterUpload, tokenType)} {tokenLabel}
               </span>
             </div>
@@ -200,11 +200,11 @@ export function CryptoPaymentDetails({
 
           {/* Network Error Warning */}
           {isNetworkError && (
-            <div className="pt-3 mt-3 border-t border-default/30">
-              <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="pt-3 mt-3 border-t border-border/20">
+              <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-2xl border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-amber-400 font-medium mb-1">
+                  <div className="text-xs text-warning font-medium mb-1">
                     {balanceError}
                   </div>
                 </div>
@@ -215,10 +215,10 @@ export function CryptoPaymentDetails({
 
         {/* Advanced Settings */}
         {estimatedCost && (
-          <div className="mt-4 pt-4 border-t border-default/30">
+          <div className="mt-4 pt-4 border-t border-border/20">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-link hover:text-fg-muted transition-colors flex items-center gap-1"
+              className="text-xs text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1"
             >
               {showAdvanced ? (
                 <ChevronUp className="w-3 h-3" />
@@ -230,7 +230,7 @@ export function CryptoPaymentDetails({
 
             {showAdvanced && (
               <div className="mt-3">
-                <label className="text-xs text-link block mb-2">
+                <label className="text-xs text-foreground/80 block mb-2">
                   Safety Buffer (0-20%):
                 </label>
                 <div className="flex items-center gap-2">
@@ -246,9 +246,9 @@ export function CryptoPaymentDetails({
                         setBufferPercentage(value);
                       }
                     }}
-                    className="w-20 px-2 py-1.5 text-xs rounded border border-default bg-surface text-fg-muted focus:outline-none focus:border-fg-muted"
+                    className="w-20 px-2 py-1.5 text-xs rounded border border-border/20 bg-card text-foreground focus:outline-none focus:border-foreground"
                   />
-                  <span className="text-xs text-link">%</span>
+                  <span className="text-xs text-foreground/80">%</span>
                 </div>
               </div>
             )}

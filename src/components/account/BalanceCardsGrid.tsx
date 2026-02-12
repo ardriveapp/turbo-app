@@ -27,18 +27,18 @@ export default function BalanceCardsGrid() {
       setLoading(true);
       try {
         const balance = await getTurboBalance(address, walletType);
-        
+
         const {
           winc,
           controlledWinc,
           effectiveBalance,
         } = balance;
-        
+
         const credits = Number(winc) / wincPerCredit;
         const gibStorage = wincForOneGiB ? Number(winc) / Number(wincForOneGiB) : 0;
         const sharedOut = controlledWinc ? (Number(controlledWinc) - Number(winc)) / wincPerCredit : 0;
         const available = effectiveBalance ? (Number(effectiveBalance) - Number(winc)) / wincPerCredit : 0;
-        
+
         setBalanceData({
           credits,
           gibStorage,
@@ -76,33 +76,33 @@ export default function BalanceCardsGrid() {
   };
 
   return (
-    <div className="bg-surface rounded-xl border border-default p-6">
+    <div className="bg-card rounded-2xl border border-border/20 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center border border-default">
-            <Coins className="w-5 h-5 text-fg-muted" />
+          <div className="w-10 h-10 bg-foreground/20 rounded-lg flex items-center justify-center border border-border/20">
+            <Coins className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-fg-muted">Account Balance</h3>
-            <p className="text-sm text-link">Credits and storage overview</p>
+            <h3 className="text-lg font-bold text-foreground">Account Balance</h3>
+            <p className="text-sm text-foreground/80">Credits and storage overview</p>
           </div>
         </div>
       </div>
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="text-link">Loading account balance...</div>
+          <div className="text-foreground/80">Loading account balance...</div>
         </div>
       ) : balanceData ? (
         <>
           {/* Primary Balance Display */}
-          <div className="bg-surface/50 rounded-lg p-4 mb-4">
+          <div className="bg-card/50 rounded-2xl p-4 mb-4">
             <div className="text-center mb-4">
-              <div className="text-3xl font-bold text-fg-muted mb-1">
+              <div className="text-3xl font-bold text-foreground mb-1">
                 {formatCredits(balanceData.credits)} Credits
               </div>
-              <div className="text-sm text-turbo-green">
+              <div className="text-sm text-success">
                 ≈ {balanceData.gibStorage.toFixed(2)} GiB storage capacity
               </div>
             </div>
@@ -113,14 +113,14 @@ export default function BalanceCardsGrid() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => navigate('/topup')}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-fg-muted text-canvas rounded-lg font-medium hover:bg-fg-muted/90 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-foreground text-card rounded-full font-medium hover:bg-foreground/90 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Top Up Credits
             </button>
             <button
               onClick={() => navigate('/share')}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-surface border border-default rounded-lg text-fg-muted hover:bg-canvas transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-card border border-border/20 rounded-full text-foreground hover:bg-card/80 transition-colors"
             >
               <Share2 className="w-4 h-4" />
               Share Credits
@@ -128,7 +128,7 @@ export default function BalanceCardsGrid() {
           </div>
         </>
       ) : (
-        <div className="text-center py-8 text-link">
+        <div className="text-center py-8 text-foreground/80">
           Unable to load balance data
         </div>
       )}

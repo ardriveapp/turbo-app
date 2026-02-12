@@ -21,11 +21,11 @@ export default function CopyButton({ textToCopy }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 text-link hover:text-fg-muted transition-colors"
+      className="p-1.5 text-foreground/80 hover:text-foreground transition-colors"
       title={copied ? 'Copied!' : 'Copy to clipboard'}
     >
       {copied ? (
-        <Check className="w-4 h-4 text-green-500" />
+        <Check className="w-4 h-4 text-success" />
       ) : (
         <Copy className="w-4 h-4" />
       )}

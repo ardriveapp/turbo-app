@@ -1,43 +1,41 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'selector',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     fontFamily: {
-      sans: ['Rubik', 'sans-serif'],
+      sans: ['Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'sans-serif'],
+      heading: ['Besley Variable', 'Besley', 'serif'],
+      body: ['Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'sans-serif'],
+      mono: ['ui-monospace', 'SFMono-Regular', 'monospace'],
     },
     extend: {
       colors: {
-        // Theme-aware colors (switch via CSS variables)
-        page: 'var(--color-page)',
-        canvas: 'var(--color-canvas)',
-        surface: 'var(--color-surface)',
-        'surface-elevated': 'var(--color-surface-elevated)',
-        'header-bg': 'var(--color-header-bg)',
-        default: 'var(--color-default)',
-        'fg-muted': 'var(--color-fg-muted)',
-        'fg-disabled': 'var(--color-fg-disabled)',
-        'fg-on-disabled': 'var(--color-fg-on-disabled)',
-        'accent-disabled': 'var(--color-accent-disabled)',
-        link: 'var(--color-link)',
-        high: 'var(--color-high)',
-        'card-tint': 'var(--color-card-tint)',
-        error: '#f00',
-        // Alert colors (theme-aware - darker in light mode for contrast)
-        'alert-danger': 'var(--color-alert-danger)',
-        'alert-warning': 'var(--color-alert-warning)',
-        'alert-success': 'var(--color-alert-success)',
-        'alert-info': 'var(--color-alert-info)',
-        // Brand text colors (theme-aware - darker in light mode for accessibility)
-        'turbo-yellow-text': 'var(--color-turbo-yellow-text)',
-        // Brand colors (static - same in both themes)
-        turbo: {
-          red: '#FE0230',
-          blue: '#3142C4',
-          green: '#18A957',
-          yellow: '#FFBB38', // ArNS brand color
-          purple: '#8B5CF6', // Developer/Info services color (purple-500)
-        }
+        // ar.io brand colors (light mode)
+        primary: 'rgb(var(--color-primary) / <alpha-value>)',
+        'primary-foreground': 'rgb(var(--color-card) / <alpha-value>)', // Text on primary backgrounds
+        lavender: 'rgb(var(--color-lavender) / <alpha-value>)',
+        foreground: 'rgb(var(--color-foreground) / <alpha-value>)',
+        background: 'rgb(var(--color-background) / <alpha-value>)',
+        card: 'rgb(var(--color-card) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        'code-surface': 'rgb(var(--color-code-surface) / <alpha-value>)', // Code block backgrounds
+
+        // Legacy mappings for gradual migration (will be removed)
+        // These map old token names to new values for compatibility
+        page: 'rgb(var(--color-background) / <alpha-value>)',
+        canvas: 'rgb(var(--color-card) / <alpha-value>)',
+        surface: 'rgb(var(--color-background) / <alpha-value>)',
+        'surface-elevated': 'rgb(var(--color-card) / <alpha-value>)',
+        'header-bg': 'rgb(var(--color-background) / <alpha-value>)',
+        default: 'rgb(var(--color-border) / <alpha-value>)',
+        'fg-muted': 'rgb(var(--color-foreground) / <alpha-value>)',
+        link: 'rgb(var(--color-foreground) / 0.8)',
+
+        // Status colors (semantic colors with opacity support)
+        error: 'rgb(var(--color-error) / <alpha-value>)',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        warning: 'rgb(var(--color-warning) / <alpha-value>)',
+        info: 'rgb(var(--color-info) / <alpha-value>)',
       },
     },
   },

@@ -1,13 +1,15 @@
-# Turbo Gateway Application
+# ar.io App
 
-A unified web application for AR.IO Network Turbo services. Built with React 18, TypeScript, Vite, and multi-chain wallet support.
+A unified web application for uploading and accessing permanent data through the ar.io Network. Built with React 18, TypeScript, Vite, and multi-chain wallet support.
 
 ## Overview
 
-This application consolidates three legacy apps into one:
-- **turbo-landing-page**: Informational content and documentation
-- **turbo-topup**: Payment flows (fiat and crypto)
-- **turbo-app**: File uploads, site deployment, credit sharing, ArNS management, gifts
+The ar.io App provides a streamlined interface for:
+- **File uploads** to the permaweb with instant confirmation
+- **Site deployment** with ArNS domain support
+- **Credit management** (purchase, share, gift)
+- **ArNS domain** search and management
+- **Developer tools** and API documentation
 
 ## Quick Start
 
@@ -35,7 +37,7 @@ npm run dev       # Start dev server at http://localhost:3000
 - **State**: Zustand (persistent + ephemeral), TanStack React Query v5
 - **Wallets**: Arweave (Wander), Ethereum (Wagmi/RainbowKit/Privy), Solana (wallet-adapter)
 - **Payments**: Stripe (fiat), native crypto, X402 protocol (Base USDC)
-- **Styling**: Tailwind CSS, dark theme only, Rubik font
+- **Styling**: Tailwind CSS, Besley + Plus Jakarta Sans fonts
 - **Key SDKs**: `@ardrive/turbo-sdk` ^1.39.2, `@ar.io/sdk` ^3.19.0-alpha.10
 
 ## Environment Variables

@@ -12,9 +12,9 @@ export default function WalletOverviewCard() {
   }
 
   return (
-    <div className="p-4 rounded-lg bg-surface border border-default">
+    <div className="p-4 rounded-2xl bg-card border border-border/20">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-bold text-fg-muted flex items-center gap-2">
+        <h4 className="font-bold text-foreground flex items-center gap-2">
           <Wallet className="w-5 h-5" />
           Wallet Details
         </h4>
@@ -35,10 +35,10 @@ export default function WalletOverviewCard() {
               
               window.open(explorerUrl, '_blank');
             }}
-            className="p-1.5 rounded hover:bg-canvas transition-colors"
+            className="p-1.5 rounded hover:bg-card transition-colors"
             title="View on Explorer"
           >
-            <ExternalLink className="w-4 h-4 text-link hover:text-fg-muted" />
+            <ExternalLink className="w-4 h-4 text-foreground/80 hover:text-foreground" />
           </button>
         </div>
       </div>
@@ -46,30 +46,30 @@ export default function WalletOverviewCard() {
       <div className="space-y-2">
         {(arnsName || loadingArNS) && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-link">ArNS Name:</span>
+            <span className="text-foreground/80">ArNS Name:</span>
             {loadingArNS ? (
-              <span className="font-medium text-fg-muted">Loading...</span>
+              <span className="font-medium text-foreground">Loading...</span>
             ) : arnsName ? (
-              <a 
+              <a
                 href={`https://${arnsName}.ar.io`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-fg-muted hover:text-fg-muted transition-colors cursor-pointer"
+                className="font-medium text-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 {arnsName}
               </a>
             ) : (
-              <span className="font-medium text-fg-muted">None</span>
+              <span className="font-medium text-foreground">None</span>
             )}
           </div>
         )}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-link">Address:</span>
+          <span className="text-foreground/80">Address:</span>
           <span className="font-mono text-xs break-all">{address}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-link">Wallet Type:</span>
-          <span className="font-medium text-fg-muted capitalize">{walletType}</span>
+          <span className="text-foreground/80">Wallet Type:</span>
+          <span className="font-medium text-foreground capitalize">{walletType}</span>
         </div>
       </div>
     </div>

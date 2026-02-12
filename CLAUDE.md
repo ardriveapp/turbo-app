@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Quick Start
+
+```bash
+npm install          # Install dependencies
+npm run dev          # Start dev server at http://localhost:3000
+npm run lint         # ESLint validation
+npm run type-check   # TypeScript checking (strict mode)
+npm run build:prod   # Production build (requires 8GB memory)
+```
+
+**Path alias:** Use `@/` for imports from `src/` (e.g., `import { useStore } from '@/store/useStore'`).
+
 ## Critical Gotchas
 
 Before diving in, these are the most common issues:
@@ -23,6 +35,10 @@ Before diving in, these are the most common issues:
 
 6. **destinationAddress required**: All pricing API calls need `destinationAddress`. Use `address || 'pricing-lookup'` as fallback.
 
+7. **TypeScript strict mode**: The codebase uses `strict: true`. Handle nullable types explicitly; avoid `!` assertions unless certain.
+
+8. **Async wallet operations may fail**: Always wrap `createEthereumTurboClient()`, `fundAndUpload()`, and similar async wallet operations in try/catch blocks with user-friendly error handling.
+
 ## Development Commands
 
 ```bash
@@ -37,17 +53,18 @@ npm run clean:all    # Full clean and reinstall
 
 **Notes:**
 - Uses yarn (packageManager: yarn@1.22.22) but npm works
-- Memory allocation via `cross-env NODE_OPTIONS=--max-old-space-size` (2GB-8GB)
+- Memory allocation via `cross-env NODE_OPTIONS=--max-old-space-size` (2GB dev, 8GB prod build)
 - No test framework configured
-- Path alias: `@/` maps to `src/`
+- Path alias: `@/` maps to `src/` (configured in tsconfig.json and vite.config.ts)
 
 ## Architecture Overview
 
 ### Application Structure
-Unified Turbo Gateway app consolidating:
-- **turbo-landing-page**: Informational content
-- **turbo-topup**: Payment flows and wallet integration
-- **turbo-app**: File uploads, gifts, credit sharing, ArNS
+ar.io App - a unified application for uploading and accessing permanent data through the ar.io Network:
+- **File uploads**: Drag & drop with instant confirmation
+- **Site deployment**: Deploy static sites with ArNS domain support
+- **Credit management**: Purchase, share, and gift credits
+- **ArNS domains**: Search and manage domain names
 
 ### Key Directories
 ```text
@@ -167,7 +184,7 @@ const turbo = TurboFactory.authenticated({ signer: injectedSigner, token: 'base-
 All uploads include standardized metadata tags:
 
 **Deployment tool tags (always included):**
-- `Deployed-By`: 'Turbo-App' (from `APP_NAME` constant) - identifies the deployment tool
+- `Deployed-By`: 'ar.io App' (from `APP_NAME` constant) - identifies the deployment tool
 - `Deployed-By-Version`: Dynamic from package.json - version of the deployment tool
 - `App-Feature`: 'File Upload' | 'Deploy Site' | 'Capture'
 
@@ -261,48 +278,55 @@ Service URLs managed by store's configuration system, overridable via Developer 
 
 ## Styling
 
-### Theme System
-The app supports light and dark themes via CSS custom properties. Theme preference is stored in Zustand and persists to localStorage.
+### ar.io Brand Colors (Light Mode)
 
-**Theme toggle location:** Developer Resources → Configuration tab
+| Color | Hex | CSS Variable | Usage |
+|-------|-----|--------------|-------|
+| Primary | #5427C8 | `--color-primary` | CTAs, links, accents |
+| Lavender | #DFD6F7 | `--color-lavender` | Gradients, backgrounds, footer |
+| Black | #23232D | `--color-foreground` | Primary text, dark elements |
+| White | #FFFFFF | `--color-background` | Page background |
+| Card Surface | #F0F0F0 | `--color-card` | Card backgrounds |
 
-**Key files:**
-- `src/styles/globals.css` - CSS custom properties for both themes
-- `src/hooks/useTheme.ts` - Theme detection and application hook
-- `src/components/ThemeToggle.tsx` - Theme toggle component
-- `src/store/useStore.ts` - `theme` state ('light' | 'dark' | 'system')
+### Typography
 
-**Semantic color tokens (defined in globals.css, referenced in tailwind.config.js):**
+- **Headings**: Besley (font-heading), weight 800 (extra bold)
+- **Body text**: Plus Jakarta Sans (font-body)
+- Both fonts loaded via `@fontsource-variable`
 
-| Token | Dark Mode | Light Mode | Usage |
-|-------|-----------|------------|-------|
-| `page` | #000000 | #F0F0F0 | Page background |
-| `canvas` | #171717 | #E0E0E0 | Dropdowns, hover states |
-| `surface` | #1F1F1F | #FFFFFF | Cards, panels |
-| `surface-elevated` | #2A2A2A | #F5F5F5 | Nested cards, code blocks |
-| `header-bg` | #090909 | #FFFFFF | Header, footer |
-| `fg-muted` | #ededed | #23232D | Primary text |
-| `link` | #A3A3AD | #6C6C87 | Secondary text |
-| `default` | #333 | #DEDEE2 | Borders |
+### Key Files
 
-**Brand colors (same in both themes):**
-- `turbo-red`: #FE0230 (primary), `turbo-green`: #18A957 (success)
-
-**Font:** Rubik via @fontsource/rubik
+- `src/styles/globals.css` - CSS custom properties
+- `tailwind.config.js` - Tailwind color tokens and font families
+- `STYLE_GUIDE.md` - Comprehensive component patterns
 
 ## Common Patterns
 
 ### Service Panel Header
 ```jsx
 <div className="flex items-start gap-3 mb-6">
-  <div className="w-10 h-10 bg-turbo-red/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-    <Icon className="w-5 h-5 text-turbo-red" />
+  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card">
+    <Icon className="h-5 w-5 text-foreground" />
   </div>
   <div>
-    <h3 className="text-2xl font-bold text-fg-muted mb-1">[Name]</h3>
-    <p className="text-sm text-link">[Description]</p>
+    <h3 className="font-heading text-2xl font-extrabold text-foreground mb-1">[Name]</h3>
+    <p className="text-sm text-foreground/80">[Description]</p>
   </div>
 </div>
+```
+
+### Card Component
+```jsx
+<div className="rounded-2xl border border-border/20 bg-card p-6 shadow-sm">
+  {/* Card content */}
+</div>
+```
+
+### Primary Button
+```jsx
+<button className="inline-flex items-center gap-2 bg-foreground text-white px-5 py-2.5 rounded-full font-semibold hover:opacity-90 transition-opacity">
+  Button Text
+</button>
 ```
 
 ### Privy Wallet Detection

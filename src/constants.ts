@@ -46,7 +46,7 @@ export const defaultDebounceMs = 500;
 export const ardriveAppUrl = "https://app.ardrive.io";
 
 // App metadata for tagging uploads
-export const APP_NAME = 'Turbo-App';
+export const APP_NAME = 'ar.io Console';
 export const APP_VERSION = packageJson.version;
 
 export const maxUSDAmount = 10000;

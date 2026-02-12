@@ -1,77 +1,49 @@
-@import '@fontsource/rubik/400.css';
-@import '@fontsource/rubik/500.css';
-@import '@fontsource/rubik/600.css';
-@import '@fontsource/rubik/700.css';
+/* ar.io App - Global Styles */
+
+/* Font imports - Variable fonts for optimal flexibility */
+@import '@fontsource-variable/besley';
+@import '@fontsource-variable/plus-jakarta-sans';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* Dark theme (default) - matches main branch */
+  /* ar.io brand colors (light mode only) */
   :root {
-    color-scheme: dark;
-
-    --color-page: #000000;           /* Page background - pure black */
-    --color-canvas: #171717;         /* Dropdowns, hover states - visible against black */
-    --color-surface: #1F1F1F;        /* Cards, panels */
-    --color-surface-elevated: #2A2A2A; /* Nested cards, code blocks */
-    --color-header-bg: #090909;      /* Header/footer - subtle lift from page */
-    --color-default: #333;           /* Borders */
-    --color-fg-muted: #ededed;       /* Primary text */
-    --color-fg-disabled: #6C6C87;
-    --color-fg-on-disabled: #9494A5;
-    --color-accent-disabled: #6C6C87;
-    --color-link: #A3A3AD;           /* Secondary text */
-    --color-high: #CACAD6;           /* Highlighted text */
-    --color-card-tint: #FFFFFF;      /* Card overlay tint - white in both themes */
-
-    /* Alert text colors - lighter in dark mode for visibility on dark backgrounds */
-    --color-alert-danger: #f87171;   /* red-400 */
-    --color-alert-warning: #fbbf24;  /* yellow-400 */
-    --color-alert-success: #4ade80;  /* green-400 */
-    --color-alert-info: #60a5fa;     /* blue-400 */
-
-    /* Brand text colors - for accessible text on backgrounds */
-    --color-turbo-yellow-text: #FFBB38;  /* Same as brand yellow in dark mode */
-  }
-
-  /* Light theme */
-  :root.light {
     color-scheme: light;
 
-    --color-page: #F0F0F0;           /* Page background - light gray */
-    --color-canvas: #E8E8E8;         /* Dropdowns, hover states - darker than page for contrast */
-    --color-surface: #FFFFFF;        /* Cards, panels */
-    --color-surface-elevated: #F5F5F5; /* Nested cards, code blocks */
-    --color-header-bg: #FFFFFF;      /* Header/footer */
-    --color-default: #C8C8CE;        /* Borders - darker for visibility */
-    --color-fg-muted: #23232D;       /* Primary text */
-    --color-fg-disabled: #9494A5;
-    --color-fg-on-disabled: #6C6C87;
-    --color-accent-disabled: #9494A5;
-    --color-link: #6C6C87;           /* Secondary text */
-    --color-high: #39394A;           /* Highlighted text */
-    --color-card-tint: #FFFFFF;      /* Card overlay tint - white in both themes */
+    /* Core brand colors */
+    --color-primary: 84 39 200;        /* #5427C8 - Primary purple */
+    --color-lavender: 223 214 247;     /* #DFD6F7 - Secondary/decorative */
+    --color-foreground: 35 35 45;      /* #23232D - Primary text, dark elements */
+    --color-background: 255 255 255;   /* #FFFFFF - Page background */
+    --color-card: 240 240 240;         /* #F0F0F0 - Card surfaces */
+    --color-border: 35 35 45;          /* #23232D at 12% opacity for borders */
+    --color-code-surface: 35 35 45;    /* #23232D - Code block backgrounds */
 
-    /* Alert text colors - darker in light mode for visibility on light backgrounds */
-    --color-alert-danger: #991b1b;   /* red-800 */
-    --color-alert-warning: #92400e;  /* yellow-800 */
-    --color-alert-success: #166534;  /* green-800 */
-    --color-alert-info: #1e40af;     /* blue-800 */
-
-    /* Brand text colors - darker in light mode for accessibility (7.5:1 contrast) */
-    --color-turbo-yellow-text: #92400e;  /* amber-800 - accessible on white/light backgrounds */
+    /* Semantic status colors */
+    --color-success: 22 163 74;        /* #16a34a - Success/positive states */
+    --color-error: 220 38 38;          /* #dc2626 - Error/danger states */
+    --color-warning: 217 119 6;        /* #d97706 - Warning/caution states */
+    --color-info: 37 99 235;           /* #2563eb - Informational states */
   }
 
   body {
-    @apply bg-page text-fg-muted antialiased;
-    font-family: 'Rubik', sans-serif;
+    @apply text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', sans-serif;
+    /* Gradient background is applied in Layout.tsx to match ar.io public site pattern */
+    min-height: 100vh;
   }
 
-  /* Smooth theme transitions */
-  *, *::before, *::after {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  /* Headings use Besley */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Besley Variable', 'Besley', serif;
+  }
+
+  /* Smooth transitions for interactive elements */
+  button, a, input, select, textarea {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 }
 
@@ -99,4 +71,29 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Font utility classes */
+  .font-heading {
+    font-family: 'Besley Variable', 'Besley', serif;
+  }
+  .font-body {
+    font-family: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  /*
+   * Typography Scale (aligned with ar.io public site)
+   * ================================================
+   * Fonts:
+   *   - Headings: Besley (font-heading)
+   *   - Body: Plus Jakarta Sans (font-body / font-sans)
+   *
+   * Sizes & Weights:
+   *   - Hero/Page titles: text-4xl/5xl font-heading font-bold
+   *   - Section headings: text-3xl font-heading font-bold
+   *   - Panel titles: text-2xl font-heading font-bold
+   *   - Card titles: text-xl font-heading font-bold (or text-lg font-bold)
+   *   - Body text: text-base (16px)
+   *   - Secondary/muted text: text-sm text-foreground/80
+   *   - Labels/small: text-xs, often uppercase tracking-wide
+   */
 }

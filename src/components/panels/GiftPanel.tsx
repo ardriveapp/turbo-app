@@ -128,37 +128,37 @@ export default function GiftPanel() {
     <div className="px-4 sm:px-6">
       {/* Inline Header with Description */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 border border-default">
-          <Gift className="w-5 h-5 text-fg-muted" />
+        <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 mt-1 border border-border/20">
+          <Gift className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-fg-muted mb-1">Send Gift</h3>
-          <p className="text-sm text-link">
+          <h3 className="text-2xl font-heading font-bold text-foreground mb-1">Send Gift</h3>
+          <p className="text-sm text-foreground/80">
             Send credits to anyone via email - perfect for onboarding new users to Arweave
           </p>
         </div>
       </div>
 
       {/* Main Content Container with Gradient */}
-      <div className="bg-surface rounded-xl border border-default p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-card rounded-2xl border border-border/20 p-4 sm:p-6 mb-4 sm:mb-6">
 
       {/* Amount Selection */}
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Gift Amount (USD)</label>
         <div className="relative">
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fg-muted text-lg font-medium">$</div>
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground text-lg font-medium">$</div>
           <input
             type="number"
             value={usdAmount}
             onChange={handleAmountChange}
-            className="w-full p-3 pl-8 rounded-lg border border-default bg-surface text-fg-muted font-medium text-lg focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 pl-8 rounded-2xl border border-border/20 bg-card text-foreground font-medium text-lg focus:border-foreground focus:outline-none transition-colors"
             placeholder="10.00"
             min={minUSDAmount}
             max={maxUSDAmount}
           />
         </div>
         {credits && (
-          <div className="text-sm text-link mt-2">
+          <div className="text-sm text-foreground/80 mt-2">
             Recipient will receive: {credits.toLocaleString()} Credits
           </div>
         )}
@@ -168,12 +168,12 @@ export default function GiftPanel() {
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Recipient Email</label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-fg-disabled" />
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-foreground/50" />
           <input
             type="email"
             value={recipientEmail}
             onChange={(e) => setRecipientEmail(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-surface text-fg-muted focus:border-fg-muted focus:outline-none transition-colors"
+            className="w-full p-3 pl-11 rounded-2xl border border-border/20 bg-card text-foreground focus:border-foreground focus:outline-none transition-colors"
             placeholder="recipient@example.com"
           />
         </div>
@@ -183,16 +183,16 @@ export default function GiftPanel() {
       <div className="mb-6">
         <label className="block text-sm font-medium mb-3">Gift Message (Optional)</label>
         <div className="relative">
-          <MessageSquare className="absolute left-3 top-3 w-5 h-5 text-fg-disabled" />
+          <MessageSquare className="absolute left-3 top-3 w-5 h-5 text-foreground/50" />
           <textarea
             value={giftMessage}
             onChange={(e) => setGiftMessage(e.target.value)}
-            className="w-full p-3 pl-11 rounded-lg border border-default bg-surface text-fg-muted min-h-[100px] focus:border-fg-muted focus:outline-none transition-colors resize-none"
+            className="w-full p-3 pl-11 rounded-2xl border border-border/20 bg-card text-foreground min-h-[100px] focus:border-foreground focus:outline-none transition-colors resize-none"
             placeholder="Add a personal message..."
             maxLength={500}
           />
         </div>
-        <div className="text-xs text-link mt-1">
+        <div className="text-xs text-foreground/80 mt-1">
           {giftMessage.length}/500 characters
         </div>
       </div>
@@ -205,7 +205,7 @@ export default function GiftPanel() {
       {/* Send Button */}
       <button
         onClick={handleSendGift}
-        className="w-full py-4 px-6 rounded-lg bg-fg-muted text-canvas font-bold text-lg hover:bg-fg-muted/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 px-6 rounded-2xl bg-foreground text-card font-bold text-lg hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         disabled={!canSubmit || isProcessing}
       >
         {isProcessing ? (
@@ -222,7 +222,7 @@ export default function GiftPanel() {
       </button>
 
       {/* Stripe Security Notice */}
-      <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-link">
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-foreground/80">
         <Lock className="w-3.5 h-3.5" />
         <span>Secure payment powered by Stripe</span>
       </div>
@@ -230,42 +230,42 @@ export default function GiftPanel() {
 
       {/* Gift Process Info */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-default">
-              <Mail className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <Mail className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Email Delivery</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Email Delivery</h4>
+              <p className="text-xs text-foreground/80">
                 Recipient gets an email with redemption instructions and gift code.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <CheckCircle className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Never Expires</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Never Expires</h4>
+              <p className="text-xs text-foreground/80">
                 Credits remain available indefinitely once redeemed by recipient.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface rounded-lg p-4 border border-default">
+        <div className="bg-card rounded-2xl p-4 border border-border/20">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-fg-muted/15 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Heart className="w-5 h-5 text-fg-muted" />
+            <div className="w-10 h-10 bg-primary/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-border/20">
+              <Heart className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-bold text-fg-muted mb-1 text-sm">Personal Touch</h4>
-              <p className="text-xs text-link">
+              <h4 className="font-bold text-foreground mb-1 text-sm">Personal Touch</h4>
+              <p className="text-xs text-foreground/80">
                 Include a custom message to make your gift more meaningful.
               </p>
             </div>
